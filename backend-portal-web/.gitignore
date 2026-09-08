@@ -1,0 +1,47 @@
+# Build output
+[Bb]in/
+[Oo]bj/
+artifacts/
+
+# .NET generated files
+project.assets.json
+project.nuget.cache
+*.AssemblyInfo.cs
+*.AssemblyInfoInputs.cache
+*.GeneratedMSBuildEditorConfig.editorconfig
+*.csproj.FileListAbsolute.txt
+*.csproj.CoreCompileInputs.cache
+*.sourcelink.json
+
+# Test results and coverage
+TestResults/
+coverage/
+coverage.*
+*.trx
+*.coverage
+*.coveragexml
+
+# User-specific IDE files
+.vs/
+.vscode/*
+!.vscode/settings.json
+!.vscode/tasks.json
+!.vscode/launch.json
+*.user
+*.userosscache
+*.suo
+*.rsuser
+
+# Rider / JetBrains
+.idea/
+*.sln.iml
+
+# Logs and local environment
+*.log
+.env
+.env.*
+!.env.example
+
+# OS files
+.DS_Store
+Thumbs.db
