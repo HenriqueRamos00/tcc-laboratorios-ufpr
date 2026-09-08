@@ -1,0 +1,11 @@
+@Portal.Api_HostAddress = http://localhost:5125
+
+GET {{Portal.Api_HostAddress}}/api/quotes
+Accept: application/json
+
+###
+
+POST {{Portal.Api_HostAddress}}/api/salesforce/token
+Accept: application/json
+
+###

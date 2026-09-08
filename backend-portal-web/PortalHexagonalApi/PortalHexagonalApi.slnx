@@ -1,0 +1,6 @@
+<Solution>
+  <Project Path="Portal.Adapters/Portal.Adapters.csproj" />
+  <Project Path="Portal.Api/Portal.Api.csproj" />
+  <Project Path="Portal.Application/Portal.Application.csproj" />
+  <Project Path="Portal.Domain/Portal.Domain.csproj" />
+</Solution>

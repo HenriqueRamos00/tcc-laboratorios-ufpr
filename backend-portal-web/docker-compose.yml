@@ -1,0 +1,12 @@
+services:
+  portal-api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    env_file:
+      - path: .env
+        required: false
+    environment:
+      ASPNETCORE_URLS: ${ASPNETCORE_URLS:-http://+:8080}
+    ports:
+      - "${PORT:-5125}:8080"
