@@ -1,0 +1,738 @@
+@import 'tailwindcss';
+
+/* Paleta Lactec: fonte única das cores da aplicação.
+   `static` garante que todas as variáveis sejam emitidas em :root mesmo quando
+   nenhuma classe utilitária as usa, porque src/theme.scss (tema do Angular
+   Material) as referencia por var(). */
+@theme static {
+  /* Marca */
+  --color-lactec-primary: #18A5B8;
+  --color-lactec-primary-dark: #0E8A9C;
+  --color-lactec-on-primary: #FFFFFF;
+  --color-lactec-nav: #0F4C5C;
+  --color-lactec-nav-dark: #0B3D4A;
+  --color-lactec-nav-hover: #163F4A;
+  --color-lactec-on-nav: #C8DBDF;
+
+  /* Superfícies e texto */
+  --color-lactec-ink: #0B2230;
+  --color-lactec-ink-soft: #274251;
+  --color-lactec-muted: #5D7480;
+  --color-lactec-line: #E4E8EA;
+  --color-lactec-line-soft: #EEF1F2;
+  --color-lactec-surface: #F5F6F3;
+  --color-lactec-paper: #FFFFFF;
+
+  /* Feedback */
+  --color-lactec-success: #2E9E6A;
+  --color-lactec-success-soft: #3FAE6B;
+  --color-lactec-danger: #D9534F;
+  --color-lactec-warning: #E5A53B;
+  --color-lactec-warning-soft: #E5B23B;
+
+  /* Pills de status do orçamento */
+  --color-lactec-pill-qual-bg: #DCE0E2;
+  --color-lactec-pill-qual-ink: #46555E;
+  --color-lactec-pill-pend-bg: #F7D7D2;
+  --color-lactec-pill-pend-ink: #8E2A24;
+  --color-lactec-pill-proc-bg: #D6EEF3;
+  --color-lactec-pill-proc-ink: #0C6170;
+  --color-lactec-pill-done-bg: #D4ECDC;
+  --color-lactec-pill-done-ink: #1F6B44;
+  --color-lactec-pill-cancel-bg: #E6E8E9;
+  --color-lactec-pill-cancel-ink: #4B5A63;
+  /* Cores distintas por etapa do orçamento (StageName do Salesforce). */
+  --color-lactec-pill-analysis-bg: #FBE8CC;
+  --color-lactec-pill-analysis-ink: #8A5A12;
+  --color-lactec-pill-drafting-bg: #F0E0FF;
+  --color-lactec-pill-drafting-ink: #692DB1;
+  --color-lactec-pill-accepted-bg: #EAF0CC;
+  --color-lactec-pill-accepted-ink: #5E6B12;
+  --color-lactec-pill-awaiting-bg: #F7E6D2;
+  --color-lactec-pill-awaiting-ink: #9A5B1E;
+  --color-lactec-pill-incomplete-bg: #FFD9D6;
+  --color-lactec-pill-incomplete-ink: #8E2A24;
+  --color-lactec-pill-complete-bg: #D6F0E0;
+  --color-lactec-pill-complete-ink: #1F6B44;
+  --color-lactec-pill-validated-bg: #C7E6EC;
+  --color-lactec-pill-validated-ink: #0C6170;
+  --color-lactec-pill-finalized-bg: #BFE3C9;
+  --color-lactec-pill-finalized-ink: #155A36;
+  --color-lactec-pill-drafting-report-bg: #E4DAF7;
+  --color-lactec-pill-drafting-report-ink: #4F1F8E;
+  --color-lactec-pill-published-bg: #1F6B44;
+  --color-lactec-pill-published-ink: #FFFFFF;
+
+  --color-lactec-danger-bg: #FBE7E5;
+  --color-lactec-danger-ink: #8E2A24;
+  --color-lactec-danger-border: #F3C8C3;
+
+  /* Detalhes */
+  --color-lactec-divider: #B8C2C7;
+  --color-lactec-faint: #94A4AB;
+
+  --font-display: 'Instrument Sans', system-ui, sans-serif;
+  --font-sans: Inter, system-ui, sans-serif;
+  --font-mono: 'JetBrains Mono', ui-monospace, monospace;
+
+  --breakpoint-sm: 480px;
+  --breakpoint-md: 768px;
+  --breakpoint-lg: 1024px;
+  --breakpoint-xl: 1280px;
+  --breakpoint-2xl: 1440px;
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  height: 100%;
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  background: var(--color-lactec-surface);
+  color: var(--color-lactec-ink);
+  font-family: 'Inter', system-ui, sans-serif;
+  font-size: 14px;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+::selection {
+  background: rgba(24, 165, 184, 0.22);
+  color: var(--color-lactec-ink);
+}
+
+.display {
+  font-family: 'Instrument Sans', system-ui, sans-serif;
+  letter-spacing: -0.01em;
+}
+
+/* Um rolador só na área de conteúdo. O container do Material traz
+   `overflow: auto` no próprio elemento de conteúdo, e o `main` do shell também
+   rola: empilhados, o conteúdo rola primeiro e a página rola depois. Quem rola
+   é o `main`, que preserva o cabeçalho fixo; o container do Material não pode
+   competir. Elemento + classe sobe a especificidade sem `!important`. */
+mat-sidenav-content.mat-drawer-content {
+  overflow: hidden;
+}
+
+/* Tamanhos de ícone do Material. O componente fixa 24px em width, height e
+   font-size; para mudar isso sem `!important` basta subir a especificidade com
+   elemento + classe, que é o que .status-stepper__icon já faz. O line-height
+   entra junto porque a caixa tem overflow hidden: sem ele o glifo é empurrado
+   para fora. */
+mat-icon.icone-16 {
+  font-size: 16px;
+  line-height: 16px;
+  width: 16px;
+  height: 16px;
+}
+
+mat-icon.icone-20 {
+  font-size: 20px;
+  line-height: 20px;
+  width: 20px;
+  height: 20px;
+}
+
+mat-icon.icone-36 {
+  font-size: 36px;
+  line-height: 36px;
+  width: 36px;
+  height: 36px;
+}
+
+.mono {
+  font-family: 'JetBrains Mono', ui-monospace, monospace;
+}
+
+.input-field {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  height: 44px;
+  padding: 0 12px;
+  background: var(--color-lactec-paper);
+  border: 1px solid var(--color-lactec-line);
+  border-radius: 8px;
+  transition:
+    border-color 120ms ease,
+    box-shadow 120ms ease;
+}
+.input-field:hover {
+  border-color: #C9D1D5;
+}
+.input-field:focus-within {
+  border-color: var(--color-lactec-primary);
+  box-shadow: 0 0 0 4px rgba(24, 165, 184, 0.12);
+}
+.input-field--error,
+.input-field--error:hover {
+  border-color: var(--color-lactec-danger);
+}
+.input-field--error:focus-within {
+  border-color: var(--color-lactec-danger);
+  box-shadow: 0 0 0 4px rgba(217, 83, 79, 0.14);
+}
+.input-field__icon {
+  flex: none;
+  color: var(--color-lactec-muted);
+  font-size: 20px;
+  width: 20px;
+  height: 20px;
+  line-height: 20px;
+}
+.input-field:focus-within .input-field__icon {
+  color: var(--color-lactec-primary-dark);
+}
+.input-field--error .input-field__icon {
+  color: var(--color-lactec-danger);
+}
+.input-field__input {
+  flex: 1 1 auto;
+  min-width: 0;
+  height: 100%;
+  background: transparent;
+  border: 0;
+  outline: 0;
+  padding: 0 0 0 6px;
+  font: inherit;
+  font-size: 14px;
+  color: var(--color-lactec-ink);
+  caret-color: var(--color-lactec-primary);
+}
+.input-field__input::placeholder {
+  color: rgba(93, 116, 128, 0.55);
+}
+.input-field__suffix {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  margin-right: -6px;
+  background: transparent;
+  border: 0;
+  border-radius: 6px;
+  color: var(--color-lactec-muted);
+  cursor: pointer;
+  transition:
+    background-color 120ms ease,
+    color 120ms ease;
+}
+.input-field__suffix:hover {
+  background: var(--color-lactec-line-soft);
+  color: var(--color-lactec-ink-soft);
+}
+.input-field__suffix:focus-visible {
+  outline: 2px solid var(--color-lactec-primary);
+  outline-offset: 2px;
+}
+
+.bg-login-glow {
+  background-image:
+    radial-gradient(900px 600px at 20% 20%, rgba(255, 255, 255, 0.06), transparent 60%),
+    radial-gradient(600px 400px at 80% 90%, rgba(24, 165, 184, 0.12), transparent 60%);
+}
+
+.orcamento-filter-tab {
+  position: relative;
+  padding: 12px 4px;
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--color-lactec-muted);
+  background: transparent;
+  border: 0;
+  border-bottom: 2px solid transparent;
+  cursor: pointer;
+  transition:
+    color 120ms ease,
+    border-color 120ms ease;
+}
+.orcamento-filter-tab:hover {
+  color: var(--color-lactec-ink-soft);
+}
+.orcamento-filter-tab--active {
+  color: var(--color-lactec-ink);
+  border-bottom-color: var(--color-lactec-primary);
+}
+
+.orcamento-filter-dropdown {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 6px 8px 6px 12px;
+  background: var(--color-lactec-paper);
+  border: 1px solid var(--color-lactec-line);
+  border-radius: 8px;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--color-lactec-ink-soft);
+  cursor: pointer;
+  transition: border-color 120ms ease;
+}
+.orcamento-filter-dropdown:hover {
+  border-color: #c9d1d5;
+}
+.orcamento-filter-dropdown mat-icon {
+  font-size: 18px;
+  width: 18px;
+  height: 18px;
+  color: var(--color-lactec-muted);
+}
+
+.orcamento-card {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  padding: 20px;
+  background: var(--color-lactec-paper);
+  border: 1px solid var(--color-lactec-line);
+  border-radius: 12px;
+  box-shadow: 0 1px 2px rgba(11, 34, 48, 0.04);
+}
+@media (min-width: 768px) {
+  .orcamento-card {
+    padding: 24px;
+  }
+}
+
+.orcamento-card-body {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+.orcamento-card-body__header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 12px;
+}
+.orcamento-card-body__content {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+.orcamento-card-body__footer {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+@media (min-width: 768px) {
+  .orcamento-card-body {
+    display: grid;
+    grid-template-columns: 1fr 1fr auto;
+    grid-template-rows: auto auto 1fr;
+    column-gap: 40px;
+    row-gap: 16px;
+  }
+  .orcamento-card-body__header,
+  .orcamento-card-body__content {
+    display: contents;
+  }
+  .orcamento-card-body__header > .orcamento-card-field {
+    grid-column: 1;
+    grid-row: 1;
+  }
+  .orcamento-card-body__header > .orcamento-status-pill {
+    grid-column: 3;
+    grid-row: 1;
+    justify-self: end;
+  }
+  .orcamento-card-body__footer {
+    grid-column: 3;
+    grid-row: 2 / -1;
+    align-self: end;
+    min-width: 192px;
+  }
+}
+
+.orcamento-card-field {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+.orcamento-card-field__label {
+  font-size: 12px;
+  color: var(--color-lactec-muted);
+}
+.orcamento-card-field__value {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--color-lactec-ink);
+  overflow-wrap: break-word;
+  hyphens: auto;
+}
+
+
+.orcamento-status-pill {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 10px;
+  border-radius: 6px;
+  font-size: 12px;
+  font-weight: 500;
+  line-height: 1.4;
+  white-space: nowrap;
+}
+.orcamento-status-pill--qualification {
+  background: var(--color-lactec-pill-qual-bg);
+  color: var(--color-lactec-pill-qual-ink);
+}
+.orcamento-status-pill--analysis {
+  background: var(--color-lactec-pill-analysis-bg);
+  color: var(--color-lactec-pill-analysis-ink);
+}
+.orcamento-status-pill--drafting {
+  background: var(--color-lactec-pill-drafting-bg);
+  color: var(--color-lactec-pill-drafting-ink);
+}
+.orcamento-status-pill--negotiation {
+  background: var(--color-lactec-pill-proc-bg);
+  color: var(--color-lactec-pill-proc-ink);
+}
+.orcamento-status-pill--accepted {
+  background: var(--color-lactec-pill-accepted-bg);
+  color: var(--color-lactec-pill-accepted-ink);
+}
+.orcamento-status-pill--awaiting-sample {
+  background: var(--color-lactec-pill-awaiting-bg);
+  color: var(--color-lactec-pill-awaiting-ink);
+}
+.orcamento-status-pill--received {
+  background: var(--color-lactec-pill-done-bg);
+  color: var(--color-lactec-pill-done-ink);
+}
+.orcamento-status-pill--incomplete {
+  background: var(--color-lactec-pill-incomplete-bg);
+  color: var(--color-lactec-pill-incomplete-ink);
+}
+.orcamento-status-pill--complete {
+  background: var(--color-lactec-pill-complete-bg);
+  color: var(--color-lactec-pill-complete-ink);
+}
+.orcamento-status-pill--protocoled {
+  background: var(--color-lactec-pill-proc-bg);
+  color: var(--color-lactec-pill-proc-ink);
+}
+.orcamento-status-pill--running {
+  background: var(--color-lactec-pill-analysis-bg);
+  color: var(--color-lactec-pill-analysis-ink);
+}
+.orcamento-status-pill--validated {
+  background: var(--color-lactec-pill-validated-bg);
+  color: var(--color-lactec-pill-validated-ink);
+}
+.orcamento-status-pill--finalized {
+  background: var(--color-lactec-pill-finalized-bg);
+  color: var(--color-lactec-pill-finalized-ink);
+}
+.orcamento-status-pill--drafting-report {
+  background: var(--color-lactec-pill-drafting-report-bg);
+  color: var(--color-lactec-pill-drafting-report-ink);
+}
+.orcamento-status-pill--report-published {
+  background: var(--color-lactec-pill-published-bg);
+  color: var(--color-lactec-pill-published-ink);
+}
+.orcamento-status-pill--cancelled {
+  background: var(--color-lactec-pill-pend-bg);
+  color: var(--color-lactec-pill-pend-ink);
+}
+
+.orcamento-card-review {
+  display: flex;
+  gap: 12px;
+  padding: 16px;
+  background: var(--color-lactec-pill-proc-bg);
+  border: 1px solid #b9dde4;
+  border-radius: 10px;
+  color: var(--color-lactec-pill-proc-ink);
+}
+.orcamento-card-review__icon {
+  flex: none;
+  font-size: 20px;
+  width: 20px;
+  height: 20px;
+  color: var(--color-lactec-primary-dark);
+}
+.orcamento-card-review__title {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--color-lactec-ink);
+}
+.orcamento-card-review__deadline {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--color-lactec-ink-soft);
+}
+.orcamento-card-review__message {
+  margin: 0;
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--color-lactec-ink-soft);
+}
+
+.status-stepper {
+  display: flex;
+  align-items: flex-start;
+  gap: 0;
+  width: 100%;
+}
+.status-stepper__step {
+  flex: 1 1 0;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+}
+.status-stepper__circle {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background: var(--color-lactec-line);
+  color: var(--color-lactec-muted);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  transition:
+    background-color 160ms ease,
+    color 160ms ease,
+    box-shadow 160ms ease;
+}
+mat-icon.status-stepper__icon {
+  font-size: 20px;
+  width: 20px;
+  height: 20px;
+  line-height: 20px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+.status-stepper__step[data-state='completed'] .status-stepper__circle {
+  background: var(--color-lactec-nav);
+  color: #ffffff;
+}
+.status-stepper__step[data-state='active'] .status-stepper__circle {
+  background: var(--color-lactec-primary);
+  color: #ffffff;
+  box-shadow: 0 0 0 4px rgba(24, 165, 184, 0.18);
+}
+.status-stepper__label {
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  text-align: center;
+  color: var(--color-lactec-muted);
+  line-height: 1.3;
+}
+.status-stepper__step[data-state='active'] .status-stepper__label {
+  color: var(--color-lactec-primary-dark);
+}
+.status-stepper__step[data-state='completed'] .status-stepper__label {
+  color: var(--color-lactec-ink-soft);
+}
+.status-stepper__connector {
+  flex: 1 1 16px;
+  min-width: 12px;
+  height: 2px;
+  background: var(--color-lactec-line);
+  margin-top: 19px;
+  border-radius: 2px;
+}
+.status-stepper__connector[data-completed='true'] {
+  background: var(--color-lactec-nav);
+}
+
+.dialog-shell {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  padding: 20px;
+}
+.dialog-shell__navbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+.dialog-shell__brand {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+}
+.dialog-shell__title-block {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.dialog-shell__title {
+  margin: 0;
+  font-family: 'Instrument Sans', system-ui, sans-serif;
+  font-size: 24px;
+  font-weight: 600;
+  color: var(--color-lactec-ink);
+  letter-spacing: -0.01em;
+}
+.dialog-shell__subtitle {
+  margin: 0;
+  font-size: 13px;
+  color: var(--color-lactec-muted);
+}
+.dialog-shell__content {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  padding: 8px 0;
+}
+.dialog-shell__footer {
+  border-top: 1px solid var(--color-lactec-line);
+  padding-top: 12px;
+  display: flex;
+  justify-content: flex-start;
+}
+
+.status-dialog-brand {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 6px;
+  font-family: 'Instrument Sans', system-ui, sans-serif;
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  color: var(--color-lactec-ink-soft);
+}
+.status-dialog-brand__lactec {
+  color: var(--color-lactec-nav);
+}
+.status-dialog-brand__sep {
+  color: var(--color-lactec-divider);
+}
+.status-dialog-brand__lab {
+  color: var(--color-lactec-muted);
+}
+
+.status-dialog-message {
+  display: flex;
+  gap: 10px;
+  padding: 12px 14px;
+  background: var(--color-lactec-pill-proc-bg);
+  border: 1px solid #b9dde4;
+  border-radius: 10px;
+  color: var(--color-lactec-ink-soft);
+}
+.status-dialog-message__icon {
+  color: var(--color-lactec-primary-dark);
+  font-size: 20px;
+  width: 20px;
+  height: 20px;
+  flex: none;
+}
+.status-dialog-message__title {
+  margin: 0 0 4px;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--color-lactec-ink);
+}
+
+.status-dialog-message__text {
+  margin: 0;
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.status-dialog-contact {
+  margin: 12px 0 0;
+  font-size: 13px;
+  color: var(--color-lactec-ink-soft);
+}
+
+.status-dialog-contact a {
+  color: var(--color-lactec-primary-dark);
+}
+
+
+.status-dialog-protocol {
+  font-size: 11px;
+  letter-spacing: 0.12em;
+  color: var(--color-lactec-faint);
+  text-transform: uppercase;
+}
+
+
+/* Mobile: o overlay vira a tela toda e transparente. Quem desenha barra +
+   escurecedor + sheet é o .dialog-sheet abaixo, só com flexbox. */
+.lactec-dialog-mobile {
+  width: 100vw !important;
+  max-width: 100vw !important;
+}
+
+.dialog-sheet {
+  display: flex;
+  flex-direction: column;
+  height: 100dvh;
+}
+/* divA: barra que cobre a navigation real, só com o fechar */
+.dialog-sheet__bar {
+  flex: none;
+  height: 56px;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  padding: 0 4px;
+  background: var(--color-lactec-nav);
+}
+/* divB: escurecedor; segura o sheet colado embaixo (justify-end) e fica atrás
+   dele enquanto sobe, então não abre buraco. Toque fora fecha. */
+.dialog-sheet__backdrop {
+  flex: 1 1 auto;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  overflow: hidden;
+  background: rgba(11, 34, 48, 0.55);
+  cursor: pointer;
+}
+/* divC: o modal em si, colado embaixo, quadrado. Só ele desliza de baixo;
+   barra e escurecedor não são afetados. */
+.dialog-sheet__panel {
+  flex: none;
+  max-height: 100%;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  padding: 20px;
+  cursor: default;
+  background: var(--color-lactec-paper);
+  animation: dialog-sheet-up 260ms ease;
+}
+@keyframes dialog-sheet-up {
+  from {
+    transform: translateY(100%);
+  }
+  to {
+    transform: translateY(0);
+  }
+}
+.lactec-dialog-desktop .dialog-shell {
+  padding: 24px 40px 20px;
+}

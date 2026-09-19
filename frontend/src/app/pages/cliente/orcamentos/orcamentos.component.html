@@ -1,0 +1,162 @@
+@let visible = visibleOrcamentos();
+
+<section class="flex flex-col gap-6 md:gap-8">
+  <header class="flex flex-col gap-1">
+    <h1 class="display text-2xl md:text-3xl font-semibold text-lactec-ink m-0">
+      {{ greeting }}, {{ firstName() }}
+    </h1>
+    <p class="text-lactec-muted text-sm md:text-base m-0">
+      Gerencie seus orçamentos e acompanhe o progresso.
+    </p>
+  </header>
+
+  <!-- Botões de alternância, não o padrão ARIA Tabs: não existe tabpanel nem
+       navegação por setas aqui, então `aria-pressed` descreve melhor o que é. -->
+  <div
+    class="hidden md:flex border-b border-lactec-line gap-6"
+    role="group"
+    aria-label="Filtrar orçamentos por status"
+  >
+    @for (tab of filterTabs; track tab.value) {
+      <button
+        type="button"
+        [attr.aria-pressed]="activeFilter() === tab.value"
+        (click)="setFilter(tab.value)"
+        class="orcamento-filter-tab"
+        [class.orcamento-filter-tab--active]="activeFilter() === tab.value"
+      >
+        {{ tab.label }}
+      </button>
+    }
+  </div>
+
+  <div class="flex flex-col gap-3 md:flex-row md:items-center md:justify-between md:gap-6">
+    <h2 class="display text-xl md:text-2xl font-semibold text-lactec-ink m-0">
+      Listagem de Orçamentos Lactec
+    </h2>
+
+    <div class="md:hidden">
+      <button
+        type="button"
+        class="orcamento-filter-dropdown"
+        [matMenuTriggerFor]="filterMenu"
+        aria-haspopup="menu"
+      >
+        <span>{{ mobileFilterLabel() }}</span>
+        <mat-icon>expand_more</mat-icon>
+      </button>
+    </div>
+    <mat-menu #filterMenu="matMenu">
+      @for (tab of filterTabs; track tab.value) {
+        <button mat-menu-item type="button" (click)="setFilter(tab.value)">
+          {{ tab.label }}
+        </button>
+      }
+    </mat-menu>
+
+    <div class="input-field md:w-80">
+      <mat-icon class="input-field__icon" aria-hidden="true">search</mat-icon>
+      <input
+        type="search"
+        class="input-field__input"
+        placeholder="Pesquisar..."
+        aria-label="Pesquisar orçamentos"
+        [ngModel]="searchTerm()"
+        (ngModelChange)="onSearchInput($event)"
+      />
+    </div>
+  </div>
+
+  <div class="flex flex-col gap-4 md:gap-5">
+    @for (orcamento of visible; track orcamento.id) {
+      @let badge = badgeFor(orcamento.status);
+
+      <article class="orcamento-card">
+        <div class="orcamento-card-body">
+          <div class="orcamento-card-body__header">
+            <div class="orcamento-card-field">
+              <span class="orcamento-card-field__label">ID da Proposta</span>
+              <span class="orcamento-card-field__value">{{ orcamento.code }}</span>
+            </div>
+            <span class="orcamento-status-pill" [ngClass]="badge.badgeClass">
+              {{ badge.label }}
+            </span>
+          </div>
+
+          <div class="orcamento-card-body__content">
+            <div class="orcamento-card-field">
+              <span class="orcamento-card-field__label">Empresa</span>
+              <span class="orcamento-card-field__value">{{ orcamento.company }}</span>
+            </div>
+
+            <div class="orcamento-card-field">
+              <span class="orcamento-card-field__label">Nome da Proposta</span>
+              <span class="orcamento-card-field__value">{{ orcamento.proposalName }}</span>
+            </div>
+            <div class="orcamento-card-field">
+              <span class="orcamento-card-field__label">Contato Externo</span>
+              <span class="orcamento-card-field__value">{{ orcamento.externalContact }}</span>
+            </div>
+
+            <div class="orcamento-card-field">
+              <span class="orcamento-card-field__label">Data de Criação</span>
+              <span class="orcamento-card-field__value">{{ orcamento.createdAt }}</span>
+            </div>
+            @if (orcamento.estimatedValue) {
+              <div class="orcamento-card-field">
+                <span class="orcamento-card-field__label">Valor Estimado</span>
+                <span class="orcamento-card-field__value">{{ orcamento.estimatedValue }}</span>
+              </div>
+            }
+          </div>
+
+          <div class="orcamento-card-body__footer">
+            <button
+              mat-flat-button
+              type="button"
+              class="orcamento-card-action"
+              (click)="openStatusDialog(orcamento)"
+            >
+              Verificar Status
+            </button>
+            @if (orcamento.estimatedValue) {
+              <a
+                mat-flat-button
+                class="orcamento-card-action"
+                [routerLink]="['/cliente/orcamentos', orcamento.id]"
+              >
+                Visualizar Orçamento
+              </a>
+            }
+          </div>
+        </div>
+
+        @if (orcamento.pendingReview; as review) {
+          <div class="orcamento-card-review">
+            <mat-icon class="orcamento-card-review__icon" aria-hidden="true">info</mat-icon>
+            <div class="flex flex-col gap-2 flex-1">
+              <div
+                class="flex flex-col gap-1 md:flex-row md:items-center md:justify-between md:gap-6"
+              >
+                <span class="orcamento-card-review__title">Aguardando sua revisão</span>
+                <span class="orcamento-card-review__deadline">Prazo: {{ review.deadline }}</span>
+              </div>
+              <p class="orcamento-card-review__message">{{ review.message }}</p>
+              @if (review.reminder) {
+                <p class="orcamento-card-review__message">{{ review.reminder }}</p>
+              }
+            </div>
+          </div>
+        }
+      </article>
+    } @empty {
+      @if (loadError()) {
+        <p class="text-lactec-muted text-sm">
+          Não foi possível carregar os orçamentos. Tente novamente mais tarde.
+        </p>
+      } @else {
+        <p class="text-lactec-muted text-sm">Nenhum orçamento encontrado.</p>
+      }
+    }
+  </div>
+</section>

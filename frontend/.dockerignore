@@ -1,0 +1,25 @@
+# Dependências e artefatos: reinstalados/regerados dentro da imagem.
+node_modules
+dist
+.angular
+out-tsc
+coverage
+
+# Metadados que não afetam o build.
+.git
+.github
+.vscode
+.idea
+.history
+
+# Os próprios arquivos de container.
+Dockerfile
+.dockerignore
+docker-compose.yml
+docker-compose.*.yml
+
+# Diversos
+*.log
+npm-debug.log
+.DS_Store
+Thumbs.db

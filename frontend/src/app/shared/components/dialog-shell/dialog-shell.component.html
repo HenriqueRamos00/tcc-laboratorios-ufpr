@@ -1,0 +1,70 @@
+<ng-template #brandTpl>
+  <ng-content select="[dialog-brand]"></ng-content>
+</ng-template>
+
+<ng-template #bodyTpl>
+  @if (title()) {
+    <div class="dialog-shell__title-block">
+      <h2 class="dialog-shell__title">{{ title() }}</h2>
+      @if (subtitle()) {
+        <p class="dialog-shell__subtitle">{{ subtitle() }}</p>
+      }
+    </div>
+  }
+
+  <div class="dialog-shell__content">
+    <ng-content></ng-content>
+  </div>
+
+  <footer class="dialog-shell__footer">
+    <ng-content select="[dialog-footer]"></ng-content>
+  </footer>
+</ng-template>
+
+@if (isHandset()) {
+  <!-- Mobile: o overlay ocupa a tela inteira; a estrutura simula a barra do topo,
+       o escurecedor e o sheet. Empilhamento natural pelo DOM, sem z-index. -->
+  <div class="dialog-sheet">
+    <div class="dialog-sheet__bar">
+      <button
+        mat-icon-button
+        type="button"
+        class="dialog-sheet__close"
+        (click)="close()"
+        aria-label="Fechar"
+      >
+        <mat-icon>close</mat-icon>
+      </button>
+    </div>
+
+    <!-- divB (escurecedor) contém divC (sheet) colado embaixo: enquanto o sheet
+         sobe, o escurecedor fica atrás dele, sem deixar buraco. Toque fora fecha. -->
+    <div class="dialog-sheet__backdrop" (click)="close()">
+      <div class="dialog-sheet__panel" (click)="$event.stopPropagation()">
+        <div class="dialog-shell__brand">
+          <ng-container [ngTemplateOutlet]="brandTpl" />
+        </div>
+        <ng-container [ngTemplateOutlet]="bodyTpl" />
+      </div>
+    </div>
+  </div>
+} @else {
+  <div class="dialog-shell">
+    <header class="dialog-shell__navbar">
+      <div class="dialog-shell__brand">
+        <ng-container [ngTemplateOutlet]="brandTpl" />
+      </div>
+      <button
+        mat-icon-button
+        type="button"
+        class="dialog-shell__close"
+        (click)="close()"
+        aria-label="Fechar"
+      >
+        <mat-icon>close</mat-icon>
+      </button>
+    </header>
+
+    <ng-container [ngTemplateOutlet]="bodyTpl" />
+  </div>
+}

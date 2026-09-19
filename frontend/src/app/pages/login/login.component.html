@@ -1,0 +1,126 @@
+@let emailCtrl = form.controls.email;
+@let passwordCtrl = form.controls.password;
+@let emailInvalid = emailCtrl.touched && emailCtrl.invalid;
+@let passwordInvalid = passwordCtrl.touched && passwordCtrl.invalid;
+
+<div class="min-h-svh grid grid-rows-[auto_1fr] md:grid-rows-none md:grid-cols-2 bg-lactec-paper">
+  <section class="bg-lactec-nav bg-login-glow text-white grid place-items-center px-6 py-10 md:p-10">
+    <div class="text-center max-w-sm flex flex-col items-center gap-4 md:gap-6">
+      <app-logo [size]="36" />
+      <h2 class="display text-2xl md:text-3xl font-semibold tracking-tight leading-tight m-0">
+        Portal do Cliente Lactec
+      </h2>
+      <p class="hidden md:block text-sm leading-relaxed text-white/70 max-w-xs m-0">
+        Instituto de Tecnologia para o Desenvolvimento
+      </p>
+    </div>
+  </section>
+
+  <section class="grid grid-rows-[1fr_auto] gap-6 p-6 md:p-10 bg-lactec-paper">
+    <form
+      [formGroup]="form"
+      (ngSubmit)="submit()"
+      novalidate
+      class="self-center justify-self-center w-full max-w-sm flex flex-col gap-5"
+    >
+      <h3 class="display text-2xl md:text-3xl font-semibold text-lactec-nav tracking-tight m-0 mb-1">
+        Acessar
+      </h3>
+
+      <div class="flex flex-col gap-2">
+        <label for="login-email" class="text-xs font-medium text-lactec-ink-soft tracking-wide">
+          E-mail <span class="text-lactec-danger">*</span>
+        </label>
+        <div class="input-field" [class.input-field--error]="emailInvalid">
+          <mat-icon class="input-field__icon" aria-hidden="true">mail_outline</mat-icon>
+          <input
+            id="login-email"
+            type="email"
+            formControlName="email"
+            autocomplete="email"
+            inputmode="email"
+            placeholder="seu@email.com"
+            class="input-field__input"
+            [attr.aria-invalid]="emailInvalid"
+            aria-describedby="login-email-error"
+          />
+        </div>
+        @if (emailInvalid) {
+          <p id="login-email-error" class="text-xs text-lactec-danger m-0" role="alert">
+            Informe um e-mail válido.
+          </p>
+        }
+      </div>
+
+      <div class="flex flex-col gap-2">
+        <label for="login-password" class="text-xs font-medium text-lactec-ink-soft tracking-wide">
+          Senha <span class="text-lactec-danger">*</span>
+        </label>
+        <div class="input-field" [class.input-field--error]="passwordInvalid">
+          <mat-icon class="input-field__icon" aria-hidden="true">lock_outline</mat-icon>
+          <input
+            id="login-password"
+            [type]="showPassword() ? 'text' : 'password'"
+            formControlName="password"
+            autocomplete="current-password"
+            placeholder="Digite sua senha"
+            class="input-field__input"
+            [attr.aria-invalid]="passwordInvalid"
+            aria-describedby="login-password-error"
+          />
+          <button
+            type="button"
+            (click)="togglePassword()"
+            class="input-field__suffix"
+            [attr.aria-label]="showPassword() ? 'Ocultar senha' : 'Mostrar senha'"
+          >
+            <mat-icon>{{ showPassword() ? 'visibility' : 'visibility_off' }}</mat-icon>
+          </button>
+        </div>
+        @if (passwordInvalid) {
+          <p id="login-password-error" class="text-xs text-lactec-danger m-0" role="alert">
+            Informe sua senha.
+          </p>
+        }
+      </div>
+
+      <div class="flex justify-between items-center gap-4">
+        <mat-checkbox formControlName="keepConnected">
+          Me mantenha conectado
+        </mat-checkbox>
+        <a routerLink="." class="text-lactec-primary-dark font-medium text-sm hover:underline">
+          Esqueceu a senha?
+        </a>
+      </div>
+
+      <button
+        mat-flat-button
+        type="submit"
+        [disabled]="submitting()"
+        class="w-full h-11"
+      >
+        <span>{{ submitting() ? 'Acessando…' : 'Acessar' }}</span>
+        @if (!submitting()) {
+          <mat-icon iconPositionEnd>arrow_forward</mat-icon>
+        }
+      </button>
+
+      @if (errorMessage()) {
+        <div
+          class="mt-2 flex gap-3 items-start px-4 py-4 rounded-xl bg-lactec-danger-bg text-lactec-danger-ink border border-lactec-danger-border text-sm leading-snug"
+          role="alert"
+        >
+          <mat-icon class="text-lactec-danger-ink shrink-0">error_outline</mat-icon>
+          <span>{{ errorMessage() }}</span>
+        </div>
+      }
+    </form>
+
+    <footer class="text-center text-lactec-muted text-xs flex flex-col items-center gap-2">
+      <span>Precisa de ajuda? Entre em contato com o suporte.</span>
+      <small class="text-xs tracking-widest text-lactec-faint uppercase">
+        © 2026 LACTEC LABORATORY FRAMEWORK. ALL RIGHTS RESERVED.
+      </small>
+    </footer>
+  </section>
+</div>

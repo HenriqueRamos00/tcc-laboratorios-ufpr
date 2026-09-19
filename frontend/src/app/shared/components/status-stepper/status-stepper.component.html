@@ -1,0 +1,31 @@
+<div class="status-stepper" role="list" aria-label="Progresso da proposta">
+  @for (step of visibleSteps(); track step.key; let last = $last) {
+    <div class="status-stepper__step" [attr.data-state]="step.state" role="listitem">
+      <div class="status-stepper__circle">
+        @switch (step.state) {
+          @case ('completed') {
+            <mat-icon class="status-stepper__icon" aria-hidden="true">check</mat-icon>
+          }
+          @case ('active') {
+            <mat-icon class="status-stepper__icon" aria-hidden="true">
+              {{ step.icon ?? 'hourglass_empty' }}
+            </mat-icon>
+          }
+          @default {
+            <mat-icon class="status-stepper__icon" aria-hidden="true">
+              {{ step.icon ?? 'radio_button_unchecked' }}
+            </mat-icon>
+          }
+        }
+      </div>
+      <span class="status-stepper__label">{{ step.label }}</span>
+    </div>
+    @if (!last) {
+      <span
+        class="status-stepper__connector"
+        [attr.data-completed]="step.state === 'completed'"
+        aria-hidden="true"
+      ></span>
+    }
+  }
+</div>

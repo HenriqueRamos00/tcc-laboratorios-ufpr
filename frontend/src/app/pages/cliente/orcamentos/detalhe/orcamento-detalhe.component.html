@@ -1,0 +1,80 @@
+@if (orcamento(); as dados) {
+  <app-page-header
+    [titulo]="saudacao + ', ' + primeiroNome()"
+    subtitulo="Aprove ou recuse as propostas de orçamento."
+    [migalhas]="[{ rotulo: 'Orçamentos', rota: '/cliente/orcamentos' }, { rotulo: dados.code }]"
+  />
+
+  <h2 class="display mt-5 text-xl font-semibold text-lactec-nav md:text-2xl">
+    Detalhes do Orçamento: {{ dados.name }}
+  </h2>
+
+  <section class="mt-4 rounded-2xl border border-lactec-line bg-lactec-paper p-6">
+    <div class="flex flex-wrap items-baseline justify-between gap-3">
+      <p class="m-0 text-base text-lactec-ink">Cliente: {{ dados.companyName }}</p>
+      <p class="display m-0 text-xl font-semibold text-lactec-ink md:text-2xl">
+        Total: {{ total() }}
+      </p>
+    </div>
+
+    <h3 class="display mt-5 mb-2 text-base font-semibold text-lactec-ink">Detalhes</h3>
+    <p class="m-0 text-sm text-lactec-ink-soft">
+      {{
+        dados.description ||
+          'No orçamento abaixo detectamos as necessidades do seu negócio para que seja feita uma análise completa de suas amostras:'
+      }}
+    </p>
+
+    <div class="mt-4">
+      <app-empty-state
+        icone="picture_as_pdf"
+        titulo="Pré-visualização indisponível"
+        descricao="O PDF da proposta é servido pelo Salesforce e ainda não está integrado. Use o botão Baixar PDF quando a integração estiver publicada."
+      />
+    </div>
+
+    @if (jaDecidido()) {
+      <p class="mt-6 text-sm text-lactec-ink-soft" role="status">
+        Esta proposta já foi decidida nesta sessão. Acompanhe a situação pela listagem de orçamentos.
+      </p>
+    } @else {
+      <div class="mt-6 flex flex-col gap-3 sm:flex-row sm:justify-end">
+        <button
+          type="button"
+          class="inline-flex items-center justify-center gap-2 rounded-lg border border-lactec-line
+                 px-5 py-3 text-sm font-semibold text-lactec-ink hover:bg-lactec-surface"
+        >
+          <mat-icon class="icone-20" aria-hidden="true">picture_as_pdf</mat-icon>
+          Baixar PDF
+        </button>
+        <button
+          type="button"
+          class="rounded-lg bg-lactec-danger px-5 py-3 text-sm font-semibold text-white
+                 hover:opacity-90 disabled:opacity-40"
+          [disabled]="enviando()"
+          (click)="recusar()"
+        >
+          Recusar Orçamento
+        </button>
+        <button
+          type="button"
+          class="rounded-lg bg-lactec-success px-5 py-3 text-sm font-semibold text-white
+                 hover:opacity-90 disabled:opacity-40"
+          [disabled]="enviando()"
+          (click)="aceitar()"
+        >
+          Aceitar Orçamento
+        </button>
+      </div>
+    }
+  </section>
+} @else if (falhou()) {
+  <app-empty-state
+    tom="erro"
+    icone="cloud_off"
+    titulo="Não foi possível carregar o orçamento no momento"
+    descricao="A consulta ao Salesforce falhou. Tente novamente em instantes."
+  />
+} @else {
+  <p class="text-sm text-lactec-muted" role="status">Carregando orçamento…</p>
+}
