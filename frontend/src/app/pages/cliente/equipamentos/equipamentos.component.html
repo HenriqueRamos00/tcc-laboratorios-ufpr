@@ -1,0 +1,67 @@
+<app-page-header titulo="Listagem de Equipamentos" />
+
+<app-search-field
+  class="mt-6"
+  placeholder="Buscar por Número de Série ou TAG"
+  rotulo="Buscar por número de série ou TAG"
+  [(termo)]="termoDeBusca"
+/>
+
+@if (falhou()) {
+  <app-empty-state
+    class="mt-6"
+    tom="erro"
+    icone="cloud_off"
+    titulo="Não foi possível carregar os equipamentos no momento"
+    descricao="A consulta ao AutoLAB falhou. Tente novamente em instantes."
+  />
+} @else if (carregando()) {
+  <p class="mt-6 text-sm text-lactec-muted" role="status">Carregando equipamentos…</p>
+} @else if (!visiveis().length) {
+  <app-empty-state
+    class="mt-6"
+    icone="search_off"
+    titulo="Nenhum equipamento encontrado"
+    descricao="Revise o número de série ou a TAG informada."
+  />
+} @else {
+  <div class="mt-6 overflow-hidden rounded-2xl border border-lactec-line bg-lactec-paper">
+    <div class="overflow-x-auto">
+      <table class="w-full border-collapse text-sm">
+        <caption class="sr-only">
+          Equipamentos da sua empresa, com número de série, TAG, tipo, localização e acesso aos
+          indicadores de saúde.
+        </caption>
+        <thead>
+          <tr class="bg-lactec-line-soft text-left">
+            <th scope="col" class="px-4 py-3 font-semibold text-lactec-ink">Número de Série</th>
+            <th scope="col" class="px-4 py-3 font-semibold text-lactec-ink">TAG</th>
+            <th scope="col" class="px-4 py-3 font-semibold text-lactec-ink">Tipo de Equipamento</th>
+            <th scope="col" class="px-4 py-3 font-semibold text-lactec-ink">Localização</th>
+            <th scope="col" class="px-4 py-3 text-right font-semibold text-lactec-ink">Ação</th>
+          </tr>
+        </thead>
+        <tbody>
+          @for (equipamento of visiveis(); track equipamento.id) {
+            <tr class="border-t border-lactec-line-soft">
+              <td class="px-4 py-3 text-lactec-ink">{{ equipamento.numeroDeSerie }}</td>
+              <td class="px-4 py-3 text-lactec-ink">{{ equipamento.tag }}</td>
+              <td class="px-4 py-3 text-lactec-ink">{{ equipamento.tipo }}</td>
+              <td class="px-4 py-3 text-lactec-ink">{{ equipamento.localizacao }}</td>
+              <td class="px-4 py-3 text-right">
+                <a
+                  [routerLink]="['/cliente/equipamentos', equipamento.id, 'indicadores']"
+                  class="inline-flex items-center gap-2 rounded-lg bg-lactec-primary px-4 py-2
+                         text-sm font-semibold text-lactec-on-primary hover:bg-lactec-primary-dark"
+                >
+                  Ver Indicadores de Saúde
+                  <mat-icon class="icone-16" aria-hidden="true">arrow_forward</mat-icon>
+                </a>
+              </td>
+            </tr>
+          }
+        </tbody>
+      </table>
+    </div>
+  </div>
+}

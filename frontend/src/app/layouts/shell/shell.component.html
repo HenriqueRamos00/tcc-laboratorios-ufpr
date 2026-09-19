@@ -1,0 +1,131 @@
+@let handset = isHandset();
+@let isCollapsed = !handset && collapsed();
+@let showLabels = handset || !isCollapsed;
+
+<mat-sidenav-container class="h-svh bg-lactec-surface" [autosize]="true">
+  <mat-sidenav
+    #drawer
+    class="surface-dark border-0 overflow-x-hidden transition-all duration-200 ease-in-out"
+    [style.width.px]="handset ? 288 : isCollapsed ? 80 : 256"
+    [mode]="handset ? 'over' : 'side'"
+    [opened]="!handset"
+    [disableClose]="!handset"
+    [fixedInViewport]="false"
+  >
+    <div class="h-full w-full flex flex-col bg-lactec-nav text-lactec-on-nav">
+      <div
+        class="flex items-center gap-3 px-4 py-4 border-b border-white/10 shrink-0"
+        [class.justify-center]="isCollapsed"
+      >
+        <app-logo [size]="24" [iconSize]="48" [showWordmark]="showLabels" />
+      </div>
+
+      <nav
+        class="flex flex-col gap-1 px-2 py-3 flex-1 overflow-y-auto"
+        aria-label="Navegação principal"
+      >
+        @for (item of nav; track item.path) {
+          <a
+            [routerLink]="item.path"
+            routerLinkActive="bg-white/10 text-white"
+            [routerLinkActiveOptions]="{ exact: item.exact }"
+            (click)="handset && drawer.close()"
+            [matTooltip]="isCollapsed ? item.label : ''"
+            matTooltipPosition="right"
+            matTooltipShowDelay="120"
+            class="flex items-center gap-3 h-11 rounded-lg hover:bg-white/5 hover:text-white transition-colors"
+            [class.justify-center]="isCollapsed"
+            [class.px-3]="!isCollapsed"
+          >
+            <mat-icon class="shrink-0">{{ item.icon }}</mat-icon>
+            @if (showLabels) {
+              <span class="font-medium text-sm truncate">{{ item.label }}</span>
+            }
+          </a>
+        }
+      </nav>
+
+      <nav
+        class="flex flex-col gap-1 px-2 py-3 border-t border-white/10 shrink-0"
+        aria-label="Ações de conta"
+      >
+        @for (item of bottomActions; track item.action) {
+          <button
+            type="button"
+            (click)="onSecondaryAction(item.action)"
+            [matTooltip]="isCollapsed ? item.label : ''"
+            matTooltipPosition="right"
+            matTooltipShowDelay="120"
+            class="flex items-center gap-3 h-11 rounded-lg hover:bg-white/5 hover:text-white transition-colors text-left"
+            [class.justify-center]="isCollapsed"
+            [class.px-3]="!isCollapsed"
+          >
+            <mat-icon class="shrink-0">{{ item.icon }}</mat-icon>
+            @if (showLabels) {
+              <span class="font-medium text-sm truncate">{{ item.label }}</span>
+            }
+          </button>
+        }
+        @if (handset) {
+          <button
+            type="button"
+            (click)="drawer.close(); logout()"
+            class="flex items-center gap-3 h-11 rounded-lg hover:bg-white/5 hover:text-white transition-colors text-left px-3"
+          >
+            <mat-icon class="shrink-0">logout</mat-icon>
+            <span class="font-medium text-sm truncate">Sair</span>
+          </button>
+        }
+      </nav>
+    </div>
+  </mat-sidenav>
+
+  <mat-sidenav-content>
+    <div class="h-full flex flex-col min-w-0">
+      <header
+        class="flex items-center h-14 px-3 md:px-6 shrink-0 border-b"
+        [ngClass]="handset
+          ? 'surface-dark bg-lactec-nav border-white/10 justify-end'
+          : 'bg-lactec-paper border-lactec-line justify-between'"
+      >
+        @if (!handset) {
+          <button
+            mat-icon-button
+            type="button"
+            (click)="toggleCollapse()"
+            [attr.aria-expanded]="!isCollapsed"
+            [attr.aria-label]="isCollapsed ? 'Expandir menu' : 'Recolher menu'"
+          >
+            <mat-icon
+              class="transition-transform duration-200"
+              [class.rotate-180]="isCollapsed"
+            >chevron_left</mat-icon>
+          </button>
+
+          <button
+            mat-icon-button
+            type="button"
+            (click)="logout()"
+            aria-label="Sair"
+          >
+            <mat-icon>logout</mat-icon>
+          </button>
+        } @else {
+          <button
+            mat-icon-button
+            type="button"
+            (click)="drawer.toggle()"
+            [attr.aria-expanded]="drawer.opened"
+            [attr.aria-label]="drawer.opened ? 'Fechar menu' : 'Abrir menu'"
+          >
+            <mat-icon>menu</mat-icon>
+          </button>
+        }
+      </header>
+
+      <main class="flex-1 overflow-auto px-4 py-4 md:px-8 md:py-6">
+        <router-outlet />
+      </main>
+    </div>
+  </mat-sidenav-content>
+</mat-sidenav-container>

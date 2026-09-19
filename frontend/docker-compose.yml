@@ -1,0 +1,34 @@
+# Depois de mexer em package.json, recrie os volumes anônimos, senão o
+# node_modules antigo continua montado por cima do novo:
+#   docker compose up --build --renew-anon-volumes
+#
+# A API fica fora deste compose. As chamadas partem do navegador, então o
+# http://localhost:5125 de src/app/environment/env.ts resolve para a porta da
+# máquina do desenvolvedor, não para dentro da rede do compose.
+
+services:
+  web:
+    build:
+      context: .
+      target: dev
+    ports:
+      - "${PORTAL_WEB_PORT:-4200}:4200"
+    volumes:
+      - .:/app
+      # Sem os volumes anônimos, o bind mount acima esconde o node_modules
+      # instalado no build.
+      - /app/node_modules
+      - /app/.angular
+    # Em alguns bind mounts o inotify não propaga e o hot reload não dispara.
+    # Nesse caso: npx ng serve --host 0.0.0.0 --port 4200 --poll 2000
+    stdin_open: true
+    tty: true
+
+  web-prod:
+    profiles: ["prod"]
+    build:
+      context: .
+      target: prod
+    ports:
+      - "8080:80"
+    restart: unless-stopped

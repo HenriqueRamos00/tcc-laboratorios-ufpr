@@ -1,0 +1,169 @@
+// Tema do Angular Material.
+//
+// Único lugar onde os componentes do Material são customizados, e apenas pela
+// API pública de theming (`mat.theme` + os mixins `*-overrides`). O guia oficial
+// (https://material.angular.dev/guide/theming, seção "Direct Style Overrides")
+// desaconselha explicitamente sobrescrever as classes `.mat-*` ou declarar as
+// variáveis `--mdc-*` na mão: são detalhe de implementação privado.
+//
+// As cores não são repetidas aqui: vêm das variáveis `--color-lactec-*`
+// declaradas no `@theme` do Tailwind em src/styles.css, que é a fonte única da
+// paleta.
+@use '@angular/material' as mat;
+
+$plain-family: (Inter, system-ui, sans-serif);
+$brand-family: ('Instrument Sans', system-ui, sans-serif);
+
+html {
+  // A paleta base só define a estrutura tonal do M3; as cores de marca entram
+  // logo abaixo, em theme-overrides.
+  @include mat.theme(
+    (
+      color: (
+        primary: mat.$cyan-palette,
+        tertiary: mat.$azure-palette,
+        theme-type: light,
+      ),
+      typography: (
+        plain-family: $plain-family,
+        brand-family: $brand-family,
+      ),
+      density: 0,
+    )
+  );
+
+  // Tokens de sistema -> paleta Lactec.
+  @include mat.theme-overrides(
+    (
+      primary: var(--color-lactec-primary),
+      on-primary: var(--color-lactec-on-primary),
+      error: var(--color-lactec-danger),
+      surface: var(--color-lactec-paper),
+      surface-container: var(--color-lactec-paper),
+      surface-container-high: var(--color-lactec-paper),
+      background: var(--color-lactec-surface),
+      on-background: var(--color-lactec-ink),
+      on-surface: var(--color-lactec-ink),
+      on-surface-variant: var(--color-lactec-muted),
+      outline: var(--color-lactec-line),
+      outline-variant: var(--color-lactec-line),
+    )
+  );
+
+  // Botões. O state layer com opacidade 1 reproduz o hover sólido que antes era
+  // feito sobrescrevendo `.mat-mdc-unelevated-button.mat-primary:hover`.
+  @include mat.button-overrides(
+    (
+      filled-container-color: var(--color-lactec-primary),
+      filled-label-text-color: var(--color-lactec-on-primary),
+      filled-container-shape: 8px,
+      filled-label-text-font: $plain-family,
+      filled-label-text-size: 0.875rem,
+      filled-label-text-weight: 600,
+      filled-state-layer-color: var(--color-lactec-primary-dark),
+      filled-hover-state-layer-opacity: 1,
+      filled-focus-state-layer-opacity: 1,
+      filled-pressed-state-layer-opacity: 1,
+
+      outlined-container-shape: 8px,
+      outlined-label-text-color: var(--color-lactec-ink),
+      outlined-outline-color: var(--color-lactec-line),
+      outlined-label-text-font: $plain-family,
+      outlined-label-text-size: 0.875rem,
+      outlined-label-text-weight: 600,
+      outlined-state-layer-color: var(--color-lactec-line-soft),
+      outlined-hover-state-layer-opacity: 1,
+      outlined-focus-state-layer-opacity: 1,
+      outlined-pressed-state-layer-opacity: 1,
+
+      text-label-text-color: var(--color-lactec-primary-dark),
+      text-label-text-font: $plain-family,
+      text-label-text-weight: 500,
+    )
+  );
+
+  @include mat.checkbox-overrides(
+    (
+      selected-icon-color: var(--color-lactec-primary),
+      selected-focus-icon-color: var(--color-lactec-primary),
+      selected-hover-icon-color: var(--color-lactec-primary-dark),
+      selected-pressed-icon-color: var(--color-lactec-primary-dark),
+      selected-checkmark-color: var(--color-lactec-on-primary),
+      unselected-icon-color: var(--color-lactec-muted),
+      unselected-hover-icon-color: var(--color-lactec-ink-soft),
+      state-layer-size: 32px,
+      label-text-color: var(--color-lactec-ink-soft),
+      label-text-font: $plain-family,
+      label-text-size: 13px,
+    )
+  );
+
+  @include mat.sidenav-overrides(
+    (
+      container-shape: 0,
+      container-divider-color: transparent,
+      container-background-color: var(--color-lactec-nav),
+      container-text-color: var(--color-lactec-on-nav),
+    )
+  );
+
+  @include mat.menu-overrides(
+    (
+      container-shape: 8px,
+      item-label-text-color: var(--color-lactec-ink-soft),
+    )
+  );
+}
+
+// Botões de ícone sobre fundo escuro (sidenav e barra do modal no mobile).
+.surface-dark,
+.dialog-sheet__bar {
+  @include mat.icon-button-overrides((icon-color: var(--color-lactec-on-primary)));
+}
+
+.dialog-shell__close {
+  @include mat.icon-button-overrides((icon-color: var(--color-lactec-muted)));
+}
+
+// Botão compacto dos cards de orçamento.
+.orcamento-card-action {
+  @include mat.button-overrides(
+    (
+      filled-container-height: 32px,
+      filled-container-shape: 6px,
+      filled-horizontal-padding: 14px,
+      filled-label-text-size: 12px,
+      filled-label-text-weight: 600,
+    )
+  );
+}
+
+// CTA de largura total do modal de status.
+.status-dialog-cta {
+  width: 100%;
+
+  @include mat.button-overrides(
+    (
+      filled-container-height: 44px,
+      filled-container-shape: 8px,
+      filled-label-text-size: 14px,
+      filled-label-text-weight: 600,
+    )
+  );
+}
+
+// Modal: no desktop o painel é quadrado; no mobile o overlay é só um contêiner
+// transparente — quem desenha barra, escurecedor e sheet é o .dialog-sheet.
+.lactec-dialog-desktop {
+  @include mat.dialog-overrides((container-shape: 0));
+}
+
+.lactec-dialog-mobile {
+  @include mat.dialog-overrides(
+    (
+      container-shape: 0,
+      container-color: transparent,
+      container-elevation-shadow: none,
+    )
+  );
+}

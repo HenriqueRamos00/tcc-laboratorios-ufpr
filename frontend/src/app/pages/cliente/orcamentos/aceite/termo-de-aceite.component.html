@@ -1,0 +1,129 @@
+<app-page-header
+  titulo="Termo de Aceite"
+  subtitulo="Preencha o termo de aceite a seguir para dar andamento aos ensaios referentes a este orçamento."
+  [migalhas]="migalhas()"
+/>
+
+<form
+  class="mt-6 rounded-2xl border border-lactec-line bg-lactec-paper p-6"
+  [formGroup]="formulario"
+  (ngSubmit)="enviar()"
+  novalidate
+>
+  <h2 class="display m-0 text-lg font-semibold text-lactec-ink">
+    ANEXO II – Proposta: {{ id() }} – TERMO DE ACEITE
+  </h2>
+
+  @let cobranca = formulario.controls.cobranca.controls;
+  @let envio = formulario.controls.envioDoRelatorio.controls;
+  @let aprovacao = formulario.controls.aprovacao.controls;
+
+  <fieldset class="mt-6 border-0 p-0">
+    <legend class="display mb-4 p-0 text-base font-semibold text-lactec-nav">
+      1. Endereço para cobrança
+    </legend>
+
+    <div class="grid grid-cols-1 gap-4 md:grid-cols-3">
+      <app-campo-de-texto [controle]="cobranca.empresa" rotulo="Empresa" />
+      <app-campo-de-texto [controle]="cobranca.cnpj" rotulo="CNPJ" inputmode="numeric" />
+      <app-campo-de-texto [controle]="cobranca.inscricaoEstadual" rotulo="I.E." />
+    </div>
+
+    <app-campo-de-texto class="mt-4" [controle]="cobranca.endereco" rotulo="Endereço" />
+
+    <div class="mt-4 grid grid-cols-1 gap-4 md:grid-cols-4">
+      <app-campo-de-texto [controle]="cobranca.cidade" rotulo="Cidade" />
+      <app-campo-de-texto [controle]="cobranca.uf" rotulo="UF" [maxlength]="2" [caixaAlta]="true" />
+      <app-campo-de-texto [controle]="cobranca.bairro" rotulo="Bairro" />
+      <app-campo-de-texto [controle]="cobranca.cep" rotulo="CEP" inputmode="numeric" />
+    </div>
+
+    <div class="mt-4 grid grid-cols-1 gap-4 md:grid-cols-3">
+      <app-campo-de-texto [controle]="cobranca.contato" rotulo="Contato" />
+      <app-campo-de-texto [controle]="cobranca.telefone" rotulo="Telefone" tipo="tel" />
+      <app-campo-de-texto [controle]="cobranca.fax" rotulo="Fax" tipo="tel" />
+    </div>
+
+    <app-campo-de-texto
+      class="mt-4"
+      [controle]="cobranca.emailsParaNotaFiscal"
+      rotulo="Endereço eletrônico para envio de NFS-e (preencher pelo menos dois endereços de e-mail):"
+    />
+  </fieldset>
+
+  <fieldset class="mt-8 border-0 p-0">
+    <legend class="display mb-2 p-0 text-base font-semibold text-lactec-nav">
+      2. Endereço para envio do relatório
+    </legend>
+
+    <label class="mb-4 flex items-center gap-2 text-sm text-lactec-ink">
+      <input type="checkbox" formControlName="mesmoEnderecoDaCobranca" class="h-4 w-4" />
+      Mesmo endereço da cobrança
+    </label>
+
+    <div class="grid grid-cols-1 gap-4 md:grid-cols-3">
+      <app-campo-de-texto [controle]="envio.empresa" rotulo="Empresa" />
+      <app-campo-de-texto class="md:col-span-2" [controle]="envio.endereco" rotulo="Endereço" />
+      <app-campo-de-texto [controle]="envio.cidade" rotulo="Cidade" />
+      <app-campo-de-texto [controle]="envio.uf" rotulo="UF" [maxlength]="2" [caixaAlta]="true" />
+      <app-campo-de-texto [controle]="envio.cep" rotulo="CEP" inputmode="numeric" />
+    </div>
+  </fieldset>
+
+  <fieldset class="mt-8 border-0 p-0">
+    <legend class="display mb-4 p-0 text-base font-semibold text-lactec-nav">3. Aprovação</legend>
+
+    <div class="grid grid-cols-1 gap-4 md:grid-cols-2">
+      <app-campo-de-texto [controle]="aprovacao.nomeDoSolicitante" rotulo="Nome do Solicitante" />
+      <app-campo-de-texto [controle]="aprovacao.nomeDoResponsavel" rotulo="Nome do Responsável" />
+    </div>
+
+    <div class="mt-4 grid grid-cols-1 gap-4 md:grid-cols-3">
+      <app-campo-de-texto [controle]="aprovacao.cargo" rotulo="Cargo" />
+      <app-campo-de-texto [controle]="aprovacao.setor" rotulo="Setor" />
+      <app-campo-de-texto [controle]="aprovacao.data" rotulo="Data" tipo="date" />
+    </div>
+
+    <p class="mt-6 mb-0 text-sm text-lactec-ink-soft">
+      Assinatura (dispensa se enviado eletronicamente):
+    </p>
+    <hr class="mt-8 border-0 border-t border-lactec-divider" />
+    <p class="mt-1 mb-0 text-right text-xs text-lactec-muted">Nome do responsável<br />Cargo</p>
+
+    <div class="mt-6 flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
+      <fieldset class="border-0 p-0" formGroupName="aprovacao">
+        <legend class="p-0 text-sm text-lactec-ink-soft">
+          Autoriza o envio de resultados por e-mail?
+        </legend>
+        <div class="mt-2 flex gap-4">
+          <label class="flex items-center gap-2 text-sm text-lactec-ink">
+            <input type="radio" formControlName="autorizaEnvioPorEmail" [value]="true" />
+            Sim
+          </label>
+          <label class="flex items-center gap-2 text-sm text-lactec-ink">
+            <input type="radio" formControlName="autorizaEnvioPorEmail" [value]="false" />
+            Não
+          </label>
+        </div>
+      </fieldset>
+
+      <app-campo-de-texto
+        class="md:w-80"
+        [controle]="aprovacao.emailParaResultados"
+        rotulo="Endereço de e-mail:"
+        tipo="email"
+      />
+    </div>
+  </fieldset>
+
+  <div class="mt-8 flex justify-end">
+    <button
+      type="submit"
+      class="rounded-lg bg-lactec-success px-6 py-3 text-sm font-semibold text-white
+             hover:opacity-90 disabled:opacity-40"
+      [disabled]="enviando()"
+    >
+      Enviar Aceite
+    </button>
+  </div>
+</form>

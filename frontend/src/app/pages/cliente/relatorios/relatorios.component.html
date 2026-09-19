@@ -1,0 +1,87 @@
+@if (conclusao(); as dados) {
+  <app-page-header
+    titulo="Conclusão da Análise"
+    [subtitulo]="'ID do Protocolo: ' + dados.protocolo"
+  />
+
+  <section class="mt-6 rounded-2xl border border-lactec-line bg-lactec-paper p-6">
+    <h2 class="sr-only">Progresso da solicitação</h2>
+    <app-status-stepper [steps]="etapas" [currentIndex]="etapaAtual" />
+  </section>
+
+  <section class="mt-4 flex items-start gap-3 rounded-2xl bg-lactec-line-soft px-5 py-4">
+    <mat-icon class="shrink-0 text-lactec-nav" aria-hidden="true">description</mat-icon>
+    <div class="min-w-0">
+      <h2 class="m-0 text-sm font-semibold text-lactec-ink">{{ dados.tipoDeEnsaio }}</h2>
+      <p class="mt-1 mb-0 text-sm text-lactec-ink-soft">{{ dados.resumo }}</p>
+    </div>
+  </section>
+
+  <app-search-field
+    class="mt-4"
+    placeholder="Buscar por ID do relatório"
+    rotulo="Buscar por ID do relatório"
+    [(termo)]="termoDeBusca"
+  />
+
+  @if (visiveis().length) {
+    <div class="mt-4 overflow-hidden rounded-2xl border border-lactec-line bg-lactec-paper">
+      <div class="overflow-x-auto">
+        <table class="w-full border-collapse text-sm">
+          <caption class="sr-only">
+            Relatórios publicados desta solicitação, com protocolo, amostra, laboratório e data.
+          </caption>
+          <thead>
+            <tr class="bg-lactec-line-soft text-left">
+              <th scope="col" class="px-4 py-3 font-semibold text-lactec-ink">Relatório</th>
+              <th scope="col" class="px-4 py-3 font-semibold text-lactec-ink">Protocolo</th>
+              <th scope="col" class="px-4 py-3 font-semibold text-lactec-ink">Amostra</th>
+              <th scope="col" class="px-4 py-3 font-semibold text-lactec-ink">Laboratório</th>
+              <th scope="col" class="px-4 py-3 font-semibold text-lactec-ink">Publicação</th>
+              <th scope="col" class="px-4 py-3 text-right font-semibold text-lactec-ink">
+                Download
+              </th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (relatorio of visiveis(); track relatorio.id) {
+              <tr class="border-t border-lactec-line-soft">
+                <td class="px-4 py-3 text-lactec-ink">{{ relatorio.codigo }}</td>
+                <td class="px-4 py-3 text-lactec-ink">{{ relatorio.protocolo }}</td>
+                <td class="px-4 py-3 text-lactec-ink">{{ relatorio.amostra }}</td>
+                <td class="px-4 py-3 text-lactec-ink">{{ relatorio.laboratorio }}</td>
+                <td class="px-4 py-3 text-lactec-ink">{{ relatorio.publicadoEm }}</td>
+                <td class="px-4 py-3 text-right">
+                  <button
+                    type="button"
+                    class="inline-flex h-10 w-10 items-center justify-center rounded-lg
+                           bg-lactec-nav text-lactec-on-primary hover:bg-lactec-nav-dark"
+                    [attr.aria-label]="'Baixar o relatório ' + relatorio.codigo"
+                  >
+                    <mat-icon aria-hidden="true">download</mat-icon>
+                  </button>
+                </td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+    </div>
+  } @else {
+    <app-empty-state
+      class="mt-4"
+      icone="search_off"
+      titulo="Nenhum relatório encontrado"
+      descricao="Revise o ID informado na busca."
+    />
+  }
+} @else if (falhou()) {
+  <app-empty-state
+    tom="erro"
+    icone="cloud_off"
+    titulo="Não foi possível carregar os relatórios no momento"
+    descricao="A consulta ao AutoLAB falhou. Tente novamente em instantes."
+  />
+} @else {
+  <p class="text-sm text-lactec-muted" role="status">Carregando relatórios…</p>
+}

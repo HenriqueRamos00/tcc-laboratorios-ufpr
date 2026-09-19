@@ -1,0 +1,132 @@
+@if (equipamento(); as dados) {
+  <app-page-header
+    titulo="Detalhes do Equipamento"
+    [migalhas]="[
+      { rotulo: 'Listagem de Equipamentos', rota: '/cliente/equipamentos' },
+      { rotulo: dados.tag },
+    ]"
+  >
+    <a
+      acoes
+      [routerLink]="['/cliente/equipamentos', dados.id, 'indicadores']"
+      class="inline-flex items-center gap-2 rounded-lg bg-lactec-primary px-4 py-2 text-sm
+             font-semibold text-lactec-on-primary hover:bg-lactec-primary-dark"
+    >
+      Ver Indicadores de Saúde
+      <mat-icon class="icone-16" aria-hidden="true">arrow_forward</mat-icon>
+    </a>
+  </app-page-header>
+
+  <section class="mt-6 rounded-2xl border border-lactec-line bg-lactec-paper p-6">
+    <h2 class="sr-only">Identificação do equipamento</h2>
+    <dl class="m-0 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+      @for (cartao of cartoes(); track cartao.rotulo) {
+        <div class="flex items-center gap-4 rounded-lg border border-lactec-line-soft px-4 py-4">
+          <span
+            class="flex h-11 w-11 shrink-0 items-center justify-center rounded-full
+                   text-lactec-primary"
+            style="background: rgba(24, 165, 184, 0.1)"
+            aria-hidden="true"
+          >
+            <mat-icon>{{ cartao.icone }}</mat-icon>
+          </span>
+          <div class="min-w-0">
+            <dt class="text-sm text-lactec-muted">{{ cartao.rotulo }}</dt>
+            <dd class="m-0 text-base font-semibold text-lactec-ink">{{ cartao.valor }}</dd>
+          </div>
+        </div>
+      }
+    </dl>
+  </section>
+
+  <section class="mt-6 rounded-2xl border border-lactec-line bg-lactec-paper p-6">
+    <h2 class="display m-0 text-xl font-semibold text-lactec-ink">Histórico de Relatórios</h2>
+
+    @if (historico().length) {
+      <div class="mt-4 overflow-x-auto">
+        <table class="w-full border-collapse text-sm">
+          <caption class="sr-only">
+            Relatórios já publicados para este equipamento, do mais recente ao mais antigo.
+          </caption>
+          <thead>
+            <tr class="bg-lactec-line-soft text-left">
+              <th scope="col" class="px-4 py-3 font-semibold text-lactec-ink">Data do relatório</th>
+              <th scope="col" class="px-4 py-3 font-semibold text-lactec-ink">Tipo de análise</th>
+              <th scope="col" class="px-4 py-3 font-semibold text-lactec-ink">Status</th>
+              <th scope="col" class="px-4 py-3 text-right font-semibold text-lactec-ink">Ações</th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (relatorio of visiveis(); track relatorio.id) {
+              <tr class="border-t border-lactec-line-soft">
+                <td class="px-4 py-3 text-lactec-ink">{{ relatorio.data }}</td>
+                <td class="px-4 py-3 text-lactec-ink">{{ relatorio.tipoDeAnalise }}</td>
+                <td class="px-4 py-3 text-lactec-ink">{{ relatorio.situacao }}</td>
+                <td class="px-4 py-3">
+                  <div class="flex justify-end gap-2">
+                    <a
+                      [routerLink]="['/cliente/equipamentos', dados.id, 'indicadores']"
+                      class="rounded-lg bg-lactec-primary px-3 py-2 text-xs font-semibold
+                             text-lactec-on-primary hover:bg-lactec-primary-dark"
+                    >
+                      Ver Indicadores
+                    </a>
+                    <button
+                      type="button"
+                      class="inline-flex items-center gap-1 rounded-lg border border-lactec-line
+                             px-3 py-2 text-xs font-semibold text-lactec-ink hover:bg-lactec-surface"
+                    >
+                      <mat-icon class="icone-16" aria-hidden="true">download</mat-icon>
+                      Download
+                    </button>
+                  </div>
+                </td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+
+      <div
+        class="mt-4 flex flex-wrap items-center justify-end gap-3"
+        role="group"
+        aria-label="Paginação do histórico de relatórios"
+      >
+        <span class="text-sm text-lactec-muted" aria-live="polite">{{ intervalo() }}</span>
+        <button
+          type="button"
+          class="rounded-lg border border-lactec-line px-3 py-2 text-sm text-lactec-ink
+                 disabled:opacity-40"
+          [disabled]="pagina() === 0"
+          (click)="anterior()"
+        >
+          Anterior
+        </button>
+        <button
+          type="button"
+          class="rounded-lg border border-lactec-line px-3 py-2 text-sm text-lactec-ink
+                 disabled:opacity-40"
+          [disabled]="pagina() >= totalDePaginas() - 1"
+          (click)="proximo()"
+        >
+          Próximo
+        </button>
+      </div>
+    } @else {
+      <app-empty-state
+        class="mt-4"
+        icone="science"
+        titulo="Não há histórico de análises disponível para este equipamento"
+      />
+    }
+  </section>
+} @else if (falhou()) {
+  <app-empty-state
+    tom="erro"
+    icone="cloud_off"
+    titulo="Não foi possível carregar o equipamento no momento"
+    descricao="A consulta ao AutoLAB falhou. Tente novamente em instantes."
+  />
+} @else {
+  <p class="text-sm text-lactec-muted" role="status">Carregando equipamento…</p>
+}

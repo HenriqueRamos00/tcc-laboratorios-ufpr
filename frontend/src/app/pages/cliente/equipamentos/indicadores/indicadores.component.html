@@ -1,0 +1,470 @@
+@if (indicadores(); as dados) {
+  <app-page-header
+    [titulo]="'Indicadores de Saúde do Transformador - ' + dados.tag"
+    [migalhas]="[
+      { rotulo: 'Listagem de Equipamentos', rota: '/cliente/equipamentos' },
+      { rotulo: dados.tag },
+    ]"
+  >
+    <div acoes class="flex flex-col items-end gap-1">
+      <span class="text-xs text-lactec-muted">Baixar relatório</span>
+      <button
+        type="button"
+        class="flex h-11 w-11 items-center justify-center rounded-lg bg-lactec-nav
+               text-lactec-on-primary hover:bg-lactec-nav-dark"
+        aria-label="Baixar relatório histórico dos indicadores"
+      >
+        <mat-icon aria-hidden="true">download</mat-icon>
+      </button>
+    </div>
+  </app-page-header>
+
+  <div class="mt-4 border-b border-lactec-line" role="tablist" aria-label="Tipo de ensaio">
+    <button
+      type="button"
+      role="tab"
+      id="aba-fisico-quimico"
+      aria-controls="painel-fisico-quimico"
+      [attr.aria-selected]="abaAtiva() === 'fisico-quimico'"
+      [attr.tabindex]="abaAtiva() === 'fisico-quimico' ? 0 : -1"
+      class="px-4 py-3 text-sm"
+      [class.font-semibold]="abaAtiva() === 'fisico-quimico'"
+      [class.text-lactec-ink]="abaAtiva() === 'fisico-quimico'"
+      [class.text-lactec-muted]="abaAtiva() !== 'fisico-quimico'"
+      (click)="trocarAba('fisico-quimico')"
+    >
+      Fisico Quimico
+    </button>
+    <button
+      type="button"
+      role="tab"
+      id="aba-gases"
+      aria-controls="painel-gases"
+      [attr.aria-selected]="abaAtiva() === 'gases'"
+      [attr.tabindex]="abaAtiva() === 'gases' ? 0 : -1"
+      class="px-4 py-3 text-sm"
+      [class.font-semibold]="abaAtiva() === 'gases'"
+      [class.text-lactec-ink]="abaAtiva() === 'gases'"
+      [class.text-lactec-muted]="abaAtiva() !== 'gases'"
+      (click)="trocarAba('gases')"
+    >
+      Gases Dissolvidos
+    </button>
+  </div>
+
+  @if (abaAtiva() === 'fisico-quimico') {
+    <section
+      id="painel-fisico-quimico"
+      role="tabpanel"
+      aria-labelledby="aba-fisico-quimico"
+      tabindex="0"
+      class="mt-6 rounded-2xl border border-lactec-line bg-lactec-paper p-6"
+    >
+      <h2 class="sr-only">Ensaios físico-químicos</h2>
+
+      <div class="grid grid-cols-1 items-center gap-6 lg:grid-cols-[minmax(0,20rem)_1fr]">
+        <app-conformity-gauge
+          [classificacao]="dados.fisicoQuimico.conformidade"
+          [veredito]="dados.fisicoQuimico.veredito"
+        />
+        <app-line-chart
+          titulo="Evolução dos Ensaios Físico-Químicos (FQ)"
+          [rotulosDoEixoX]="datasFisicoQuimico()"
+          [series]="seriesFisicoQuimico()"
+          rotuloDoEixoY="Valor"
+        />
+      </div>
+
+      <div class="mt-6 overflow-x-auto">
+        <table class="w-full border-collapse text-sm">
+          <caption class="sr-only">
+            Ensaios físico-químicos, com método, valor-limite da ABNT NBR 10576/17, resultado e
+            classificação.
+          </caption>
+          <thead>
+            <tr class="bg-lactec-line-soft text-left align-bottom">
+              <th scope="col" class="px-4 py-3 font-semibold text-lactec-ink">
+                Análises físico-químicas
+              </th>
+              <th scope="col" class="px-4 py-3 font-semibold text-lactec-ink">Método</th>
+              <th scope="col" class="px-4 py-3 font-semibold text-lactec-ink">
+                ABNT NBR 10576/17
+                <span class="block font-normal text-lactec-muted">
+                  Valores-limite para óleo de transformador em uso
+                  ({{ dados.fisicoQuimico.tensaoNominal }})
+                </span>
+              </th>
+              <th scope="col" class="px-4 py-3 font-semibold text-lactec-ink">Resultado</th>
+              <th scope="col" class="px-4 py-3 font-semibold text-lactec-ink">Classificação</th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (ensaio of dados.fisicoQuimico.ensaios; track ensaio.chave) {
+              <tr class="border-t border-lactec-line-soft">
+                <td class="px-4 py-3 text-lactec-ink">{{ ensaio.nome }}</td>
+                <td class="px-4 py-3 text-lactec-ink">{{ ensaio.metodo }}</td>
+                <td class="px-4 py-3 text-lactec-ink">{{ ensaio.limite }}</td>
+                <td class="px-4 py-3 tabular-nums text-lactec-ink">
+                  {{ ensaio.resultado ?? '—' }}
+                </td>
+                <td class="px-4 py-3">
+                  <app-classification-badge [classificacao]="ensaio.classificacao" />
+                </td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <section class="mt-4 rounded-2xl border border-lactec-line bg-lactec-paper p-6">
+      <h2 class="display m-0 text-base font-semibold tracking-wide text-lactec-ink">
+        LAUDO DAS ANÁLISES FÍSICO-QUÍMICAS
+      </h2>
+      <p class="mt-2 mb-0 text-sm text-lactec-ink-soft">{{ dados.fisicoQuimico.laudo }}</p>
+    </section>
+  } @else {
+    <div
+      id="painel-gases"
+      role="tabpanel"
+      aria-labelledby="aba-gases"
+      tabindex="0"
+      class="mt-6"
+    >
+      <div class="grid grid-cols-1 gap-3 sm:grid-cols-2" role="tablist" aria-label="Critério de análise">
+      <button
+        type="button"
+        role="tab"
+        id="aba-criterios"
+        aria-controls="painel-criterios"
+        [attr.aria-selected]="subAba() === 'criterios'"
+        [attr.tabindex]="subAba() === 'criterios' ? 0 : -1"
+        class="rounded-lg px-4 py-3 text-sm font-semibold text-lactec-on-primary"
+        [class.bg-lactec-nav]="subAba() === 'criterios'"
+        [class.bg-lactec-primary]="subAba() !== 'criterios'"
+        (click)="trocarSubAba('criterios')"
+      >
+        Critérios LACTEC
+      </button>
+      <button
+        type="button"
+        role="tab"
+        id="aba-metodos"
+        aria-controls="painel-metodos"
+        [attr.aria-selected]="subAba() === 'metodos'"
+        [attr.tabindex]="subAba() === 'metodos' ? 0 : -1"
+        class="rounded-lg px-4 py-3 text-sm font-semibold text-lactec-on-primary"
+        [class.bg-lactec-nav]="subAba() === 'metodos'"
+        [class.bg-lactec-primary]="subAba() !== 'metodos'"
+        (click)="trocarSubAba('metodos')"
+      >
+        Métodos de Diagnóstico (Mineral)
+      </button>
+      </div>
+
+    @if (subAba() === 'criterios') {
+      <section
+        id="painel-criterios"
+        role="tabpanel"
+        aria-labelledby="aba-criterios"
+        tabindex="0"
+        class="mt-4 rounded-2xl border border-lactec-line bg-lactec-paper p-6"
+      >
+        <h2 class="sr-only">Cromatografia de gases dissolvidos</h2>
+
+        <div class="flex justify-center">
+          <app-conformity-gauge
+            [classificacao]="dados.gasesDissolvidos.conformidade"
+            [veredito]="dados.gasesDissolvidos.veredito"
+          />
+        </div>
+
+        <app-line-chart
+          class="mt-6"
+          titulo="Evolução dos Gases Dissolvidos (GD) - Escala Log"
+          escala="log"
+          [rotulosDoEixoX]="datasDeGases()"
+          [series]="seriesDeGases()"
+          rotuloDoEixoY="Concentração (ppm)"
+        />
+
+        <div class="mt-6 overflow-x-auto">
+          <table class="w-full border-collapse text-sm">
+            <caption class="sr-only">
+              Análise cromatográfica ABNT NBR 7070, com o histórico de resultados por data de coleta.
+            </caption>
+            <thead>
+              <tr class="bg-lactec-line-soft text-left">
+                <th scope="col" rowspan="2" class="px-4 py-3 font-semibold text-lactec-ink">
+                  Análise cromatográfica ABNT NBR 7070
+                  <span class="block font-normal text-lactec-muted">Gases dissolvidos (ppm)</span>
+                </th>
+                <th
+                  scope="colgroup"
+                  [attr.colspan]="dados.gasesDissolvidos.datasDeColeta.length"
+                  class="px-4 py-2 text-center font-semibold text-lactec-ink"
+                >
+                  Histórico de resultados
+                </th>
+              </tr>
+              <tr class="bg-lactec-line-soft text-left">
+                @for (data of dados.gasesDissolvidos.datasDeColeta; track $index) {
+                  <th scope="col" class="px-4 py-2 text-right font-medium text-lactec-ink">
+                    {{ data }}
+                  </th>
+                }
+              </tr>
+            </thead>
+            <tbody>
+              @for (gas of gasesMedidos(); track gas.chave) {
+                <tr class="border-t border-lactec-line-soft">
+                  <th scope="row" class="px-4 py-2 text-left font-normal text-lactec-ink">
+                    {{ gas.nome }} <span class="text-lactec-muted">{{ gas.formula }}</span>
+                  </th>
+                  @for (valor of gas.resultados; track $index) {
+                    <td class="px-4 py-2 text-right tabular-nums text-lactec-ink">
+                      {{ valor === null ? 'ND' : valor.toLocaleString('pt-BR') }}
+                    </td>
+                  }
+                </tr>
+              }
+              @for (gas of gasesTotalizadores(); track gas.chave) {
+                <tr class="border-t border-lactec-divider font-semibold">
+                  <th scope="row" class="px-4 py-2 text-left text-lactec-ink">{{ gas.nome }}</th>
+                  @for (valor of gas.resultados; track $index) {
+                    <td class="px-4 py-2 text-right tabular-nums text-lactec-ink">
+                      {{ valor === null ? 'ND' : valor.toLocaleString('pt-BR') }}
+                    </td>
+                  }
+                </tr>
+              }
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <section class="mt-4 rounded-2xl border border-lactec-line bg-lactec-paper p-6">
+        <h2 class="display m-0 text-base font-semibold tracking-wide text-lactec-ink">
+          LAUDO DA ANÁLISE CROMATOGRÁFICA
+        </h2>
+        <p class="mt-2 mb-0 text-sm text-lactec-ink-soft">{{ dados.gasesDissolvidos.laudo }}</p>
+      </section>
+    } @else {
+      <section
+        id="painel-metodos"
+        role="tabpanel"
+        aria-labelledby="aba-metodos"
+        tabindex="0"
+        class="mt-4 rounded-2xl border border-lactec-line bg-lactec-paper p-6"
+      >
+        <h2 class="display m-0 text-center text-xl font-semibold tracking-wide text-lactec-ink">
+          DIAGNÓSTICO DE GASES DISSOLVIDOS
+        </h2>
+
+        <div class="mt-6 grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
+          @for (triangulo of dados.diagnostico.triangulos; track triangulo.numero) {
+            <div class="rounded-lg border border-lactec-line-soft p-4">
+              <app-duval-triangle [triangulo]="triangulo" />
+            </div>
+          }
+
+          <div class="rounded-lg border border-lactec-line-soft p-4">
+            <app-duval-pentagon
+              [zona]="dados.diagnostico.pentagono.zona"
+              [x]="dados.diagnostico.pentagono.x"
+              [y]="dados.diagnostico.pentagono.y"
+            />
+          </div>
+
+          <div class="rounded-lg border border-lactec-line-soft p-4">
+            <figure class="m-0 flex flex-col items-center gap-2">
+              <figcaption class="display text-sm font-semibold tracking-wide text-lactec-ink">
+                MÉTODO IEEE C57.104
+              </figcaption>
+              <svg
+                viewBox="0 0 270 120"
+                class="w-full"
+                role="img"
+                aria-label="Evolução dos gases combustíveis frente aos limites de atenção e alarme do IEEE C57.104."
+              >
+                @for (linha of linhasDeReferenciaIeee(); track linha.rotulo) {
+                  <line
+                    x1="0"
+                    x2="262"
+                    [attr.y1]="linha.y"
+                    [attr.y2]="linha.y"
+                    [attr.stroke]="linha.cor"
+                    stroke-width="1.5"
+                  />
+                  <text x="2" [attr.y]="linha.y - 3" font-size="8" [attr.fill]="linha.cor">
+                    {{ linha.rotulo }}
+                  </text>
+                }
+                <path [attr.d]="caminhoIeee()" fill="none" stroke="#2a78d6" stroke-width="2" />
+              </svg>
+              <span class="text-xs text-lactec-muted">Gases combustíveis (ppm)</span>
+            </figure>
+          </div>
+
+          <div class="rounded-lg border border-lactec-line-soft p-4">
+            <h3 class="display m-0 text-center text-sm font-semibold tracking-wide text-lactec-ink">
+              MÉTODO IEC 60599
+            </h3>
+            <table class="mt-3 w-full border-collapse text-xs">
+              <thead>
+                <tr class="bg-lactec-primary text-left text-lactec-on-primary">
+                  <th scope="col" class="px-2 py-2 font-semibold">Código de falha</th>
+                  <th scope="col" class="px-2 py-2 font-semibold">Descrição</th>
+                </tr>
+              </thead>
+              <tbody>
+                @for (codigo of dados.diagnostico.codigosIec; track codigo.codigo) {
+                  <tr class="border-t border-lactec-line-soft">
+                    <td class="px-2 py-2 font-medium text-lactec-ink">{{ codigo.codigo }}</td>
+                    <td class="px-2 py-2 text-lactec-ink">{{ codigo.descricao }}</td>
+                  </tr>
+                }
+              </tbody>
+            </table>
+          </div>
+
+          <div class="rounded-lg border border-lactec-line-soft p-4">
+            <figure class="m-0 flex flex-col items-center gap-2">
+              <figcaption class="display text-sm font-semibold tracking-wide text-lactec-ink">
+                NBR 7274
+              </figcaption>
+              <svg
+                viewBox="0 0 260 130"
+                class="w-full"
+                role="img"
+                aria-label="Concentração de cada gás frente ao limite da NBR 7274."
+              >
+                @for (barra of barrasNbr(); track barra.gas) {
+                  <rect
+                    [attr.x]="barra.x"
+                    [attr.y]="108 - barra.altura"
+                    width="26"
+                    [attr.height]="barra.altura"
+                    rx="4"
+                    [attr.fill]="corDaSerieMedida"
+                  />
+                  <line
+                    [attr.x1]="barra.x - 3"
+                    [attr.x2]="barra.x + 29"
+                    [attr.y1]="barra.yLimite"
+                    [attr.y2]="barra.yLimite"
+                    [attr.stroke]="corDoLimite"
+                    stroke-width="2"
+                  />
+                  <text
+                    [attr.x]="barra.x + 13"
+                    y="122"
+                    text-anchor="middle"
+                    font-size="8"
+                    class="fill-lactec-muted"
+                  >
+                    {{ barra.gas }}
+                  </text>
+                }
+                <line x1="18" x2="252" y1="108" y2="108" stroke="#B8C2C7" stroke-width="1" />
+              </svg>
+              <ul class="m-0 flex list-none gap-4 p-0 text-xs text-lactec-ink-soft">
+                @for (item of legendaDaNbr; track item.chave) {
+                  <li class="flex items-center gap-1.5">
+                    <span
+                      class="inline-block"
+                      [class.h-2.5]="item.formato === 'bloco'"
+                      [class.w-2.5]="item.formato === 'bloco'"
+                      [class.rounded-sm]="item.formato === 'bloco'"
+                      [class.h-0.5]="item.formato === 'linha'"
+                      [class.w-4]="item.formato === 'linha'"
+                      [style.background]="item.cor"
+                      aria-hidden="true"
+                    ></span>
+                    {{ item.rotulo }}
+                  </li>
+                }
+              </ul>
+            </figure>
+          </div>
+
+          <div class="rounded-lg border border-lactec-line-soft p-4">
+            <h3 class="display m-0 text-center text-sm font-semibold tracking-wide text-lactec-ink">
+              MÉTODO DE ROGERS
+            </h3>
+            <table class="mt-3 w-full border-collapse text-xs">
+              <caption class="sr-only">
+                Razões de Rogers: cada célula indica falha térmica, descarga ou ausência de
+                indicação.
+              </caption>
+              <thead>
+                <tr>
+                  <td class="px-2 py-1"></td>
+                  @for (coluna of linhasDeRogers().colunas; track coluna) {
+                    <th scope="col" class="px-2 py-1 text-center font-semibold text-lactec-ink">
+                      {{ coluna }}
+                    </th>
+                  }
+                </tr>
+              </thead>
+              <tbody>
+                @for (linha of linhasDeRogers().linhas; track linha.rotulo) {
+                  <tr>
+                    <th scope="row" class="px-2 py-1 text-left font-semibold text-lactec-ink">
+                      {{ linha.rotulo }}
+                    </th>
+                    @for (celula of linha.celulas; track celula.coluna) {
+                      <td
+                        class="h-8 border border-lactec-line-soft text-center"
+                        [style.background]="celula.cor"
+                      >
+                        <span class="sr-only">{{ celula.rotulo }}</span>
+                      </td>
+                    }
+                  </tr>
+                }
+              </tbody>
+            </table>
+            <ul class="mt-2 flex list-none justify-center gap-4 p-0 text-xs text-lactec-ink-soft">
+              @for (item of legendaDeRogers; track item.chave) {
+                <li class="flex items-center gap-1.5">
+                  <span
+                    class="inline-block h-2.5 w-2.5 rounded-sm"
+                    [style.background]="item.cor"
+                    aria-hidden="true"
+                  ></span>
+                  {{ item.rotulo }}
+                </li>
+              }
+            </ul>
+          </div>
+        </div>
+
+        <div class="mt-6 overflow-hidden rounded-lg border border-lactec-line">
+          <h3 class="m-0 bg-lactec-line-soft px-4 py-3 text-sm font-semibold text-lactec-ink">
+            Diagnóstico
+          </h3>
+          <ul class="m-0 list-none p-0">
+            @for (conclusao of dados.diagnostico.conclusoes; track conclusao.metodo) {
+              <li class="border-t border-lactec-line-soft px-4 py-3 text-sm text-lactec-ink">
+                {{ conclusao.metodo }}
+                <span class="text-lactec-muted">&gt; {{ conclusao.codigo }} &gt;</span>
+                {{ conclusao.descricao }}
+              </li>
+            }
+          </ul>
+        </div>
+      </section>
+    }
+    </div>
+  }
+} @else if (falhou()) {
+  <app-empty-state
+    tom="erro"
+    icone="cloud_off"
+    titulo="Não foi possível carregar os indicadores no momento"
+    descricao="A consulta ao AutoLAB falhou. Tente novamente em instantes."
+  />
+} @else {
+  <p class="text-sm text-lactec-muted" role="status">Carregando indicadores…</p>
+}
