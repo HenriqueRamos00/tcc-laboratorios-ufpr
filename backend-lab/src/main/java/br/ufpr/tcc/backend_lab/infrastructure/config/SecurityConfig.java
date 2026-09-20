@@ -31,7 +31,7 @@ public class SecurityConfig {
 				.httpBasic(basic -> basic.disable())
 				.sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
 				.authorizeHttpRequests(authorize -> authorize
-						.requestMatchers("/health", "/auth/login", "/api/auth/internal/login").permitAll()
+						.requestMatchers("/health", "/api/auth/login", "/api/auth/internal/login").permitAll()
 						.anyRequest().authenticated()
 				)
 				.exceptionHandling(exception -> exception
