@@ -1,0 +1,23 @@
+<resources>
+    <string name="app_name">Portal do Cliente Lactec</string>
+    <string name="lactec">Lactec</string>
+    <string name="client_portal">Portal do Cliente Lactec</string>
+    <string name="login_title">Login</string>
+    <string name="email_label">Email</string>
+    <string name="password_label">Senha</string>
+    <string name="keep_connected">Me mantenha conectado</string>
+    <string name="forgot_password">Esqueceu a senha?</string>
+    <string name="login_action">Acessar →</string>
+    <string name="logging_in">Acessando…</string>
+    <string name="required_email">Informe seu e-mail.</string>
+    <string name="invalid_email">Informe um e-mail válido.</string>
+    <string name="required_password">Informe sua senha.</string>
+    <string name="invalid_credentials">Credenciais inválidas</string>
+    <string name="login_service_unavailable">O serviço de autenticação está indisponível. Tente novamente mais tarde.</string>
+    <string name="login_loading_error">Não foi possível realizar o login. Verifique sua conexão e tente novamente.</string>
+    <string name="password_recovery_unavailable">A recuperação de senha ainda não está disponível no aplicativo.</string>
+    <string name="copyright">2026 LACTEC</string>
+    <string name="quotes_title">Orçamentos</string>
+    <string name="quotes_empty">Nenhum orçamento disponível.</string>
+    <string name="api_base_url" translatable="false">http://10.0.2.2:5125/api</string>
+</resources>

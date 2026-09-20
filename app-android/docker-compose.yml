@@ -1,0 +1,26 @@
+services:
+  app-android:
+    build:
+      context: .
+      args:
+        UID: ${HOST_UID:-1000}
+        GID: ${HOST_GID:-1000}
+    image: tcc/app-android:jdk21
+    working_dir: /workspace
+    tty: true
+    stdin_open: true
+    volumes:
+      - .:/workspace
+      # Cache do Gradle e das dependencias entre execucoes; sem isso todo build rebaixa tudo.
+      - app-android-gradle-home:/home/dev/.gradle
+      # Guarda a chave RSA do adb: sem isso o aparelho pede autorizacao de novo a cada recriacao.
+      - app-android-adb-home:/home/dev/.android
+    environment:
+      # Sem daemon: o container e efemero e o daemon so consumiria memoria entre um run e outro.
+      GRADLE_OPTS: -Dorg.gradle.daemon=false
+      # Aparelho a conectar no start, no formato ip:porta. Ver .env.example.
+      ADB_DEVICE: ${ADB_DEVICE:-}
+
+volumes:
+  app-android-gradle-home:
+  app-android-adb-home:
