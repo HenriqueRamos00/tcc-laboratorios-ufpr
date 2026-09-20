@@ -2,4 +2,15 @@
 <resources>
     <color name="black">#FF000000</color>
     <color name="white">#FFFFFFFF</color>
+    <color name="lactec_primary">#18A5B8</color>
+    <color name="lactec_primary_dark">#0E8A9C</color>
+    <color name="lactec_nav">#0F4C5C</color>
+    <color name="lactec_ink">#0B2230</color>
+    <color name="lactec_muted">#5D7480</color>
+    <color name="lactec_line">#E4E8EA</color>
+    <color name="lactec_surface">#F5F6F3</color>
+    <color name="lactec_paper">#FFFFFF</color>
+    <color name="lactec_danger">#D9534F</color>
+    <color name="lactec_danger_bg">#FBE7E5</color>
+    <color name="lactec_danger_ink">#8E2A24</color>
 </resources>

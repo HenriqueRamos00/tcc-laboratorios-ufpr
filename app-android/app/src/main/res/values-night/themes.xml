@@ -1,7 +1,11 @@
-<resources xmlns:tools="http://schemas.android.com/tools">
-    <!-- Base application theme. -->
-    <style name="Base.Theme.Labmobile" parent="Theme.Material3.DayNight.NoActionBar">
-        <!-- Customize your dark theme here. -->
-        <!-- <item name="colorPrimary">@color/my_dark_primary</item> -->
+<resources>
+    <style name="Base.Theme.Labmobile" parent="Theme.Material3.Light.NoActionBar">
+        <item name="colorPrimary">@color/lactec_primary</item>
+        <item name="colorOnPrimary">@color/white</item>
+        <item name="colorError">@color/lactec_danger</item>
+        <item name="android:fontFamily">@font/inter</item>
+        <item name="android:navigationBarColor">@color/lactec_paper</item>
+        <item name="android:statusBarColor">@color/lactec_nav</item>
+        <item name="android:windowLightStatusBar">false</item>
     </style>
 </resources>

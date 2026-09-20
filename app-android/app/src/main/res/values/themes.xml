@@ -1,9 +1,21 @@
-<resources xmlns:tools="http://schemas.android.com/tools">
-    <!-- Base application theme. -->
-    <style name="Base.Theme.Labmobile" parent="Theme.Material3.DayNight.NoActionBar">
-        <!-- Customize your light theme here. -->
-        <!-- <item name="colorPrimary">@color/my_light_primary</item> -->
+<resources>
+    <style name="Base.Theme.Labmobile" parent="Theme.Material3.Light.NoActionBar">
+        <item name="colorPrimary">@color/lactec_primary</item>
+        <item name="colorOnPrimary">@color/white</item>
+        <item name="colorError">@color/lactec_danger</item>
+        <item name="android:colorAccent">@color/lactec_primary</item>
+        <item name="android:fontFamily">@font/inter</item>
+        <item name="android:navigationBarColor">@color/lactec_paper</item>
+        <item name="android:statusBarColor">@color/lactec_nav</item>
+        <item name="android:windowLightStatusBar">false</item>
     </style>
-
     <style name="Theme.Labmobile" parent="Base.Theme.Labmobile" />
+    <style name="Widget.Lactec.TextInputLayout" parent="Widget.Material3.TextInputLayout.OutlinedBox">
+        <item name="boxStrokeColor">@color/lactec_primary</item>
+        <item name="boxStrokeErrorColor">@color/lactec_danger</item>
+        <item name="hintTextColor">@color/lactec_ink</item>
+        <item name="startIconTint">@color/lactec_muted</item>
+        <item name="endIconTint">@color/lactec_muted</item>
+        <item name="android:fontFamily">@font/inter</item>
+    </style>
 </resources>
