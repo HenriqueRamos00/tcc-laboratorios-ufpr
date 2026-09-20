@@ -115,8 +115,6 @@ POST /api/auth/internal/login
 Content-Type: application/json
 ```
 
-O endpoint `POST /api/auth/login` também está disponível como atalho para a autenticação interna.
-
 Exemplo de requisição:
 
 ```json
