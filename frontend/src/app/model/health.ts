@@ -71,13 +71,37 @@ export interface PontoTernario {
   readonly c: number;
 }
 
+/**
+ * Uma coleta vista pelo triângulo. Nem toda coleta vira ponto, e os dois
+ * motivos para isso são diferentes:
+ *
+ * - `incomputavel`: o laboratório não reportou um dos três gases. Falta dado.
+ * - `naoAplicavel`: os gases existem, mas a norma proíbe ler esta figura para
+ *   esta falha (os triângulos 4 e 5 são refinamentos condicionais do 1 —
+ *   IEEE Std C57.104-2019, p. 66). Aqui sobra dado e falta licença.
+ *
+ * Os dois continuam na lista, em vez de sumir: sumir com a coleta faz a tela
+ * mentir sobre quantas leituras existem, e confundir os dois casos faz a tela
+ * culpar o laboratório por uma decisão que é da norma.
+ */
+export type LeituraDoTriangulo =
+  | { readonly tipo: 'plotada'; readonly data: string; readonly ponto: PontoTernario }
+  | { readonly tipo: 'incomputavel'; readonly data: string; readonly gasAusente: string }
+  | { readonly tipo: 'naoAplicavel'; readonly data: string; readonly motivo: string };
+
 export interface TrianguloDeDuval {
   readonly numero: 1 | 4 | 5;
   readonly eixoEsquerdo: string;
   readonly eixoDireito: string;
   readonly eixoBase: string;
   readonly zonas: readonly ZonaTernaria[];
-  readonly pontos: readonly PontoTernario[];
+  readonly leituras: readonly LeituraDoTriangulo[];
+  /**
+   * Por que nenhuma coleta licenciou esta figura, quando nenhuma licenciou.
+   * `null` é o caso normal (figura aplicável, ou o próprio triângulo 1).
+   * Serve para a tela explicar um triângulo vazio em vez de deixá-lo mudo.
+   */
+  readonly naoAplicavel: string | null;
 }
 
 /** Zona do triângulo, desenhada por vértices em coordenadas ternárias. */

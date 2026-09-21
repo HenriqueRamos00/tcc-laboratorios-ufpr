@@ -29,6 +29,11 @@ RUN npm ci --no-audit --no-fund
 FROM node:${NODE_VERSION}-alpine AS dev
 WORKDIR /app
 ENV NODE_ENV=development
+# Chromium para o `ng test`: o karma sobe ChromeHeadless e, sem binário, a suíte
+# compila mas nunca executa — um teste que não roda não protege nada.
+# CHROME_BIN é a variável que o karma-chrome-launcher procura.
+RUN apk add --no-cache chromium
+ENV CHROME_BIN=/usr/bin/chromium-browser
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .
 EXPOSE 4200
