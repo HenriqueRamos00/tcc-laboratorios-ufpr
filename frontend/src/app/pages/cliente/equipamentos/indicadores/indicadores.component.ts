@@ -1,6 +1,6 @@
 import { ChangeDetectionStrategy, Component, computed, inject, input, signal } from '@angular/core';
-import { takeUntilDestroyed, toObservable } from '@angular/core/rxjs-interop';
-import { catchError, EMPTY, switchMap, tap } from 'rxjs';
+import { toObservable, toSignal } from '@angular/core/rxjs-interop';
+import { catchError, map, of, startWith, switchMap } from 'rxjs';
 import { MatIconModule } from '@angular/material/icon';
 
 import { ClassificationBadgeComponent } from '@shared/components/classification-badge/classification-badge.component';
@@ -15,6 +15,7 @@ import {
 import { PageHeaderComponent } from '@shared/components/page-header/page-header.component';
 
 import type { IndicadoresDeSaude, ResultadoDeRogers } from '@/app/model/health';
+import { carregando, erro, ok, vazio, type RemoteData } from '@/app/model/remote-data';
 import { EquipmentsService } from '@/app/services/equipments.service';
 import { HealthService } from '@/app/services/health.service';
 
@@ -100,16 +101,47 @@ export class IndicadoresComponent {
 
   protected readonly abaAtiva = signal<Aba>('fisico-quimico');
   protected readonly subAba = signal<SubAbaDeGases>('criterios');
-  protected readonly indicadores = signal<IndicadoresDeSaude | null>(null);
-  protected readonly tag = signal('');
-  protected readonly falhou = signal(false);
+  // O router reaproveita a instância entre /equipamentos/1 e /2 e ngOnInit não
+  // roda de novo; o switchMap externo cancela a busca anterior. startWith e
+  // catchError ficam no pipe INTERNO: assim cada troca de rota volta para
+  // 'carregando' e uma falha derruba só aquela tentativa, não o fluxo que
+  // escuta a rota.
+  protected readonly estado = toSignal(
+    toObservable(this.id).pipe(
+      switchMap((id) =>
+        this.equipments.buscarPorId(id).pipe(
+          switchMap((equipamento) => this.health.indicadoresDoEquipamento(id, equipamento.tag)),
+          map((dados) =>
+            dados.fisicoQuimico.ensaios.length || dados.gasesDissolvidos.gases.length
+              ? ok(dados)
+              : vazio,
+          ),
+          catchError(() => of(erro('A consulta ao AutoLAB falhou. Tente novamente em instantes.'))),
+          startWith(carregando),
+        ),
+      ),
+    ),
+    { initialValue: carregando as RemoteData<IndicadoresDeSaude> },
+  );
+
+  // O @switch estreita `estado().tipo`, mas não estreita `estado().dados` para
+  // o template. Este computed faz a ponte sem espalhar casts na view.
+  protected readonly dados = computed(() => {
+    const estado = this.estado();
+    return estado.tipo === 'ok' ? estado.dados : null;
+  });
+
+  protected readonly motivoDoErro = computed(() => {
+    const estado = this.estado();
+    return estado.tipo === 'erro' ? estado.motivo : '';
+  });
 
   protected readonly datasFisicoQuimico = computed(
-    () => this.indicadores()?.fisicoQuimico.coletas.map((coleta) => coleta.data) ?? [],
+    () => this.dados()?.fisicoQuimico.coletas.map((coleta) => coleta.data) ?? [],
   );
 
   protected readonly seriesFisicoQuimico = computed<readonly SerieDoGrafico[]>(() => {
-    const bloco = this.indicadores()?.fisicoQuimico;
+    const bloco = this.dados()?.fisicoQuimico;
     if (!bloco) return [];
     const chaves = Object.keys(NOME_DO_ENSAIO);
     return chaves.map((chave, indice) => ({
@@ -121,11 +153,11 @@ export class IndicadoresComponent {
   });
 
   protected readonly datasDeGases = computed(
-    () => this.indicadores()?.gasesDissolvidos.coletas.map((coleta) => coleta.data) ?? [],
+    () => this.dados()?.gasesDissolvidos.coletas.map((coleta) => coleta.data) ?? [],
   );
 
   protected readonly seriesDeGases = computed<readonly SerieDoGrafico[]>(() => {
-    const bloco = this.indicadores()?.gasesDissolvidos;
+    const bloco = this.dados()?.gasesDissolvidos;
     if (!bloco) return [];
     return Object.keys(NOME_DO_GAS).map((chave, indice) => ({
       chave,
@@ -137,15 +169,15 @@ export class IndicadoresComponent {
 
   /** Os totais fecham a tabela e não entram no gráfico de evolução. */
   protected readonly gasesMedidos = computed(
-    () => this.indicadores()?.gasesDissolvidos.gases.filter((gas) => !!gas.formula) ?? [],
+    () => this.dados()?.gasesDissolvidos.gases.filter((gas) => !!gas.formula) ?? [],
   );
 
   protected readonly gasesTotalizadores = computed(
-    () => this.indicadores()?.gasesDissolvidos.gases.filter((gas) => !gas.formula) ?? [],
+    () => this.dados()?.gasesDissolvidos.gases.filter((gas) => !gas.formula) ?? [],
   );
 
   protected readonly linhasDeRogers = computed(() => {
-    const celulas = this.indicadores()?.diagnostico.rogers ?? [];
+    const celulas = this.dados()?.diagnostico.rogers ?? [];
     const linhas = [...new Set(celulas.map((celula) => celula.linha))];
     const colunas = [...new Set(celulas.map((celula) => celula.coluna))];
     return {
@@ -162,7 +194,7 @@ export class IndicadoresComponent {
   });
 
   protected readonly caminhoIeee = computed(() => {
-    const ieee = this.indicadores()?.diagnostico.ieee;
+    const ieee = this.dados()?.diagnostico.ieee;
     if (!ieee?.serie.length) return '';
     const maximo = Math.max(...ieee.serie, ieee.alarme) * 1.1;
     const passo = 260 / (ieee.serie.length - 1);
@@ -172,7 +204,7 @@ export class IndicadoresComponent {
   });
 
   protected readonly linhasDeReferenciaIeee = computed(() => {
-    const ieee = this.indicadores()?.diagnostico.ieee;
+    const ieee = this.dados()?.diagnostico.ieee;
     if (!ieee) return [];
     const maximo = Math.max(...ieee.serie, ieee.alarme) * 1.1;
     return [
@@ -183,7 +215,7 @@ export class IndicadoresComponent {
   });
 
   protected readonly barrasNbr = computed(() => {
-    const leituras = this.indicadores()?.diagnostico.nbr7274 ?? [];
+    const leituras = this.dados()?.diagnostico.nbr7274 ?? [];
     if (!leituras.length) return [];
     const maximo = Math.max(...leituras.map((leitura) => Math.max(leitura.valor, leitura.limite))) * 1.1;
     return leituras.map((leitura, i) => ({
@@ -193,34 +225,6 @@ export class IndicadoresComponent {
       yLimite: 108 - (leitura.limite / maximo) * 96,
     }));
   });
-
-  constructor() {
-    // O router reaproveita a instância entre /equipamentos/1 e /2, e ngOnInit
-    // não roda de novo. O switchMap ainda cancela a busca anterior.
-    toObservable(this.id)
-      .pipe(
-        tap(() => {
-          this.indicadores.set(null);
-          this.falhou.set(false);
-        }),
-        switchMap((id) =>
-          this.equipments.buscarPorId(id).pipe(
-            tap((equipamento) => this.tag.set(equipamento.tag)),
-            switchMap((equipamento) =>
-              this.health.indicadoresDoEquipamento(id, equipamento.tag),
-            ),
-            // O catchError fica dentro: uma falha derruba só esta tentativa,
-            // não o fluxo que escuta a rota.
-            catchError(() => {
-              this.falhou.set(true);
-              return EMPTY;
-            }),
-          ),
-        ),
-        takeUntilDestroyed(),
-      )
-      .subscribe((dados) => this.indicadores.set(dados));
-  }
 
   protected trocarAba(aba: Aba): void {
     this.abaAtiva.set(aba);

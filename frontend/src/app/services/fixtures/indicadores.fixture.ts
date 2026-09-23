@@ -1,63 +1,256 @@
 // Resultados, datas e traçado dos gráficos vêm das telas aprovadas.
 //
-// ATENÇÃO PARA A REVISÃO: as zonas do triângulo de Duval 1 seguem as regras
-// publicadas. As dos triângulos 4 e 5 foram desenhadas pelo layout da tela e
-// precisam ser conferidas com o laboratório antes de irem para produção.
+// As zonas dos três triângulos de Duval saíram daqui: agora são derivadas das
+// tabelas normativas em `model/duval-1.ts`, `duval-4.ts` e `duval-5.ts`. As
+// dos triângulos 4 e 5 eram desenhadas "pelo layout da tela" e davam
+// diagnóstico diferente do publicado em 68,0% e 67,5% da área — ver a
+// proveniência no topo de cada módulo.
+//
+// Os triângulos 4 e 5 também passaram a respeitar a regra de aplicabilidade:
+// são refinamentos condicionais do triângulo 1, não uma segunda opinião.
 
-import type { IndicadoresDeSaude, PontoTernario, ZonaTernaria } from '@/app/model/health';
+import {
+  classificarDuval1,
+  duval1,
+  gasAusenteDoDuval1,
+  zonasDuval1Com,
+  DESCRICAO_DE_DUVAL_1,
+  type CodigoDeDuval1,
+} from '@/app/model/duval-1';
+import {
+  aplicaSeDuval4,
+  classificarDuval4,
+  duval4,
+  gasAusenteDoDuval4,
+  zonasDuval4Com,
+  DESCRICAO_DE_DUVAL_4,
+  MOTIVO_DUVAL_4_NAO_APLICAVEL,
+  type CodigoDeDuval4,
+} from '@/app/model/duval-4';
+import {
+  aplicaSeDuval5,
+  classificarDuval5,
+  duval5,
+  gasAusenteDoDuval5,
+  zonasDuval5Com,
+  DESCRICAO_DE_DUVAL_5,
+  MOTIVO_DUVAL_5_NAO_APLICAVEL,
+  type CodigoDeDuval5,
+} from '@/app/model/duval-5';
+import type {
+  CodigoDeFalha,
+  Coleta,
+  ConclusaoDeDiagnostico,
+  IndicadoresDeSaude,
+  LeituraDoTriangulo,
+  PontoTernario,
+} from '@/app/model/health';
 
 const DATAS_FQ = ['20/04/2021', '20/05/2022', '19/09/2023', '26/04/2024', '26/10/2025'];
 
-function zona(codigo: string, vertices: readonly PontoTernario[], destacada = false): ZonaTernaria {
-  return { codigo, vertices, destacada };
+
+// --- Triângulo 1 derivado das coletas ---------------------------------------
+//
+// Os pontos NÃO são chumbados: saem dos mesmos ppm que alimentam a tabela de
+// gases, senão o desenho e a tabela divergem sem ninguém notar. Três das cinco
+// coletas não têm C₂H₂ reportado e por isso não viram ponto — elas continuam
+// na lista, como `incomputavel`, para a tela poder dizer isso em voz alta.
+const COLETAS_DE_GASES: readonly Coleta[] = [
+      {
+        data: DATAS_FQ[0],
+        valores: {
+          h2: 4300, o2: 5100, n2: 55000, ch4: 110, co: 270, co2: 4500, c2h4: 2400, c2h6: 14, c2h2: null,
+        },
+      },
+      {
+        data: DATAS_FQ[1],
+        valores: {
+          h2: 590, o2: 2400, n2: 68000, ch4: 68, co: 250, co2: 3500, c2h4: 150, c2h6: 10, c2h2: null,
+        },
+      },
+      {
+        data: DATAS_FQ[2],
+        valores: {
+          h2: 1030, o2: 3100, n2: 53000, ch4: 250, co: 280, co2: 6000, c2h4: 280, c2h6: 690, c2h2: null,
+        },
+      },
+      {
+        data: DATAS_FQ[3],
+        valores: {
+          h2: 18500, o2: 5000, n2: 59000, ch4: 250, co: 290, co2: 5100, c2h4: 380, c2h6: 680, c2h2: 2,
+        },
+      },
+      {
+        data: DATAS_FQ[4],
+        valores: {
+          h2: 44000, o2: 4300, n2: 47000, ch4: 3600, co: 330, co2: 6200, c2h4: 3800, c2h6: 2400, c2h2: 26,
+        },
+      },
+];
+
+function leiturasDoDuval1(coletas: readonly Coleta[]): readonly LeituraDoTriangulo[] {
+  return coletas.map((coleta) => {
+    const gases = {
+      ch4: coleta.valores['ch4'] ?? null,
+      c2h4: coleta.valores['c2h4'] ?? null,
+      c2h2: coleta.valores['c2h2'] ?? null,
+    };
+    const ponto = duval1(gases);
+    return ponto
+      ? ({ tipo: 'plotada', data: coleta.data, ponto } as const)
+      : ({
+          tipo: 'incomputavel',
+          data: coleta.data,
+          gasAusente: gasAusenteDoDuval1(gases) ?? 'gás',
+        } as const);
+  });
 }
 
-const ponto = (a: number, b: number, c: number): PontoTernario => ({ a, b, c });
+const LEITURAS_DUVAL_1 = leiturasDoDuval1(COLETAS_DE_GASES);
 
-// Duval 1: a = %CH4, b = %C2H4, c = %C2H2.
-const ZONAS_DUVAL_1: readonly ZonaTernaria[] = [
-  zona('PD', [ponto(98, 0, 2), ponto(100, 0, 0), ponto(98, 2, 0)]),
-  zona('T1', [ponto(98, 2, 0), ponto(98, 0, 2), ponto(96, 0, 4), ponto(76, 20, 4), ponto(80, 20, 0)], true),
-  zona('T2', [ponto(80, 20, 0), ponto(76, 20, 4), ponto(46, 50, 4), ponto(50, 50, 0)], true),
-  zona('T3', [ponto(50, 50, 0), ponto(46, 50, 4), ponto(35, 50, 15), ponto(0, 85, 15), ponto(0, 100, 0)]),
-  zona('D1', [ponto(87, 0, 13), ponto(64, 23, 13), ponto(0, 23, 77), ponto(0, 0, 100)]),
-  zona('D2', [ponto(64, 23, 13), ponto(47, 40, 13), ponto(31, 40, 29), ponto(21, 50, 29), ponto(0, 50, 50), ponto(0, 23, 77)]),
-  zona(
-    'DT',
-    [
-      ponto(96, 0, 4),
-      ponto(76, 20, 4),
-      ponto(46, 50, 4),
-      ponto(35, 50, 15),
-      ponto(21, 50, 29),
-      ponto(31, 40, 29),
-      ponto(47, 40, 13),
-      ponto(64, 23, 13),
-      ponto(87, 0, 13),
-    ],
-    true,
-  ),
+// Um código por coleta, alinhado com COLETAS_DE_GASES; `null` quando a coleta
+// não deu para computar. É esta lista que licencia os triângulos 4 e 5 —
+// coleta a coleta, porque a licença é por falha diagnosticada, não pelo lote.
+const CODIGO_DUVAL_1_POR_COLETA: readonly (CodigoDeDuval1 | null)[] = LEITURAS_DUVAL_1.map(
+  (leitura) => (leitura.tipo === 'plotada' ? classificarDuval1(leitura.ponto) : null),
+);
+
+const CODIGOS_DUVAL_1: readonly CodigoDeDuval1[] = CODIGO_DUVAL_1_POR_COLETA.filter(
+  (codigo): codigo is CodigoDeDuval1 => codigo !== null,
+);
+
+// --- Triângulos 4 e 5, condicionados ao triângulo 1 -------------------------
+//
+// IEEE Std C57.104-2019, p. 66: o triângulo 4 só vale depois de PD, T1 ou T2;
+// o 5, depois de T2 ou T3; nenhum dos dois vale para D1 ou D2. Como a
+// geometria cobre o simplex inteiro, os dois SEMPRE devolvem uma zona — é por
+// isso que o portão precisa estar no código, e não no bom senso de quem lê.
+
+/**
+ * Deriva as leituras de um triângulo condicional das mesmas coletas que
+ * alimentam a tabela de gases. Três desfechos, e os três continuam na lista:
+ * plotada, incomputável (faltou gás) e não aplicável (sobra gás, falta
+ * licença do triângulo 1).
+ *
+ * Parâmetros em objeto de propósito: o defeito de origem deste projeto foi
+ * troca de eixo invisível ao compilador, e função com vários posicionais do
+ * mesmo tipo é exatamente como isso volta.
+ */
+function leiturasCondicionais<G>(opcoes: {
+  readonly coletas: readonly Coleta[];
+  readonly gasesDa: (coleta: Coleta) => G;
+  readonly aplicaSe: (codigo: CodigoDeDuval1 | null) => boolean;
+  readonly motivo: string;
+  readonly paraPonto: (gases: G) => PontoTernario | null;
+  readonly gasAusente: (gases: G) => string | null;
+}): readonly LeituraDoTriangulo[] {
+  const { coletas, gasesDa, aplicaSe, motivo, paraPonto, gasAusente } = opcoes;
+  return coletas.map((coleta, indice) => {
+    if (!aplicaSe(CODIGO_DUVAL_1_POR_COLETA[indice])) {
+      return { tipo: 'naoAplicavel', data: coleta.data, motivo } as const;
+    }
+    const gases = gasesDa(coleta);
+    const ponto = paraPonto(gases);
+    return ponto
+      ? ({ tipo: 'plotada', data: coleta.data, ponto } as const)
+      : ({
+          tipo: 'incomputavel',
+          data: coleta.data,
+          gasAusente: gasAusente(gases) ?? 'gás',
+        } as const);
+  });
+}
+
+const LEITURAS_DUVAL_4 = leiturasCondicionais({
+  coletas: COLETAS_DE_GASES,
+  gasesDa: (coleta) => ({
+    h2: coleta.valores['h2'] ?? null,
+    ch4: coleta.valores['ch4'] ?? null,
+    c2h6: coleta.valores['c2h6'] ?? null,
+  }),
+  aplicaSe: aplicaSeDuval4,
+  motivo: MOTIVO_DUVAL_4_NAO_APLICAVEL,
+  paraPonto: duval4,
+  gasAusente: gasAusenteDoDuval4,
+});
+
+const LEITURAS_DUVAL_5 = leiturasCondicionais({
+  coletas: COLETAS_DE_GASES,
+  gasesDa: (coleta) => ({
+    ch4: coleta.valores['ch4'] ?? null,
+    c2h4: coleta.valores['c2h4'] ?? null,
+    c2h6: coleta.valores['c2h6'] ?? null,
+  }),
+  aplicaSe: aplicaSeDuval5,
+  motivo: MOTIVO_DUVAL_5_NAO_APLICAVEL,
+  paraPonto: duval5,
+  gasAusente: gasAusenteDoDuval5,
+});
+
+const CODIGOS_DUVAL_4: readonly CodigoDeDuval4[] = LEITURAS_DUVAL_4.filter(
+  (leitura) => leitura.tipo === 'plotada',
+).map((leitura) => classificarDuval4(leitura.ponto));
+
+const CODIGOS_DUVAL_5: readonly CodigoDeDuval5[] = LEITURAS_DUVAL_5.filter(
+  (leitura) => leitura.tipo === 'plotada',
+).map((leitura) => classificarDuval5(leitura.ponto));
+
+/**
+ * Motivo a exibir quando NENHUMA coleta licenciou a figura. Se faltou gás, o
+ * motivo não é esse — quem explica é a contagem de incomputáveis.
+ */
+function motivoDaFiguraVazia(
+  leituras: readonly LeituraDoTriangulo[],
+  motivo: string,
+): string | null {
+  if (leituras.some((leitura) => leitura.tipo === 'plotada')) return null;
+  return leituras.some((leitura) => leitura.tipo === 'naoAplicavel') ? motivo : null;
+}
+
+// DT fica de fora: é zona do triângulo de Duval (falha mista térmica/elétrica),
+// não código de falha da IEC 60599, que só define PD, D1, D2, T1, T2 e T3.
+// Listá-lo aqui faria a legenda atribuir à norma um código que ela não tem.
+const CODIGOS_IEC: readonly CodigoDeFalha[] = (
+  Object.keys(DESCRICAO_DE_DUVAL_1) as CodigoDeDuval1[]
+)
+  .filter((codigo) => codigo !== 'DT')
+  .map((codigo) => ({ codigo, descricao: DESCRICAO_DE_DUVAL_1[codigo] }));
+
+// A conclusão do triângulo 1 é o que a tabela normativa diz sobre a coleta mais
+// recente que deu para computar, não um texto fixo.
+const ULTIMO_CODIGO_DUVAL_1 = CODIGOS_DUVAL_1.at(-1);
+
+const CONCLUSOES_DUVAL_1: readonly ConclusaoDeDiagnostico[] = [
+  ULTIMO_CODIGO_DUVAL_1
+    ? {
+        metodo: 'Triangulo 1',
+        codigo: ULTIMO_CODIGO_DUVAL_1,
+        descricao: DESCRICAO_DE_DUVAL_1[ULTIMO_CODIGO_DUVAL_1],
+      }
+    : {
+        metodo: 'Triangulo 1',
+        codigo: '-',
+        descricao: 'Sem coleta com os três gases do triângulo 1',
+      },
 ];
 
-// Duval 4: a = %H2, b = %CH4, c = %C2H6.
-const ZONAS_DUVAL_4: readonly ZonaTernaria[] = [
-  zona('PD', [ponto(100, 0, 0), ponto(85, 15, 0), ponto(85, 0, 15)]),
-  zona('ND', [ponto(85, 15, 0), ponto(85, 0, 15), ponto(36, 0, 64), ponto(36, 49, 15)], true),
-  zona('S', [ponto(36, 49, 15), ponto(36, 0, 64), ponto(0, 0, 100), ponto(0, 64, 36)]),
-  zona('C', [ponto(0, 64, 36), ponto(0, 100, 0), ponto(36, 64, 0), ponto(36, 49, 15)]),
-  zona('O', [ponto(36, 64, 0), ponto(36, 49, 15), ponto(85, 15, 0)]),
-];
-
-// Duval 5: a = %CH4, b = %C2H4, c = %C2H6.
-const ZONAS_DUVAL_5: readonly ZonaTernaria[] = [
-  zona('PD', [ponto(100, 0, 0), ponto(90, 10, 0), ponto(90, 0, 10)]),
-  zona('O', [ponto(90, 10, 0), ponto(90, 0, 10), ponto(54, 0, 46), ponto(54, 36, 10)], true),
-  zona('S', [ponto(54, 36, 10), ponto(54, 0, 46), ponto(20, 0, 80), ponto(20, 60, 20)], true),
-  zona('ND', [ponto(20, 60, 20), ponto(20, 0, 80), ponto(0, 0, 100), ponto(0, 60, 40)], true),
-  zona('C', [ponto(54, 36, 10), ponto(20, 60, 20), ponto(0, 60, 40), ponto(0, 85, 15), ponto(46, 46, 8)]),
-  zona('T2-H', [ponto(90, 10, 0), ponto(54, 36, 10), ponto(46, 46, 8), ponto(60, 40, 0)]),
-  zona('T3-H', [ponto(0, 85, 15), ponto(0, 100, 0), ponto(60, 40, 0), ponto(46, 46, 8)]),
-];
+/**
+ * Conclusão de um triângulo condicional: o que a tabela normativa diz sobre a
+ * coleta mais recente que a figura pôde ler. Sem leitura licenciada não sai
+ * veredito — emitir código sobre figura não licenciada é justamente o erro
+ * que esta tela cometia ao desenhar os três triângulos para toda amostra.
+ */
+function conclusaoDe<C extends string>(opcoes: {
+  readonly metodo: string;
+  readonly codigos: readonly C[];
+  readonly descricoes: Record<C, string>;
+  readonly semVeredito: string;
+}): ConclusaoDeDiagnostico {
+  const ultimo = opcoes.codigos.at(-1);
+  return ultimo
+    ? { metodo: opcoes.metodo, codigo: ultimo, descricao: opcoes.descricoes[ultimo] }
+    : { metodo: opcoes.metodo, codigo: '—', descricao: opcoes.semVeredito };
+}
 
 export const INDICADORES: IndicadoresDeSaude = {
   equipamentoId: '58836',
@@ -189,38 +382,7 @@ export const INDICADORES: IndicadoresDeSaude = {
     conformidade: 'normal',
     veredito: 'APROVADO',
     datasDeColeta: ['16/09/2025', '27/11/2025'],
-    coletas: [
-      {
-        data: DATAS_FQ[0],
-        valores: {
-          h2: 4300, o2: 5100, n2: 55000, ch4: 110, co: 270, co2: 4500, c2h4: 2400, c2h6: 14, c2h2: null,
-        },
-      },
-      {
-        data: DATAS_FQ[1],
-        valores: {
-          h2: 590, o2: 2400, n2: 68000, ch4: 68, co: 250, co2: 3500, c2h4: 150, c2h6: 10, c2h2: null,
-        },
-      },
-      {
-        data: DATAS_FQ[2],
-        valores: {
-          h2: 1030, o2: 3100, n2: 53000, ch4: 250, co: 280, co2: 6000, c2h4: 280, c2h6: 690, c2h2: null,
-        },
-      },
-      {
-        data: DATAS_FQ[3],
-        valores: {
-          h2: 18500, o2: 5000, n2: 59000, ch4: 250, co: 290, co2: 5100, c2h4: 380, c2h6: 680, c2h2: 2,
-        },
-      },
-      {
-        data: DATAS_FQ[4],
-        valores: {
-          h2: 44000, o2: 4300, n2: 47000, ch4: 3600, co: 330, co2: 6200, c2h4: 3800, c2h6: 2400, c2h2: 26,
-        },
-      },
-    ],
+    coletas: COLETAS_DE_GASES,
     gases: [
       { chave: 'h2', nome: 'Hidrogênio', formula: 'H₂', resultados: [2028, 12] },
       { chave: 'o2', nome: 'Oxigênio', formula: 'O₂', resultados: [11256, 6930] },
@@ -246,24 +408,27 @@ export const INDICADORES: IndicadoresDeSaude = {
         eixoEsquerdo: 'Methane CH₄ %',
         eixoDireito: 'Ethylene C₂H₄ %',
         eixoBase: 'Acetylene C₂H₂ %',
-        zonas: ZONAS_DUVAL_1,
-        pontos: [ponto(88, 10, 2), ponto(84, 14, 2), ponto(74, 23, 3), ponto(62, 34, 4)],
+        zonas: zonasDuval1Com(CODIGOS_DUVAL_1),
+        leituras: LEITURAS_DUVAL_1,
+        naoAplicavel: null,
       },
       {
         numero: 4,
         eixoEsquerdo: 'Hydrogen H₂ %',
         eixoDireito: 'Methane CH₄ %',
         eixoBase: 'Ethane C₂H₆ %',
-        zonas: ZONAS_DUVAL_4,
-        pontos: [ponto(44, 12, 44)],
+        zonas: zonasDuval4Com(CODIGOS_DUVAL_4),
+        leituras: LEITURAS_DUVAL_4,
+        naoAplicavel: motivoDaFiguraVazia(LEITURAS_DUVAL_4, MOTIVO_DUVAL_4_NAO_APLICAVEL),
       },
       {
         numero: 5,
         eixoEsquerdo: 'Methane CH₄ %',
         eixoDireito: 'Ethylene C₂H₄ %',
         eixoBase: 'Ethane C₂H₆ %',
-        zonas: ZONAS_DUVAL_5,
-        pontos: [ponto(46, 24, 30), ponto(40, 30, 30), ponto(52, 18, 30)],
+        zonas: zonasDuval5Com(CODIGOS_DUVAL_5),
+        leituras: LEITURAS_DUVAL_5,
+        naoAplicavel: motivoDaFiguraVazia(LEITURAS_DUVAL_5, MOTIVO_DUVAL_5_NAO_APLICAVEL),
       },
     ],
     pentagono: { zona: 'T2', x: 0, y: 0 },
@@ -272,13 +437,10 @@ export const INDICADORES: IndicadoresDeSaude = {
       alarme: 600,
       atencao: 400,
     },
-    codigosIec: [
-      { codigo: 'T1', descricao: 'Falha térmica de baixa energia' },
-      { codigo: 'T2', descricao: 'Falha térmica de alta energia' },
-      { codigo: 'T3', descricao: 'Falha térmica' },
-      { codigo: 'D1', descricao: 'Descarga elétrica de baixa energia' },
-      { codigo: 'PD', descricao: 'Descarga Parcial' },
-    ],
+    // A legenda sai do mesmo dicionário que o diagnóstico usa: antes dizia que
+    // T1/T2 eram "baixa/alta energia", quando T1/T2/T3 são faixas de
+    // temperatura (<300 °C, 300-700 °C, >700 °C). Energia é D1/D2.
+    codigosIec: CODIGOS_IEC,
     nbr7274: [
       { gas: 'H₂', valor: 2028, limite: 1500 },
       { gas: 'CH₄', valor: 601, limite: 1000 },
@@ -298,9 +460,26 @@ export const INDICADORES: IndicadoresDeSaude = {
       { linha: 'CO₂', coluna: 'C₂H₂', resultado: 'descarga' },
     ],
     conclusoes: [
-      { metodo: 'Triangulo 1', codigo: 'TD', descricao: 'Pontos quentes' },
-      { metodo: 'Triangulo 4', codigo: 'TD', descricao: 'Pontos quentes' },
-      { metodo: 'Triangulo 5', codigo: 'TD', descricao: 'Pontos quentes' },
+      ...CONCLUSOES_DUVAL_1,
+      // Agora saem do classificador — mas só quando o triângulo 1 licencia a
+      // figura. Sem licença não há veredito: a geometria responderia de
+      // qualquer jeito, e é essa resposta automática que a norma proíbe ler.
+      conclusaoDe({
+        metodo: 'Triangulo 4',
+        codigos: CODIGOS_DUVAL_4,
+        descricoes: DESCRICAO_DE_DUVAL_4,
+        semVeredito:
+          motivoDaFiguraVazia(LEITURAS_DUVAL_4, MOTIVO_DUVAL_4_NAO_APLICAVEL) ??
+          'Sem coleta com os três gases do triângulo 4',
+      }),
+      conclusaoDe({
+        metodo: 'Triangulo 5',
+        codigos: CODIGOS_DUVAL_5,
+        descricoes: DESCRICAO_DE_DUVAL_5,
+        semVeredito:
+          motivoDaFiguraVazia(LEITURAS_DUVAL_5, MOTIVO_DUVAL_5_NAO_APLICAVEL) ??
+          'Sem coleta com os três gases do triângulo 5',
+      }),
     ],
   },
 };

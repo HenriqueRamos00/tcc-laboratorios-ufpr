@@ -1,4 +1,6 @@
-@if (indicadores(); as dados) {
+@switch (estado().tipo) {
+@case ('ok') {
+@if (dados(); as dados) {
   <app-page-header
     [titulo]="'Indicadores de Saúde do Transformador - ' + dados.tag"
     [migalhas]="[
@@ -458,13 +460,24 @@
     }
     </div>
   }
-} @else if (falhou()) {
+}
+}
+@case ('erro') {
   <app-empty-state
     tom="erro"
     icone="cloud_off"
     titulo="Não foi possível carregar os indicadores no momento"
-    descricao="A consulta ao AutoLAB falhou. Tente novamente em instantes."
+    [descricao]="motivoDoErro()"
   />
-} @else {
+}
+@case ('vazio') {
+  <app-empty-state
+    icone="science"
+    titulo="Nenhum ensaio registrado para este equipamento"
+    descricao="Assim que o laboratório lançar a primeira análise, ela aparece aqui."
+  />
+}
+@default {
   <p class="text-sm text-lactec-muted" role="status">Carregando indicadores…</p>
+}
 }
