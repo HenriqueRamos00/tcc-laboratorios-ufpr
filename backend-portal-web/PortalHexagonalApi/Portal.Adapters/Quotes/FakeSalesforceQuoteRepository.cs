@@ -11,6 +11,7 @@ public sealed class FakeSalesforceQuoteRepository : IQuoteRepository
             Id: "quote-1",
             Quote: new Quote(
                 id: "quote-1",
+                opportunityId: "opportunity-1",
                 code: "EAQ_2026_45482_V_1",
                 name: "Análise físico-química de óleo isolante",
                 status: "Pendente de Aceite",
@@ -26,6 +27,7 @@ public sealed class FakeSalesforceQuoteRepository : IQuoteRepository
             Id: "quote-2",
             Quote: new Quote(
                 id: "quote-2",
+                opportunityId: "opportunity-2",
                 code: "EAQ_2026_45483_V_1",
                 name: "Ensaios laboratoriais de materiais",
                 status: "Em Andamento",

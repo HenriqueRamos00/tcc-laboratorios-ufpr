@@ -12,7 +12,7 @@ namespace Portal.Adapters.Quotes;
 
 public sealed class SalesforceQuoteRepository : IQuoteRepository
 {
-    private const string QuoteFields = "Id, Name, Status, Opportunity.StageName, Opportunity.Account.Name, Opportunity.Owner.Name, Email_proprietario_oportunidade__c, Codigo_da_Cotacao__c, Descricao__c, TotalPrice, CreatedDate";
+    private const string QuoteFields = "Id, Name, Status, OpportunityId, Opportunity.Codigo_da_Oportunidade__c, Opportunity.StageName, Opportunity.Description, Opportunity.Account.Name, Opportunity.Owner.Name, Email_proprietario_oportunidade__c, Valor_total_DRE__c, CreatedDate";
     private const string LatestQuotesQuery = $"SELECT {QuoteFields} FROM Quote ORDER BY CreatedDate DESC LIMIT 5";
 
     private static readonly JsonSerializerOptions JsonOptions = new(JsonSerializerDefaults.Web);
@@ -127,11 +127,12 @@ public sealed class SalesforceQuoteRepository : IQuoteRepository
     {
         return new Quote(
             id: record.Id ?? string.Empty,
-            code: record.Code ?? string.Empty,
+            opportunityId: record.OpportunityId ?? string.Empty,
+            code: record.Opportunity?.Code ?? string.Empty,
             name: record.Name ?? string.Empty,
             status: record.Status ?? string.Empty,
             stage: record.Opportunity?.StageName ?? string.Empty,
-            description: record.Description ?? string.Empty,
+            description: record.Opportunity?.Description ?? string.Empty,
             companyName: record.Opportunity?.Account?.Name ?? string.Empty,
             externalContactName: record.Opportunity?.Owner?.Name ?? string.Empty,
             externalContactEmail: record.OwnerEmail ?? string.Empty,
@@ -171,16 +172,13 @@ public sealed class SalesforceQuoteRepository : IQuoteRepository
         [JsonPropertyName("Status")]
         public string? Status { get; set; }
 
-        [JsonPropertyName("Codigo_da_Cotacao__c")]
-        public string? Code { get; set; }
+        [JsonPropertyName("OpportunityId")]
+        public string? OpportunityId { get; set; }
 
         [JsonPropertyName("Email_proprietario_oportunidade__c")]
         public string? OwnerEmail { get; set; }
 
-        [JsonPropertyName("Descricao__c")]
-        public string? Description { get; set; }
-
-        [JsonPropertyName("TotalPrice")]
+        [JsonPropertyName("Valor_total_DRE__c")]
         public decimal? TotalPrice { get; set; }
 
         [JsonPropertyName("CreatedDate")]
@@ -192,6 +190,12 @@ public sealed class SalesforceQuoteRepository : IQuoteRepository
 
     private sealed class SalesforceOpportunityRecord
     {
+        [JsonPropertyName("Codigo_da_Oportunidade__c")]
+        public string? Code { get; set; }
+
+        [JsonPropertyName("Description")]
+        public string? Description { get; set; }
+
         [JsonPropertyName("StageName")]
         public string? StageName { get; set; }
 

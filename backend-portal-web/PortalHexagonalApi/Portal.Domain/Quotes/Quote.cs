@@ -3,6 +3,7 @@ namespace Portal.Domain.Quotes;
 public sealed class Quote
 {
     public string Id { get; }
+    public string OpportunityId { get; }
     public string Code { get; }
     public string Name { get; }
     public string Status { get; }
@@ -16,6 +17,7 @@ public sealed class Quote
 
     public Quote(
         string id,
+        string opportunityId,
         string code,
         string name,
         string status,
@@ -28,6 +30,7 @@ public sealed class Quote
         DateTimeOffset? createdDate)
     {
         Id = id;
+        OpportunityId = opportunityId;
         Code = code;
         Name = name;
         Status = status;
