@@ -12,10 +12,10 @@ import androidx.core.view.WindowInsetsCompat
 import androidx.lifecycle.lifecycleScope
 import br.ufpr.lab_mobile.BuildConfig
 import br.ufpr.lab_mobile.R
-import br.ufpr.lab_mobile.api.ApiClient
-import br.ufpr.lab_mobile.api.AuthEndpoint
-import br.ufpr.lab_mobile.api.LoginRequest
 import br.ufpr.lab_mobile.databinding.ActivityLoginBinding
+import br.ufpr.lab_mobile.service.LoginApiService
+import br.ufpr.lab_mobile.service.LoginService
+import br.ufpr.lab_mobile.service.RetrofitProvider
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -23,7 +23,7 @@ import kotlinx.coroutines.withContext
 
 class LoginActivity : AppCompatActivity() {
     private lateinit var binding: ActivityLoginBinding
-    private lateinit var endpoint: AuthEndpoint
+    private lateinit var loginService: LoginService
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -37,11 +37,13 @@ class LoginActivity : AppCompatActivity() {
             insets
         }
 
-        endpoint = ApiClient.endpoint(getString(R.string.api_base_url))
-        if (getSharedPreferences(SESSION_PREFERENCES, MODE_PRIVATE)
-                .getString(ACCESS_TOKEN, null) != null
-        ) {
-            openQuotes()
+        loginService = LoginService(
+            RetrofitProvider.retrofit(getString(R.string.api_base_url))
+                .create(LoginApiService::class.java),
+        )
+        getSharedPreferences(SESSION_PREFERENCES, MODE_PRIVATE)
+            .getString(ACCESS_TOKEN, null)?.let {
+            openQuotes(it)
             return
         }
         binding.loginButton.setOnClickListener { submit() }
@@ -71,7 +73,7 @@ class LoginActivity : AppCompatActivity() {
         lifecycleScope.launch {
             try {
                 val response = withContext(Dispatchers.IO) {
-                    endpoint.login(LoginRequest(email, password))
+                    loginService.login(email, password)
                 }
 
                 when (val outcome = loginOutcome(response.code(), response.body()?.accessToken)) {
@@ -123,18 +125,22 @@ class LoginActivity : AppCompatActivity() {
         if (binding.keepConnected.isChecked) preferences.putString(ACCESS_TOKEN, accessToken)
         else preferences.remove(ACCESS_TOKEN)
         preferences.apply()
-        openQuotes()
+        openQuotes(accessToken)
     }
 
-    private fun openQuotes() {
-        startActivity(Intent(this, QuotesActivity::class.java))
+    private fun openQuotes(accessToken: String) {
+        startActivity(
+            Intent(this, QuotesActivity::class.java)
+                .putExtra(EXTRA_ACCESS_TOKEN, accessToken),
+        )
         finish()
     }
 
-    private companion object {
+    companion object {
         const val TEST_TOKEN = "local-test-token"
         const val SESSION_PREFERENCES = "session"
         const val ACCESS_TOKEN = "access_token"
+        const val EXTRA_ACCESS_TOKEN = "access_token"
     }
 }
 

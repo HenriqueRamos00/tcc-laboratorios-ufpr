@@ -13,4 +13,7 @@
     <color name="lactec_danger">#D9534F</color>
     <color name="lactec_danger_bg">#FBE7E5</color>
     <color name="lactec_danger_ink">#8E2A24</color>
+    <color name="quote_pending">#B9DDFC</color>
+    <color name="quote_progress">#9DDCF0</color>
+    <color name="quote_finished">#A9DDB5</color>
 </resources>
