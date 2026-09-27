@@ -1,0 +1,94 @@
+<?xml version="1.0" encoding="utf-8"?>
+<com.google.android.material.card.MaterialCardView xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:layout_marginBottom="12dp"
+    app:cardBackgroundColor="@color/lactec_paper"
+    app:cardCornerRadius="6dp"
+    app:cardElevation="0dp"
+    app:strokeColor="@color/lactec_line"
+    app:strokeWidth="1dp">
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:padding="14dp">
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:gravity="top"
+            android:orientation="horizontal">
+            <LinearLayout
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:orientation="vertical">
+                <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="@string/quote_proposal_id" android:textColor="@color/lactec_muted" android:textSize="11sp" />
+                <TextView android:id="@+id/proposalCode" android:layout_width="match_parent" android:layout_height="wrap_content" android:textColor="@color/lactec_ink" android:textSize="13sp" android:textStyle="bold" tools:text="#EAQ_2026_45490_V_2" />
+            </LinearLayout>
+            <TextView
+                android:id="@+id/status"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="8dp"
+                android:background="@drawable/bg_status_pill"
+                android:paddingHorizontal="10dp"
+                android:paddingVertical="5dp"
+                android:textColor="@color/lactec_ink"
+                android:textSize="10sp"
+                tools:text="Em Andamento" />
+        </LinearLayout>
+        <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_marginTop="10dp" android:text="@string/quote_proposal_name" android:textColor="@color/lactec_muted" android:textSize="11sp" />
+        <TextView android:id="@+id/proposalName" android:layout_width="match_parent" android:layout_height="wrap_content" android:textColor="@color/lactec_ink" android:textSize="13sp" android:textStyle="bold" tools:text="Ensaio de materiais compósitos" />
+        <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_marginTop="8dp" android:text="@string/quote_description" android:textColor="@color/lactec_muted" android:textSize="11sp" />
+        <TextView android:id="@+id/description" android:layout_width="match_parent" android:layout_height="wrap_content" android:maxLines="3" android:textColor="@color/lactec_ink" android:textSize="13sp" tools:text="Análise físico-química de óleo isolante" />
+        <GridLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
+            android:columnCount="2"
+            android:rowCount="2">
+            <LinearLayout android:layout_width="0dp" android:layout_height="wrap_content" android:layout_columnWeight="1" android:orientation="vertical" android:paddingEnd="8dp">
+                <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="@string/quote_created_date" android:textColor="@color/lactec_muted" android:textSize="11sp" />
+                <TextView android:id="@+id/createdDate" android:layout_width="match_parent" android:layout_height="wrap_content" android:textColor="@color/lactec_ink" android:textSize="13sp" android:textStyle="bold" tools:text="18/10/2026" />
+            </LinearLayout>
+            <LinearLayout android:layout_width="0dp" android:layout_height="wrap_content" android:layout_columnWeight="1" android:orientation="vertical">
+                <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="@string/quote_company" android:textColor="@color/lactec_muted" android:textSize="11sp" />
+                <TextView android:id="@+id/company" android:layout_width="match_parent" android:layout_height="wrap_content" android:gravity="end" android:textColor="@color/lactec_ink" android:textSize="13sp" android:textStyle="bold" tools:text="Petrobras" />
+            </LinearLayout>
+            <LinearLayout android:layout_width="0dp" android:layout_height="wrap_content" android:layout_columnWeight="1" android:layout_marginTop="8dp" android:orientation="vertical" android:paddingEnd="8dp">
+                <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="@string/quote_estimated_value" android:textColor="@color/lactec_muted" android:textSize="11sp" />
+                <TextView android:id="@+id/price" android:layout_width="match_parent" android:layout_height="wrap_content" android:textColor="@color/lactec_ink" android:textSize="13sp" android:textStyle="bold" tools:text="R$ 18.200,00" />
+            </LinearLayout>
+            <LinearLayout android:layout_width="0dp" android:layout_height="wrap_content" android:layout_columnWeight="1" android:layout_marginTop="8dp" android:orientation="vertical">
+                <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_gravity="end" android:text="@string/quote_external_contact" android:textColor="@color/lactec_muted" android:textSize="11sp" />
+                <TextView android:id="@+id/contact" android:layout_width="match_parent" android:layout_height="wrap_content" android:gravity="end" android:textColor="@color/lactec_ink" android:textSize="13sp" android:textStyle="bold" tools:text="Pedro Bom de Bola" />
+            </LinearLayout>
+        </GridLayout>
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/viewStatus"
+            android:layout_width="wrap_content"
+            android:layout_height="48dp"
+            android:layout_gravity="end"
+            android:layout_marginTop="8dp"
+            android:minWidth="0dp"
+            android:text="@string/quote_view_status"
+            android:textAllCaps="false"
+            android:textColor="@color/white"
+            app:backgroundTint="@color/lactec_primary"
+            app:cornerRadius="6dp" />
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/viewQuote"
+            android:layout_width="wrap_content"
+            android:layout_height="48dp"
+            android:layout_gravity="end"
+            android:minWidth="0dp"
+            android:text="@string/quote_view"
+            android:textAllCaps="false"
+            android:textColor="@color/white"
+            app:backgroundTint="@color/lactec_primary"
+            app:cornerRadius="6dp" />
+    </LinearLayout>
+</com.google.android.material.card.MaterialCardView>

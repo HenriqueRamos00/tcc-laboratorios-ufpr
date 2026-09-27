@@ -18,6 +18,39 @@
     <string name="password_recovery_unavailable">A recuperação de senha ainda não está disponível no aplicativo.</string>
     <string name="copyright">2026 LACTEC</string>
     <string name="quotes_title">Orçamentos</string>
-    <string name="quotes_empty">Nenhum orçamento disponível.</string>
+    <string name="quotes_greeting">Bom dia, Cliente</string>
+    <string name="quotes_subtitle">Gerencie seus orçamentos e acompanhe o progresso.</string>
+    <string name="quotes_list_title">Listagem de Orçamentos Lactec</string>
+    <string name="quotes_search_hint">Pesquisar por proposta ou descrição</string>
+    <string name="quotes_empty">Nenhum orçamento encontrado.</string>
+    <string name="quotes_loading_error">Não foi possível carregar os orçamentos no momento.</string>
+    <string name="session_expired">Sua sessão expirou. Entre novamente.</string>
+    <string name="quote_status_filter">Filtrar orçamentos por status</string>
+    <string name="quote_proposal_id">ID da Proposta</string>
+    <string name="quote_proposal_name">Nome da Proposta</string>
+    <string name="quote_description">Descrição do Serviço</string>
+    <string name="quote_created_date">Data de Criação</string>
+    <string name="quote_company">Empresa</string>
+    <string name="quote_external_contact">Contato Externo</string>
+    <string name="quote_estimated_value">Valor Estimado</string>
+    <string name="quote_view_status">Verificar Status</string>
+    <string name="quote_view">Visualizar Orçamento</string>
+    <string name="quote_details_unavailable">Esta tela será disponibilizada na história correspondente.</string>
+    <string-array name="quote_status_labels">
+        <item>Todos</item>
+        <item>Pendente</item>
+        <item>Em andamento</item>
+        <item>Finalizado</item>
+        <item>Recusado</item>
+        <item>Cancelado</item>
+    </string-array>
+    <string-array name="quote_status_values" translatable="false">
+        <item></item>
+        <item>PendingAcceptance</item>
+        <item>InProgress</item>
+        <item>Finished</item>
+        <item>Refused</item>
+        <item>Cancelled</item>
+    </string-array>
     <string name="api_base_url" translatable="false">http://10.0.2.2:5125/api</string>
 </resources>

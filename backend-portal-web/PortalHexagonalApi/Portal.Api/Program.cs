@@ -25,7 +25,7 @@ builder.Services.AddControllers();
 builder.Services.AddScoped<IQuoteUseCase, QuoteService>();
 builder.Services.AddScoped<ILabResultUseCase, LabResultService>();
 
-builder.Services.AddHttpClient<IQuoteRepository, SalesforceQuoteRepository>();
+builder.Services.AddScoped<IQuoteRepository, FakeSalesforceQuoteRepository>();
 builder.Services.AddScoped<ILabResultRepository, FakeSqlServerLabResultRepository>();
 builder.Services.AddSingleton(
     builder.Configuration.GetSection(SalesforceOptions.SectionName).Get<SalesforceOptions>() ?? new SalesforceOptions());

@@ -1,0 +1,3 @@
+<resources>
+    <string name="api_base_url" translatable="false">http://127.0.0.1:5125/api</string>
+</resources>
