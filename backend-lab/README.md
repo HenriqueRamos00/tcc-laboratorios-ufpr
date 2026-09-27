@@ -34,7 +34,9 @@ src/main/java/br/ufpr/tcc/backend_lab/
 │   ├── exception/
 │   ├── model/entity/
 │   └── repository/
-├── infrastructure/config/
+├── infrastructure/
+│   ├── config/
+│   └── security/
 └── presentation/
     ├── advice/
     └── rest/
@@ -104,6 +106,48 @@ Também é possível consultar diretamente:
 curl http://localhost:8080/health
 ```
 
+### Login interno
+
+Para entrar no portal interno, envie as credenciais para:
+
+```http
+POST /api/auth/internal/login
+Content-Type: application/json
+```
+
+Exemplo de requisição:
+
+```json
+{
+  "email": "admin@exemplo.com",
+  "password": "senha"
+}
+```
+
+Quando as credenciais forem válidas, a API retorna o token e os dados básicos do usuário:
+
+```json
+{
+  "accessToken": "<jwt>",
+  "tokenType": "Bearer",
+  "expiresIn": 3600,
+  "user": {
+    "id": 1,
+    "name": "Administrador",
+    "email": "admin@exemplo.com",
+    "role": "ADMIN"
+  }
+}
+```
+
+Envie o token nas demais requisições protegidas:
+
+```http
+Authorization: Bearer <jwt>
+```
+
+Para criar um administrador ou técnico na primeira execução local, preencha as variáveis `AUTH_SEED_ADMIN_*` e/ou `AUTH_SEED_TECHNICIAN_*` no arquivo `.env`. As senhas são armazenadas com BCrypt. Esse recurso serve apenas para preparar o ambiente; o cadastro completo de usuários será implementado posteriormente.
+
 ## Execução local
 
 Inicie um PostgreSQL local com um banco chamado `backend_lab` e configure as variáveis de conexão. Em seguida, execute:
@@ -120,7 +164,9 @@ As principais variáveis da aplicação são:
 | `DB_URL` | `jdbc:postgresql://localhost:5432/backend_lab` | URL JDBC do PostgreSQL |
 | `DB_USERNAME` | `backend_lab` | Usuário do banco |
 | `DB_PASSWORD` | `backend_lab` | Senha do banco |
-| `JPA_DDL_AUTO` | `validate` | Estratégia de schema do Hibernate |
+| `JPA_DDL_AUTO` | `update` | Estratégia de schema do Hibernate |
+| `JWT_SECRET` | valor de desenvolvimento | Chave de assinatura do JWT; altere em ambientes reais |
+| `JWT_EXPIRATION_SECONDS` | `3600` | Validade do JWT em segundos |
 
 O arquivo `.env` é local e não deve conter credenciais reais versionadas. Use `.env.example` como referência.
 
