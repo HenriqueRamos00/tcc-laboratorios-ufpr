@@ -1,4 +1,4 @@
-// Gerador de polígonos a partir de uma tabela de desigualdades — oráculo dos
+// Gerador de polígonos a partir de uma tabela de desigualdades - oráculo dos
 // testes dos triângulos 4 e 5. NÃO é código de produção: nada no aplicativo
 // importa este arquivo, porque a classificação é sempre pela tabela, nunca
 // por ponto-em-polígono.
@@ -9,7 +9,7 @@
 // triângulo 1 não precisava e que por isso não foram lá mexer:
 //
 //  1. CORTES DIAGONAIS. No triângulo 4 há fronteiras em %H₂, que é o gás do
-//     vértice de cima — no plano (b, c) elas viram retas b + c = k. O
+//     vértice de cima - no plano (b, c) elas viram retas b + c = k. O
 //     triângulo 1 só tinha uma diagonal (a de PD) e a tratava à mão.
 //  2. ZONAS COM MAIS DE UM ANEL. A zona O do triângulo 5 é publicada em duas
 //     regiões disjuntas, então o gerador devolve uma lista de anéis por
@@ -115,7 +115,7 @@ export interface Particao<Codigo extends string> {
 
 /**
  * Regenera as zonas a partir da tabela. Devolve, por código, a lista de anéis
- * — mais de um quando a zona é publicada em regiões disjuntas.
+ * - mais de um quando a zona é publicada em regiões disjuntas.
  */
 export function gerarZonas<Codigo extends string>(particao: Particao<Codigo>): Map<Codigo, XY[][]> {
   const { cortesB, cortesC, diagonais, classificar } = particao;

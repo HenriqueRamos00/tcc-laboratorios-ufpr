@@ -18,7 +18,7 @@ export const routes: Routes = [
         path: 'login',
         loadComponent: () =>
           import('@/app/pages/login/login.component').then((modulo) => modulo.LoginComponent),
-        title: 'Acessar — Portal Lactec',
+        title: 'Acessar - Portal Lactec',
       },
     ],
   },
@@ -37,7 +37,7 @@ export const routes: Routes = [
           import('@/app/pages/cliente/orcamentos/orcamentos.component').then(
             (modulo) => modulo.ClientOrcamentosComponent,
           ),
-        title: 'Orçamentos — Portal Lactec',
+        title: 'Orçamentos - Portal Lactec',
       },
       {
         path: 'orcamentos/:id',
@@ -45,7 +45,7 @@ export const routes: Routes = [
           import('@/app/pages/cliente/orcamentos/detalhe/orcamento-detalhe.component').then(
             (modulo) => modulo.OrcamentoDetalheComponent,
           ),
-        title: 'Detalhes do orçamento — Portal Lactec',
+        title: 'Detalhes do orçamento - Portal Lactec',
       },
       {
         path: 'orcamentos/:id/aceite',
@@ -53,7 +53,7 @@ export const routes: Routes = [
           import('@/app/pages/cliente/orcamentos/aceite/termo-de-aceite.component').then(
             (modulo) => modulo.TermoDeAceiteComponent,
           ),
-        title: 'Termo de aceite — Portal Lactec',
+        title: 'Termo de aceite - Portal Lactec',
       },
       {
         path: 'relatorios',
@@ -61,7 +61,7 @@ export const routes: Routes = [
           import('@/app/pages/cliente/relatorios/relatorios.component').then(
             (modulo) => modulo.ClientRelatoriosComponent,
           ),
-        title: 'Relatórios — Portal Lactec',
+        title: 'Relatórios - Portal Lactec',
       },
       {
         path: 'equipamentos',
@@ -69,7 +69,7 @@ export const routes: Routes = [
           import('@/app/pages/cliente/equipamentos/equipamentos.component').then(
             (modulo) => modulo.ClientEquipamentosComponent,
           ),
-        title: 'Equipamentos — Portal Lactec',
+        title: 'Equipamentos - Portal Lactec',
       },
       {
         path: 'equipamentos/:id',
@@ -77,7 +77,7 @@ export const routes: Routes = [
           import('@/app/pages/cliente/equipamentos/detalhe/equipamento-detalhe.component').then(
             (modulo) => modulo.EquipamentoDetalheComponent,
           ),
-        title: 'Detalhes do equipamento — Portal Lactec',
+        title: 'Detalhes do equipamento - Portal Lactec',
       },
       {
         path: 'equipamentos/:id/indicadores',
@@ -85,7 +85,7 @@ export const routes: Routes = [
           import('@/app/pages/cliente/equipamentos/indicadores/indicadores.component').then(
             (modulo) => modulo.IndicadoresComponent,
           ),
-        title: 'Indicadores de saúde — Portal Lactec',
+        title: 'Indicadores de saúde - Portal Lactec',
       },
     ],
   },
@@ -94,7 +94,7 @@ export const routes: Routes = [
     path: '404',
     loadComponent: () =>
       import('@/app/pages/errors/not-found/not-found.component').then((modulo) => modulo.NotFoundComponent),
-    title: 'Página não encontrada — Portal Lactec',
+    title: 'Página não encontrada - Portal Lactec',
   },
   { path: '**', redirectTo: '404' },
 ];

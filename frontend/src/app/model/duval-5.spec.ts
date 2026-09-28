@@ -14,7 +14,7 @@ import { areaTotal, gerarZonas, normalizar, type XY } from './particao-ternaria.
 // tabela de desigualdades e falha se alguém editar um vértice na mão.
 //
 // Plano (b, c) = (%C₂H₄, %C₂H₆), com a = %CH₄ = 100 − b − c. A Tabela D.4 não
-// tem fronteira em %CH₄ — ele é o vértice dependente — então não há diagonal.
+// tem fronteira em %CH₄ - ele é o vértice dependente - então não há diagonal.
 
 const PARTICAO = {
   cortesB: [0, 1, 10, 35, 50, 70, 100],
@@ -93,7 +93,7 @@ describe('Triângulo de Duval 5', () => {
 
   it('respeita as desigualdades meia-abertas da Tabela D.4', () => {
     expect(classificarDuval5({ a: 98, b: 0, c: 2 })).toBe('PD');
-    // %C₂H₆ = 14 (e não 15) separa PD/O de S — decisão documentada no módulo.
+    // %C₂H₆ = 14 (e não 15) separa PD/O de S - decisão documentada no módulo.
     expect(classificarDuval5({ a: 86, b: 0, c: 14 })).toBe('S');
     expect(classificarDuval5({ a: 85.6, b: 0, c: 14.4 })).toBe('S');
     expect(classificarDuval5({ a: 86.1, b: 0, c: 13.9 })).toBe('PD');

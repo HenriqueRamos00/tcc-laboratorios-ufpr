@@ -1,4 +1,4 @@
-// Triângulo de Duval 4 — norma, classificação e geometria.
+// Triângulo de Duval 4 - norma, classificação e geometria.
 //
 // PROVENIÊNCIA E GRAU DE CONFIANÇA (leia antes de mexer num número):
 //
@@ -14,18 +14,18 @@
 // decodificada do PDF da norma (a D.4, do triângulo 5, foi). Convergem, com
 // os mesmos valores: (a) as retas rotuladas na figura publicada
 // (%H₂ = 9 e 15, %CH₄ = 2, 15 e 36, %C₂H₆ = 1, 24, 30 e 46), lidas na
-// imagem; (b) quatro implementações independentes — insatiablycivil/
+// imagem; (b) quatro implementações independentes - insatiablycivil/
 // C57104wMCM (R, que cita a Tabela D.3), ekah1500/DGA_Diagnostic (Python e
 // MATLAB), ToniMellin/dga-diagtool e a calculadora TriboTech.
 //
-// DIVERGÊNCIA CONHECIDA E DECISÃO TOMADA — zona C: o autor da implementação
+// DIVERGÊNCIA CONHECIDA E DECISÃO TOMADA - zona C: o autor da implementação
 // em R anota que a Tabela D.3 impressa traria `%CH₄ >= 36 E %C₂H₆ >= 24` e
 // que isso é erro de digitação da norma. Adotamos `%C₂H₆ < 24`, porque é o
 // que a figura publicada desenha (a zona C fica do lado de BAIXO C₂H₆ da
 // reta %C₂H₆ = 24) e é o que as quatro implementações fazem. Quem tiver
 // acesso institucional ao PDF deve conferir esta linha da Tabela D.3.
 //
-// LACUNA ADMITIDA — a cúspide %CH₄ < 2: a Cláusula D.4 da norma cita um
+// LACUNA ADMITIDA - a cúspide %CH₄ < 2: a Cláusula D.4 da norma cita um
 // código "R" ("Faults R will appear at the very top of Triangle 4 (H2 only)")
 // que a tabela de zonas NÃO carrega. Todas as implementações jogam essa
 // fresta em S. Seguimos o consenso; um ponto de H₂ quase puro sai como S,
@@ -33,7 +33,7 @@
 //
 // A TABELA DE DESIGUALDADES É A FONTE ÚNICA, como no triângulo 1: os
 // polígonos são artefato derivado, só para desenho. Nada classifica por
-// ponto-em-polígono — ray-casting é indefinido em cima da aresta e as
+// ponto-em-polígono - ray-casting é indefinido em cima da aresta e as
 // amostras reais caem justamente perto das arestas.
 //
 // Convenção de eixos: a = %H₂ (vértice de cima), b = %CH₄ (direita),
@@ -119,7 +119,7 @@ const ponto = (a: number, b: number, c: number): PontoTernario => ({ a, b, c });
 
 /**
  * Polígonos derivados da tabela acima, cobrindo o triângulo inteiro sem
- * buraco nem sobreposição — `duval-4.spec.ts` regenera esta lista a partir
+ * buraco nem sobreposição - `duval-4.spec.ts` regenera esta lista a partir
  * das desigualdades e falha se alguém editar um vértice na mão.
  *
  * A versão anterior era desenhada "pelo layout da tela": tinha as retas

@@ -1,0 +1,26 @@
+<section class="mx-auto flex w-full max-w-5xl flex-col gap-6">
+  <header>
+    <p class="m-0 text-xs font-semibold uppercase tracking-[0.16em] text-lactec-primary-dark">
+      Portal Interno Lactec
+    </p>
+    <h1 class="display mt-2 mb-0 text-2xl font-semibold tracking-tight text-lactec-nav md:text-3xl">
+      {{ title() }}
+    </h1>
+    <p class="mt-2 mb-0 text-sm text-lactec-muted">{{ description() }}</p>
+  </header>
+
+  <div class="flex min-h-64 flex-col items-center justify-center gap-4 rounded-xl border border-lactec-line bg-lactec-paper p-8 text-center shadow-sm">
+    <span class="grid size-14 place-items-center rounded-full bg-lactec-line-soft text-lactec-primary-dark">
+      <mat-icon class="icone-36">{{ icon() }}</mat-icon>
+    </span>
+    <div class="max-w-lg">
+      <h2 class="display m-0 text-lg font-semibold text-lactec-ink">
+        Módulo em preparação
+      </h2>
+      <p class="mt-2 mb-0 text-sm leading-relaxed text-lactec-muted">
+        Esta área já está disponível na navegação do seu perfil. A tela e as operações deste
+        módulo serão entregues nas próximas etapas do portal.
+      </p>
+    </div>
+  </div>
+</section>

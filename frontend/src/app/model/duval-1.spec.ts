@@ -4,7 +4,7 @@ import type { PontoTernario } from './health';
 // Este arquivo é o oráculo dos polígonos: regenera ZONAS_DUVAL_1 a partir da
 // tabela de desigualdades e falha se alguém editar um vértice na mão. A
 // geometria vive AQUI, e não no código de produção, porque nada no aplicativo
-// precisa dela em tempo de execução — a classificação é sempre pela tabela.
+// precisa dela em tempo de execução - a classificação é sempre pela tabela.
 //
 // Trabalhamos no plano (b, c) = (%C₂H₄, %C₂H₂), com a = 100 − b − c. Todas as
 // fronteiras da tabela são retas b = k ou c = k, mais a diagonal de PD

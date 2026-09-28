@@ -285,11 +285,11 @@ export class DuvalTriangleComponent {
   /** A leitura sob o cursor ganha precedência: é o dado, a zona é o contexto. */
   protected readonly dica = computed(() => {
     const ponto = this.pontoEmFoco();
-    if (ponto) return `${ponto.data} — ${ponto.resumo}`;
+    if (ponto) return `${ponto.data} - ${ponto.resumo}`;
     const codigo = this.emFoco();
     if (!codigo) return '';
     const zona = this.zonas().find((z) => z.codigo === codigo);
-    return zona ? `${zona.codigo} — ${zona.descricao}` : '';
+    return zona ? `${zona.codigo} - ${zona.descricao}` : '';
   });
 
   /** Zona em foco salta; zona do diagnóstico fica sólida; o resto recua. */
