@@ -1,7 +1,7 @@
 // Config do karma existe por um motivo só: rodar a suíte dentro do contêiner.
 //
 // O Chromium recusa executar como root sem `--no-sandbox`, e rodar como
-// usuário comum também não resolve — o contêiner nega a criação de namespace
+// usuário comum também não resolve - o contêiner nega a criação de namespace
 // de usuário ("Operation not permitted"). Sem um launcher com o sandbox
 // desligado, `ng test` compila a suíte e nunca a executa, que é pior do que
 // não ter teste: o verde da compilação passa por verde de teste.

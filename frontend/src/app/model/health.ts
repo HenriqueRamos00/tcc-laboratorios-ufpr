@@ -77,7 +77,7 @@ export interface PontoTernario {
  *
  * - `incomputavel`: o laboratório não reportou um dos três gases. Falta dado.
  * - `naoAplicavel`: os gases existem, mas a norma proíbe ler esta figura para
- *   esta falha (os triângulos 4 e 5 são refinamentos condicionais do 1 —
+ *   esta falha (os triângulos 4 e 5 são refinamentos condicionais do 1 -
  *   IEEE Std C57.104-2019, p. 66). Aqui sobra dado e falta licença.
  *
  * Os dois continuam na lista, em vez de sumir: sumir com a coleta faz a tela

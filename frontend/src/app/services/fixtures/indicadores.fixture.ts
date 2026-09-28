@@ -3,7 +3,7 @@
 // As zonas dos três triângulos de Duval saíram daqui: agora são derivadas das
 // tabelas normativas em `model/duval-1.ts`, `duval-4.ts` e `duval-5.ts`. As
 // dos triângulos 4 e 5 eram desenhadas "pelo layout da tela" e davam
-// diagnóstico diferente do publicado em 68,0% e 67,5% da área — ver a
+// diagnóstico diferente do publicado em 68,0% e 67,5% da área - ver a
 // proveniência no topo de cada módulo.
 //
 // Os triângulos 4 e 5 também passaram a respeitar a regra de aplicabilidade:
@@ -53,7 +53,7 @@ const DATAS_FQ = ['20/04/2021', '20/05/2022', '19/09/2023', '26/04/2024', '26/10
 //
 // Os pontos NÃO são chumbados: saem dos mesmos ppm que alimentam a tabela de
 // gases, senão o desenho e a tabela divergem sem ninguém notar. Três das cinco
-// coletas não têm C₂H₂ reportado e por isso não viram ponto — elas continuam
+// coletas não têm C₂H₂ reportado e por isso não viram ponto - elas continuam
 // na lista, como `incomputavel`, para a tela poder dizer isso em voz alta.
 const COLETAS_DE_GASES: readonly Coleta[] = [
       {
@@ -109,7 +109,7 @@ function leiturasDoDuval1(coletas: readonly Coleta[]): readonly LeituraDoTriangu
 const LEITURAS_DUVAL_1 = leiturasDoDuval1(COLETAS_DE_GASES);
 
 // Um código por coleta, alinhado com COLETAS_DE_GASES; `null` quando a coleta
-// não deu para computar. É esta lista que licencia os triângulos 4 e 5 —
+// não deu para computar. É esta lista que licencia os triângulos 4 e 5 -
 // coleta a coleta, porque a licença é por falha diagnosticada, não pelo lote.
 const CODIGO_DUVAL_1_POR_COLETA: readonly (CodigoDeDuval1 | null)[] = LEITURAS_DUVAL_1.map(
   (leitura) => (leitura.tipo === 'plotada' ? classificarDuval1(leitura.ponto) : null),
@@ -123,7 +123,7 @@ const CODIGOS_DUVAL_1: readonly CodigoDeDuval1[] = CODIGO_DUVAL_1_POR_COLETA.fil
 //
 // IEEE Std C57.104-2019, p. 66: o triângulo 4 só vale depois de PD, T1 ou T2;
 // o 5, depois de T2 ou T3; nenhum dos dois vale para D1 ou D2. Como a
-// geometria cobre o simplex inteiro, os dois SEMPRE devolvem uma zona — é por
+// geometria cobre o simplex inteiro, os dois SEMPRE devolvem uma zona - é por
 // isso que o portão precisa estar no código, e não no bom senso de quem lê.
 
 /**
@@ -197,7 +197,7 @@ const CODIGOS_DUVAL_5: readonly CodigoDeDuval5[] = LEITURAS_DUVAL_5.filter(
 
 /**
  * Motivo a exibir quando NENHUMA coleta licenciou a figura. Se faltou gás, o
- * motivo não é esse — quem explica é a contagem de incomputáveis.
+ * motivo não é esse - quem explica é a contagem de incomputáveis.
  */
 function motivoDaFiguraVazia(
   leituras: readonly LeituraDoTriangulo[],
@@ -237,7 +237,7 @@ const CONCLUSOES_DUVAL_1: readonly ConclusaoDeDiagnostico[] = [
 /**
  * Conclusão de um triângulo condicional: o que a tabela normativa diz sobre a
  * coleta mais recente que a figura pôde ler. Sem leitura licenciada não sai
- * veredito — emitir código sobre figura não licenciada é justamente o erro
+ * veredito - emitir código sobre figura não licenciada é justamente o erro
  * que esta tela cometia ao desenhar os três triângulos para toda amostra.
  */
 function conclusaoDe<C extends string>(opcoes: {
@@ -249,7 +249,7 @@ function conclusaoDe<C extends string>(opcoes: {
   const ultimo = opcoes.codigos.at(-1);
   return ultimo
     ? { metodo: opcoes.metodo, codigo: ultimo, descricao: opcoes.descricoes[ultimo] }
-    : { metodo: opcoes.metodo, codigo: '—', descricao: opcoes.semVeredito };
+    : { metodo: opcoes.metodo, codigo: '-', descricao: opcoes.semVeredito };
 }
 
 export const INDICADORES: IndicadoresDeSaude = {
@@ -343,7 +343,7 @@ export const INDICADORES: IndicadoresDeSaude = {
         chave: 'densidade',
         nome: 'Densidade a 20/4°C (g/mL)',
         metodo: 'NBR 14065',
-        limite: '—',
+        limite: '-',
         resultado: 0.9,
         classificacao: 'nao-conforme',
       },
@@ -461,7 +461,7 @@ export const INDICADORES: IndicadoresDeSaude = {
     ],
     conclusoes: [
       ...CONCLUSOES_DUVAL_1,
-      // Agora saem do classificador — mas só quando o triângulo 1 licencia a
+      // Agora saem do classificador - mas só quando o triângulo 1 licencia a
       // figura. Sem licença não há veredito: a geometria responderia de
       // qualquer jeito, e é essa resposta automática que a norma proíbe ler.
       conclusaoDe({

@@ -1,0 +1,31 @@
+services:
+  web:
+    build:
+      context: .
+      target: dev
+    ports:
+      - "${PORTAL_INTERNO_DEV_PORT:-4201}:4201"
+    environment:
+      API_PROXY_TARGET: ${API_PROXY_TARGET:-http://host.docker.internal:8080}
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    volumes:
+      - .:/app
+      - /app/node_modules
+      - /app/.angular
+    stdin_open: true
+    tty: true
+
+  web-prod:
+    profiles: ["prod"]
+    build:
+      context: .
+      target: prod
+    ports:
+      - "${PORTAL_INTERNO_PORT:-8081}:80"
+    environment:
+      API_PROXY_TARGET: ${API_PROXY_TARGET:-http://host.docker.internal:8080}
+      NGINX_ENVSUBST_FILTER: "^API_PROXY_TARGET$$"
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    restart: unless-stopped

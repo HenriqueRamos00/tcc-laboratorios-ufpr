@@ -22,7 +22,7 @@ COPY package.json package-lock.json ./
 #
 # Nota: `lmdb` e `msgpackr-extract` (cache em disco do @angular/build) não têm
 # prebuild musl. São opcionais, o npm os pula e o Angular cai no cache em
-# memória — o build funciona, só não reaproveita cache entre execuções.
+# memória - o build funciona, só não reaproveita cache entre execuções.
 RUN npm ci --no-audit --no-fund
 
 # ---------- dev: servidor de desenvolvimento ----------
@@ -30,7 +30,7 @@ FROM node:${NODE_VERSION}-alpine AS dev
 WORKDIR /app
 ENV NODE_ENV=development
 # Chromium para o `ng test`: o karma sobe ChromeHeadless e, sem binário, a suíte
-# compila mas nunca executa — um teste que não roda não protege nada.
+# compila mas nunca executa - um teste que não roda não protege nada.
 # CHROME_BIN é a variável que o karma-chrome-launcher procura.
 RUN apk add --no-cache chromium
 ENV CHROME_BIN=/usr/bin/chromium-browser
@@ -54,6 +54,6 @@ COPY docker/nginx.conf /etc/nginx/conf.d/default.conf
 COPY --from=build /app/dist/portal-web/browser /usr/share/nginx/html
 EXPOSE 80
 # 127.0.0.1 e não `localhost`: dentro do contêiner o localhost resolve primeiro
-# para ::1, e o nginx aqui só escuta em IPv4 — daria "connection refused".
+# para ::1, e o nginx aqui só escuta em IPv4 - daria "connection refused".
 HEALTHCHECK --interval=30s --timeout=3s --start-period=5s \
   CMD wget --quiet --tries=1 --spider http://127.0.0.1/ || exit 1

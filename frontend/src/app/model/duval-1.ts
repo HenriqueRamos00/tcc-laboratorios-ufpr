@@ -1,10 +1,10 @@
-// Triângulo de Duval 1 — norma, classificação e geometria.
+// Triângulo de Duval 1 - norma, classificação e geometria.
 //
 // A TABELA DE DESIGUALDADES ABAIXO É A FONTE ÚNICA. Os polígonos de
 // ZONAS_DUVAL_1 são artefato derivado dela, só para desenho: nada no
 // aplicativo classifica por ponto-em-polígono. O motivo é que ray-casting é
 // indefinido em cima da aresta, e as amostras reais caem justamente perto das
-// arestas — medimos 199 divergências entre tabela e geometria, todas sobre
+// arestas - medimos 199 divergências entre tabela e geometria, todas sobre
 // fronteira e nenhuma no interior. Quem decide a falha é a tabela.
 //
 // As desigualdades são meia-abertas e avaliadas NESTA ORDEM: a primeira que
@@ -39,7 +39,7 @@ export const DESCRICAO_DE_DUVAL_1: Record<CodigoDeDuval1, string> = {
 
 /**
  * Converte ppm em percentual ternário. Devolve `null` quando a coleta não
- * permite o diagnóstico — na prática, quando o laboratório não reportou o
+ * permite o diagnóstico - na prática, quando o laboratório não reportou o
  * C₂H₂. `null` aqui é "não medido", que é diferente de zero medido: zero é um
  * ponto legítimo na base do triângulo, ausência não é ponto nenhum.
  */
@@ -78,7 +78,7 @@ const ponto = (a: number, b: number, c: number): PontoTernario => ({ a, b, c });
 
 /**
  * Polígonos derivados da tabela acima, cobrindo o triângulo inteiro sem buraco
- * nem sobreposição — `duval-1.spec.ts` regenera esta lista a partir das
+ * nem sobreposição - `duval-1.spec.ts` regenera esta lista a partir das
  * desigualdades e falha se alguém editar um vértice na mão.
  *
  * A versão anterior deixava 13,2% do triângulo sem zona, na cunha

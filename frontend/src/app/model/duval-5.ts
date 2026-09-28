@@ -1,10 +1,10 @@
-// Triângulo de Duval 5 — norma, classificação e geometria.
+// Triângulo de Duval 5 - norma, classificação e geometria.
 //
 // PROVENIÊNCIA E GRAU DE CONFIANÇA (leia antes de mexer num número):
 //
 // Fonte citável: IEEE Std C57.104-2019, Anexo D, Tabela D.4 / Figura D.4
 // (p. 66). Aqui a tabela impressa foi de fato DECODIFICADA do PDF tipografado
-// da norma, célula a célula — confiança ALTA, maior que a do triângulo 4.
+// da norma, célula a célula - confiança ALTA, maior que a do triângulo 4.
 // NÃO cite como "Duval (2008)": o artigo original é pago e não foi lido.
 //
 // Preâmbulo da Tabela D.4, verbatim: "Numerical values for fault zone
@@ -24,18 +24,18 @@
 //
 // 2. %C₂H₄ = 48 vs 50 (fronteira da zona C). A Tabela D.4 diz 50, e é o que
 //    ADOTAMOS. O "48" vem de uma figura redesenhada; a tentativa de dirimir
-//    medindo o pixel da reta foi inconclusiva (±1–2 pontos percentuais).
+//    medindo o pixel da reta foi inconclusiva (±1-2 pontos percentuais).
 //
 // LACUNA DA PRÓPRIA NORMA, FECHADA DE PROPÓSITO: a Tabela D.4 é disjunta mas
 // NÃO é total. A fresta %C₂H₄ ≥ 1 e < 10 com %C₂H₆ < 2 não casa com nenhuma
-// linha publicada — 0,36% da área fica sem zona. Nossa tabela a atribui a O,
+// linha publicada - 0,36% da área fica sem zona. Nossa tabela a atribui a O,
 // que é o que toda implementação faz. Isto é decisão nossa, não texto da
 // norma, e está dito aqui para a banca não descobrir sozinha.
 //
 // NOMENCLATURA: os rótulos publicados são PD, O, S, T2, T3, C e ND. A versão
 // anterior deste projeto usava "T2-H" e "T3-H". "T3-H" existe, mas é zona do
 // PENTÁGONO 2 de Duval (falha térmica só no óleo, sem carbonização de papel);
-// "T2-H" não existe em fonte nenhuma — em Cheim, Duval & Haider (Energies
+// "T2-H" não existe em fonte nenhuma - em Cheim, Duval & Haider (Energies
 // 2020, 13, 2859), com Duval como coautor, "T3-H" aparece 18 vezes e "T2-H"
 // zero, porque falhas T2 quase sempre envolvem carbonização de papel.
 //
@@ -82,7 +82,7 @@ export const DESCRICAO_DE_DUVAL_5: Record<CodigoDeDuval5, string> = {
  * D1 or D2".
  *
  * Como a geometria cobre o simplex inteiro, o triângulo 5 SEMPRE devolve uma
- * zona — inclusive para amostras em que a norma proíbe usá-lo. Desenhar os
+ * zona - inclusive para amostras em que a norma proíbe usá-lo. Desenhar os
  * três triângulos incondicionalmente fabricava veredito com cara de confiante
  * para toda coleta; o portão existe para isso não acontecer.
  */
@@ -96,7 +96,7 @@ export const MOTIVO_DUVAL_5_NAO_APLICAVEL =
 
 /**
  * Converte ppm em percentual ternário. `null` quando a coleta não permite o
- * diagnóstico — ausência de gás NÃO é zero medido.
+ * diagnóstico - ausência de gás NÃO é zero medido.
  */
 export function duval5(gases: GasesDoDuval5): PontoTernario | null {
   const { ch4, c2h4, c2h6 } = gases;
@@ -120,7 +120,7 @@ export function gasAusenteDoDuval5(gases: GasesDoDuval5): string | null {
  * partição.
  *
  * A terceira linha (`b < 10` sem condição em c) é a que fecha a fresta que a
- * norma deixou sem zona — ver o cabeçalho deste arquivo.
+ * norma deixou sem zona - ver o cabeçalho deste arquivo.
  */
 export function classificarDuval5(ponto: PontoTernario): CodigoDeDuval5 {
   const { b, c } = ponto;
@@ -137,7 +137,7 @@ export function classificarDuval5(ponto: PontoTernario): CodigoDeDuval5 {
 const ponto = (a: number, b: number, c: number): PontoTernario => ({ a, b, c });
 
 /**
- * Polígonos derivados da tabela acima — `duval-5.spec.ts` os regenera e falha
+ * Polígonos derivados da tabela acima - `duval-5.spec.ts` os regenera e falha
  * se alguém editar um vértice na mão.
  *
  * A zona O aparece em DOIS anéis (um no topo, junto do vértice de CH₄, outro
