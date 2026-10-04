@@ -1,0 +1,116 @@
+name: tcc-laboratorios
+
+services:
+  postgres:
+    image: postgres:17-alpine
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-backend_lab}
+      POSTGRES_USER: ${POSTGRES_USER:-backend_lab}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-backend_lab}
+    ports:
+      - "${POSTGRES_PORT:-5432}:5432"
+    volumes:
+      - backend-lab-postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  backend-lab:
+    build:
+      context: ./backend-lab
+    environment:
+      SERVER_PORT: 8080
+      DB_URL: jdbc:postgresql://postgres:5432/${POSTGRES_DB:-backend_lab}
+      DB_USERNAME: ${POSTGRES_USER:-backend_lab}
+      DB_PASSWORD: ${POSTGRES_PASSWORD:-backend_lab}
+      JPA_DDL_AUTO: ${JPA_DDL_AUTO:-update}
+      JWT_SECRET: ${JWT_SECRET:-change-this-secret-with-at-least-32-characters}
+      JWT_EXPIRATION_SECONDS: ${JWT_EXPIRATION_SECONDS:-3600}
+      AUTH_SEED_ADMIN_NAME: ${AUTH_SEED_ADMIN_NAME:-}
+      AUTH_SEED_ADMIN_EMAIL: ${AUTH_SEED_ADMIN_EMAIL:-}
+      AUTH_SEED_ADMIN_PASSWORD: ${AUTH_SEED_ADMIN_PASSWORD:-}
+      AUTH_SEED_TECHNICIAN_NAME: ${AUTH_SEED_TECHNICIAN_NAME:-}
+      AUTH_SEED_TECHNICIAN_EMAIL: ${AUTH_SEED_TECHNICIAN_EMAIL:-}
+      AUTH_SEED_TECHNICIAN_PASSWORD: ${AUTH_SEED_TECHNICIAN_PASSWORD:-}
+    ports:
+      - "${APP_PORT:-8080}:8080"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:8080/health | grep -q '\"status\":\"UP\"'"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
+
+  portal-api:
+    build:
+      context: ./backend-portal-web
+    env_file:
+      - path: ./backend-portal-web/.env
+        required: false
+    environment:
+      ASPNETCORE_URLS: http://+:8080
+    ports:
+      - "5125:8080"
+
+  frontend:
+    build:
+      context: ./frontend
+      target: dev
+    ports:
+      - "4200:4200"
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules
+      - /app/.angular
+    depends_on:
+      portal-api:
+        condition: service_started
+    stdin_open: true
+    tty: true
+
+  frontend-interno:
+    build:
+      context: ./frontend-interno
+      target: dev
+    environment:
+      API_PROXY_TARGET: http://backend-lab:8080
+    ports:
+      - "${PORTAL_INTERNO_DEV_PORT:-4201}:4201"
+    volumes:
+      - ./frontend-interno:/app
+      - /app/node_modules
+      - /app/.angular
+    depends_on:
+      backend-lab:
+        condition: service_healthy
+    stdin_open: true
+    tty: true
+
+  app-android:
+    profiles: [android]
+    build:
+      context: ./app-android
+      args:
+        UID: ${HOST_UID:-1000}
+        GID: ${HOST_GID:-1000}
+    working_dir: /workspace
+    environment:
+      GRADLE_OPTS: -Dorg.gradle.daemon=false
+      ADB_DEVICE: ${ADB_DEVICE:-}
+    volumes:
+      - ./app-android:/workspace
+      - app-android-gradle-home:/home/dev/.gradle
+      - app-android-adb-home:/home/dev/.android
+    stdin_open: true
+    tty: true
+
+volumes:
+  backend-lab-postgres-data:
+    name: ${LAB_POSTGRES_VOLUME:-tcc-laboratorios-postgres}
+  app-android-gradle-home:
+  app-android-adb-home:

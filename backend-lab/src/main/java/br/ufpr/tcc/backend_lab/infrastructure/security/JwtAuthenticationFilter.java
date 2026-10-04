@@ -1,5 +1,6 @@
 package br.ufpr.tcc.backend_lab.infrastructure.security;
 
+import br.ufpr.tcc.backend_lab.domain.repository.UsuarioRepository;
 import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.JwtException;
 import jakarta.servlet.FilterChain;
@@ -12,15 +13,18 @@ import org.springframework.security.authentication.UsernamePasswordAuthenticatio
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Component;
+import br.ufpr.tcc.backend_lab.domain.model.entity.Usuario;
 import org.springframework.web.filter.OncePerRequestFilter;
 
 @Component
 public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
 	private final JwtService jwtService;
+	private final UsuarioRepository usuarioRepository;
 
-	public JwtAuthenticationFilter(JwtService jwtService) {
+	public JwtAuthenticationFilter(JwtService jwtService, UsuarioRepository usuarioRepository) {
 		this.jwtService = jwtService;
+		this.usuarioRepository = usuarioRepository;
 	}
 
 	@Override
@@ -35,14 +39,26 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
 			String token = authorization.substring(7);
 			try {
 				Claims claims = jwtService.parseToken(token).getPayload();
-				String role = claims.get("role", String.class);
-				var authorities = role == null
-						? java.util.List.<SimpleGrantedAuthority>of()
-						: java.util.List.of(new SimpleGrantedAuthority("ROLE_" + role));
-				var authentication = new UsernamePasswordAuthenticationToken(
-						claims.getSubject(), null, authorities
-				);
-				SecurityContextHolder.getContext().setAuthentication(authentication);
+				Object userIdClaim = claims.get("userId");
+				if (userIdClaim instanceof Number number) {
+					Usuario usuario = usuarioRepository.findById(number.longValue())
+							.filter(Usuario::isAtivo)
+							.orElse(null);
+					if (usuario != null) {
+						var authorities = java.util.List.of(
+								new SimpleGrantedAuthority("ROLE_" + usuario.getPerfil().name())
+						);
+						var authentication = new UsernamePasswordAuthenticationToken(
+								usuario.getEmail(), null, authorities
+						);
+						SecurityContextHolder.getContext().setAuthentication(authentication);
+					} else {
+						SecurityContextHolder.clearContext();
+					}
+				} else {
+					// Tokens emitidos antes da inclusão do identificador exigem novo login.
+					SecurityContextHolder.clearContext();
+				}
 			} catch (JwtException | IllegalArgumentException ignored) {
 				SecurityContextHolder.clearContext();
 			}

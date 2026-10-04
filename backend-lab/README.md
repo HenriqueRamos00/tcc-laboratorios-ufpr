@@ -146,7 +146,7 @@ Envie o token nas demais requisições protegidas:
 Authorization: Bearer <jwt>
 ```
 
-Para criar um administrador ou técnico na primeira execução local, preencha as variáveis `AUTH_SEED_ADMIN_*` e/ou `AUTH_SEED_TECHNICIAN_*` no arquivo `.env`. As senhas são armazenadas com BCrypt. Esse recurso serve apenas para preparar o ambiente; o cadastro completo de usuários será implementado posteriormente.
+Para criar a conta inicial do administrador na primeira execução local, preencha `AUTH_SEED_ADMIN_*` no arquivo `.env`. `AUTH_SEED_TECHNICIAN_*` permanece disponível para preparar um técnico legado de desenvolvimento; técnicos também podem ser cadastrados e mantidos pelo Portal Interno. As senhas são armazenadas com BCrypt.
 
 ## Execução local
 

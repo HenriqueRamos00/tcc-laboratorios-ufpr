@@ -1,0 +1,26 @@
+<header class="dialog-shell__navbar">
+  <div class="dialog-shell__title-block">
+    <h2 class="dialog-shell__title">{{ title() }}</h2>
+    @if (subtitle()) {
+      <p class="dialog-shell__subtitle">{{ subtitle() }}</p>
+    }
+  </div>
+  <button
+    mat-icon-button
+    type="button"
+    class="dialog-shell__close"
+    [disabled]="closeDisabled()"
+    [attr.aria-label]="closeLabel()"
+    (click)="close()"
+  >
+    <mat-icon>close</mat-icon>
+  </button>
+</header>
+
+<div class="dialog-shell__content">
+  <ng-content></ng-content>
+</div>
+
+<footer class="dialog-shell__footer">
+  <ng-content select="[dialog-footer]"></ng-content>
+</footer>

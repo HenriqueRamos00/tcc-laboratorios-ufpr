@@ -44,5 +44,7 @@ evitando problemas de CORS. O destino da API pode ser alterado em `.env` com
 API_PROXY_TARGET=http://host.docker.internal:8080
 ```
 
-As credenciais são criadas pelo backend usando as variáveis `AUTH_SEED_ADMIN_*`
-e `AUTH_SEED_TECHNICIAN_*`.
+O administrador inicial é configurado pelo backend usando `AUTH_SEED_ADMIN_*`.
+`AUTH_SEED_TECHNICIAN_*` pode preparar um técnico de desenvolvimento. Depois de entrar no
+Portal Interno, a gestão de técnicos está disponível em **Técnicos** no menu
+administrativo.

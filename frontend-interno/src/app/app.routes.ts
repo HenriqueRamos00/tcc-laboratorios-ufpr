@@ -51,7 +51,6 @@ export const routes: Routes = [
       },
       ...([
         ['orcamentos', 'Orçamentos', 'Gestão dos orçamentos do laboratório.', 'description'],
-        ['tecnicos', 'Técnicos', 'Gestão dos técnicos e seus acessos.', 'engineering'],
         ['empresas', 'Empresas', 'Cadastro e consulta de empresas atendidas.', 'business'],
         ['clientes', 'Clientes', 'Cadastro e consulta de clientes.', 'groups'],
       ] as const).map(([path, title, description, icon]) => ({
@@ -63,6 +62,14 @@ export const routes: Routes = [
         data: placeholder(title, description, icon),
         title: title + ' - Portal Interno Lactec',
       })),
+      {
+        path: 'tecnicos',
+        loadComponent: () =>
+          import('@/app/pages/admin/tecnicos/tecnicos.component').then(
+            (module) => module.TecnicosComponent,
+          ),
+        title: 'Pesquisar Técnicos - Portal Interno Lactec',
+      },
     ],
   },
 
@@ -95,7 +102,6 @@ export const routes: Routes = [
           'search',
         ],
         ['ensaios', 'Manter Ensaio', 'Cadastro e manutenção de ensaios.', 'science'],
-        ['amostras', 'Manter Amostra', 'Cadastro e manutenção de amostras.', 'biotech'],
         ['resultados', 'Resultados', 'Consulta e manutenção de resultados de ensaios.', 'fact_check'],
         ['relatorios', 'Pesquisar Relatório', 'Pesquise os relatórios técnicos.', 'description'],
         ['equipamentos', 'Equipamentos', 'Consulta dos equipamentos do laboratório.', 'precision_manufacturing'],
