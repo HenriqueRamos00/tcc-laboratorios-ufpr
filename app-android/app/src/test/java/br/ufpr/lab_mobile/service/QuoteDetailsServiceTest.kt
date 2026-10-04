@@ -5,6 +5,7 @@ import com.google.gson.Gson
 import com.google.gson.JsonElement
 import kotlinx.coroutines.runBlocking
 import okhttp3.ResponseBody.Companion.toResponseBody
+import okhttp3.ResponseBody
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertSame
@@ -77,6 +78,9 @@ class QuoteDetailsServiceTest {
         var authorization: String? = null
         var id: String? = null
         var called = false
+
+        override suspend fun getDocument(authorization: String, id: String): Response<ResponseBody> =
+            error("Unexpected document request")
 
         override suspend fun getQuote(authorization: String, id: String): Response<Quote> {
             this.authorization = authorization

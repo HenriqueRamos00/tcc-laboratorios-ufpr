@@ -18,6 +18,9 @@ import androidx.test.platform.app.InstrumentationRegistry
 import br.ufpr.lab_mobile.controller.LoginActivity
 import br.ufpr.lab_mobile.controller.QuoteStatusDialogFragment
 import br.ufpr.lab_mobile.controller.QuotesActivity
+import br.ufpr.lab_mobile.controller.QuoteDecisionDialogFragment
+import br.ufpr.lab_mobile.controller.QuoteDetailsActivity
+import br.ufpr.lab_mobile.model.QuoteSimulations
 import br.ufpr.lab_mobile.service.RetrofitProvider
 import okhttp3.Interceptor
 import okhttp3.MediaType.Companion.toMediaType
@@ -56,6 +59,7 @@ class QuoteStatusDialogTest {
 
     @Before
     fun installTestOnlyApi() {
+        QuoteSimulations.clear()
         previousRetrofit = retrofitField.get(null)
         previousBaseUrl = baseUrlField.get(null)
         val baseUrl = context.getString(R.string.api_base_url)
@@ -92,6 +96,49 @@ class QuoteStatusDialogTest {
         scenario?.close()
         retrofitField.set(null, previousRetrofit)
         baseUrlField.set(null, previousBaseUrl)
+        QuoteSimulations.clear()
+    }
+
+    @Test
+    fun pendingStatusAllowsSimulationWithoutChangingListOrDialogStatus() {
+        status = "Pendente de Aceite"
+        stage = "Qualificação"
+        launchList()
+        openStatus()
+        awaitContent()
+        assertTrue(checkUi { dialog(it)!!.findViewById<View>(R.id.acceptQuote).visibility == View.VISIBLE })
+        scenario!!.onActivity { dialog(it)!!.findViewById<View>(R.id.acceptQuote).performClick() }
+        awaitUi("Simulation confirmation shown") { fragment(it)!!.childFragmentManager.fragments.any { child -> child is QuoteDecisionDialogFragment } }
+        scenario!!.onActivity { activity ->
+            val confirmation = fragment(activity)!!.childFragmentManager.fragments.filterIsInstance<QuoteDecisionDialogFragment>().single().dialog!!
+            confirmation.findViewById<View>(R.id.confirmDecision).performClick()
+        }
+        awaitUi("Simulation preserves the card status") { activity ->
+            dialog(activity)!!.findViewById<View>(R.id.acceptQuote).visibility == View.GONE &&
+                activity.findViewById<RecyclerView>(R.id.quotesList).findViewHolderForAdapterPosition(0)!!.itemView
+                    .findViewById<TextView>(R.id.status).text.toString() == context.getString(R.string.quote_stage_qualification)
+        }
+        assertTrue(checkUi { dialog(it)!!.findViewById<View>(R.id.acceptQuote).visibility == View.GONE && dialog(it)!!.findViewById<View>(R.id.rejectQuote).visibility == View.GONE })
+        assertTrue(checkUi { dialog(it)!!.findViewById<TextView>(R.id.currentStatus).text.toString().contains("Qualificação") })
+        scenario!!.recreate()
+        awaitContent()
+        assertTrue(checkUi { dialog(it)!!.findViewById<TextView>(R.id.currentStatus).text.toString().contains("Qualificação") })
+    }
+
+    @Test
+    fun statusPdfAccessOpensSameQuoteDetailsScreen() {
+        launchList()
+        openStatus()
+        awaitContent()
+        val monitor = instrumentation.addMonitor(QuoteDetailsActivity::class.java.name, null, false)
+        try {
+            scenario!!.onActivity { dialog(it)!!.findViewById<View>(R.id.viewPdf).performClick() }
+            val details = instrumentation.waitForMonitorWithTimeout(monitor, TIMEOUT_MS)
+            assertTrue("Quote details opened", details is QuoteDetailsActivity)
+            assertEquals(QUOTE_ID, details.intent.getStringExtra(QuoteDetailsActivity.EXTRA_QUOTE_ID))
+            instrumentation.runOnMainSync { details.finish() }
+            awaitContent()
+        } finally { instrumentation.removeMonitor(monitor) }
     }
 
     @Test

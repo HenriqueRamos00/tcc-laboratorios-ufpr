@@ -1,6 +1,7 @@
 package br.ufpr.lab_mobile.model
 
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
@@ -69,6 +70,18 @@ class QuoteStatusRulesTest {
         )
         assertEquals(QuoteStage.INCOMPLETE, progress("Incompleto"))
         assertEquals(QuoteStage.COMPLETE, progress("Completo"))
+    }
+
+    @Test
+    fun decisionEligibilityDependsOnlyOnNormalizedPendingAcceptanceStatus() {
+        val stages = listOf(null) + QuoteStage.entries.map { it.key } + listOf("future-stage")
+        stages.forEach { stage ->
+            assertTrue(QuoteStatusRules.canDecide(stage, "Pendente de Aceite"))
+            assertTrue(QuoteStatusRules.canDecide(stage, "  PENDINGACCEPTANCE\u00a0"))
+        }
+        listOf(null, "", " ", "Pending", "InProgress", "Accepted", "Refused", "Unknown").forEach { status ->
+            assertFalse("stage should not make status eligible: $status", QuoteStatusRules.canDecide("qualificacao", status))
+        }
     }
 
     @Test

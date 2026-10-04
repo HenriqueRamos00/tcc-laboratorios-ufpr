@@ -3,4 +3,5 @@
   <Project Path="Portal.Api/Portal.Api.csproj" />
   <Project Path="Portal.Application/Portal.Application.csproj" />
   <Project Path="Portal.Domain/Portal.Domain.csproj" />
+  <Project Path="Portal.Tests/Portal.Tests.csproj" />
 </Solution>

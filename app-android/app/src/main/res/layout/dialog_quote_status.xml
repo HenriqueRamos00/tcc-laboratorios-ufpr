@@ -214,6 +214,34 @@
                     tools:text="contato@example.com" />
 
             </LinearLayout>
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/viewPdf"
+                style="@style/Widget.Material3.Button.OutlinedButton"
+                android:layout_width="match_parent"
+                android:layout_height="48dp"
+                android:layout_marginTop="16dp"
+                android:text="@string/quote_view_pdf" />
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/rejectQuote"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content" android:minHeight="52dp"
+                android:layout_marginTop="10dp"
+                android:backgroundTint="@color/quote_action_reject"
+                android:text="@string/quote_reject"
+                android:textColor="@color/white"
+                android:visibility="gone" />
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/acceptQuote"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content" android:minHeight="52dp"
+                android:layout_marginTop="10dp"
+                android:backgroundTint="@color/quote_action_accept"
+                android:text="@string/quote_accept"
+                android:textColor="@color/white"
+                android:visibility="gone" />
         </LinearLayout>
     </LinearLayout>
 </ScrollView>

@@ -19,6 +19,7 @@ import br.ufpr.lab_mobile.databinding.ActivityQuotesBinding
 import br.ufpr.lab_mobile.service.QuoteApiService
 import br.ufpr.lab_mobile.service.QuoteService
 import br.ufpr.lab_mobile.service.RetrofitProvider
+import br.ufpr.lab_mobile.model.QuoteSimulations
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -32,7 +33,7 @@ class QuotesActivity : AppCompatActivity() {
     private lateinit var quoteService: QuoteService
     private lateinit var token: String
     private val quoteAdapter = QuoteAdapter(
-        onViewQuote = { showFutureScreenMessage() },
+        onViewQuote = { quote -> QuoteDetailsActivity.open(this, quote.id, token) },
         onViewStatus = { quote -> showQuoteStatus(quote.id) },
     )
     private var debounceJob: Job? = null
@@ -62,6 +63,15 @@ class QuotesActivity : AppCompatActivity() {
             RetrofitProvider.retrofit(getString(R.string.api_base_url))
                 .create(QuoteApiService::class.java),
         )
+        QuoteSimulations.startSession(token)
+        binding.logoutButton.setOnClickListener {
+            LoginActivity.clearSession(this)
+            startActivity(Intent(this, LoginActivity::class.java).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK))
+            finish()
+        }
+        supportFragmentManager.setFragmentResultListener(QuoteDecisionDialogFragment.RESULT, this) { _, _ ->
+            quoteAdapter.notifyDataSetChanged()
+        }
 
         binding.quotesList.apply {
             layoutManager = LinearLayoutManager(this@QuotesActivity)
@@ -119,6 +129,7 @@ class QuotesActivity : AppCompatActivity() {
             } catch (error: CancellationException) {
                 throw error
             } catch (error: HttpException) {
+                if (error.code() == 401) LoginActivity.clearSession(this@QuotesActivity)
                 quoteAdapter.updateQuotes(emptyList())
                 showState(
                     getString(
@@ -148,8 +159,9 @@ class QuotesActivity : AppCompatActivity() {
         binding.quotesList.visibility = if (message == null) View.VISIBLE else View.GONE
     }
 
-    private fun showFutureScreenMessage() {
-        Toast.makeText(this, R.string.quote_details_unavailable, Toast.LENGTH_SHORT).show()
+    override fun onResume() {
+        super.onResume()
+        quoteAdapter.notifyDataSetChanged()
     }
 
     private fun showQuoteStatus(quoteId: String?) {

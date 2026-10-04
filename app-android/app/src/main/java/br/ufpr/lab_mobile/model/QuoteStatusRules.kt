@@ -102,6 +102,10 @@ object QuoteStatusRules {
     fun phase(stage: QuoteStage): QuotePhase =
         QuotePhase.entries.last { stage.ordinal in it.first..it.last }
 
+    @Suppress("UNUSED_PARAMETER")
+    fun canDecide(stage: String?, status: String?): Boolean =
+        normalize(status.orEmpty()) in setOf("pendente de aceite", "pendingacceptance")
+
     fun window(stage: QuoteStage): List<QuoteProgressStep?> {
         val phase = phase(stage)
         // Empty neighbor slots retain the current step in the center at phase edges.

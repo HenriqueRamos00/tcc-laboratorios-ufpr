@@ -6,4 +6,5 @@ public interface IQuoteUseCase
 {
     Task<IReadOnlyList<Quote>> GetQuotesAsync(CancellationToken cancellationToken);
     Task<Quote?> GetQuoteByIdAsync(string id, CancellationToken cancellationToken);
+    Task<byte[]?> GetDocumentAsync(string id, CancellationToken cancellationToken);
 }

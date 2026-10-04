@@ -19,6 +19,7 @@ import br.ufpr.lab_mobile.model.QuoteStatusRules
 import br.ufpr.lab_mobile.model.QuoteStepState
 import br.ufpr.lab_mobile.model.ResolvedQuoteStatus
 import br.ufpr.lab_mobile.model.displayText
+import br.ufpr.lab_mobile.model.QuoteSimulations
 import br.ufpr.lab_mobile.service.QuoteApiService
 import br.ufpr.lab_mobile.service.QuoteService
 import br.ufpr.lab_mobile.service.RetrofitProvider
@@ -33,11 +34,22 @@ import retrofit2.HttpException
 class QuoteStatusDialogFragment : DialogFragment() {
     private var binding: DialogQuoteStatusBinding? = null
     private var requestJob: Job? = null
+    private var currentQuote: Quote? = null
 
     override fun onCreateDialog(savedInstanceState: Bundle?): Dialog {
         val viewBinding = DialogQuoteStatusBinding.inflate(layoutInflater)
         binding = viewBinding
         viewBinding.retryButton.setOnClickListener { loadQuote() }
+        viewBinding.viewPdf.setOnClickListener {
+            QuoteDetailsActivity.open(requireContext(), arguments?.getString(ARG_QUOTE_ID),
+                requireActivity().intent.getStringExtra(LoginActivity.EXTRA_ACCESS_TOKEN))
+        }
+        viewBinding.acceptQuote.setOnClickListener { currentQuote?.let { QuoteDecisionDialogFragment.show(childFragmentManager, it, false) } }
+        viewBinding.rejectQuote.setOnClickListener { currentQuote?.let { QuoteDecisionDialogFragment.show(childFragmentManager, it, true) } }
+        childFragmentManager.setFragmentResultListener(QuoteDecisionDialogFragment.RESULT, this) { _, _ ->
+            renderSimulation()
+            parentFragmentManager.setFragmentResult(QuoteDecisionDialogFragment.RESULT, Bundle())
+        }
         return MaterialAlertDialogBuilder(requireContext())
             .setTitle(R.string.quote_status_title)
             .setView(viewBinding.root)
@@ -48,6 +60,7 @@ class QuoteStatusDialogFragment : DialogFragment() {
     override fun onStart() {
         super.onStart()
         if (requestJob == null) loadQuote()
+        else renderSimulation()
     }
 
     private fun loadQuote() {
@@ -55,6 +68,7 @@ class QuoteStatusDialogFragment : DialogFragment() {
         val views = binding ?: return
         // Hide all previous content before every attempt, including failed retries.
         views.statusContent.isVisible = false
+        currentQuote = null
         views.stateMessage.isVisible = false
         views.retryButton.isVisible = false
         views.loading.isVisible = false
@@ -88,7 +102,7 @@ class QuoteStatusDialogFragment : DialogFragment() {
                 throw error
             } catch (error: HttpException) {
                 when (error.code()) {
-                    401 -> showError(R.string.session_expired, retryable = false)
+                    401 -> { LoginActivity.clearSession(requireContext()); showError(R.string.session_expired, retryable = false) }
                     404 -> showError(R.string.quote_status_not_found, retryable = false)
                     else -> showError(R.string.quote_status_loading_error, retryable = true)
                 }
@@ -108,6 +122,7 @@ class QuoteStatusDialogFragment : DialogFragment() {
     }
 
     private fun renderQuote(quote: Quote, views: DialogQuoteStatusBinding) {
+        currentQuote = quote
         views.proposalCode.text = quote.code?.trim()?.takeIf(String::isNotEmpty)
             ?.let { getString(R.string.quote_status_code, it) }
             ?: getString(R.string.quote_status_code_missing)
@@ -177,6 +192,18 @@ class QuoteStatusDialogFragment : DialogFragment() {
         views.externalContactName.isVisible = name.isNotEmpty()
         views.externalContactEmail.text = email
         views.externalContactEmail.isVisible = email.isNotEmpty()
+        renderSimulation()
+    }
+
+    private fun renderSimulation() {
+        val views = binding ?: return
+        val quote = currentQuote ?: return
+        val result = QuoteSimulations.get(arguments?.getString(ARG_QUOTE_ID))
+        val token = requireActivity().intent.getStringExtra(LoginActivity.EXTRA_ACCESS_TOKEN)
+            ?: requireContext().getSharedPreferences(LoginActivity.SESSION_PREFERENCES, Context.MODE_PRIVATE).getString(LoginActivity.ACCESS_TOKEN, null)
+        val eligible = QuoteSimulations.isSessionActive(token) && QuoteStatusRules.canDecide(quote.stage, quote.status) && result == null
+        views.acceptQuote.isVisible = eligible
+        views.rejectQuote.isVisible = eligible
     }
 
     private fun showNotice(views: DialogQuoteStatusBinding, titleRes: Int, messageRes: Int) {

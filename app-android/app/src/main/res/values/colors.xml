@@ -16,4 +16,7 @@
     <color name="quote_pending">#B9DDFC</color>
     <color name="quote_progress">#9DDCF0</color>
     <color name="quote_finished">#A9DDB5</color>
+    <color name="quote_action_accept">#167638</color>
+    <color name="quote_action_reject">#C62828</color>
+    <color name="quote_action_neutral">#E4E6E9</color>
 </resources>
