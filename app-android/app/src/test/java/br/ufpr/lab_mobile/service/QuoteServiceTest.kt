@@ -8,6 +8,17 @@ import org.junit.Test
 
 class QuoteServiceTest {
     @Test
+    fun `filtro pendente usa o status canonico sem restringir etapa`() {
+        val quotes = parseQuotes(JsonParser.parseString("""[
+            {"status":"PendingAcceptance","stage":"Finalizado"},
+            {"status":"Pendente de Aceite","stage":null},
+            {"status":"Em Andamento","stage":"Pendente de Aceite"}
+        ]"""))
+        assertTrue(matchesStatus(quotes[0], "PendingAcceptance"))
+        assertTrue(matchesStatus(quotes[1], "PendingAcceptance"))
+        assertFalse(matchesStatus(quotes[2], "PendingAcceptance"))
+    }
+    @Test
     fun `aceita lista atual e resposta paginada do contrato`() {
         val item = """{"code":"EAQ-1","description":"Óleo isolante"}"""
 

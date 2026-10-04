@@ -1,6 +1,7 @@
 package br.ufpr.lab_mobile.controller
 
 import android.content.Intent
+import android.content.Context
 import android.os.Bundle
 import android.view.View
 import android.view.inputmethod.InputMethodManager
@@ -16,6 +17,7 @@ import br.ufpr.lab_mobile.databinding.ActivityLoginBinding
 import br.ufpr.lab_mobile.service.LoginApiService
 import br.ufpr.lab_mobile.service.LoginService
 import br.ufpr.lab_mobile.service.RetrofitProvider
+import br.ufpr.lab_mobile.model.QuoteSimulations
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -121,6 +123,7 @@ class LoginActivity : AppCompatActivity() {
     }
 
     private fun saveSessionAndOpenQuotes(accessToken: String) {
+        QuoteSimulations.clear()
         val preferences = getSharedPreferences(SESSION_PREFERENCES, MODE_PRIVATE).edit()
         if (binding.keepConnected.isChecked) preferences.putString(ACCESS_TOKEN, accessToken)
         else preferences.remove(ACCESS_TOKEN)
@@ -137,6 +140,10 @@ class LoginActivity : AppCompatActivity() {
     }
 
     companion object {
+        fun clearSession(context: Context) {
+            QuoteSimulations.clear()
+            context.getSharedPreferences(SESSION_PREFERENCES, Context.MODE_PRIVATE).edit().remove(ACCESS_TOKEN).apply()
+        }
         const val TEST_TOKEN = "local-test-token"
         const val SESSION_PREFERENCES = "session"
         const val ACCESS_TOKEN = "access_token"

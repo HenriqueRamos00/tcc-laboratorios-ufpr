@@ -8,6 +8,22 @@ public sealed class FakeSalesforceQuoteRepository : IQuoteRepository
     private static readonly List<FakeQuote> Quotes =
     [
         new FakeQuote(
+            Id: "quote-3",
+            Quote: new Quote(
+                id: "quote-3",
+                opportunityId: "opportunity-3",
+                code: "EAQ_2026_45484_V_1",
+                name: "Qualidade do ar — proposta de teste",
+                status: "Pendente de Aceite",
+                stage: "Negociação",
+                description: "Avaliação da qualidade do ar: coleta de 3 amostras e análise laboratorial. Proposta fictícia para testes.",
+                companyName: "Empresa Exemplo Alfa Ltda",
+                externalContactName: "Equipe Comercial",
+                externalContactEmail: "comercial@example.com",
+                totalPrice: 3450.00m,
+                createdDate: new DateTimeOffset(2026, 10, 4, 9, 0, 0, TimeSpan.Zero))
+        ),
+        new FakeQuote(
             Id: "quote-1",
             Quote: new Quote(
                 id: "quote-1",
@@ -31,7 +47,7 @@ public sealed class FakeSalesforceQuoteRepository : IQuoteRepository
                 code: "EAQ_2026_45483_V_1",
                 name: "Ensaios laboratoriais de materiais",
                 status: "Em Andamento",
-                stage: "Negociação",
+                stage: "Incompleto",
                 description: "Ensaios laboratoriais de materiais",
                 companyName: "Empresa Exemplo Beta S.A.",
                 externalContactName: "",

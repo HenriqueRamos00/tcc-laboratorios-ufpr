@@ -38,6 +38,28 @@ public sealed class QuotesController : ControllerBase
         }
     }
 
+    [HttpGet("{id}/document")]
+    [ProducesResponseType(typeof(FileContentResult), StatusCodes.Status200OK, "application/pdf")]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    [ProducesResponseType(StatusCodes.Status502BadGateway)]
+    public async Task<IActionResult> GetDocument(string id, CancellationToken cancellationToken)
+    {
+        try
+        {
+            byte[]? document = await _quoteUseCase.GetDocumentAsync(id, cancellationToken);
+            if (document is null) return NotFound(new { message = "Quote document not found." });
+            return File(document, "application/pdf", "orcamento.pdf", enableRangeProcessing: true);
+        }
+        catch (ExternalServiceException exception)
+        {
+            return StatusCode(StatusCodes.Status502BadGateway, new { message = exception.Message });
+        }
+        catch (HttpRequestException exception)
+        {
+            return StatusCode(StatusCodes.Status502BadGateway, new { message = exception.Message });
+        }
+    }
+
     [HttpGet("{id}")]
     public async Task<ActionResult<Quote>> GetQuoteById(string id, CancellationToken cancellationToken)
     {

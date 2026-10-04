@@ -36,6 +36,83 @@
     <string name="quote_view_status">Verificar Status</string>
     <string name="quote_view">Visualizar Orçamento</string>
     <string name="quote_details_unavailable">Esta tela será disponibilizada na história correspondente.</string>
+    <string name="quote_details_title">Detalhes do orçamento</string>
+    <string name="quote_simulation_title">Simulação de decisão</string>
+    <string name="quote_details_heading">Detalhes do Orçamento: %1$s</string>
+    <string name="quote_details_loading">Carregando os detalhes do orçamento…</string>
+    <string name="quote_details_error">Não foi possível carregar o orçamento. Verifique sua conexão e tente novamente.</string>
+    <string name="quote_client">Cliente: %1$s</string>
+    <string name="quote_total">Total: %1$s</string>
+    <string name="quote_document_heading">Documento da proposta</string>
+    <string name="quote_document_loading">Carregando o PDF…</string>
+    <string name="quote_document_missing">O PDF deste orçamento não está disponível.</string>
+    <string name="quote_document_invalid">O documento recebido não é um PDF válido.</string>
+    <string name="quote_document_error">Não foi possível carregar o PDF. Verifique sua conexão e tente novamente.</string>
+    <string name="quote_pdf_previous">Anterior</string>
+    <string name="quote_pdf_next">Próxima</string>
+    <string name="quote_pdf_page">Página %1$d de %2$d</string>
+    <string name="quote_pdf_accessibility">Página %1$d de %2$d do orçamento. Consulte a proposta e os serviços acima.</string>
+    <string name="quote_pdf_accessibility_default">Documento PDF do orçamento</string>
+    <string name="quote_download_pdf">Baixar PDF</string>
+    <string name="quote_download_success">PDF exportado com sucesso.</string>
+    <string name="quote_download_error">Não foi possível exportar o PDF.</string>
+    <string name="quote_view_pdf">Visualizar PDF</string>
+    <string name="quote_accept">Aceitar Orçamento</string>
+    <string name="quote_reject">Recusar Orçamento</string>
+    <string name="quote_simulation_notice">Esta decisão é apenas uma simulação e ainda não é definitiva. O status do orçamento permanece inalterado. Nenhuma informação será enviada ao servidor.</string>
+    <string name="quote_simulated_accept">Aceite simulado, ainda não definitivo.</string>
+    <string name="quote_simulated_reject">Recusa simulada, ainda não definitiva.</string>
+    <string name="quote_confirm_accept">Deseja simular o aceite do orçamento “%1$s”? Esta ação fica salva somente durante esta sessão.</string>
+    <string name="quote_confirm_reject">Deseja simular a recusa do orçamento “%1$s”? Esta ação fica salva somente durante esta sessão.</string>
+    <string name="quote_rejection_reason">Justificativa (opcional)</string>
+    <string name="quote_confirm_accept_action">Simular aceite</string>
+    <string name="quote_confirm_reject_action">Rejeitar</string>
+    <string name="quote_cancel">Cancelar</string>
+    <string name="quote_back">Voltar</string>
+    <string name="logout">Sair</string>
+    <string name="quote_status_title">Status do orçamento</string>
+    <string name="quote_status_loading">Carregando o status da proposta…</string>
+    <string name="quote_status_invalid_id">Não foi possível consultar o status: o identificador do orçamento é inválido.</string>
+    <string name="quote_status_not_found">Não encontramos um orçamento com esse identificador.</string>
+    <string name="quote_status_loading_error">Não foi possível carregar o status. Verifique sua conexão e tente novamente.</string>
+    <string name="quote_status_retry">Tentar novamente</string>
+    <string name="quote_status_close">Fechar</string>
+    <string name="quote_status_code">Proposta: %1$s</string>
+    <string name="quote_status_code_missing">Código da proposta indisponível</string>
+    <string name="quote_status_current">Status atual: %1$s</string>
+    <string name="quote_status_unknown">Etapa não reconhecida</string>
+    <string name="quote_status_unknown_value">%1$s — Etapa não reconhecida</string>
+    <string name="quote_status_unavailable">Status indisponível</string>
+    <string name="quote_status_cancelled">Cancelada</string>
+    <string name="quote_status_refused">Recusada</string>
+    <string name="quote_status_closed">Esta proposta foi encerrada. Não há etapas em andamento.</string>
+    <string name="quote_status_completed">Concluída</string>
+    <string name="quote_status_active">Atual</string>
+    <string name="quote_status_pending">Pendente</string>
+    <string name="quote_status_step_accessibility">%1$s, %2$s</string>
+    <string name="quote_status_external_contact">Contato externo</string>
+    <string name="quote_status_phase_proposal">Status da Proposta</string>
+    <string name="quote_status_phase_technical">Etapas da Análise Técnica das amostras</string>
+    <string name="quote_status_phase_laboratory">Procedimento dos Laboratórios</string>
+    <string name="quote_status_area_title">Estamos em busca da melhor solução para seu negócio</string>
+    <string name="quote_status_area_message">Nossos profissionais estão validando qual é o laboratório capaz de solucionar e trazer resultados para cada uma das análises requisitadas. Em breve seu orçamento ficará disponível por meio desta plataforma!</string>
+    <string name="quote_status_negotiation_title">Aguardando sua revisão</string>
+    <string name="quote_status_negotiation_message">Esta proposta técnica está pronta para execução. Por favor, revise os termos e custos associados para prosseguir com a análise laboratorial.</string>
+    <string name="quote_stage_qualification">Qualificação</string>
+    <string name="quote_stage_area_analysis">Em análise pela área</string>
+    <string name="quote_stage_drafting">Elaborando proposta</string>
+    <string name="quote_stage_negotiation">Em negociação</string>
+    <string name="quote_stage_approved">Aprovado pelo cliente</string>
+    <string name="quote_stage_awaiting_sample">Aguardando entrega da amostra</string>
+    <string name="quote_stage_received">Recebido</string>
+    <string name="quote_stage_registered">Protocolado</string>
+    <string name="quote_stage_running">Em execução</string>
+    <string name="quote_stage_incomplete">Incompleto</string>
+    <string name="quote_stage_complete">Completo</string>
+    <string name="quote_stage_validated">Validado</string>
+    <string name="quote_stage_finished">Finalizado</string>
+    <string name="quote_stage_drafting_report">Elaborando relatório</string>
+    <string name="quote_stage_published">Relatório publicado</string>
     <string-array name="quote_status_labels">
         <item>Todos</item>
         <item>Pendente</item>
@@ -52,5 +129,5 @@
         <item>Refused</item>
         <item>Cancelled</item>
     </string-array>
-    <string name="api_base_url" translatable="false">http://10.0.2.2:5125/api</string>
+    <string name="api_base_url" translatable="false">http://127.0.0.1:5125/api</string>
 </resources>

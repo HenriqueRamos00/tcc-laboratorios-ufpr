@@ -19,6 +19,7 @@ import br.ufpr.lab_mobile.databinding.ActivityQuotesBinding
 import br.ufpr.lab_mobile.service.QuoteApiService
 import br.ufpr.lab_mobile.service.QuoteService
 import br.ufpr.lab_mobile.service.RetrofitProvider
+import br.ufpr.lab_mobile.model.QuoteSimulations
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -32,8 +33,8 @@ class QuotesActivity : AppCompatActivity() {
     private lateinit var quoteService: QuoteService
     private lateinit var token: String
     private val quoteAdapter = QuoteAdapter(
-        onViewQuote = { showFutureScreenMessage() },
-        onViewStatus = { showFutureScreenMessage() },
+        onViewQuote = { quote -> QuoteDetailsActivity.open(this, quote.id, token) },
+        onViewStatus = { quote -> showQuoteStatus(quote.id) },
     )
     private var debounceJob: Job? = null
     private var requestJob: Job? = null
@@ -62,6 +63,15 @@ class QuotesActivity : AppCompatActivity() {
             RetrofitProvider.retrofit(getString(R.string.api_base_url))
                 .create(QuoteApiService::class.java),
         )
+        QuoteSimulations.startSession(token)
+        binding.logoutButton.setOnClickListener {
+            LoginActivity.clearSession(this)
+            startActivity(Intent(this, LoginActivity::class.java).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK))
+            finish()
+        }
+        supportFragmentManager.setFragmentResultListener(QuoteDecisionDialogFragment.RESULT, this) { _, _ ->
+            quoteAdapter.notifyDataSetChanged()
+        }
 
         binding.quotesList.apply {
             layoutManager = LinearLayoutManager(this@QuotesActivity)
@@ -72,6 +82,8 @@ class QuotesActivity : AppCompatActivity() {
             R.array.quote_status_labels,
             android.R.layout.simple_spinner_dropdown_item,
         )
+        binding.statusFilter.setSelection(savedInstanceState?.getInt(STATE_STATUS_FILTER) ?: 0)
+        binding.search.setText(savedInstanceState?.getString(STATE_SEARCH).orEmpty())
         binding.statusFilter.onItemSelectedListener = object : AdapterView.OnItemSelectedListener {
             override fun onItemSelected(parent: AdapterView<*>?, view: View?, position: Int, id: Long) {
                 if (skipInitialStatusSelection) skipInitialStatusSelection = false
@@ -82,6 +94,12 @@ class QuotesActivity : AppCompatActivity() {
         }
         binding.search.doAfterTextChanged { scheduleLoad() }
         loadQuotes()
+    }
+
+    override fun onSaveInstanceState(outState: Bundle) {
+        outState.putString(STATE_SEARCH, binding.search.text?.toString())
+        outState.putInt(STATE_STATUS_FILTER, binding.statusFilter.selectedItemPosition)
+        super.onSaveInstanceState(outState)
     }
 
     private fun scheduleLoad(immediate: Boolean = false) {
@@ -111,6 +129,7 @@ class QuotesActivity : AppCompatActivity() {
             } catch (error: CancellationException) {
                 throw error
             } catch (error: HttpException) {
+                if (error.code() == 401) LoginActivity.clearSession(this@QuotesActivity)
                 quoteAdapter.updateQuotes(emptyList())
                 showState(
                     getString(
@@ -140,11 +159,27 @@ class QuotesActivity : AppCompatActivity() {
         binding.quotesList.visibility = if (message == null) View.VISIBLE else View.GONE
     }
 
-    private fun showFutureScreenMessage() {
-        Toast.makeText(this, R.string.quote_details_unavailable, Toast.LENGTH_SHORT).show()
+    override fun onResume() {
+        super.onResume()
+        quoteAdapter.notifyDataSetChanged()
+    }
+
+    private fun showQuoteStatus(quoteId: String?) {
+        if (quoteId.isNullOrBlank()) {
+            Toast.makeText(this, R.string.quote_status_invalid_id, Toast.LENGTH_SHORT).show()
+            return
+        }
+        if (supportFragmentManager.isStateSaved ||
+            supportFragmentManager.findFragmentByTag(QuoteStatusDialogFragment.TAG) != null
+        ) return
+        // Commit synchronously so a second tap also finds the first dialog.
+        QuoteStatusDialogFragment.newInstance(quoteId.trim())
+            .showNow(supportFragmentManager, QuoteStatusDialogFragment.TAG)
     }
 
     private companion object {
+        const val STATE_SEARCH = "quotes_search"
+        const val STATE_STATUS_FILTER = "quotes_status_filter"
         const val SEARCH_DEBOUNCE_MS = 400L
     }
 }

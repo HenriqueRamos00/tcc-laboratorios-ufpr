@@ -15,6 +15,7 @@
         android:usesCleartextTraffic="true"
         android:theme="@style/Theme.Labmobile">
         <activity android:name=".controller.QuotesActivity" android:exported="false" />
+        <activity android:name=".controller.QuoteDetailsActivity" android:exported="false" />
         <activity
             android:name=".controller.LoginActivity"
             android:exported="true">
