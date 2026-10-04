@@ -36,6 +36,49 @@
     <string name="quote_view_status">Verificar Status</string>
     <string name="quote_view">Visualizar Orçamento</string>
     <string name="quote_details_unavailable">Esta tela será disponibilizada na história correspondente.</string>
+    <string name="quote_status_title">Status do orçamento</string>
+    <string name="quote_status_loading">Carregando o status da proposta…</string>
+    <string name="quote_status_invalid_id">Não foi possível consultar o status: o identificador do orçamento é inválido.</string>
+    <string name="quote_status_not_found">Não encontramos um orçamento com esse identificador.</string>
+    <string name="quote_status_loading_error">Não foi possível carregar o status. Verifique sua conexão e tente novamente.</string>
+    <string name="quote_status_retry">Tentar novamente</string>
+    <string name="quote_status_close">Fechar</string>
+    <string name="quote_status_code">Proposta: %1$s</string>
+    <string name="quote_status_code_missing">Código da proposta indisponível</string>
+    <string name="quote_status_current">Status atual: %1$s</string>
+    <string name="quote_status_unknown">Etapa não reconhecida</string>
+    <string name="quote_status_unknown_value">%1$s — Etapa não reconhecida</string>
+    <string name="quote_status_unavailable">Status indisponível</string>
+    <string name="quote_status_cancelled">Cancelada</string>
+    <string name="quote_status_refused">Recusada</string>
+    <string name="quote_status_closed">Esta proposta foi encerrada. Não há etapas em andamento.</string>
+    <string name="quote_status_completed">Concluída</string>
+    <string name="quote_status_active">Atual</string>
+    <string name="quote_status_pending">Pendente</string>
+    <string name="quote_status_step_accessibility">%1$s, %2$s</string>
+    <string name="quote_status_external_contact">Contato externo</string>
+    <string name="quote_status_phase_proposal">Status da Proposta</string>
+    <string name="quote_status_phase_technical">Etapas da Análise Técnica das amostras</string>
+    <string name="quote_status_phase_laboratory">Procedimento dos Laboratórios</string>
+    <string name="quote_status_area_title">Estamos em busca da melhor solução para seu negócio</string>
+    <string name="quote_status_area_message">Nossos profissionais estão validando qual é o laboratório capaz de solucionar e trazer resultados para cada uma das análises requisitadas. Em breve seu orçamento ficará disponível por meio desta plataforma!</string>
+    <string name="quote_status_negotiation_title">Aguardando sua revisão</string>
+    <string name="quote_status_negotiation_message">Esta proposta técnica está pronta para execução. Por favor, revise os termos e custos associados para prosseguir com a análise laboratorial.</string>
+    <string name="quote_stage_qualification">Qualificação</string>
+    <string name="quote_stage_area_analysis">Em análise pela área</string>
+    <string name="quote_stage_drafting">Elaborando proposta</string>
+    <string name="quote_stage_negotiation">Em negociação</string>
+    <string name="quote_stage_approved">Aprovado pelo cliente</string>
+    <string name="quote_stage_awaiting_sample">Aguardando entrega da amostra</string>
+    <string name="quote_stage_received">Recebido</string>
+    <string name="quote_stage_registered">Protocolado</string>
+    <string name="quote_stage_running">Em execução</string>
+    <string name="quote_stage_incomplete">Incompleto</string>
+    <string name="quote_stage_complete">Completo</string>
+    <string name="quote_stage_validated">Validado</string>
+    <string name="quote_stage_finished">Finalizado</string>
+    <string name="quote_stage_drafting_report">Elaborando relatório</string>
+    <string name="quote_stage_published">Relatório publicado</string>
     <string-array name="quote_status_labels">
         <item>Todos</item>
         <item>Pendente</item>
@@ -52,5 +95,5 @@
         <item>Refused</item>
         <item>Cancelled</item>
     </string-array>
-    <string name="api_base_url" translatable="false">http://10.0.2.2:5125/api</string>
+    <string name="api_base_url" translatable="false">http://127.0.0.1:5125/api</string>
 </resources>

@@ -9,9 +9,16 @@ import retrofit2.HttpException
 import retrofit2.Response
 import retrofit2.http.GET
 import retrofit2.http.Header
+import retrofit2.http.Path
 import retrofit2.http.Query
 
 interface QuoteApiService {
+    @GET("quotes/{id}")
+    suspend fun getQuote(
+        @Header("Authorization") authorization: String,
+        @Path("id") id: String,
+    ): Response<Quote>
+
     @GET("quotes")
     suspend fun getQuotes(
         @Header("Authorization") authorization: String,
@@ -21,6 +28,13 @@ interface QuoteApiService {
 }
 
 class QuoteService(private val api: QuoteApiService) {
+    suspend fun getQuote(token: String, id: String): Quote {
+        require(id.isNotBlank()) { "Quote ID must not be blank" }
+        val response = api.getQuote("Bearer $token", id.trim())
+        if (!response.isSuccessful) throw HttpException(response)
+        return response.body() ?: throw IllegalStateException("Empty quote response")
+    }
+
     suspend fun getQuotes(token: String, search: String?, status: String?): List<Quote> {
         val response = api.getQuotes("Bearer $token", search, status)
         if (!response.isSuccessful) throw HttpException(response)

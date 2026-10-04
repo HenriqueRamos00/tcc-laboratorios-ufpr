@@ -8,6 +8,10 @@ import androidx.recyclerview.widget.RecyclerView
 import br.ufpr.lab_mobile.R
 import br.ufpr.lab_mobile.databinding.ItemQuoteBinding
 import br.ufpr.lab_mobile.model.Quote
+import br.ufpr.lab_mobile.model.QuoteStage
+import br.ufpr.lab_mobile.model.QuoteStatusRules
+import br.ufpr.lab_mobile.model.ResolvedQuoteStatus
+import br.ufpr.lab_mobile.model.displayText
 import java.text.NumberFormat
 import java.time.OffsetDateTime
 import java.time.format.DateTimeFormatter
@@ -45,15 +49,19 @@ class QuoteAdapter(
             contact.text = quote.externalContactName?.takeIf(String::isNotBlank)
                 ?: quote.externalContactEmail.valueOrPlaceholder()
             price.text = formatQuotePrice(quote.totalPrice)
-            status.text = quote.status?.takeIf(String::isNotBlank)
-                ?: quote.stage.valueOrPlaceholder()
+            val resolvedStatus = QuoteStatusRules.resolve(quote.stage, quote.status)
+            status.text = resolvedStatus.displayText(root.resources)
             status.backgroundTintList = ColorStateList.valueOf(
                 ContextCompat.getColor(
                     root.context,
-                    when {
-                        status.text.toString().contains("final", ignoreCase = true) -> R.color.quote_finished
-                        status.text.toString().contains("andamento", ignoreCase = true) -> R.color.quote_progress
-                        else -> R.color.quote_pending
+                    when (resolvedStatus) {
+                        is ResolvedQuoteStatus.Progress -> when {
+                            resolvedStatus.stage == QuoteStage.PUBLISHED -> R.color.quote_finished
+                            resolvedStatus.stage.ordinal >= QuoteStage.APPROVED.ordinal -> R.color.quote_progress
+                            else -> R.color.quote_pending
+                        }
+                        is ResolvedQuoteStatus.Terminal -> R.color.lactec_danger_bg
+                        else -> R.color.lactec_line
                     },
                 ),
             )

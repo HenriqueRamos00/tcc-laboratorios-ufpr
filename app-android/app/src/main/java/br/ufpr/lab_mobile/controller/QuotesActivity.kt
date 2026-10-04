@@ -33,7 +33,7 @@ class QuotesActivity : AppCompatActivity() {
     private lateinit var token: String
     private val quoteAdapter = QuoteAdapter(
         onViewQuote = { showFutureScreenMessage() },
-        onViewStatus = { showFutureScreenMessage() },
+        onViewStatus = { quote -> showQuoteStatus(quote.id) },
     )
     private var debounceJob: Job? = null
     private var requestJob: Job? = null
@@ -72,6 +72,8 @@ class QuotesActivity : AppCompatActivity() {
             R.array.quote_status_labels,
             android.R.layout.simple_spinner_dropdown_item,
         )
+        binding.statusFilter.setSelection(savedInstanceState?.getInt(STATE_STATUS_FILTER) ?: 0)
+        binding.search.setText(savedInstanceState?.getString(STATE_SEARCH).orEmpty())
         binding.statusFilter.onItemSelectedListener = object : AdapterView.OnItemSelectedListener {
             override fun onItemSelected(parent: AdapterView<*>?, view: View?, position: Int, id: Long) {
                 if (skipInitialStatusSelection) skipInitialStatusSelection = false
@@ -82,6 +84,12 @@ class QuotesActivity : AppCompatActivity() {
         }
         binding.search.doAfterTextChanged { scheduleLoad() }
         loadQuotes()
+    }
+
+    override fun onSaveInstanceState(outState: Bundle) {
+        outState.putString(STATE_SEARCH, binding.search.text?.toString())
+        outState.putInt(STATE_STATUS_FILTER, binding.statusFilter.selectedItemPosition)
+        super.onSaveInstanceState(outState)
     }
 
     private fun scheduleLoad(immediate: Boolean = false) {
@@ -144,7 +152,22 @@ class QuotesActivity : AppCompatActivity() {
         Toast.makeText(this, R.string.quote_details_unavailable, Toast.LENGTH_SHORT).show()
     }
 
+    private fun showQuoteStatus(quoteId: String?) {
+        if (quoteId.isNullOrBlank()) {
+            Toast.makeText(this, R.string.quote_status_invalid_id, Toast.LENGTH_SHORT).show()
+            return
+        }
+        if (supportFragmentManager.isStateSaved ||
+            supportFragmentManager.findFragmentByTag(QuoteStatusDialogFragment.TAG) != null
+        ) return
+        // Commit synchronously so a second tap also finds the first dialog.
+        QuoteStatusDialogFragment.newInstance(quoteId.trim())
+            .showNow(supportFragmentManager, QuoteStatusDialogFragment.TAG)
+    }
+
     private companion object {
+        const val STATE_SEARCH = "quotes_search"
+        const val STATE_STATUS_FILTER = "quotes_status_filter"
         const val SEARCH_DEBOUNCE_MS = 400L
     }
 }
