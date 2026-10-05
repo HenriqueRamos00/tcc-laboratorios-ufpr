@@ -28,6 +28,12 @@ services:
       JPA_DDL_AUTO: ${JPA_DDL_AUTO:-update}
       JWT_SECRET: ${JWT_SECRET:-change-this-secret-with-at-least-32-characters}
       JWT_EXPIRATION_SECONDS: ${JWT_EXPIRATION_SECONDS:-3600}
+      # Identifica quem emite o token interno.
+      JWT_ISSUER: ${JWT_ISSUER:-tcc-backend-lab}
+      # Identifica o destino previsto do token interno.
+      JWT_AUDIENCE: ${JWT_AUDIENCE:-tcc-portal-api-internal}
+      # Tolerância entre relógios dos serviços, em segundos.
+      JWT_CLOCK_SKEW_SECONDS: ${JWT_CLOCK_SKEW_SECONDS:-30}
       AUTH_SEED_ADMIN_NAME: ${AUTH_SEED_ADMIN_NAME:-}
       AUTH_SEED_ADMIN_EMAIL: ${AUTH_SEED_ADMIN_EMAIL:-}
       AUTH_SEED_ADMIN_PASSWORD: ${AUTH_SEED_ADMIN_PASSWORD:-}
@@ -35,7 +41,7 @@ services:
       AUTH_SEED_TECHNICIAN_EMAIL: ${AUTH_SEED_TECHNICIAN_EMAIL:-}
       AUTH_SEED_TECHNICIAN_PASSWORD: ${AUTH_SEED_TECHNICIAN_PASSWORD:-}
     ports:
-      - "${APP_PORT:-8080}:8080"
+      - "127.0.0.1:${APP_PORT:-8080}:8080"
     depends_on:
       postgres:
         condition: service_healthy
@@ -53,9 +59,19 @@ services:
       - path: ./backend-portal-web/.env
         required: false
     environment:
+      ASPNETCORE_ENVIRONMENT: Development
       ASPNETCORE_URLS: http://+:8080
+      BackendLab__BaseUrl: http://backend-lab:8080
+      BackendLab__TimeoutSeconds: ${BACKEND_LAB_TIMEOUT_SECONDS:-10}
+      BackendLabJwt__Secret: ${JWT_SECRET:-change-this-secret-with-at-least-32-characters}
+      # Identifica quem emite o token interno.
+      BackendLabJwt__Issuer: ${JWT_ISSUER:-tcc-backend-lab}
+      # Identifica o destino previsto do token interno.
+      BackendLabJwt__Audience: ${JWT_AUDIENCE:-tcc-portal-api-internal}
+      # Tolerância entre relógios dos serviços, em segundos.
+      BackendLabJwt__ClockSkewSeconds: ${JWT_CLOCK_SKEW_SECONDS:-30}
     ports:
-      - "5125:8080"
+      - "${PORTAL_API_PORT:-5125}:8080"
 
   frontend:
     build:
@@ -78,7 +94,7 @@ services:
       context: ./frontend-interno
       target: dev
     environment:
-      API_PROXY_TARGET: http://backend-lab:8080
+      API_PROXY_TARGET: http://portal-api:8080
     ports:
       - "${PORTAL_INTERNO_DEV_PORT:-4201}:4201"
     volumes:
@@ -86,6 +102,8 @@ services:
       - /app/node_modules
       - /app/.angular
     depends_on:
+      portal-api:
+        condition: service_started
       backend-lab:
         condition: service_healthy
     stdin_open: true

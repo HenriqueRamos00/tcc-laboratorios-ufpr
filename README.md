@@ -20,12 +20,16 @@ Esse comando sobe os dois portais de desenvolvimento, as duas APIs e o PostgreSQ
 | `frontend` - Portal do Cliente | http://localhost:4200 |
 | `frontend-interno` - Portal Interno | http://localhost:4201 |
 | `portal-api` - API C# | http://localhost:5125 |
-| `backend-lab` - API Java | http://localhost:8080 |
+| `backend-lab` - API Java, somente para desenvolvimento local | http://localhost:8080 |
 | `postgres` | localhost:5432 |
 
-O Portal Interno encaminha `/api` ao Backend Lab pela rede do Compose. O Portal do Cliente usa `http://localhost:5125` no navegador; suas portas `4200` e `5125` seguem os endereços e o CORS atuais do código.
+Os três consumidores usam a API REST C# como entrada comum. O Portal Interno encaminha `/api` para `portal-api`; a API C# valida o JWT interno e encaminha as cinco operações de autenticação e técnicos ao Backend Lab pela rede privada do Compose. O cliente e o Android usam o mesmo contrato público do C#. O Portal do Cliente usa `http://localhost:5125` no navegador; suas portas `4200` e `5125` seguem os endereços e o CORS atuais do código.
 
-As variáveis do `.env` da raiz configuram este Compose. As integrações da API C# continuam usando `backend-portal-web/.env`, quando esse arquivo existir. Os arquivos Compose de cada subpasta continuam disponíveis para execução isolada.
+Na execução local, a API Java também é publicada em `127.0.0.1:8080` para inspeção e desenvolvimento. Os frontends não devem apontar para essa porta. Em implantação, mantenha o Backend Lab e o PostgreSQL sem publicação externa.
+
+O `.env` da raiz é a origem única dos valores compartilhados entre C# e Java neste Compose, incluindo segredo, emissor, audiência e tolerância do JWT. `backend-portal-web/.env` continua disponível para configurações próprias da API, como Salesforce. Os arquivos Compose de cada subpasta continuam disponíveis para execução isolada.
+
+Para coordenar a integração interna, ajuste no `.env` da raiz `JWT_SECRET` (mínimo de 32 bytes), `JWT_EXPIRATION_SECONDS` (Java, padrão de 3600 segundos), `JWT_ISSUER` (padrão `tcc-backend-lab`), `JWT_AUDIENCE` (padrão `tcc-portal-api-internal`) e `JWT_CLOCK_SKEW_SECONDS` (padrão de 30 segundos, máximo de 60). `BACKEND_LAB_TIMEOUT_SECONDS` define o timeout do adapter C# (padrão de 10 segundos, permitido entre 1 e 60). Na execução sem Compose, configure a mesma chave, emissor, audiência e tolerância nos dois processos; o Java aceita `JWT_EXPIRATION_SECONDS` e o C# usa `BackendLab__BaseUrl` para o destino HTTP, por padrão `http://localhost:8080`. Em produção, use HTTPS nesse destino.
 
 Antes de iniciar o Compose da raiz, encerre os serviços das subpastas que estiverem usando as mesmas portas.
 
@@ -34,10 +38,10 @@ Antes de iniciar o Compose da raiz, encerre os serviços das subpastas que estiv
 O Compose inicia também as dependências do serviço escolhido:
 
 ```bash
-docker compose up -d --build frontend-interno  # Portal Interno, API Java e banco
+docker compose up -d --build frontend-interno  # Portal Interno, API C#, API Java e banco
 docker compose up -d --build frontend          # Portal do Cliente e API C#
 docker compose up -d --build backend-lab       # Somente API Java e banco
-docker compose up -d --build portal-api        # Somente API C#
+docker compose up -d --build portal-api        # Somente API C#, sem exigir Java e PostgreSQL
 docker compose up -d postgres                 # Somente banco
 ```
 
@@ -59,7 +63,7 @@ Configure `ADB_DEVICE` e, se necessário, `HOST_UID`/`HOST_GID` no `.env`. O flu
 
 ```bash
 docker compose ps
-docker compose logs -f backend-lab frontend-interno
+docker compose logs -f portal-api backend-lab frontend-interno
 docker compose --profile android down
 ```
 

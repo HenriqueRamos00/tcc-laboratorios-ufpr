@@ -18,6 +18,8 @@ public interface UsuarioRepository extends JpaRepository<Usuario, Long> {
 
 	boolean existsByEmailNormalizado(String emailNormalizado);
 
+	// Lista usuários do perfil informado, com busca opcional sem diferenciar maiúsculas de minúsculas
+	// em nome, e-mail e unidade, filtro opcional por situação e ordenação estável por nome e ID.
 	@Query("""
 			select u from Usuario u
 			where u.perfil = :perfil

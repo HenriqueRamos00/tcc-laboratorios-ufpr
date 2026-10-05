@@ -8,6 +8,7 @@ import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import java.io.IOException;
+import java.time.Instant;
 import org.springframework.http.HttpHeaders;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
@@ -40,8 +41,22 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
 			try {
 				Claims claims = jwtService.parseToken(token).getPayload();
 				Object userIdClaim = claims.get("userId");
-				if (userIdClaim instanceof Number number) {
-					Usuario usuario = usuarioRepository.findById(number.longValue())
+				String subject = claims.getSubject();
+				String roleClaim = claims.get("role", String.class);
+				var issuedAt = claims.getIssuedAt();
+
+				boolean hasSubject = subject != null && !subject.isBlank();
+				boolean hasExpiration = claims.getExpiration() != null;
+				boolean hasInternalRole = "ADMIN".equals(roleClaim) || "TECNICO".equals(roleClaim);
+
+				// Tolera pequenas diferenças entre os relógios ao conferir a data de emissão.
+				Instant latestAllowedIssuedAt = Instant.now().plusSeconds(jwtService.getClockSkewSeconds());
+				boolean hasValidIssuedAt = issuedAt != null
+						&& !issuedAt.toInstant().isAfter(latestAllowedIssuedAt);
+
+				boolean validClaims = hasSubject && hasExpiration && hasInternalRole && hasValidIssuedAt;
+				if (validClaims && userIdClaim instanceof Number userIdNumber && userIdNumber.longValue() > 0) {
+					Usuario usuario = usuarioRepository.findById(userIdNumber.longValue())
 							.filter(Usuario::isAtivo)
 							.orElse(null);
 					if (usuario != null) {
@@ -56,7 +71,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
 						SecurityContextHolder.clearContext();
 					}
 				} else {
-					// Tokens emitidos antes da inclusão do identificador exigem novo login.
+					// Tokens anteriores ao contrato JWT coordenado exigem novo login.
 					SecurityContextHolder.clearContext();
 				}
 			} catch (JwtException | IllegalArgumentException ignored) {

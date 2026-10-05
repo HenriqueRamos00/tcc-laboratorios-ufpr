@@ -63,7 +63,14 @@ GET http://localhost:5125/api/quotes/{id}
 GET http://localhost:5125/api/lab-results
 GET http://localhost:5125/api/lab-results/{id}
 POST http://localhost:5125/api/salesforce/token
+POST http://localhost:5125/api/auth/internal/login
+GET  http://localhost:5125/api/technicians
+POST http://localhost:5125/api/technicians
+PUT  http://localhost:5125/api/technicians/{id}
+PATCH http://localhost:5125/api/technicians/{id}/status
 ```
+
+As rotas internas de técnicos exigem um JWT interno com perfil `ADMIN`. O login é anônimo e encaminha as credenciais ao Backend Lab, que emite o token. Nas demais rotas, o C# valida o token e encaminha o Bearer original ao Java para que o usuário ativo e o perfil atual também sejam conferidos no PostgreSQL. O endereço do Java é uma configuração de saída do C#; os frontends usam somente `/api` na origem do portal.
 
 Exemplos:
 
@@ -92,6 +99,35 @@ Salesforce__ClientSecret=your-connected-app-client-secret
 
 O endpoint `POST /api/salesforce/token` chama o OAuth do Salesforce e retorna o
 token recebido.
+
+## Integração com o Backend Lab
+
+Em execução local, o destino padrão é `BackendLab__BaseUrl=http://localhost:8080`.
+No Compose da raiz, a URL é `http://backend-lab:8080`. Em Compose independente
+do C#, use `BACKEND_LAB_DOCKER_BASE_URL=http://host.docker.internal:8080`.
+`BackendLab__TimeoutSeconds` define o limite da chamada; o padrão é 10 segundos
+e o valor aceito vai de 1 a 60 segundos.
+Em produção, configure `BackendLab__BaseUrl` com HTTPS.
+
+O C# e o Java precisam receber os mesmos valores de chave, emissor, audiência e
+tolerância de relógio do JWT interno. O `.env` da raiz é a origem única desses
+valores no Compose integrado: `JWT_SECRET`, `JWT_ISSUER`, `JWT_AUDIENCE` e
+`JWT_CLOCK_SKEW_SECONDS`. Em execução local independente, informe valores iguais
+a ambos. Os padrões de emissor e audiência são `tcc-backend-lab` e
+`tcc-portal-api-internal`; a tolerância padrão é 30 segundos e aceita até 60.
+O Java emite tokens válidos por 3600 segundos por padrão, ajustável por
+`JWT_EXPIRATION_SECONDS`. Use um segredo próprio fora do desenvolvimento. A
+falha do Java afeta somente as rotas internas dependentes dele e não impede a
+API C# de iniciar.
+Tokens emitidos antes do alinhamento de HS256, emissor e audiência exigem novo
+login depois da atualização coordenada dos serviços.
+
+Nas requisições de técnicos, o C# confere a presença dos campos obrigatórios e
+mantém a resposta pública `{ "message": "..." }`. O Java é a autoridade para
+normalizar nome, e-mail, unidade e especialidade, validar formato e limites dos
+campos, verificar e-mails duplicados e validar a senha inicial (presença e
+limite de 72 caracteres). A senha não tem espaços removidos; na edição, omitir
+a senha mantém a senha atual.
 
 ## Como rodar com Docker
 

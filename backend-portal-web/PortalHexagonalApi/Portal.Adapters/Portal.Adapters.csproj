@@ -1,6 +1,7 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
   <ItemGroup>
+    <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" Version="10.0.8" />
     <ProjectReference Include="..\Portal.Application\Portal.Application.csproj" />
     <ProjectReference Include="..\Portal.Domain\Portal.Domain.csproj" />
   </ItemGroup>

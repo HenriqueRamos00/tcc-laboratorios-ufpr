@@ -12,16 +12,16 @@ npm ci
 npm start
 ```
 
-A aplicação fica em <http://localhost:4201> e encaminha `/api` para
-`http://localhost:8080`. Para usar outro endereço de API:
+A aplicação fica em <http://localhost:4201> e encaminha `/api` para a API C# em
+`http://localhost:5125`. Para usar outro endereço de API:
 
 ```bash
-API_PROXY_TARGET=http://localhost:8080 npm start
+API_PROXY_TARGET=http://localhost:5125 npm start
 ```
 
 ## Docker
 
-Com o backend publicado na porta `8080`, configure o ambiente e inicie a versão
+Com a API C# publicada na porta `5125`, configure o ambiente e inicie a versão
 de desenvolvimento:
 
 ```bash
@@ -41,8 +41,12 @@ evitando problemas de CORS. O destino da API pode ser alterado em `.env` com
 `API_PROXY_TARGET`, por exemplo:
 
 ```dotenv
-API_PROXY_TARGET=http://host.docker.internal:8080
+API_PROXY_TARGET=http://host.docker.internal:5125
 ```
+
+No Compose da raiz, o proxy aponta para `portal-api` pela rede interna. O
+Backend Lab continua sendo iniciado como dependência do Portal Interno, mas
+somente a API C# é chamada pelo navegador.
 
 O administrador inicial é configurado pelo backend usando `AUTH_SEED_ADMIN_*`.
 `AUTH_SEED_TECHNICIAN_*` pode preparar um técnico de desenvolvimento. Depois de entrar no

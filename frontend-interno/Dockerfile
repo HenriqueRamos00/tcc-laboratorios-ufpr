@@ -20,7 +20,7 @@ COPY . .
 RUN npm run build
 
 FROM nginx:stable-alpine AS prod
-ENV API_PROXY_TARGET=http://host.docker.internal:8080
+ENV API_PROXY_TARGET=http://host.docker.internal:5125
 ENV NGINX_ENVSUBST_FILTER=^API_PROXY_TARGET$
 COPY docker/nginx.conf /etc/nginx/templates/default.conf.template
 COPY --from=build /app/dist/portal-interno/browser /usr/share/nginx/html

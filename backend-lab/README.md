@@ -1,6 +1,8 @@
 # Backend Lab
 
-Backend monolítico do Portal Interno do TCC - Laboratórios UFPR. O projeto fornece a API que será consumida pelo Portal Interno e utiliza Java 21, Spring Boot, Spring Web, Spring Data JPA e PostgreSQL.
+Backend monolítico com os casos de uso e a persistência das operações internas do TCC - Laboratórios UFPR. Utiliza Java 21, Spring Boot, Spring Web, Spring Data JPA e PostgreSQL.
+
+O Backend Lab não é a entrada HTTP dos consumidores. Portal do Cliente, Portal Interno e Android usam a API REST C#; nas operações internas, o C# encaminha as requisições para este serviço. O Java mantém a autenticação final do usuário, as regras internas e o acesso ao PostgreSQL. A publicação em `127.0.0.1:8080` nos Compose isolados serve apenas para desenvolvimento local.
 
 Os comandos deste documento devem ser executados a partir da pasta `backend-lab`.
 
@@ -82,7 +84,7 @@ Finalize os containers sem remover os dados do PostgreSQL:
 docker compose down
 ```
 
-A API ficará disponível em `http://localhost:8080`. O Compose aguarda o PostgreSQL ficar saudável antes de iniciar o backend e monitora a API pelo endpoint `/health`.
+A API ficará disponível em `http://127.0.0.1:8080` para desenvolvimento local. O Compose aguarda o PostgreSQL ficar saudável antes de iniciar o backend e monitora a API pelo endpoint `/health`.
 
 ## API disponível
 
@@ -167,6 +169,21 @@ As principais variáveis da aplicação são:
 | `JPA_DDL_AUTO` | `update` | Estratégia de schema do Hibernate |
 | `JWT_SECRET` | valor de desenvolvimento | Chave de assinatura do JWT; altere em ambientes reais |
 | `JWT_EXPIRATION_SECONDS` | `3600` | Validade do JWT em segundos |
+| `JWT_ISSUER` | `tcc-backend-lab` | Emissor obrigatório do JWT interno |
+| `JWT_AUDIENCE` | `tcc-portal-api-internal` | Audiência obrigatória do JWT interno |
+| `JWT_CLOCK_SKEW_SECONDS` | `30` | Tolerância de relógio, entre 0 e 60 segundos |
+
+O C# e o Java precisam usar a mesma chave, emissor, audiência e tolerância. No
+Compose da raiz, essas configurações são compartilhadas pelo arquivo `.env`.
+Tokens emitidos antes da configuração coordenada de HS256, emissor e audiência
+serão rejeitados; depois da atualização, o usuário precisa entrar novamente.
+
+O Java é a autoridade das regras de técnicos: normaliza nome, e-mail, unidade e
+especialidade antes de validar os limites, garante a unicidade do e-mail e
+valida a senha inicial. A senha não é normalizada; uma senha omitida na edição
+preserva o hash atual. O C# valida somente a presença dos campos obrigatórios
+do contrato e repassa ao consumidor as mensagens públicas no formato
+`{ "message": "..." }`.
 
 O arquivo `.env` é local e não deve conter credenciais reais versionadas. Use `.env.example` como referência.
 

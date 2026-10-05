@@ -57,6 +57,7 @@ public class SecurityConfig {
 	private AuthenticationEntryPoint authenticationEntryPoint() {
 		return (request, response, exception) -> {
 			response.setStatus(401);
+			response.setHeader("WWW-Authenticate", "Bearer");//avisa a api requisitante qual tipo de auth espera
 			response.setContentType("application/json;charset=UTF-8");
 			response.setCharacterEncoding(StandardCharsets.UTF_8.name());
 			response.getWriter().write("{\"message\":\"Não autenticado\"}");

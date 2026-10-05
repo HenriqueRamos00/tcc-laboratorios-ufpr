@@ -6,7 +6,7 @@ services:
     ports:
       - "${PORTAL_INTERNO_DEV_PORT:-4201}:4201"
     environment:
-      API_PROXY_TARGET: ${API_PROXY_TARGET:-http://host.docker.internal:8080}
+      API_PROXY_TARGET: ${API_PROXY_TARGET:-http://host.docker.internal:5125}
     extra_hosts:
       - "host.docker.internal:host-gateway"
     volumes:
@@ -24,7 +24,7 @@ services:
     ports:
       - "${PORTAL_INTERNO_PORT:-8081}:80"
     environment:
-      API_PROXY_TARGET: ${API_PROXY_TARGET:-http://host.docker.internal:8080}
+      API_PROXY_TARGET: ${API_PROXY_TARGET:-http://host.docker.internal:5125}
       NGINX_ENVSUBST_FILTER: "^API_PROXY_TARGET$$"
     extra_hosts:
       - "host.docker.internal:host-gateway"

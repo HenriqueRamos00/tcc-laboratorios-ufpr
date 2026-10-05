@@ -7,6 +7,10 @@ services:
       - path: .env
         required: false
     environment:
+      ASPNETCORE_ENVIRONMENT: ${ASPNETCORE_ENVIRONMENT:-Development}
       ASPNETCORE_URLS: ${ASPNETCORE_URLS:-http://+:8080}
+      BackendLab__BaseUrl: ${BACKEND_LAB_DOCKER_BASE_URL:-http://host.docker.internal:8080}
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
     ports:
       - "${PORT:-5125}:8080"

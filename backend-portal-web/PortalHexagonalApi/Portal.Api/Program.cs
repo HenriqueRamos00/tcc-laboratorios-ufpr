@@ -1,6 +1,7 @@
 using Portal.Adapters.LabResults;
 using Portal.Adapters.Quotes;
 using Portal.Adapters.Salesforce;
+using Portal.Api.Configuration;
 using Portal.Application.LabResults;
 using Portal.Application.Quotes;
 
@@ -20,7 +21,9 @@ builder.Services.AddCors(options =>
             .AllowAnyMethod());
 });
 
-builder.Services.AddControllers();
+builder.Services.AddPortalApiControllers();
+builder.Services.AddBackendLabIntegration(builder.Configuration, builder.Environment);
+builder.Services.AddInternalApiSecurity(builder.Configuration);
 
 builder.Services.AddScoped<IQuoteUseCase, QuoteService>();
 builder.Services.AddScoped<ILabResultUseCase, LabResultService>();
@@ -33,14 +36,16 @@ builder.Services.AddSingleton(
 builder.Services.AddHttpClient<ISalesforceTokenClient, SalesforceTokenClient>();
 builder.Services.AddSingleton<ISalesforceTokenProvider, SalesforceTokenProvider>();
 
-builder.Services.AddEndpointsApiExplorer();
-builder.Services.AddOpenApi();
+builder.Services.AddPortalOpenApi();
 
 WebApplication app = builder.Build();
 
 app.MapOpenApi();
 
 app.UseCors(PortalWebCorsPolicy);
+
+app.UseAuthentication();
+app.UseAuthorization();
 
 app.MapControllers();
 
