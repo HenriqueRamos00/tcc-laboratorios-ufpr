@@ -63,6 +63,25 @@
   --color-lactec-pill-published-bg: #1F6B44;
   --color-lactec-pill-published-ink: #FFFFFF;
 
+  /* Tarja de conformidade do laudo: bloco sólido com a palavra escrita dentro,
+     então cada faixa precisa do par fundo/tinta, não só do tom. As variáveis
+     de feedback acima servem para traço, ícone e texto sobre papel, e nenhuma
+     delas aguenta receber texto por cima: branco sobre `danger` dá 3,96:1 e
+     branco sobre `warning` dá 2,15:1, por isso a tarja de alerta leva tinta
+     escura. Razão medida de cada par (WCAG 2.1 pede 4,5:1 para texto normal):
+       normal        #1F6B44 com #FFFFFF -> 6,47:1
+       alerta        #E5A53B com #0B2230 -> 7,60:1
+       não conforme  #8E2A24 com #FFFFFF -> 8,38:1
+     Os tons repetem de propósito a família de feedback, mas com valor próprio
+     fixado aqui: a tarja não pode seguir um ajuste de tom que a faça reprovar
+     no contraste sem ninguém perceber. */
+  --color-lactec-tarja-normal: #1F6B44;
+  --color-lactec-tarja-alerta: #E5A53B;
+  --color-lactec-tarja-nao-conforme: #8E2A24;
+  --color-lactec-on-tarja-normal: #FFFFFF;
+  --color-lactec-on-tarja-alerta: #0B2230;
+  --color-lactec-on-tarja-nao-conforme: #FFFFFF;
+
   --color-lactec-danger-bg: #FBE7E5;
   --color-lactec-danger-ink: #8E2A24;
   --color-lactec-danger-border: #F3C8C3;
@@ -70,6 +89,48 @@
   /* Detalhes */
   --color-lactec-divider: #B8C2C7;
   --color-lactec-faint: #94A4AB;
+  /* Borda de campo sob o cursor: um passo acima de `line`, que nesse estado
+     some. */
+  --color-lactec-line-strong: #C9D1D5;
+  --color-lactec-pill-proc-border: #B9DDE4;
+
+  /* Paleta categórica do gráfico de linhas, validada para superfície clara
+     (checagem de visão de cores, faixa de luminosidade e piso de contraste).
+     A ordem é fixa, então a posição na sequência é o próprio significado:
+     quem lê `serie-terceira` sabe que é a terceira série do gráfico. */
+  --color-lactec-serie-primeira: #2A78D6;
+  --color-lactec-serie-segunda: #EB6834;
+  --color-lactec-serie-terceira: #1BAF7A;
+  --color-lactec-serie-quarta: #EDA100;
+  --color-lactec-serie-quinta: #E87BA4;
+  --color-lactec-serie-sexta: #008300;
+  --color-lactec-serie-setima: #4A3AA7;
+  --color-lactec-serie-oitava: #E34948;
+
+  /* Zonas de falha do triângulo de Duval. O nome é o tipo de falha que a
+     região representa, não o tom: a cor de uma zona pode ser revista sem que
+     o nome passe a mentir. Tons herdados do protótipo (duval.html). */
+  --color-lactec-zona-descargas-parciais: #B4C8FF;
+  --color-lactec-zona-descarga-de-baixa-energia: #FFB4B4;
+  --color-lactec-zona-descarga-de-alta-energia: #E66464;
+  --color-lactec-zona-termica-de-baixa-temperatura: #FFF096;
+  --color-lactec-zona-termica-de-media-temperatura: #FFC864;
+  --color-lactec-zona-termica-de-alta-temperatura: #FF8C3C;
+  --color-lactec-zona-falha-mista: #C8C8C8;
+  --color-lactec-zona-gaseificacao-espuria: #A8D8C0;
+  --color-lactec-zona-carbonizacao-do-papel: #C9A0DC;
+  --color-lactec-zona-sobreaquecimento-do-oleo: #FFD9A0;
+  --color-lactec-zona-nao-determinada: #DCDCDC;
+  /* Zona publicada pela norma cujo código ainda não tem cor catalogada aqui. */
+  --color-lactec-zona-sem-catalogo: #E8E8E8;
+
+  /* Diagnóstico de gases dissolvidos. Herdam o tom da paleta categórica por
+     `var()` para que cada matiz tenha um dono só, enquanto o nome conta o que
+     a cor está afirmando no gráfico ou na tabela. */
+  --color-lactec-diagnostico-termico: var(--color-lactec-serie-terceira);
+  --color-lactec-diagnostico-descarga: var(--color-lactec-serie-primeira);
+  --color-lactec-valor-medido: var(--color-lactec-serie-primeira);
+  --color-lactec-limite-da-norma: var(--color-lactec-serie-terceira);
 
   --font-display: 'Instrument Sans', system-ui, sans-serif;
   --font-sans: Inter, system-ui, sans-serif;
@@ -110,7 +171,7 @@ html {
 }
 
 ::selection {
-  background: rgba(24, 165, 184, 0.22);
+  background: color-mix(in oklab, var(--color-lactec-primary) 22%, transparent);
   color: var(--color-lactec-ink);
 }
 
@@ -172,11 +233,11 @@ mat-icon.icone-36 {
     box-shadow 120ms ease;
 }
 .input-field:hover {
-  border-color: #C9D1D5;
+  border-color: var(--color-lactec-line-strong);
 }
 .input-field:focus-within {
   border-color: var(--color-lactec-primary);
-  box-shadow: 0 0 0 4px rgba(24, 165, 184, 0.12);
+  box-shadow: 0 0 0 4px color-mix(in oklab, var(--color-lactec-primary) 12%, transparent);
 }
 .input-field--error,
 .input-field--error:hover {
@@ -184,7 +245,7 @@ mat-icon.icone-36 {
 }
 .input-field--error:focus-within {
   border-color: var(--color-lactec-danger);
-  box-shadow: 0 0 0 4px rgba(217, 83, 79, 0.14);
+  box-shadow: 0 0 0 4px color-mix(in oklab, var(--color-lactec-danger) 14%, transparent);
 }
 .input-field__icon {
   flex: none;
@@ -214,7 +275,7 @@ mat-icon.icone-36 {
   caret-color: var(--color-lactec-primary);
 }
 .input-field__input::placeholder {
-  color: rgba(93, 116, 128, 0.55);
+  color: color-mix(in oklab, var(--color-lactec-muted) 55%, transparent);
 }
 .input-field__suffix {
   flex: none;
@@ -244,8 +305,16 @@ mat-icon.icone-36 {
 
 .bg-login-glow {
   background-image:
-    radial-gradient(900px 600px at 20% 20%, rgba(255, 255, 255, 0.06), transparent 60%),
-    radial-gradient(600px 400px at 80% 90%, rgba(24, 165, 184, 0.12), transparent 60%);
+    radial-gradient(
+      900px 600px at 20% 20%,
+      color-mix(in oklab, var(--color-lactec-paper) 6%, transparent),
+      transparent 60%
+    ),
+    radial-gradient(
+      600px 400px at 80% 90%,
+      color-mix(in oklab, var(--color-lactec-primary) 12%, transparent),
+      transparent 60%
+    );
 }
 
 .orcamento-filter-tab {
@@ -285,7 +354,7 @@ mat-icon.icone-36 {
   transition: border-color 120ms ease;
 }
 .orcamento-filter-dropdown:hover {
-  border-color: #c9d1d5;
+  border-color: var(--color-lactec-line-strong);
 }
 .orcamento-filter-dropdown mat-icon {
   font-size: 18px;
@@ -302,7 +371,7 @@ mat-icon.icone-36 {
   background: var(--color-lactec-paper);
   border: 1px solid var(--color-lactec-line);
   border-radius: 12px;
-  box-shadow: 0 1px 2px rgba(11, 34, 48, 0.04);
+  box-shadow: 0 1px 2px color-mix(in oklab, var(--color-lactec-ink) 4%, transparent);
 }
 @media (min-width: 768px) {
   .orcamento-card {
@@ -459,7 +528,7 @@ mat-icon.icone-36 {
   gap: 12px;
   padding: 16px;
   background: var(--color-lactec-pill-proc-bg);
-  border: 1px solid #b9dde4;
+  border: 1px solid var(--color-lactec-pill-proc-border);
   border-radius: 10px;
   color: var(--color-lactec-pill-proc-ink);
 }
@@ -526,12 +595,12 @@ mat-icon.status-stepper__icon {
 }
 .status-stepper__step[data-state='completed'] .status-stepper__circle {
   background: var(--color-lactec-nav);
-  color: #ffffff;
+  color: var(--color-lactec-on-primary);
 }
 .status-stepper__step[data-state='active'] .status-stepper__circle {
   background: var(--color-lactec-primary);
-  color: #ffffff;
-  box-shadow: 0 0 0 4px rgba(24, 165, 184, 0.18);
+  color: var(--color-lactec-on-primary);
+  box-shadow: 0 0 0 4px color-mix(in oklab, var(--color-lactec-primary) 18%, transparent);
 }
 .status-stepper__label {
   font-size: 10px;
@@ -634,7 +703,7 @@ mat-icon.status-stepper__icon {
   gap: 10px;
   padding: 12px 14px;
   background: var(--color-lactec-pill-proc-bg);
-  border: 1px solid #b9dde4;
+  border: 1px solid var(--color-lactec-pill-proc-border);
   border-radius: 10px;
   color: var(--color-lactec-ink-soft);
 }
@@ -708,7 +777,7 @@ mat-icon.status-stepper__icon {
   flex-direction: column;
   justify-content: flex-end;
   overflow: hidden;
-  background: rgba(11, 34, 48, 0.55);
+  background: color-mix(in oklab, var(--color-lactec-ink) 55%, transparent);
   cursor: pointer;
 }
 /* divC: o modal em si, colado embaixo, quadrado. Só ele desliza de baixo;
