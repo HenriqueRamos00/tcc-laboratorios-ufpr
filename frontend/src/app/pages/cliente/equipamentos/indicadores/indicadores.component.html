@@ -3,10 +3,7 @@
 @if (dados(); as dados) {
   <app-page-header
     [titulo]="'Indicadores de Saúde do Transformador - ' + dados.tag"
-    [migalhas]="[
-      { rotulo: 'Listagem de Equipamentos', rota: '/cliente/equipamentos' },
-      { rotulo: dados.tag },
-    ]"
+    [migalhas]="migalhas()"
   >
     <div acoes class="flex flex-col items-end gap-1">
       <span class="text-xs text-lactec-muted">Baixar relatório</span>
@@ -80,37 +77,85 @@
       <div class="mt-6 overflow-x-auto">
         <table class="w-full border-collapse text-sm">
           <caption class="sr-only">
-            Ensaios físico-químicos, com método, valor-limite da ABNT NBR 10576/17, resultado e
-            classificação.
+            Ensaios físico-químicos, com método, valor-limite da ABNT NBR 10576/17, histórico de
+            resultados por data de coleta, resultado da coleta mais recente e classificação. ND
+            marca ensaio não detectado e um hífen marca coleta não realizada.
           </caption>
           <thead>
             <tr class="bg-lactec-line-soft text-left align-bottom">
-              <th scope="col" class="px-4 py-3 font-semibold text-lactec-ink">
+              <th
+                scope="col"
+                rowspan="2"
+                class="sticky left-0 z-10 bg-lactec-line-soft px-4 py-3 font-semibold text-lactec-ink"
+              >
                 Análises físico-químicas
               </th>
-              <th scope="col" class="px-4 py-3 font-semibold text-lactec-ink">Método</th>
-              <th scope="col" class="px-4 py-3 font-semibold text-lactec-ink">
+              <th scope="col" rowspan="2" class="px-4 py-3 font-semibold text-lactec-ink">Método</th>
+              <th scope="col" rowspan="2" class="px-4 py-3 font-semibold text-lactec-ink">
                 ABNT NBR 10576/17
                 <span class="block font-normal text-lactec-muted">
                   Valores-limite para óleo de transformador em uso
                   ({{ dados.fisicoQuimico.tensaoNominal }})
                 </span>
               </th>
-              <th scope="col" class="px-4 py-3 font-semibold text-lactec-ink">Resultado</th>
-              <th scope="col" class="px-4 py-3 font-semibold text-lactec-ink">Classificação</th>
+              @if (colunasDeHistorico().length) {
+                <th
+                  scope="colgroup"
+                  [attr.colspan]="colunasDeHistorico().length"
+                  class="px-4 py-2 text-center font-semibold text-lactec-ink"
+                >
+                  Histórico de resultados
+                </th>
+              }
+              <th scope="col" class="px-4 py-2 text-center font-semibold text-lactec-ink">
+                Resultado
+                <app-tarja-de-conformidade
+                  class="mt-2"
+                  [classificacao]="dados.fisicoQuimico.conformidade"
+                />
+              </th>
+              <th scope="col" rowspan="2" class="px-4 py-3 font-semibold text-lactec-ink">
+                Classificação
+              </th>
+            </tr>
+            <tr class="bg-lactec-line-soft text-left">
+              @for (coluna of colunasDeHistorico(); track $index) {
+                <th scope="col" class="px-4 py-2 text-right font-medium text-lactec-ink">
+                  {{ coluna.data }}
+                </th>
+              }
+              @if (colunaDeResultado(); as coletaAtual) {
+                <th scope="col" class="px-4 py-2 text-center font-medium text-lactec-ink">
+                  {{ coletaAtual.data }}
+                </th>
+              }
             </tr>
           </thead>
           <tbody>
-            @for (ensaio of dados.fisicoQuimico.ensaios; track ensaio.chave) {
+            @for (linha of linhasFisicoQuimico(); track linha.chave) {
               <tr class="border-t border-lactec-line-soft">
-                <td class="px-4 py-3 text-lactec-ink">{{ ensaio.nome }}</td>
-                <td class="px-4 py-3 text-lactec-ink">{{ ensaio.metodo }}</td>
-                <td class="px-4 py-3 text-lactec-ink">{{ ensaio.limite }}</td>
-                <td class="px-4 py-3 tabular-nums text-lactec-ink">
-                  {{ ensaio.resultado ?? '—' }}
-                </td>
+                <th
+                  scope="row"
+                  class="sticky left-0 z-10 bg-lactec-paper px-4 py-3 text-left font-normal
+                         text-lactec-ink"
+                >
+                  {{ linha.nome }}
+                </th>
+                <td class="px-4 py-3 text-lactec-ink">{{ linha.metodo }}</td>
+                <td class="px-4 py-3 text-lactec-ink">{{ linha.limite }}</td>
+                @for (valor of linha.historico; track $index) {
+                  <td class="px-4 py-3 text-right tabular-nums text-lactec-ink">{{ valor }}</td>
+                }
+                @if (colunaDeResultado()) {
+                  <td
+                    class="bg-lactec-line-soft px-4 py-3 text-center font-semibold tabular-nums
+                           text-lactec-ink"
+                  >
+                    {{ linha.resultado }}
+                  </td>
+                }
                 <td class="px-4 py-3">
-                  <app-classification-badge [classificacao]="ensaio.classificacao" />
+                  <app-classification-badge [classificacao]="linha.classificacao" />
                 </td>
               </tr>
             }
@@ -119,11 +164,19 @@
       </div>
     </section>
 
-    <section class="mt-4 rounded-2xl border border-lactec-line bg-lactec-paper p-6">
-      <h2 class="display m-0 text-base font-semibold tracking-wide text-lactec-ink">
-        LAUDO DAS ANÁLISES FÍSICO-QUÍMICAS
+    <section
+      aria-labelledby="titulo-do-laudo-fisico-quimico"
+      class="mt-4 rounded-2xl border border-lactec-line bg-lactec-paper p-6"
+    >
+      <h2
+        id="titulo-do-laudo-fisico-quimico"
+        class="display m-0 text-base font-semibold tracking-wide text-lactec-ink uppercase"
+      >
+        {{ dados.fisicoQuimico.laudo.titulo }}
       </h2>
-      <p class="mt-2 mb-0 text-sm text-lactec-ink-soft">{{ dados.fisicoQuimico.laudo }}</p>
+      @for (paragrafo of dados.fisicoQuimico.laudo.paragrafos; track $index) {
+        <p class="mt-2 mb-0 text-sm text-lactec-ink-soft">{{ paragrafo }}</p>
+      }
     </section>
   } @else {
     <div
@@ -225,7 +278,7 @@
                   </th>
                   @for (valor of gas.resultados; track $index) {
                     <td class="px-4 py-2 text-right tabular-nums text-lactec-ink">
-                      {{ valor === null ? 'ND' : valor.toLocaleString('pt-BR') }}
+                      {{ valor }}
                     </td>
                   }
                 </tr>
@@ -235,7 +288,7 @@
                   <th scope="row" class="px-4 py-2 text-left text-lactec-ink">{{ gas.nome }}</th>
                   @for (valor of gas.resultados; track $index) {
                     <td class="px-4 py-2 text-right tabular-nums text-lactec-ink">
-                      {{ valor === null ? 'ND' : valor.toLocaleString('pt-BR') }}
+                      {{ valor }}
                     </td>
                   }
                 </tr>
@@ -245,11 +298,19 @@
         </div>
       </section>
 
-      <section class="mt-4 rounded-2xl border border-lactec-line bg-lactec-paper p-6">
-        <h2 class="display m-0 text-base font-semibold tracking-wide text-lactec-ink">
-          LAUDO DA ANÁLISE CROMATOGRÁFICA
+      <section
+        aria-labelledby="titulo-do-laudo-cromatografico"
+        class="mt-4 rounded-2xl border border-lactec-line bg-lactec-paper p-6"
+      >
+        <h2
+          id="titulo-do-laudo-cromatografico"
+          class="display m-0 text-base font-semibold tracking-wide text-lactec-ink uppercase"
+        >
+          {{ dados.gasesDissolvidos.laudo.titulo }}
         </h2>
-        <p class="mt-2 mb-0 text-sm text-lactec-ink-soft">{{ dados.gasesDissolvidos.laudo }}</p>
+        @for (paragrafo of dados.gasesDissolvidos.laudo.paragrafos; track $index) {
+          <p class="mt-2 mb-0 text-sm text-lactec-ink-soft">{{ paragrafo }}</p>
+        }
       </section>
     } @else {
       <section
@@ -295,14 +356,19 @@
                     x2="262"
                     [attr.y1]="linha.y"
                     [attr.y2]="linha.y"
-                    [attr.stroke]="linha.cor"
+                    [class]="linha.classes.traco"
                     stroke-width="1.5"
                   />
-                  <text x="2" [attr.y]="linha.y - 3" font-size="8" [attr.fill]="linha.cor">
+                  <text x="2" [attr.y]="linha.y - 3" font-size="8" [class]="linha.classes.rotulo">
                     {{ linha.rotulo }}
                   </text>
                 }
-                <path [attr.d]="caminhoIeee()" fill="none" stroke="#2a78d6" stroke-width="2" />
+                <path
+                  [attr.d]="caminhoIeee()"
+                  fill="none"
+                  class="stroke-lactec-valor-medido"
+                  stroke-width="2"
+                />
               </svg>
               <span class="text-xs text-lactec-muted">Gases combustíveis (ppm)</span>
             </figure>
@@ -348,14 +414,14 @@
                     width="26"
                     [attr.height]="barra.altura"
                     rx="4"
-                    [attr.fill]="corDaSerieMedida"
+                    [class]="classeDePreenchimentoDoMedido"
                   />
                   <line
                     [attr.x1]="barra.x - 3"
                     [attr.x2]="barra.x + 29"
                     [attr.y1]="barra.yLimite"
                     [attr.y2]="barra.yLimite"
-                    [attr.stroke]="corDoLimite"
+                    [class]="classeDeTracoDoLimite"
                     stroke-width="2"
                   />
                   <text
@@ -368,7 +434,14 @@
                     {{ barra.gas }}
                   </text>
                 }
-                <line x1="18" x2="252" y1="108" y2="108" stroke="#B8C2C7" stroke-width="1" />
+                <line
+                  x1="18"
+                  x2="252"
+                  y1="108"
+                  y2="108"
+                  class="stroke-lactec-divider"
+                  stroke-width="1"
+                />
               </svg>
               <ul class="m-0 flex list-none gap-4 p-0 text-xs text-lactec-ink-soft">
                 @for (item of legendaDaNbr; track item.chave) {
@@ -380,7 +453,7 @@
                       [class.rounded-sm]="item.formato === 'bloco'"
                       [class.h-0.5]="item.formato === 'linha'"
                       [class.w-4]="item.formato === 'linha'"
-                      [style.background]="item.cor"
+                      [class]="item.classeDeFundo"
                       aria-hidden="true"
                     ></span>
                     {{ item.rotulo }}
@@ -418,7 +491,7 @@
                     @for (celula of linha.celulas; track celula.coluna) {
                       <td
                         class="h-8 border border-lactec-line-soft text-center"
-                        [style.background]="celula.cor"
+                        [class]="celula.classeDeFundo"
                       >
                         <span class="sr-only">{{ celula.rotulo }}</span>
                       </td>
@@ -432,7 +505,7 @@
                 <li class="flex items-center gap-1.5">
                   <span
                     class="inline-block h-2.5 w-2.5 rounded-sm"
-                    [style.background]="item.cor"
+                    [class]="item.classeDeFundo"
                     aria-hidden="true"
                   ></span>
                   {{ item.rotulo }}

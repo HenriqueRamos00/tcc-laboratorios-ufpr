@@ -28,13 +28,54 @@ export interface Coleta {
   readonly valores: Readonly<Record<string, number | null>>;
 }
 
+/**
+ * Uma coluna de resultado na tabela do laudo. A coleta mais recente é a coluna
+ * RESULTADO, destacada; as anteriores formam o HISTÓRICO. É a mesma regra nas
+ * duas tabelas do laudo, a físico-química e a cromatográfica.
+ */
+export interface ColunaDeColeta {
+  readonly data: string;
+  readonly ehResultadoAtual: boolean;
+}
+
+/**
+ * Um valor medido numa coleta. Os três casos são distintos e o laudo impresso
+ * distingue os três:
+ *
+ * - um número: o ensaio foi feito e deu aquilo.
+ * - `'ND'`: o ensaio foi feito e o gás ou a grandeza não foi detectada.
+ * - `null`: aquela coleta não foi realizada para este ensaio. Não há medição.
+ *
+ * Colapsar `'ND'` em `null` faz a tela afirmar ausência de gás onde houve
+ * apenas ausência de visita.
+ */
+export type ValorMedido = number | 'ND' | null;
+
+/**
+ * O laudo é texto corrido em parágrafos, não um blocão único: o parágrafo é a
+ * unidade que o laboratório escreve e revisa. Guardar a lista preserva essa
+ * divisão sem pedir marcação ao template.
+ */
+export interface LaudoDeEnsaio {
+  readonly titulo: string;
+  readonly paragrafos: readonly string[];
+}
+
+/**
+ * Uma linha da tabela físico-química.
+ *
+ * `valoresPorColeta` é posicional e casa índice a índice com as colunas do
+ * bloco: `valoresPorColeta.length === colunas.length`. É lista e não
+ * `Record<data, valor>` porque a ordem cronológica é informação, e objeto
+ * serializado por backend não promete ordem de chave.
+ */
 export interface EnsaioFisicoQuimico {
   readonly chave: string;
   readonly nome: string;
   readonly metodo: string;
   /** Valor-limite da ABNT NBR 10576/17 para óleo de transformador em uso. */
   readonly limite: string;
-  readonly resultado: number | null;
+  readonly valoresPorColeta: readonly ValorMedido[];
   readonly classificacao: Classificacao;
 }
 
@@ -42,18 +83,19 @@ export interface GasDissolvido {
   readonly chave: string;
   readonly nome: string;
   readonly formula: string;
-  readonly resultados: readonly (number | null)[];
+  readonly resultados: readonly ValorMedido[];
 }
 
 export interface BlocoDeEnsaios {
   readonly conformidade: Classificacao;
   readonly veredito: string;
   readonly coletas: readonly Coleta[];
-  readonly laudo: string;
+  readonly laudo: LaudoDeEnsaio;
 }
 
 export interface BlocoFisicoQuimico extends BlocoDeEnsaios {
   readonly tensaoNominal: string;
+  readonly colunas: readonly ColunaDeColeta[];
   readonly ensaios: readonly EnsaioFisicoQuimico[];
 }
 
@@ -146,9 +188,21 @@ export interface BlocoDeDiagnostico {
   readonly conclusoes: readonly ConclusaoDeDiagnostico[];
 }
 
+/**
+ * Qual análise do histórico está na tela. Vem junto dos indicadores para a
+ * migalha de pão poder nomeá-la sem uma segunda requisição ao histórico.
+ */
+export interface AnaliseSelecionada {
+  readonly id: string;
+  readonly data: string;
+  readonly rotulo: string;
+}
+
 export interface IndicadoresDeSaude {
   readonly equipamentoId: string;
   readonly tag: string;
+  /** `null` na visão geral, que não é feita de uma análise só. */
+  readonly analiseSelecionada: AnaliseSelecionada | null;
   readonly fisicoQuimico: BlocoFisicoQuimico;
   readonly gasesDissolvidos: BlocoDeGases;
   readonly diagnostico: BlocoDeDiagnostico;

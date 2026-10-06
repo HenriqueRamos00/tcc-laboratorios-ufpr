@@ -8,7 +8,6 @@ import {
   LOCALE_ID,
   provideZoneChangeDetection,
 } from '@angular/core';
-import { provideAnimationsAsync } from '@angular/platform-browser/animations/async';
 import { provideRouter, withComponentInputBinding, withInMemoryScrolling } from '@angular/router';
 import { JwtModule } from '@auth0/angular-jwt';
 
@@ -22,7 +21,6 @@ registerLocaleData(ptBr);
 export const appConfig: ApplicationConfig = {
   providers: [
     provideZoneChangeDetection({ eventCoalescing: true }),
-    provideAnimationsAsync(),
     provideRouter(
       routes,
       // Parâmetros de rota chegam como input() nos componentes de detalhe.

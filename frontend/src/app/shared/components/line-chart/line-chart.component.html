@@ -17,7 +17,7 @@
           [attr.x2]="LARGURA - MARGEM.direita"
           [attr.y1]="marca.y"
           [attr.y2]="marca.y"
-          stroke="#E4E8EA"
+          class="stroke-lactec-line"
           stroke-width="1"
         />
         <text
@@ -69,7 +69,7 @@
           [attr.x2]="foco.x"
           [attr.y1]="MARGEM.topo"
           [attr.y2]="ALTURA - MARGEM.base"
-          stroke="#94A4AB"
+          class="stroke-lactec-faint"
           stroke-width="1"
           stroke-dasharray="4 3"
         />
@@ -79,7 +79,7 @@
         <path
           [attr.d]="serie.caminho"
           fill="none"
-          [attr.stroke]="serie.cor"
+          [class]="serie.classes.traco"
           stroke-width="2"
           stroke-linejoin="round"
           stroke-linecap="round"
@@ -89,8 +89,8 @@
           <!-- Anel da superfície separa marcadores que se cruzam. -->
           <path
             [attr.d]="marcador(serie.forma, ponto.x, ponto.y)"
-            [attr.fill]="serie.cor"
-            stroke="#FFFFFF"
+            class="stroke-lactec-paper"
+            [class]="serie.classes.marcador"
             stroke-width="2"
           />
         }
@@ -101,7 +101,7 @@
         [attr.x2]="LARGURA - MARGEM.direita"
         [attr.y1]="ALTURA - MARGEM.base"
         [attr.y2]="ALTURA - MARGEM.base"
-        stroke="#B8C2C7"
+        class="stroke-lactec-divider"
         stroke-width="1"
       />
     </svg>
@@ -118,7 +118,7 @@
           @for (item of foco.valores; track item.nome) {
             <li class="flex items-center gap-2 text-xs whitespace-nowrap">
               <svg width="10" height="10" viewBox="0 0 10 10" aria-hidden="true">
-                <path [attr.d]="marcador(item.forma, 5, 5)" [attr.fill]="item.cor" />
+                <path [attr.d]="marcador(item.forma, 5, 5)" [class]="item.classes.marcador" />
               </svg>
               <span class="text-lactec-muted">{{ item.nome }}</span>
               <span class="ml-auto font-medium text-lactec-ink">
@@ -135,7 +135,7 @@
     @for (serie of seriesDesenhadas(); track serie.chave) {
       <li class="flex items-center gap-1.5 text-xs text-lactec-ink-soft">
         <svg width="12" height="12" viewBox="0 0 12 12" aria-hidden="true">
-          <path [attr.d]="marcador(serie.forma, 6, 6)" [attr.fill]="serie.cor" />
+          <path [attr.d]="marcador(serie.forma, 6, 6)" [class]="serie.classes.marcador" />
         </svg>
         {{ serie.nome }}
       </li>

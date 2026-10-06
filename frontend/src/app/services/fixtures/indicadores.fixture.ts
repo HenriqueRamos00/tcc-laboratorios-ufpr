@@ -40,10 +40,12 @@ import {
 import type {
   CodigoDeFalha,
   Coleta,
+  ColunaDeColeta,
   ConclusaoDeDiagnostico,
   IndicadoresDeSaude,
   LeituraDoTriangulo,
   PontoTernario,
+  ValorMedido,
 } from '@/app/model/health';
 
 const DATAS_FQ = ['20/04/2021', '20/05/2022', '19/09/2023', '26/04/2024', '26/10/2025'];
@@ -252,83 +254,113 @@ function conclusaoDe<C extends string>(opcoes: {
     : { metodo: opcoes.metodo, codigo: '-', descricao: opcoes.semVeredito };
 }
 
+const COLETAS_FISICO_QUIMICO: readonly Coleta[] = [
+    {
+      data: DATAS_FQ[0],
+      valores: {
+        neutralizacao: 0.5,
+        agua: 25,
+        densidade: 0.9,
+        fatorDePotencia: 2,
+        rigidez: 49,
+        tensaoInterfacial: 20,
+        cor: 1,
+      },
+    },
+    {
+      data: DATAS_FQ[1],
+      valores: {
+        neutralizacao: 0.5,
+        agua: 32,
+        densidade: 0.9,
+        fatorDePotencia: 2.5,
+        rigidez: 49,
+        tensaoInterfacial: 20,
+        cor: 1,
+      },
+    },
+    {
+      data: DATAS_FQ[2],
+      valores: {
+        neutralizacao: 0.5,
+        agua: 42,
+        densidade: 0.9,
+        fatorDePotencia: 2,
+        rigidez: 60,
+        tensaoInterfacial: 19.5,
+        cor: 1,
+      },
+    },
+    {
+      data: DATAS_FQ[3],
+      valores: {
+        neutralizacao: 0.5,
+        agua: 39,
+        densidade: 0.9,
+        fatorDePotencia: 2,
+        rigidez: 48,
+        tensaoInterfacial: 18.5,
+        cor: 1,
+      },
+    },
+    {
+      data: DATAS_FQ[4],
+      valores: {
+        neutralizacao: 0.6,
+        agua: 65,
+        densidade: 0.9,
+        fatorDePotencia: 2.5,
+        rigidez: 37,
+        tensaoInterfacial: 19,
+        cor: 1,
+      },
+    },
+];
+
+// A coleta mais recente é a coluna RESULTADO do laudo; as anteriores são o
+// histórico. A tabela e o gráfico leem as mesmas coletas, senão os dois
+// divergem sem ninguém notar.
+const COLUNAS_FISICO_QUIMICO: readonly ColunaDeColeta[] = COLETAS_FISICO_QUIMICO.map(
+  (coleta, indice) => ({
+    data: coleta.data,
+    ehResultadoAtual: indice === COLETAS_FISICO_QUIMICO.length - 1,
+  }),
+);
+
+// A série do gráfico não distingue ensaio não detectado de coleta não
+// realizada: para a linha, os dois são buraco. A tabela do laudo distingue, e
+// a distinção mora aqui. Índice sem marca vale o valor da própria coleta.
+const AUSENCIAS_POR_ENSAIO: Readonly<Record<string, readonly (ValorMedido | undefined)[]>> = {
+  neutralizacao: [null, null],
+  tensaoInterfacial: ['ND'],
+};
+
+function valoresPorColetaDoEnsaio(chave: string): readonly ValorMedido[] {
+  const ausencias = AUSENCIAS_POR_ENSAIO[chave] ?? [];
+  return COLETAS_FISICO_QUIMICO.map((coleta, indice) => {
+    const ausencia = ausencias[indice];
+    return ausencia !== undefined ? ausencia : (coleta.valores[chave] ?? null);
+  });
+}
+
 export const INDICADORES: IndicadoresDeSaude = {
   equipamentoId: '58836',
   tag: 'TR-B05',
+  analiseSelecionada: null,
 
   fisicoQuimico: {
     conformidade: 'normal',
     veredito: 'APROVADO',
     tensaoNominal: '≤ 72,5 kV',
-    coletas: [
-      {
-        data: DATAS_FQ[0],
-        valores: {
-          neutralizacao: 0.5,
-          agua: 25,
-          densidade: 0.9,
-          fatorDePotencia: 2,
-          rigidez: 49,
-          tensaoInterfacial: 20,
-          cor: 1,
-        },
-      },
-      {
-        data: DATAS_FQ[1],
-        valores: {
-          neutralizacao: 0.5,
-          agua: 32,
-          densidade: 0.9,
-          fatorDePotencia: 2.5,
-          rigidez: 49,
-          tensaoInterfacial: 20,
-          cor: 1,
-        },
-      },
-      {
-        data: DATAS_FQ[2],
-        valores: {
-          neutralizacao: 0.5,
-          agua: 42,
-          densidade: 0.9,
-          fatorDePotencia: 2,
-          rigidez: 60,
-          tensaoInterfacial: 19.5,
-          cor: 1,
-        },
-      },
-      {
-        data: DATAS_FQ[3],
-        valores: {
-          neutralizacao: 0.5,
-          agua: 39,
-          densidade: 0.9,
-          fatorDePotencia: 2,
-          rigidez: 48,
-          tensaoInterfacial: 18.5,
-          cor: 1,
-        },
-      },
-      {
-        data: DATAS_FQ[4],
-        valores: {
-          neutralizacao: 0.6,
-          agua: 65,
-          densidade: 0.9,
-          fatorDePotencia: 2.5,
-          rigidez: 37,
-          tensaoInterfacial: 19,
-          cor: 1,
-        },
-      },
-    ],
+    colunas: COLUNAS_FISICO_QUIMICO,
+    coletas: COLETAS_FISICO_QUIMICO,
     ensaios: [
       {
         chave: 'neutralizacao',
         nome: 'Índice de Neutralização (mg KOH/g óleo)',
         metodo: 'NBR 14248',
         limite: 'máx. 0,20',
-        resultado: 0.6,
+        valoresPorColeta: valoresPorColetaDoEnsaio('neutralizacao'),
         classificacao: 'nao-conforme',
       },
       {
@@ -336,7 +368,7 @@ export const INDICADORES: IndicadoresDeSaude = {
         nome: 'Teor de Água (ppm m/m) - Medido',
         metodo: 'NBR 10710',
         limite: 'máx. 40',
-        resultado: 65,
+        valoresPorColeta: valoresPorColetaDoEnsaio('agua'),
         classificacao: 'normal',
       },
       {
@@ -344,7 +376,7 @@ export const INDICADORES: IndicadoresDeSaude = {
         nome: 'Densidade a 20/4°C (g/mL)',
         metodo: 'NBR 14065',
         limite: '-',
-        resultado: 0.9,
+        valoresPorColeta: valoresPorColetaDoEnsaio('densidade'),
         classificacao: 'nao-conforme',
       },
       {
@@ -352,7 +384,7 @@ export const INDICADORES: IndicadoresDeSaude = {
         nome: 'Fator de Potência a 100°C (%)',
         metodo: 'NBR 12133',
         limite: 'máx. 20',
-        resultado: 2.5,
+        valoresPorColeta: valoresPorColetaDoEnsaio('fatorDePotencia'),
         classificacao: 'alerta',
       },
       {
@@ -360,7 +392,7 @@ export const INDICADORES: IndicadoresDeSaude = {
         nome: 'Rigidez Dielétrica - Calota (kV)',
         metodo: 'NBR/IEC 60156',
         limite: 'min. 40',
-        resultado: 37,
+        valoresPorColeta: valoresPorColetaDoEnsaio('rigidez'),
         classificacao: 'normal',
       },
       {
@@ -368,14 +400,18 @@ export const INDICADORES: IndicadoresDeSaude = {
         nome: 'Tensão Interfacial (dina/cm)',
         metodo: 'NBR 6234',
         limite: 'min. 20',
-        resultado: 19,
+        valoresPorColeta: valoresPorColetaDoEnsaio('tensaoInterfacial'),
         classificacao: 'normal',
       },
     ],
-    laudo:
-      'De acordo com a norma ABNT NBR 10576/17, os resultados obtidos nesta análise indicam que o ' +
-      'óleo mineral isolante encontra-se em boas condições físico-químicas. Sugere-se nova análise ' +
-      'no prazo de 1 (um) ano.',
+    laudo: {
+      titulo: 'Laudo das análises físico-químicas',
+      paragrafos: [
+        'De acordo com a norma ABNT NBR 10576/17, os resultados obtidos nesta análise indicam que ' +
+          'o óleo mineral isolante encontra-se em boas condições físico-químicas.',
+        'Sugere-se nova análise no prazo de 1 (um) ano.',
+      ],
+    },
   },
 
   gasesDissolvidos: {
@@ -392,13 +428,18 @@ export const INDICADORES: IndicadoresDeSaude = {
       { chave: 'co2', nome: 'Dióxido de Carbono', formula: 'CO₂', resultados: [1228, 2788] },
       { chave: 'c2h4', nome: 'Etileno', formula: 'C₂H₄', resultados: [960, 15] },
       { chave: 'c2h6', nome: 'Etano', formula: 'C₂H₆', resultados: [74, 3] },
-      { chave: 'c2h2', nome: 'Acetileno', formula: 'C₂H₂', resultados: [1297, null] },
+      { chave: 'c2h2', nome: 'Acetileno', formula: 'C₂H₂', resultados: [1297, 'ND'] },
       { chave: 'combustiveis', nome: 'Total de Gases Combustíveis', formula: '', resultados: [6199, 763] },
       { chave: 'total', nome: 'Total de Gases', formula: '', resultados: [56134, 57424] },
     ],
-    laudo:
-      'Baseado nos critérios adotados pelos Institutos Lactec, os resultados obtidos na análise são ' +
-      'considerados normais. Sugere-se nova análise no prazo de 1 (um) ano.',
+    laudo: {
+      titulo: 'Laudo da análise cromatográfica',
+      paragrafos: [
+        'Baseado nos critérios adotados pelos Institutos Lactec, os resultados obtidos na análise ' +
+          'são considerados normais.',
+        'Sugere-se nova análise no prazo de 1 (um) ano.',
+      ],
+    },
   },
 
   diagnostico: {

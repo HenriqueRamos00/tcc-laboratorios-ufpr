@@ -87,6 +87,16 @@ export const routes: Routes = [
           ),
         title: 'Indicadores de saúde - Portal Lactec',
       },
+      // Uma análise do histórico, identificada por segmento: o identificador diz
+      // qual dado está na tela, então sobrevive ao recarregar e vai no link.
+      {
+        path: 'equipamentos/:id/indicadores/:relatorioId',
+        loadComponent: () =>
+          import('@/app/pages/cliente/equipamentos/indicadores/indicadores.component').then(
+            (modulo) => modulo.IndicadoresComponent,
+          ),
+        title: 'Indicadores de saúde - Portal Lactec',
+      },
     ],
   },
 
