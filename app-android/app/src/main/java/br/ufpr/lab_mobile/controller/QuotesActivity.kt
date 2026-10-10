@@ -39,6 +39,7 @@ class QuotesActivity : AppCompatActivity() {
     private var debounceJob: Job? = null
     private var requestJob: Job? = null
     private var skipInitialStatusSelection = true
+    private var portalDrawer: PortalDrawer? = null
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -46,7 +47,7 @@ class QuotesActivity : AppCompatActivity() {
         binding = ActivityQuotesBinding.inflate(layoutInflater)
         setContentView(binding.root)
         ViewCompat.setOnApplyWindowInsetsListener(binding.quotesRoot) { view, insets ->
-            val bars = insets.getInsets(WindowInsetsCompat.Type.systemBars())
+            val bars = insets.getInsets(WindowInsetsCompat.Type.systemBars() or WindowInsetsCompat.Type.displayCutout())
             view.setPadding(bars.left, bars.top, bars.right, bars.bottom)
             insets
         }
@@ -64,11 +65,7 @@ class QuotesActivity : AppCompatActivity() {
                 .create(QuoteApiService::class.java),
         )
         QuoteSimulations.startSession(token)
-        binding.logoutButton.setOnClickListener {
-            LoginActivity.clearSession(this)
-            startActivity(Intent(this, LoginActivity::class.java).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK))
-            finish()
-        }
+        portalDrawer = PortalDrawer(this, token, reports = false)
         supportFragmentManager.setFragmentResultListener(QuoteDecisionDialogFragment.RESULT, this) { _, _ ->
             quoteAdapter.notifyDataSetChanged()
         }
@@ -161,6 +158,7 @@ class QuotesActivity : AppCompatActivity() {
 
     override fun onResume() {
         super.onResume()
+        portalDrawer?.onResume()
         quoteAdapter.notifyDataSetChanged()
     }
 

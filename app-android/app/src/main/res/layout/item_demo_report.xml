@@ -1,0 +1,50 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:layout_marginTop="10dp"
+    android:orientation="vertical"
+    android:paddingTop="8dp">
+
+    <View
+        android:layout_width="match_parent"
+        android:layout_height="1dp"
+        android:background="@color/lactec_line" />
+
+    <TextView
+        android:id="@+id/reportNumber"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="8dp"
+        android:fontFamily="@font/instrument_sans"
+        android:textColor="@color/lactec_ink"
+        android:textSize="14sp"
+        android:textStyle="bold" />
+
+    <TextView
+        android:id="@+id/protocol"
+        style="@style/Widget.Lactec.DemoReportField" />
+    <TextView
+        android:id="@+id/sample"
+        style="@style/Widget.Lactec.DemoReportField" />
+    <TextView
+        android:id="@+id/laboratory"
+        style="@style/Widget.Lactec.DemoReportField" />
+    <TextView
+        android:id="@+id/reportDate"
+        style="@style/Widget.Lactec.DemoReportField" />
+    <com.google.android.material.button.MaterialButton
+        android:id="@+id/downloadReport"
+        style="@style/Widget.Material3.Button.TonalButton"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="6dp"
+        android:minHeight="48dp"
+        android:text="@string/demo_report_download_action"
+        android:textColor="@color/white"
+        app:backgroundTint="@color/lactec_nav"
+        app:icon="@drawable/ic_download"
+        app:iconGravity="textStart"
+        app:iconTint="@color/white" />
+</LinearLayout>
