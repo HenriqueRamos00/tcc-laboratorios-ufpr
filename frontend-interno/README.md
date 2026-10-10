@@ -12,17 +12,17 @@ npm ci
 npm start
 ```
 
-A aplicação fica em <http://localhost:4201> e encaminha `/api` para a API C# em
-`http://localhost:5125`. Para usar outro endereço de API:
+A aplicação fica em <http://localhost:4201> e encaminha `/api` diretamente para
+a API Spring em `http://localhost:8080`. Para usar outro endereço de API:
 
 ```bash
-API_PROXY_TARGET=http://localhost:5125 npm start
+API_PROXY_TARGET=http://localhost:8080 npm start
 ```
 
 ## Docker
 
-Com a API C# publicada na porta `5125`, configure o ambiente e inicie a versão
-de desenvolvimento:
+Com o Backend Lab Spring publicado na porta `8080`, configure o ambiente e
+inicie a versão de desenvolvimento do Portal Interno:
 
 ```bash
 cp .env.example .env
@@ -41,12 +41,30 @@ evitando problemas de CORS. O destino da API pode ser alterado em `.env` com
 `API_PROXY_TARGET`, por exemplo:
 
 ```dotenv
-API_PROXY_TARGET=http://host.docker.internal:5125
+API_PROXY_TARGET=http://host.docker.internal:8080
 ```
 
-No Compose da raiz, o proxy aponta para `portal-api` pela rede interna. O
-Backend Lab continua sendo iniciado como dependência do Portal Interno, mas
-somente a API C# é chamada pelo navegador.
+O Compose desta aplicação inicia apenas o Portal Interno. O Backend Lab deve
+estar disponível separadamente na porta publicada `8080`; dentro do contêiner,
+`host.docker.internal` aponta para o host e o proxy encaminha as chamadas
+diretamente à API Spring.
+
+Se o Spring estiver no Compose da raiz ou no Compose de `backend-lab`, a porta
+HTTP é publicada em loopback por padrão. No Linux, `host.docker.internal` usa o
+endereço da bridge Docker e precisa alcançar essa porta. Inicie o backend com
+publicação nesse endereço:
+
+```bash
+# Na raiz do repositório:
+APP_BIND_ADDRESS=0.0.0.0 docker compose up -d --build backend-lab
+# Ou, dentro de backend-lab/:
+APP_BIND_ADDRESS=0.0.0.0 docker compose up -d --build
+```
+
+Essa opção publica a API nas interfaces do host. Use-a no ambiente de
+desenvolvimento em que os containers separados precisam acessar o backend.
+No Compose integrado da raiz, o Portal Interno usa `http://backend-lab:8080`
+pela rede Docker e funciona com a publicação padrão em loopback.
 
 O administrador inicial é configurado pelo backend usando `AUTH_SEED_ADMIN_*`.
 `AUTH_SEED_TECHNICIAN_*` pode preparar um técnico de desenvolvimento. Depois de entrar no

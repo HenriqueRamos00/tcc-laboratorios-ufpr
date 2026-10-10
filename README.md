@@ -20,16 +20,18 @@ Esse comando sobe os dois portais de desenvolvimento, as duas APIs e o PostgreSQ
 | `frontend` - Portal do Cliente | http://localhost:4200 |
 | `frontend-interno` - Portal Interno | http://localhost:4201 |
 | `portal-api` - API C# | http://localhost:5125 |
-| `backend-lab` - API Java, somente para desenvolvimento local | http://localhost:8080 |
+| `backend-lab` - API Spring do Portal Interno | http://localhost:8080 |
 | `postgres` | localhost:5432 |
 
-Os três consumidores usam a API REST C# como entrada comum. O Portal Interno encaminha `/api` para `portal-api`; a API C# valida o JWT interno e encaminha as cinco operações de autenticação e técnicos ao Backend Lab pela rede privada do Compose. O cliente e o Android usam o mesmo contrato público do C#. O Portal do Cliente usa `http://localhost:5125` no navegador; suas portas `4200` e `5125` seguem os endereços e o CORS atuais do código.
+O Portal Interno encaminha `/api` diretamente para `backend-lab` pela rede do Compose. O Spring autentica Administradores e Técnicos, autoriza as operações e persiste os dados no PostgreSQL.
 
-Na execução local, a API Java também é publicada em `127.0.0.1:8080` para inspeção e desenvolvimento. Os frontends não devem apontar para essa porta. Em implantação, mantenha o Backend Lab e o PostgreSQL sem publicação externa.
+O Portal do Cliente e o Android usam a API C#. O Portal do Cliente acessa `http://localhost:5125` no navegador.
 
-O `.env` da raiz é a origem única dos valores compartilhados entre C# e Java neste Compose, incluindo segredo, emissor, audiência e tolerância do JWT. `backend-portal-web/.env` continua disponível para configurações próprias da API, como Salesforce. Os arquivos Compose de cada subpasta continuam disponíveis para execução isolada.
+Na execução local, a API Spring é publicada em `127.0.0.1:8080` por padrão. `APP_BIND_ADDRESS` configura a interface de publicação; use `0.0.0.0` quando um Portal Interno em Compose separado acessar a API por `host.docker.internal`. O Compose integrado usa a rede Docker e dispensa esse ajuste. No navegador, o Portal Interno usa a origem da própria aplicação e seu proxy `/api`. Em implantação, disponibilize esse proxy por HTTPS e mantenha o PostgreSQL na rede privada.
 
-Para coordenar a integração interna, ajuste no `.env` da raiz `JWT_SECRET` (mínimo de 32 bytes), `JWT_EXPIRATION_SECONDS` (Java, padrão de 3600 segundos), `JWT_ISSUER` (padrão `tcc-backend-lab`), `JWT_AUDIENCE` (padrão `tcc-portal-api-internal`) e `JWT_CLOCK_SKEW_SECONDS` (padrão de 30 segundos, máximo de 60). `BACKEND_LAB_TIMEOUT_SECONDS` define o timeout do adapter C# (padrão de 10 segundos, permitido entre 1 e 60). Na execução sem Compose, configure a mesma chave, emissor, audiência e tolerância nos dois processos; o Java aceita `JWT_EXPIRATION_SECONDS` e o C# usa `BackendLab__BaseUrl` para o destino HTTP, por padrão `http://localhost:8080`. Em produção, use HTTPS nesse destino.
+O `.env` da raiz configura o PostgreSQL, o seed e o JWT do Spring. `backend-portal-web/.env` continua disponível para configurações próprias do C#, como Salesforce. Os Compose das subpastas permitem execução isolada.
+
+Configure `JWT_SECRET` (mínimo de 32 bytes UTF-8), `JWT_EXPIRATION_SECONDS` (padrão de 3600 segundos), `JWT_ISSUER` (padrão `tcc-backend-lab`), `JWT_AUDIENCE` (padrão `tcc-backend-lab-internal`) e `JWT_CLOCK_SKEW_SECONDS` (padrão de 30 segundos, máximo de 60). Esses valores são usados somente pelo Spring. Uma audiência explícita existente continua válida; alterar audiência ou segredo exige novo login.
 
 Antes de iniciar o Compose da raiz, encerre os serviços das subpastas que estiverem usando as mesmas portas.
 
@@ -38,7 +40,7 @@ Antes de iniciar o Compose da raiz, encerre os serviços das subpastas que estiv
 O Compose inicia também as dependências do serviço escolhido:
 
 ```bash
-docker compose up -d --build frontend-interno  # Portal Interno, API C#, API Java e banco
+docker compose up -d --build frontend-interno  # Portal Interno, API Spring e banco
 docker compose up -d --build frontend          # Portal do Cliente e API C#
 docker compose up -d --build backend-lab       # Somente API Java e banco
 docker compose up -d --build portal-api        # Somente API C#, sem exigir Java e PostgreSQL

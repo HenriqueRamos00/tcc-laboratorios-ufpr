@@ -71,7 +71,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
 						SecurityContextHolder.clearContext();
 					}
 				} else {
-					// Tokens anteriores ao contrato JWT coordenado exigem novo login.
+					// Tokens anteriores ao contrato JWT interno exigem novo login.
 					SecurityContextHolder.clearContext();
 				}
 			} catch (JwtException | IllegalArgumentException ignored) {

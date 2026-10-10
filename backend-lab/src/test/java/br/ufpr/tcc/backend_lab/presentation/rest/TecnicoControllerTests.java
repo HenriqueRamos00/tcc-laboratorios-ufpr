@@ -11,13 +11,17 @@ import br.ufpr.tcc.backend_lab.domain.model.entity.Usuario;
 import br.ufpr.tcc.backend_lab.domain.repository.UsuarioRepository;
 import br.ufpr.tcc.backend_lab.infrastructure.security.JwtService;
 import io.jsonwebtoken.Jwts;
+import io.jsonwebtoken.JwtBuilder;
 import io.jsonwebtoken.security.Keys;
 import java.nio.charset.StandardCharsets;
 import java.time.Instant;
 import java.util.Date;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
@@ -29,6 +33,9 @@ class TecnicoControllerTests {
 	@Autowired private MockMvc mockMvc;
 	@Autowired private UsuarioRepository usuarioRepository;
 	@Autowired private JwtService jwtService;
+	@Value("${security.jwt.secret}") private String jwtSecret;
+	@Value("${security.jwt.issuer}") private String jwtIssuer;
+	@Value("${security.jwt.audience}") private String jwtAudience;
 
 	@BeforeEach
 	void limpaUsuarios() {
@@ -46,6 +53,53 @@ class TecnicoControllerTests {
 				.andExpect(status().isForbidden());
 		mockMvc.perform(get("/api/technicians").header("Authorization", bearer(jwtService.generateToken(admin))))
 				.andExpect(status().isOk());
+	}
+
+	@ParameterizedTest
+	@ValueSource(strings = {"audiencia", "emissor", "expirado", "emissaoFutura", "semEmissao", "semExpiracao"})
+	void rejeitaTokenAssinadoComContratoInvalido(String caso) throws Exception {
+		Usuario admin = usuarioRepository.saveAndFlush(usuario(PerfilUsuario.ADMIN, "admin@lab.com", true));
+		Instant agora = Instant.now();
+		JwtBuilder builder = Jwts.builder()
+				.subject(admin.getEmail())
+				.claim("userId", admin.getId())
+				.claim("role", "ADMIN")
+				.issuer(jwtIssuer)
+				.audience().add(jwtAudience).and()
+				.issuedAt(Date.from(agora))
+				.expiration(Date.from(agora.plusSeconds(300)));
+		switch (caso) {
+			case "audiencia" -> builder.audience().clear().add("outra-api").and();
+			case "emissor" -> builder.issuer("outro-emissor");
+			case "expirado" -> builder.expiration(Date.from(agora.minusSeconds(120)));
+			case "emissaoFutura" -> builder.issuedAt(Date.from(agora.plusSeconds(120)));
+			case "semEmissao" -> builder.issuedAt(null);
+			case "semExpiracao" -> builder.expiration(null);
+			default -> throw new IllegalArgumentException(caso);
+		}
+		String token = builder.signWith(Keys.hmacShaKeyFor(jwtSecret.getBytes(StandardCharsets.UTF_8)), Jwts.SIG.HS256).compact();
+
+		mockMvc.perform(get("/api/technicians").header("Authorization", bearer(token)))
+				.andExpect(status().isUnauthorized())
+				.andExpect(jsonPath("$.message").value("Não autenticado"));
+	}
+
+	@ParameterizedTest
+	@ValueSource(strings = {"0", "1", "\"0\"", "\"1\"", "\"OUTRO\""})
+	void rejeitaStatusForaDoContratoSemAlterarTecnico(String valorJson) throws Exception {
+		Usuario admin = usuarioRepository.saveAndFlush(usuario(PerfilUsuario.ADMIN, "admin@lab.com", true));
+		Usuario tecnico = usuarioRepository.saveAndFlush(usuario(PerfilUsuario.TECNICO, "tecnico@lab.com", false));
+		String token = bearer(jwtService.generateToken(admin));
+
+		mockMvc.perform(patch("/api/technicians/{id}/status", tecnico.getId())
+				.header("Authorization", token)
+				.contentType(MediaType.APPLICATION_JSON)
+				.content("{\"status\":" + valorJson + "}"))
+				.andExpect(status().isBadRequest());
+
+		mockMvc.perform(get("/api/technicians?status=INACTIVE").header("Authorization", token))
+				.andExpect(jsonPath("$[0].id").value(tecnico.getId()))
+				.andExpect(jsonPath("$[0].status").value("INACTIVE"));
 	}
 
 	@Test

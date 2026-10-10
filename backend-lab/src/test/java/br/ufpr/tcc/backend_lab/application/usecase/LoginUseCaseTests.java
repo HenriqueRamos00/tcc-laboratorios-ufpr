@@ -53,7 +53,7 @@ class LoginUseCaseTests {
 		assertEquals(3600L, response.expiresIn());
 		var claims = jwtService.parseToken(response.accessToken()).getPayload();
 		assertEquals("tcc-backend-lab", claims.getIssuer());
-		assertTrue(claims.getAudience().contains("tcc-portal-api-internal"));
+		assertTrue(claims.getAudience().contains("tcc-backend-lab-internal"));
 		assertEquals(usuario.getId(), ((Number) claims.get("userId")).longValue());
 		assertEquals("TECNICO", claims.get("role", String.class));
 		assertEquals("HS256", jwtService.parseToken(response.accessToken()).getHeader().getAlgorithm());

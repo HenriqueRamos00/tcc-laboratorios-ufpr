@@ -2,7 +2,7 @@
 
 Backend monolítico com os casos de uso e a persistência das operações internas do TCC - Laboratórios UFPR. Utiliza Java 21, Spring Boot, Spring Web, Spring Data JPA e PostgreSQL.
 
-O Backend Lab não é a entrada HTTP dos consumidores. Portal do Cliente, Portal Interno e Android usam a API REST C#; nas operações internas, o C# encaminha as requisições para este serviço. O Java mantém a autenticação final do usuário, as regras internas e o acesso ao PostgreSQL. A publicação em `127.0.0.1:8080` nos Compose isolados serve apenas para desenvolvimento local.
+O Portal Interno acessa diretamente esta API para autenticação e gestão de técnicos: `Portal Interno -> Spring -> Use Case -> Repository -> PostgreSQL`. O Spring valida a sessão e o perfil atual do usuário, aplica as regras internas e persiste os dados. O proxy Angular em desenvolvimento e o Nginx em produção encaminham `/api` ao Spring.
 
 Os comandos deste documento devem ser executados a partir da pasta `backend-lab`.
 
@@ -86,6 +86,16 @@ docker compose down
 
 A API ficará disponível em `http://127.0.0.1:8080` para desenvolvimento local. O Compose aguarda o PostgreSQL ficar saudável antes de iniciar o backend e monitora a API pelo endpoint `/health`.
 
+Para um Portal Interno em Compose separado acessar o Spring por
+`host.docker.internal`, publique a porta fora do loopback:
+
+```bash
+APP_BIND_ADDRESS=0.0.0.0 docker compose up --build -d
+```
+
+Essa configuração permite acesso pelas interfaces do host. O Compose integrado
+da raiz usa a rede Docker entre os serviços e dispensa esse ajuste.
+
 ## API disponível
 
 ### Health check
@@ -163,6 +173,7 @@ As principais variáveis da aplicação são:
 | Variável | Padrão | Uso |
 | --- | --- | --- |
 | `SERVER_PORT` | `8080` | Porta HTTP da API |
+| `APP_BIND_ADDRESS` | `127.0.0.1` | Interface do host para publicar a porta no Docker Compose |
 | `DB_URL` | `jdbc:postgresql://localhost:5432/backend_lab` | URL JDBC do PostgreSQL |
 | `DB_USERNAME` | `backend_lab` | Usuário do banco |
 | `DB_PASSWORD` | `backend_lab` | Senha do banco |
@@ -170,20 +181,21 @@ As principais variáveis da aplicação são:
 | `JWT_SECRET` | valor de desenvolvimento | Chave de assinatura do JWT; altere em ambientes reais |
 | `JWT_EXPIRATION_SECONDS` | `3600` | Validade do JWT em segundos |
 | `JWT_ISSUER` | `tcc-backend-lab` | Emissor obrigatório do JWT interno |
-| `JWT_AUDIENCE` | `tcc-portal-api-internal` | Audiência obrigatória do JWT interno |
+| `JWT_AUDIENCE` | `tcc-backend-lab-internal` | Audiência obrigatória do JWT interno |
 | `JWT_CLOCK_SKEW_SECONDS` | `30` | Tolerância de relógio, entre 0 e 60 segundos |
 
-O C# e o Java precisam usar a mesma chave, emissor, audiência e tolerância. No
-Compose da raiz, essas configurações são compartilhadas pelo arquivo `.env`.
-Tokens emitidos antes da configuração coordenada de HS256, emissor e audiência
-serão rejeitados; depois da atualização, o usuário precisa entrar novamente.
+As configurações de JWT pertencem ao Spring e são fornecidas pelo `.env` da raiz
+no Compose integrado ou pelas variáveis de ambiente na execução isolada. Não há
+compartilhamento da chave com o C#. A audiência padrão identifica a API
+Spring interna; ambientes com `JWT_AUDIENCE` explícita conservam seu valor.
+Depois de alterar a audiência ou o segredo, entre novamente para obter um token
+compatível. A API confere HS256, emissor, audiência, expiração, data de emissão,
+identificador imutável e situação/perfil atual no banco.
 
-O Java é a autoridade das regras de técnicos: normaliza nome, e-mail, unidade e
-especialidade antes de validar os limites, garante a unicidade do e-mail e
-valida a senha inicial. A senha não é normalizada; uma senha omitida na edição
-preserva o hash atual. O C# valida somente a presença dos campos obrigatórios
-do contrato e repassa ao consumidor as mensagens públicas no formato
-`{ "message": "..." }`.
+O Java normaliza nome, e-mail, unidade e especialidade antes de validar os
+limites, garante a unicidade do e-mail e valida a senha inicial. A senha não é
+normalizada; uma senha omitida na edição preserva o hash atual. Os erros públicos
+seguem o formato `{ "message": "..." }`.
 
 O arquivo `.env` é local e não deve conter credenciais reais versionadas. Use `.env.example` como referência.
 
