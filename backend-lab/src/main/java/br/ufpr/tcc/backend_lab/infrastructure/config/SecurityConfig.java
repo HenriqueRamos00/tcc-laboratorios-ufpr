@@ -32,6 +32,7 @@ public class SecurityConfig {
 				.sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
 				.authorizeHttpRequests(authorize -> authorize
 						.requestMatchers("/health", "/api/auth/internal/login").permitAll()
+						.requestMatchers("/api/technicians", "/api/technicians/**").hasRole("ADMIN")
 						.anyRequest().authenticated()
 				)
 				.exceptionHandling(exception -> exception
@@ -56,6 +57,7 @@ public class SecurityConfig {
 	private AuthenticationEntryPoint authenticationEntryPoint() {
 		return (request, response, exception) -> {
 			response.setStatus(401);
+			response.setHeader("WWW-Authenticate", "Bearer");//avisa a api requisitante qual tipo de auth espera
 			response.setContentType("application/json;charset=UTF-8");
 			response.setCharacterEncoding(StandardCharsets.UTF_8.name());
 			response.getWriter().write("{\"message\":\"Não autenticado\"}");

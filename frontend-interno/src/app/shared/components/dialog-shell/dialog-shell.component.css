@@ -1,0 +1,88 @@
+:host {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  gap: 16px;
+  padding: 24px 40px 20px;
+  background: var(--color-lactec-paper);
+}
+
+.dialog-shell__navbar {
+  display: flex;
+  flex: none;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.dialog-shell__title-block {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  gap: 2px;
+}
+
+.dialog-shell__title {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: 24px;
+  font-weight: 600;
+  color: var(--color-lactec-ink);
+  letter-spacing: -0.01em;
+  overflow-wrap: anywhere;
+}
+
+.dialog-shell__subtitle {
+  margin: 0;
+  font-size: 13px;
+  color: var(--color-lactec-muted);
+}
+
+.dialog-shell__close {
+  flex: none;
+}
+
+.dialog-shell__content {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  min-height: 0;
+  padding: 8px 0;
+  overflow-y: auto;
+}
+
+.dialog-shell__footer {
+  display: flex;
+  flex: none;
+  justify-content: flex-end;
+  border-top: 1px solid var(--color-lactec-line);
+  padding-top: 12px;
+}
+
+/* HU 16: o mesmo padrão visual do Portal do Cliente em um painel lateral. */
+:host(.dialog-shell--lateral) {
+  height: 100%;
+  gap: 0;
+  padding: 0;
+}
+
+:host(.dialog-shell--lateral) .dialog-shell__navbar {
+  align-items: center;
+  border-bottom: 1px solid var(--color-lactec-line);
+  padding: 20px 24px;
+}
+
+:host(.dialog-shell--lateral) .dialog-shell__content {
+  flex: 1 1 auto;
+  padding: 20px 24px;
+}
+
+:host(.dialog-shell--lateral) .dialog-shell__footer {
+  padding: 16px 24px;
+}
+
+@media (max-width: 767.98px) {
+  :host {
+    padding: 20px;
+  }
+}

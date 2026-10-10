@@ -152,9 +152,29 @@ html {
   );
 }
 
+.tecnicos-novo-botao {
+  @include mat.button-overrides(
+    (
+      filled-container-height: 44px,
+      filled-horizontal-padding: 20px,
+    )
+  );
+}
+
+.confirmacao-dialog-perigo {
+  @include mat.button-overrides(
+    (
+      filled-container-color: var(--color-lactec-danger),
+      filled-label-text-color: var(--color-lactec-on-primary),
+      filled-state-layer-color: var(--color-lactec-danger-ink),
+    )
+  );
+}
+
 // Modal: no desktop o painel é quadrado; no mobile o overlay é só um contêiner
 // transparente - quem desenha barra, escurecedor e sheet é o .dialog-sheet.
-.lactec-dialog-desktop {
+.lactec-dialog-desktop,
+.lactec-dialog-lateral {
   @include mat.dialog-overrides((container-shape: 0));
 }
 

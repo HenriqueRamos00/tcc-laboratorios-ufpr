@@ -1,6 +1,8 @@
 # Backend Lab
 
-Backend monolítico do Portal Interno do TCC - Laboratórios UFPR. O projeto fornece a API que será consumida pelo Portal Interno e utiliza Java 21, Spring Boot, Spring Web, Spring Data JPA e PostgreSQL.
+Backend monolítico com os casos de uso e a persistência das operações internas do TCC - Laboratórios UFPR. Utiliza Java 21, Spring Boot, Spring Web, Spring Data JPA e PostgreSQL.
+
+O Portal Interno acessa diretamente esta API para autenticação e gestão de técnicos: `Portal Interno -> Spring -> Use Case -> Repository -> PostgreSQL`. O Spring valida a sessão e o perfil atual do usuário, aplica as regras internas e persiste os dados. O proxy Angular em desenvolvimento e o Nginx em produção encaminham `/api` ao Spring.
 
 Os comandos deste documento devem ser executados a partir da pasta `backend-lab`.
 
@@ -82,7 +84,17 @@ Finalize os containers sem remover os dados do PostgreSQL:
 docker compose down
 ```
 
-A API ficará disponível em `http://localhost:8080`. O Compose aguarda o PostgreSQL ficar saudável antes de iniciar o backend e monitora a API pelo endpoint `/health`.
+A API ficará disponível em `http://127.0.0.1:8080` para desenvolvimento local. O Compose aguarda o PostgreSQL ficar saudável antes de iniciar o backend e monitora a API pelo endpoint `/health`.
+
+Para um Portal Interno em Compose separado acessar o Spring por
+`host.docker.internal`, publique a porta fora do loopback:
+
+```bash
+APP_BIND_ADDRESS=0.0.0.0 docker compose up --build -d
+```
+
+Essa configuração permite acesso pelas interfaces do host. O Compose integrado
+da raiz usa a rede Docker entre os serviços e dispensa esse ajuste.
 
 ## API disponível
 
@@ -146,7 +158,7 @@ Envie o token nas demais requisições protegidas:
 Authorization: Bearer <jwt>
 ```
 
-Para criar um administrador ou técnico na primeira execução local, preencha as variáveis `AUTH_SEED_ADMIN_*` e/ou `AUTH_SEED_TECHNICIAN_*` no arquivo `.env`. As senhas são armazenadas com BCrypt. Esse recurso serve apenas para preparar o ambiente; o cadastro completo de usuários será implementado posteriormente.
+Para criar a conta inicial do administrador na primeira execução local, preencha `AUTH_SEED_ADMIN_*` no arquivo `.env`. `AUTH_SEED_TECHNICIAN_*` permanece disponível para preparar um técnico legado de desenvolvimento; técnicos também podem ser cadastrados e mantidos pelo Portal Interno. As senhas são armazenadas com BCrypt.
 
 ## Execução local
 
@@ -161,12 +173,29 @@ As principais variáveis da aplicação são:
 | Variável | Padrão | Uso |
 | --- | --- | --- |
 | `SERVER_PORT` | `8080` | Porta HTTP da API |
+| `APP_BIND_ADDRESS` | `127.0.0.1` | Interface do host para publicar a porta no Docker Compose |
 | `DB_URL` | `jdbc:postgresql://localhost:5432/backend_lab` | URL JDBC do PostgreSQL |
 | `DB_USERNAME` | `backend_lab` | Usuário do banco |
 | `DB_PASSWORD` | `backend_lab` | Senha do banco |
 | `JPA_DDL_AUTO` | `update` | Estratégia de schema do Hibernate |
 | `JWT_SECRET` | valor de desenvolvimento | Chave de assinatura do JWT; altere em ambientes reais |
 | `JWT_EXPIRATION_SECONDS` | `3600` | Validade do JWT em segundos |
+| `JWT_ISSUER` | `tcc-backend-lab` | Emissor obrigatório do JWT interno |
+| `JWT_AUDIENCE` | `tcc-backend-lab-internal` | Audiência obrigatória do JWT interno |
+| `JWT_CLOCK_SKEW_SECONDS` | `30` | Tolerância de relógio, entre 0 e 60 segundos |
+
+As configurações de JWT pertencem ao Spring e são fornecidas pelo `.env` da raiz
+no Compose integrado ou pelas variáveis de ambiente na execução isolada. Não há
+compartilhamento da chave com o C#. A audiência padrão identifica a API
+Spring interna; ambientes com `JWT_AUDIENCE` explícita conservam seu valor.
+Depois de alterar a audiência ou o segredo, entre novamente para obter um token
+compatível. A API confere HS256, emissor, audiência, expiração, data de emissão,
+identificador imutável e situação/perfil atual no banco.
+
+O Java normaliza nome, e-mail, unidade e especialidade antes de validar os
+limites, garante a unicidade do e-mail e valida a senha inicial. A senha não é
+normalizada; uma senha omitida na edição preserva o hash atual. Os erros públicos
+seguem o formato `{ "message": "..." }`.
 
 O arquivo `.env` é local e não deve conter credenciais reais versionadas. Use `.env.example` como referência.
 

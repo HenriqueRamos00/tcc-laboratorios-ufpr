@@ -1,3 +1,5 @@
+name: tcc-laboratorios
+
 services:
   postgres:
     image: postgres:17-alpine
@@ -17,7 +19,7 @@ services:
 
   backend-lab:
     build:
-      context: .
+      context: ./backend-lab
     environment:
       SERVER_PORT: 8080
       DB_URL: jdbc:postgresql://postgres:5432/${POSTGRES_DB:-backend_lab}
@@ -40,15 +42,82 @@ services:
       AUTH_SEED_TECHNICIAN_PASSWORD: ${AUTH_SEED_TECHNICIAN_PASSWORD:-}
     ports:
       - "${APP_BIND_ADDRESS:-127.0.0.1}:${APP_PORT:-8080}:8080"
+    depends_on:
+      postgres:
+        condition: service_healthy
     healthcheck:
       test: ["CMD-SHELL", "wget -qO- http://localhost:8080/health | grep -q '\"status\":\"UP\"'"]
       interval: 10s
       timeout: 5s
       retries: 5
       start_period: 20s
+
+  portal-api:
+    build:
+      context: ./backend-portal-web
+    env_file:
+      - path: ./backend-portal-web/.env
+        required: false
+    environment:
+      ASPNETCORE_ENVIRONMENT: Development
+      ASPNETCORE_URLS: http://+:8080
+    ports:
+      - "${PORTAL_API_PORT:-5125}:8080"
+
+  frontend:
+    build:
+      context: ./frontend
+      target: dev
+    ports:
+      - "4200:4200"
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules
+      - /app/.angular
     depends_on:
-      postgres:
+      portal-api:
+        condition: service_started
+    stdin_open: true
+    tty: true
+
+  frontend-interno:
+    build:
+      context: ./frontend-interno
+      target: dev
+    environment:
+      API_PROXY_TARGET: http://backend-lab:8080
+    ports:
+      - "${PORTAL_INTERNO_DEV_PORT:-4201}:4201"
+    volumes:
+      - ./frontend-interno:/app
+      - /app/node_modules
+      - /app/.angular
+    depends_on:
+      backend-lab:
         condition: service_healthy
+    stdin_open: true
+    tty: true
+
+  app-android:
+    profiles: [android]
+    build:
+      context: ./app-android
+      args:
+        UID: ${HOST_UID:-1000}
+        GID: ${HOST_GID:-1000}
+    working_dir: /workspace
+    environment:
+      GRADLE_OPTS: -Dorg.gradle.daemon=false
+      ADB_DEVICE: ${ADB_DEVICE:-}
+    volumes:
+      - ./app-android:/workspace
+      - app-android-gradle-home:/home/dev/.gradle
+      - app-android-adb-home:/home/dev/.android
+    stdin_open: true
+    tty: true
 
 volumes:
   backend-lab-postgres-data:
+    name: ${LAB_POSTGRES_VOLUME:-tcc-laboratorios-postgres}
+  app-android-gradle-home:
+  app-android-adb-home:
