@@ -10,24 +10,34 @@ export interface SerieDoGrafico {
   readonly chave: string;
   readonly nome: string;
   /** Índice na paleta categórica; sem ciclo automático. */
-  readonly cor: number;
+  readonly posicaoNaPaleta: number;
   readonly valores: readonly (number | null)[];
 }
 
 export type EscalaDoEixo = 'linear' | 'log';
 
-// Paleta categórica validada para superfície clara (checagem de CVD, faixa de
-// luminosidade e piso de visão normal). A ordem é fixa.
-const PALETA = [
-  '#2a78d6',
-  '#eb6834',
-  '#1baf7a',
-  '#eda100',
-  '#e87ba4',
-  '#008300',
-  '#4a3aa7',
-  '#e34948',
-] as const;
+// Paleta categórica validada para superfície clara (checagem de visão de
+// cores, faixa de luminosidade e piso de contraste). A ordem é fixa.
+//
+// Cada posição guarda a classe utilitária inteira, uma por propriedade, em vez
+// do tom: o traço da linha pinta `stroke` e o marcador pinta `fill`, e o
+// Tailwind só emite a utilitária que encontra escrita por extenso no fonte.
+// Nome montado em tempo de execução não chega ao CSS gerado.
+interface ClassesDaSerie {
+  readonly traco: string;
+  readonly marcador: string;
+}
+
+const PALETA: readonly ClassesDaSerie[] = [
+  { traco: 'stroke-lactec-serie-primeira', marcador: 'fill-lactec-serie-primeira' },
+  { traco: 'stroke-lactec-serie-segunda', marcador: 'fill-lactec-serie-segunda' },
+  { traco: 'stroke-lactec-serie-terceira', marcador: 'fill-lactec-serie-terceira' },
+  { traco: 'stroke-lactec-serie-quarta', marcador: 'fill-lactec-serie-quarta' },
+  { traco: 'stroke-lactec-serie-quinta', marcador: 'fill-lactec-serie-quinta' },
+  { traco: 'stroke-lactec-serie-sexta', marcador: 'fill-lactec-serie-sexta' },
+  { traco: 'stroke-lactec-serie-setima', marcador: 'fill-lactec-serie-setima' },
+  { traco: 'stroke-lactec-serie-oitava', marcador: 'fill-lactec-serie-oitava' },
+];
 
 const FORMAS = ['circulo', 'quadrado', 'triangulo', 'losango'] as const;
 type Forma = (typeof FORMAS)[number];
@@ -44,12 +54,16 @@ interface PontoDesenhado {
 interface SerieDesenhada {
   readonly chave: string;
   readonly nome: string;
-  readonly cor: string;
+  readonly classes: ClassesDaSerie;
   readonly forma: Forma;
   readonly tracejada: boolean;
   readonly caminho: string;
   readonly pontos: readonly PontoDesenhado[];
 }
+
+// Lacuna de coleta nao e "nao detectado": o ensaio nao foi feito naquela data.
+// A tabela de indicadores marca a mesma ausencia do mesmo jeito.
+const MARCA_DE_COLETA_NAO_REALIZADA = '-';
 
 @Component({
   selector: 'app-line-chart',
@@ -135,7 +149,7 @@ export class LineChartComponent {
       return {
         chave: serie.chave,
         nome: serie.nome,
-        cor: PALETA[serie.cor % PALETA.length],
+        classes: PALETA[serie.posicaoNaPaleta % PALETA.length],
         forma: FORMAS[Math.floor(indice / PALETA.length) % FORMAS.length],
         // A partir da nona série a cor se repete; o traço passa a tracejado
         // para que a identidade continue distinguível sem inventar matiz nova.
@@ -154,7 +168,7 @@ export class LineChartComponent {
       rotulo: this.rotulosDoEixoX()[indice],
       valores: this.series().map((serie, ordem) => ({
         nome: serie.nome,
-        cor: PALETA[serie.cor % PALETA.length],
+        classes: PALETA[serie.posicaoNaPaleta % PALETA.length],
         forma: FORMAS[Math.floor(ordem / PALETA.length) % FORMAS.length],
         valor: serie.valores[indice],
       })),
@@ -196,7 +210,7 @@ export class LineChartComponent {
   }
 
   protected formatarNumero(valor: number | null): string {
-    if (valor === null) return 'ND';
+    if (valor === null) return MARCA_DE_COLETA_NAO_REALIZADA;
     if (Math.abs(valor) >= 1000) return valor.toLocaleString('pt-BR');
     return Number.isInteger(valor) ? String(valor) : valor.toLocaleString('pt-BR');
   }

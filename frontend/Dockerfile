@@ -38,7 +38,7 @@ COPY --from=deps /app/node_modules ./node_modules
 COPY . .
 EXPOSE 4200
 # --host 0.0.0.0 para o servidor aceitar conexões de fora do contêiner.
-CMD ["npx", "ng", "serve", "--host", "0.0.0.0", "--port", "4200"]
+CMD ["npx", "ng", "serve", "--host", "0.0.0.0", "--port", "4200", "--proxy-config", "proxy.conf.cjs"]
 
 # ---------- build: gera o bundle de produção ----------
 FROM node:${NODE_VERSION}-alpine AS build
@@ -49,7 +49,9 @@ RUN npm run build
 
 # ---------- prod: nginx servindo os estáticos ----------
 FROM nginx:stable-alpine AS prod
-COPY docker/nginx.conf /etc/nginx/conf.d/default.conf
+ENV API_PROXY_TARGET=http://host.docker.internal:8080
+ENV NGINX_ENVSUBST_FILTER=^API_PROXY_TARGET$
+COPY docker/nginx.conf /etc/nginx/templates/default.conf.template
 # `ng build` gera dist/portal-web/browser (builder `application` do Angular).
 COPY --from=build /app/dist/portal-web/browser /usr/share/nginx/html
 EXPOSE 80

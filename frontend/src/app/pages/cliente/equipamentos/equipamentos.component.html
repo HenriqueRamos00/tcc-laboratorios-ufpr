@@ -30,7 +30,7 @@
       <table class="w-full border-collapse text-sm">
         <caption class="sr-only">
           Equipamentos da sua empresa, com número de série, TAG, tipo, localização e acesso aos
-          indicadores de saúde.
+          detalhes de cada um.
         </caption>
         <thead>
           <tr class="bg-lactec-line-soft text-left">
@@ -50,11 +50,11 @@
               <td class="px-4 py-3 text-lactec-ink">{{ equipamento.localizacao }}</td>
               <td class="px-4 py-3 text-right">
                 <a
-                  [routerLink]="['/cliente/equipamentos', equipamento.id, 'indicadores']"
+                  [routerLink]="['/cliente/equipamentos', equipamento.id]"
                   class="inline-flex items-center gap-2 rounded-lg bg-lactec-primary px-4 py-2
                          text-sm font-semibold text-lactec-on-primary hover:bg-lactec-primary-dark"
                 >
-                  Ver Indicadores de Saúde
+                  Ver Detalhes
                   <mat-icon class="icone-16" aria-hidden="true">arrow_forward</mat-icon>
                 </a>
               </td>

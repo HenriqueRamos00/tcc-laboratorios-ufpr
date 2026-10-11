@@ -1,57 +1,29 @@
 import { Injectable } from '@angular/core';
-import { delay, Observable, of } from 'rxjs';
+import { delay, Observable, of, throwError } from 'rxjs';
+
+import { DEMO_DATA_ENABLED } from '@/app/environment/env';
 
 import type { ConclusaoDaAnalise } from '@/app/model/report';
 
-const LATENCIA_SIMULADA = 300;
+import { CONCLUSAO, PDF_DE_EXEMPLO } from './fixtures/relatorios.fixture';
 
-const CONCLUSAO: ConclusaoDaAnalise = {
-  protocolo: '#LCT-2024-9981-B',
-  tipoDeEnsaio: 'Ensaio Químico de Materiais',
-  resumo:
-    'O processo de análise foi concluído com sucesso. Todos os parâmetros técnicos foram validados ' +
-    'pela curadoria laboratorial e o laudo final está disponível para visualização.',
-  relatorios: [
-    {
-      id: '1',
-      codigo: 'LACTEC-00307/2026',
-      protocolo: '00307/2026',
-      amostra: 'Areia',
-      laboratorio: 'Lab. de Óleos',
-      publicadoEm: '07/03/2026',
-    },
-    {
-      id: '2',
-      codigo: 'LACTEC-00307/2026',
-      protocolo: '00307/2026',
-      amostra: 'Brita',
-      laboratorio: 'Lab. de Óleos',
-      publicadoEm: '07/03/2026',
-    },
-    {
-      id: '3',
-      codigo: '60101',
-      protocolo: '00307/2026',
-      amostra: 'Transformador',
-      laboratorio: 'Lab. de Óleos',
-      publicadoEm: '07/03/2026',
-    },
-    {
-      id: '4',
-      codigo: '61550',
-      protocolo: '00307/2026',
-      amostra: 'Transformador',
-      laboratorio: 'Lab. de Óleos',
-      publicadoEm: '07/03/2026',
-    },
-  ],
-};
+const LATENCIA_SIMULADA = 300;
 
 @Injectable({ providedIn: 'root' })
 export class ReportsService {
-  /** GET /api/quotes/{id}/reports */
-  conclusaoDaAnalise(propostaId?: string): Observable<ConclusaoDaAnalise> {
-    void propostaId;
+  conclusaoDaAnalise(_propostaId?: string): Observable<ConclusaoDaAnalise> {
+    if (!DEMO_DATA_ENABLED) {
+      return throwError(() => new Error('Relatórios de demonstração estão desativados.'));
+    }
     return of(CONCLUSAO).pipe(delay(LATENCIA_SIMULADA));
+  }
+
+  baixarRelatorio(_relatorioId: string): Observable<Blob> {
+    if (!DEMO_DATA_ENABLED) {
+      return throwError(() => new Error('Relatórios de demonstração estão desativados.'));
+    }
+    return of(new Blob([PDF_DE_EXEMPLO], { type: 'application/pdf' })).pipe(
+      delay(LATENCIA_SIMULADA),
+    );
   }
 }

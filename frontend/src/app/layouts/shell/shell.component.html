@@ -124,6 +124,11 @@
       </header>
 
       <main class="flex-1 overflow-auto px-4 py-4 md:px-8 md:py-6">
+        @if (demoDataEnabled) {
+          <p class="mt-0 mb-4 rounded-lg border border-lactec-line bg-lactec-paper px-4 py-3 text-sm text-lactec-ink-soft" role="status">
+            Equipamentos, indicadores e relatórios exibem dados de demonstração.
+          </p>
+        }
         <router-outlet />
       </main>
     </div>

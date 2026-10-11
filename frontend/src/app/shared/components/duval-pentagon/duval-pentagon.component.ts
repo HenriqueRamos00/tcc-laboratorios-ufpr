@@ -24,10 +24,18 @@ function vertice(indice: number, raio: number): { x: number; y: number } {
       </figcaption>
 
       <svg viewBox="0 0 200 200" class="w-full max-w-52" role="img" [attr.aria-label]="descricao()">
-        <path [attr.d]="contorno()" fill="#FFFFFF" stroke="#0B2230" stroke-width="2.5" />
+        <path
+          [attr.d]="contorno()"
+          class="fill-lactec-paper stroke-lactec-ink"
+          stroke-width="2.5"
+        />
 
         @for (setor of setores(); track setor.codigo) {
-          <path [attr.d]="setor.divisoria" stroke="#B8C2C7" stroke-width="1" fill="none" />
+          <path
+            [attr.d]="setor.divisoria"
+            class="fill-none stroke-lactec-divider"
+            stroke-width="1"
+          />
           <text
             [attr.x]="setor.rotulo.x"
             [attr.y]="setor.rotulo.y"
@@ -45,8 +53,7 @@ function vertice(indice: number, raio: number): { x: number; y: number } {
           [attr.cx]="leitura().x"
           [attr.cy]="leitura().y"
           r="6"
-          fill="#1F6B44"
-          stroke="#FFFFFF"
+          class="fill-lactec-tarja-normal stroke-lactec-paper"
           stroke-width="2"
         />
       </svg>

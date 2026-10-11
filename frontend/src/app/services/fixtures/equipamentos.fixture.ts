@@ -1,11 +1,14 @@
 // Os valores são os exemplos citados nas histórias HU-05 a HU-07, para os
 // critérios de aceitação poderem ser conferidos na tela.
 
-import type {
-  DetalheDoEquipamento,
-  Equipamento,
-  RelatorioDoEquipamento,
+import {
+  ROTULO_DO_TIPO_DE_ANALISE,
+  type DetalheDoEquipamento,
+  type Equipamento,
+  type RelatorioDoEquipamento,
+  type TipoDeAnalise,
 } from '@/app/model/equipment';
+import type { AnaliseSelecionada } from '@/app/model/health';
 
 export const EQUIPAMENTOS: readonly Equipamento[] = [
   {
@@ -77,10 +80,10 @@ export function detalheDoEquipamento(id: string): DetalheDoEquipamento | null {
   return { ...base, ...COMPLEMENTO[id] };
 }
 
-const TIPOS_DE_ANALISE = [
-  'Análise Físico-Química',
-  'Cromatografia',
-  'Análise de Gases Dissolvidos',
+const TIPOS_DE_ANALISE: readonly TipoDeAnalise[] = [
+  'fisico-quimico',
+  'cromatografia',
+  'gases-dissolvidos',
 ];
 
 // Doze laudos porque o detalhe da tela mostra "1-4 de 12".
@@ -89,11 +92,33 @@ export function historicoDoEquipamento(id: string): readonly RelatorioDoEquipame
   return Array.from({ length: 12 }, (_, indice) => {
     const data = new Date(inicio);
     data.setMonth(data.getMonth() - indice * 3);
+    const relatorioId = `${id}-${indice + 1}`;
     return {
-      id: `${id}-${indice + 1}`,
+      id: relatorioId,
       data: data.toISOString().slice(0, 10),
       tipoDeAnalise: TIPOS_DE_ANALISE[indice % TIPOS_DE_ANALISE.length],
       situacao: 'Concluído',
+      urlDoRelatorio: `/api/reports/${relatorioId}/file`,
     };
   });
+}
+
+/**
+ * Nomeia a análise que a tela de indicadores recebeu pela URL. Mora aqui, e
+ * não no serviço, porque é o histórico que sabe o que cada identificador é.
+ */
+export function analiseSelecionadaDoHistorico(
+  equipamentoId: string,
+  relatorioId: string | undefined,
+): AnaliseSelecionada | null {
+  if (!relatorioId) return null;
+  const relatorio = historicoDoEquipamento(equipamentoId).find(
+    (candidato) => candidato.id === relatorioId,
+  );
+  if (!relatorio) return null;
+  return {
+    id: relatorio.id,
+    data: relatorio.data,
+    rotulo: ROTULO_DO_TIPO_DE_ANALISE[relatorio.tipoDeAnalise],
+  };
 }

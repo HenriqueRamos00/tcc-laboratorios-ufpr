@@ -12,20 +12,45 @@ const ALTURA = 208;
 
 // Uma cor por tipo de falha, como no protótipo Plotly: zona branca só diz onde
 // o ponto caiu, zona colorida diz o que a região significa sem ler o rótulo.
-// Tons herdados do protótipo (duval.html) para as zonas do triângulo 1; as do
-// 4 e do 5 seguem a mesma lógica de família (frio→quente, elétrico→térmico).
-const COR_DA_ZONA: Record<string, string> = {
-  PD: '#B4C8FF',
-  D1: '#FFB4B4',
-  D2: '#E66464',
-  T1: '#FFF096',
-  T2: '#FFC864',
-  T3: '#FF8C3C',
-  DT: '#C8C8C8',
-  S: '#A8D8C0',
-  C: '#C9A0DC',
-  O: '#FFD9A0',
-  ND: '#DCDCDC',
+// Os tons moram em src/styles.css; aqui ficam as classes utilitárias já
+// escritas por extenso, porque o Tailwind só emite a utilitária que encontra
+// literal no fonte. A mesma cor pinta duas propriedades diferentes: o
+// preenchimento do polígono no desenho e o fundo do quadradinho da legenda.
+interface ClassesDaZona {
+  readonly preenchimento: string;
+  readonly amostra: string;
+}
+
+const CLASSES_DA_ZONA: Record<string, ClassesDaZona> = {
+  PD: { preenchimento: 'fill-lactec-zona-descargas-parciais', amostra: 'bg-lactec-zona-descargas-parciais' },
+  D1: {
+    preenchimento: 'fill-lactec-zona-descarga-de-baixa-energia',
+    amostra: 'bg-lactec-zona-descarga-de-baixa-energia',
+  },
+  D2: {
+    preenchimento: 'fill-lactec-zona-descarga-de-alta-energia',
+    amostra: 'bg-lactec-zona-descarga-de-alta-energia',
+  },
+  T1: {
+    preenchimento: 'fill-lactec-zona-termica-de-baixa-temperatura',
+    amostra: 'bg-lactec-zona-termica-de-baixa-temperatura',
+  },
+  T2: {
+    preenchimento: 'fill-lactec-zona-termica-de-media-temperatura',
+    amostra: 'bg-lactec-zona-termica-de-media-temperatura',
+  },
+  T3: {
+    preenchimento: 'fill-lactec-zona-termica-de-alta-temperatura',
+    amostra: 'bg-lactec-zona-termica-de-alta-temperatura',
+  },
+  DT: { preenchimento: 'fill-lactec-zona-falha-mista', amostra: 'bg-lactec-zona-falha-mista' },
+  S: { preenchimento: 'fill-lactec-zona-gaseificacao-espuria', amostra: 'bg-lactec-zona-gaseificacao-espuria' },
+  C: { preenchimento: 'fill-lactec-zona-carbonizacao-do-papel', amostra: 'bg-lactec-zona-carbonizacao-do-papel' },
+  O: {
+    preenchimento: 'fill-lactec-zona-sobreaquecimento-do-oleo',
+    amostra: 'bg-lactec-zona-sobreaquecimento-do-oleo',
+  },
+  ND: { preenchimento: 'fill-lactec-zona-nao-determinada', amostra: 'bg-lactec-zona-nao-determinada' },
 };
 
 const ROTULO_DA_ZONA: Record<string, string> = {
@@ -42,7 +67,10 @@ const ROTULO_DA_ZONA: Record<string, string> = {
   ND: 'Não determinado',
 };
 
-const COR_PADRAO = '#E8E8E8';
+const CLASSES_PADRAO: ClassesDaZona = {
+  preenchimento: 'fill-lactec-zona-sem-catalogo',
+  amostra: 'bg-lactec-zona-sem-catalogo',
+};
 
 function paraCartesiano(ponto: PontoTernario): { x: number; y: number } {
   return {
@@ -55,7 +83,7 @@ interface ZonaDesenhada {
   readonly codigo: string;
   readonly caminho: string;
   readonly destacada: boolean;
-  readonly cor: string;
+  readonly classes: ClassesDaZona;
   readonly descricao: string;
   readonly rotulo: { x: number; y: number };
 }
@@ -63,7 +91,7 @@ interface ZonaDesenhada {
 /** Uma entrada da legenda. Zonas em vários anéis (O no triângulo 5) aparecem uma vez. */
 interface ItemDaLegenda {
   readonly codigo: string;
-  readonly cor: string;
+  readonly classes: ClassesDaZona;
   readonly descricao: string;
   readonly destacada: boolean;
 }
@@ -97,12 +125,11 @@ interface PontoDesenhado {
         @for (zona of zonas(); track $index) {
           <path
             [attr.d]="zona.caminho"
-            [attr.fill]="zona.cor"
             [attr.fill-opacity]="opacidadeDa(zona)"
-            stroke="#0B2230"
             [attr.stroke-width]="zona.destacada ? 1.8 : 0.8"
             stroke-linejoin="round"
-            class="cursor-pointer transition-[fill-opacity] duration-100"
+            class="cursor-pointer stroke-lactec-ink transition-[fill-opacity] duration-100"
+            [class]="zona.classes.preenchimento"
             tabindex="0"
             [attr.aria-label]="zona.codigo + ': ' + zona.descricao"
             (mouseenter)="emFoco.set(zona.codigo)"
@@ -130,10 +157,8 @@ interface PontoDesenhado {
             [attr.cx]="ponto.x"
             [attr.cy]="ponto.y"
             r="4.5"
-            fill="#18A5B8"
-            stroke="#FFFFFF"
             stroke-width="2"
-            class="cursor-pointer"
+            class="cursor-pointer fill-lactec-primary stroke-lactec-paper"
             tabindex="0"
             [attr.aria-label]="ponto.data + ', ' + ponto.resumo"
             (mouseenter)="pontoEmFoco.set(ponto)"
@@ -193,7 +218,7 @@ interface PontoDesenhado {
           >
             <span
               class="inline-block h-2 w-2 shrink-0 rounded-[2px] border border-lactec-ink/40"
-              [style.background-color]="item.cor"
+              [class]="item.classes.amostra"
             ></span>
             <span class="text-lactec-ink-soft">{{ item.codigo }}</span>
           </li>
@@ -232,7 +257,7 @@ export class DuvalTriangleComponent {
       return {
         codigo: zona.codigo,
         destacada: zona.destacada,
-        cor: COR_DA_ZONA[zona.codigo] ?? COR_PADRAO,
+        classes: CLASSES_DA_ZONA[zona.codigo] ?? CLASSES_PADRAO,
         descricao: ROTULO_DA_ZONA[zona.codigo] ?? 'Zona sem descrição catalogada',
         rotulo: centro,
         caminho: vertices.map((vertice, indice) => `${indice === 0 ? 'M' : 'L'} ${vertice.x} ${vertice.y}`).join(' ') + ' Z',
@@ -274,7 +299,7 @@ export class DuvalTriangleComponent {
       }
       vistos.set(zona.codigo, {
         codigo: zona.codigo,
-        cor: zona.cor,
+        classes: zona.classes,
         descricao: zona.descricao,
         destacada: zona.destacada,
       });

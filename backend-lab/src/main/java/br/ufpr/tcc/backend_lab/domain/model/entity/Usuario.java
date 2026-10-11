@@ -11,14 +11,24 @@ import jakarta.persistence.Index;
 import jakarta.persistence.PrePersist;
 import jakarta.persistence.PreUpdate;
 import jakarta.persistence.Table;
+import jakarta.persistence.UniqueConstraint;
+
+import java.util.Locale;
+
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 
 @Entity
-@Table(name = "usuarios", indexes = {
-		@Index(name = "uk_usuarios_email_normalizado", columnList = "email_normalizado", unique = true)
-})
+@Table(
+        name = "usuarios",
+        indexes =
+                @Index(
+                        name = "uk_usuarios_email_normalizado",
+                        columnList = "email_normalizado",
+                        unique = true),
+        uniqueConstraints =
+                @UniqueConstraint(name = "uk_usuarios_email", columnNames = "email"))
 @Getter
 @Setter
 @NoArgsConstructor
@@ -31,7 +41,7 @@ public class Usuario {
 	@Column(nullable = false)
 	private String nome;
 
-	@Column(nullable = false, unique = true, length = 254)
+	@Column(nullable = false, length = 254)
 	private String email;
 
 	// Índice único adicional para garantir unicidade sem diferenciar caixa.
@@ -59,7 +69,7 @@ public class Usuario {
 	@PreUpdate
 	private void atualizarEmailNormalizado() {
 		if (email != null) {
-			emailNormalizado = email.trim().toLowerCase(java.util.Locale.ROOT);
+			emailNormalizado = email.trim().toLowerCase(Locale.ROOT);
 		}
 	}
 }

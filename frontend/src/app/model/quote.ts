@@ -1,5 +1,5 @@
-// Espelha o payload de Portal.Domain.Quotes.Quote serializado pela API (camelCase).
-// GET /api/quotes e GET /api/quotes/{id}
+// Contrato de orçamentos retornado pela API Spring (camelCase).
+// GET /api/client/quotes e GET /api/client/quotes/{id}
 export type Quote = {
   id: string;
   code: string;

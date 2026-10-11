@@ -1,0 +1,122 @@
+@let controls = form.controls;
+@let nameInvalid = controls.legalName.touched && controls.legalName.invalid;
+@let cnpjInvalid = controls.cnpj.touched && controls.cnpj.invalid;
+@let addressInvalid = controls.address.touched && controls.address.invalid;
+@let cityInvalid = controls.city.touched && controls.city.invalid;
+@let stateInvalid = controls.state.touched && controls.state.invalid;
+@let contactNameInvalid = controls.contactName.touched && controls.contactName.invalid;
+@let phoneInvalid = controls.contactPhone.touched && controls.contactPhone.invalid;
+@let emailInvalid = controls.contactEmail.touched && controls.contactEmail.invalid;
+
+<form class="flex h-full min-h-0 flex-col" [formGroup]="form" (ngSubmit)="save()" novalidate>
+  <app-dialog-shell
+    [title]="isEditing ? 'Editar Empresa' : 'Nova Empresa'"
+    subtitle="Informe os dados cadastrais e o contato principal."
+    [lateral]="true"
+    [closeDisabled]="saving()"
+    closeLabel="Fechar formulário de empresa"
+  >
+    @if (serverError()) {
+      <p class="m-0 rounded-lg border border-lactec-danger-border bg-lactec-danger-bg px-4 py-3 text-sm text-lactec-danger-ink" role="alert">
+        {{ serverError() }}
+      </p>
+    }
+
+    <div class="flex flex-col gap-2">
+      <label for="empresa-legal-name" class="text-xs font-medium tracking-wide text-lactec-ink-soft">Razão social <span class="text-lactec-danger">*</span></label>
+      <div class="input-field" [class.input-field--error]="nameInvalid">
+        <input id="empresa-legal-name" formControlName="legalName" maxlength="200" autocomplete="organization" class="input-field__input"
+          [attr.aria-invalid]="nameInvalid" [attr.aria-describedby]="nameInvalid ? 'empresa-legal-name-error' : null" />
+      </div>
+      @if (nameInvalid) {
+        <p id="empresa-legal-name-error" class="m-0 text-xs text-lactec-danger" role="alert">Informe a razão social, com até 200 caracteres.</p>
+      }
+    </div>
+
+    <div class="flex flex-col gap-2">
+      <label for="empresa-cnpj" class="text-xs font-medium tracking-wide text-lactec-ink-soft">CNPJ <span class="text-lactec-danger">*</span></label>
+      <div class="input-field" [class.input-field--error]="cnpjInvalid">
+        <input id="empresa-cnpj" formControlName="cnpj" maxlength="18" inputmode="numeric" autocomplete="off" placeholder="00.000.000/0000-00"
+          class="input-field__input" [attr.aria-invalid]="cnpjInvalid" [attr.aria-describedby]="cnpjInvalid ? 'empresa-cnpj-error' : null" />
+      </div>
+      @if (cnpjInvalid) {
+        <p id="empresa-cnpj-error" class="m-0 text-xs text-lactec-danger" role="alert">Informe um CNPJ válido com 14 dígitos.</p>
+      }
+    </div>
+
+    <div class="flex flex-col gap-2">
+      <label for="empresa-address" class="text-xs font-medium tracking-wide text-lactec-ink-soft">Endereço <span class="text-lactec-danger">*</span></label>
+      <div class="input-field" [class.input-field--error]="addressInvalid">
+        <input id="empresa-address" formControlName="address" maxlength="255" autocomplete="street-address" class="input-field__input"
+          [attr.aria-invalid]="addressInvalid" [attr.aria-describedby]="addressInvalid ? 'empresa-address-error' : null" />
+      </div>
+      @if (addressInvalid) {
+        <p id="empresa-address-error" class="m-0 text-xs text-lactec-danger" role="alert">Informe o endereço, com até 255 caracteres.</p>
+      }
+    </div>
+
+    <div class="grid grid-cols-1 gap-4 sm:grid-cols-[minmax(0,1fr)_7rem]">
+      <div class="flex flex-col gap-2">
+        <label for="empresa-city" class="text-xs font-medium tracking-wide text-lactec-ink-soft">Cidade <span class="text-lactec-danger">*</span></label>
+        <div class="input-field" [class.input-field--error]="cityInvalid">
+          <input id="empresa-city" formControlName="city" maxlength="120" autocomplete="address-level2" class="input-field__input"
+            [attr.aria-invalid]="cityInvalid" [attr.aria-describedby]="cityInvalid ? 'empresa-city-error' : null" />
+        </div>
+        @if (cityInvalid) {
+          <p id="empresa-city-error" class="m-0 text-xs text-lactec-danger" role="alert">Informe a cidade, com até 120 caracteres.</p>
+        }
+      </div>
+      <div class="flex flex-col gap-2">
+        <label for="empresa-state" class="text-xs font-medium tracking-wide text-lactec-ink-soft">UF <span class="text-lactec-danger">*</span></label>
+        <div class="input-field" [class.input-field--error]="stateInvalid">
+          <select id="empresa-state" formControlName="state" autocomplete="address-level1" class="input-field__input"
+            [attr.aria-invalid]="stateInvalid" [attr.aria-describedby]="stateInvalid ? 'empresa-state-error' : null">
+            <option value="" disabled>UF</option>
+            @for (uf of estados; track uf) { <option [value]="uf">{{ uf }}</option> }
+          </select>
+        </div>
+        @if (stateInvalid) {
+          <p id="empresa-state-error" class="m-0 text-xs text-lactec-danger" role="alert">Selecione uma UF brasileira.</p>
+        }
+      </div>
+    </div>
+
+    <div class="flex flex-col gap-2">
+      <label for="empresa-contact-name" class="text-xs font-medium tracking-wide text-lactec-ink-soft">Contato <span class="text-lactec-danger">*</span></label>
+      <div class="input-field" [class.input-field--error]="contactNameInvalid">
+        <input id="empresa-contact-name" formControlName="contactName" maxlength="150" autocomplete="name" class="input-field__input"
+          [attr.aria-invalid]="contactNameInvalid" [attr.aria-describedby]="contactNameInvalid ? 'empresa-contact-name-error' : null" />
+      </div>
+      @if (contactNameInvalid) {
+        <p id="empresa-contact-name-error" class="m-0 text-xs text-lactec-danger" role="alert">Informe o nome do contato, com até 150 caracteres.</p>
+      }
+    </div>
+
+    <div class="flex flex-col gap-2">
+      <label for="empresa-contact-phone" class="text-xs font-medium tracking-wide text-lactec-ink-soft">Telefone do contato <span class="text-lactec-danger">*</span></label>
+      <div class="input-field" [class.input-field--error]="phoneInvalid">
+        <input id="empresa-contact-phone" formControlName="contactPhone" maxlength="30" type="tel" autocomplete="tel" class="input-field__input"
+          [attr.aria-invalid]="phoneInvalid" [attr.aria-describedby]="phoneInvalid ? 'empresa-contact-phone-error' : null" />
+      </div>
+      @if (phoneInvalid) {
+        <p id="empresa-contact-phone-error" class="m-0 text-xs text-lactec-danger" role="alert">Informe o telefone do contato, com até 30 caracteres.</p>
+      }
+    </div>
+
+    <div class="flex flex-col gap-2">
+      <label for="empresa-contact-email" class="text-xs font-medium tracking-wide text-lactec-ink-soft">E-mail <span class="text-lactec-danger">*</span></label>
+      <div class="input-field" [class.input-field--error]="emailInvalid">
+        <input id="empresa-contact-email" formControlName="contactEmail" maxlength="254" type="email" autocomplete="email" class="input-field__input"
+          [attr.aria-invalid]="emailInvalid" [attr.aria-describedby]="emailInvalid ? 'empresa-contact-email-error' : null" />
+      </div>
+      @if (emailInvalid) {
+        <p id="empresa-contact-email-error" class="m-0 text-xs text-lactec-danger" role="alert">Informe um e-mail válido.</p>
+      }
+    </div>
+
+    <div dialog-footer class="flex w-full flex-wrap justify-end gap-3">
+      <button mat-stroked-button type="button" [disabled]="saving()" (click)="close()">Cancelar</button>
+      <button mat-flat-button type="submit" [disabled]="saving()">{{ saving() ? 'Salvando...' : 'Salvar' }}</button>
+    </div>
+  </app-dialog-shell>
+</form>
