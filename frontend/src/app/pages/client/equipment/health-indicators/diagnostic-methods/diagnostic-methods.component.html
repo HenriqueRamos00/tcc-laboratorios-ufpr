@@ -1,0 +1,77 @@
+<h2 class="display m-0 text-center text-xl font-semibold tracking-wide text-lactec-ink">
+  DIAGNÓSTICO DE GASES DISSOLVIDOS
+</h2>
+
+@if (diagnosis(); as block) {
+
+        <div class="mt-6 grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
+          @for (triangulo of block.triangles; track triangulo.number) {
+            <div class="rounded-lg border border-lactec-line-soft p-4">
+              <app-duval-triangle [triangle]="triangulo" />
+            </div>
+          }
+
+          <div class="rounded-lg border border-lactec-line-soft p-4">
+            @if (block.pentagon.point; as point) {
+              <app-duval-pentagon
+                [zone]="block.pentagon.zone"
+                [x]="point.x"
+                [y]="point.y"
+                [percentages]="pentagonPercentages()"
+              />
+            } @else {
+              <p class="m-0 text-center text-sm text-lactec-muted">
+                Pentágono de Duval não plotado. {{ block.pentagon.notPlotted }}
+              </p>
+            }
+
+@if (block.pentagon.zoneNotAssessed; as reason) {
+              <p class="mt-2 mb-0 text-center text-xs text-lactec-ink-soft">
+                <span class="font-semibold">Zona {{ notAssessedLabel }}.</span> {{ reason }}
+              </p>
+            }
+          </div>
+
+          <app-ieee-c57104-chart [block]="block.ieee" />
+
+          <app-gas-ratio-table
+            title="MÉTODO IEC 60599"
+            legend="Razões características medidas na coleta mais recente, e o motivo quando a razão não foi calculada."
+            [rows]="iecRatios()"
+            [faultCode]="block.iec60599.faultCode"
+            [faultCodeNotAssessed]="block.iec60599.faultCodeNotAssessed"
+          />
+
+          <app-iec-60599-fault-codes [codes]="block.iecCodes" />
+
+          <app-nbr-7274-chart [block]="block.nbr7274" />
+
+          <app-gas-ratio-table
+            title="MÉTODO DE ROGERS"
+            legend="Razões de Rogers medidas na coleta mais recente, e o motivo quando a razão não foi calculada."
+            [rows]="rogersRatios()"
+            [faultCode]="block.rogers.faultCode"
+            [faultCodeNotAssessed]="block.rogers.faultCodeNotAssessed"
+          />
+        </div>
+
+        <div class="mt-6 overflow-hidden rounded-lg border border-lactec-line">
+          <h3 class="m-0 bg-lactec-line-soft px-4 py-3 text-sm font-semibold text-lactec-ink">
+            Diagnóstico
+          </h3>
+          <ul class="m-0 list-none p-0">
+            @for (conclusao of block.conclusions; track conclusao.method) {
+              <li class="border-t border-lactec-line-soft px-4 py-3 text-sm text-lactec-ink">
+                {{ conclusao.method }}
+                <span class="text-lactec-muted">&gt; {{ conclusao.code }} &gt;</span>
+                {{ conclusao.description }}
+              </li>
+            }
+          </ul>
+        </div>
+} @else {
+  <p class="mt-6 text-center text-sm text-lactec-muted">
+    Este laudo não traz diagnóstico de gases dissolvidos. Os resultados medidos
+    continuam na aba de critérios.
+  </p>
+}

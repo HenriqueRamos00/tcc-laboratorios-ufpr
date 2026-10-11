@@ -1,0 +1,87 @@
+<figure class="m-0">
+  <figcaption class="mb-2 text-center text-base text-lactec-ink-soft">{{ title() }}</figcaption>
+
+  <div class="relative">
+    <svg
+      [attr.viewBox]="'0 0 ' + LARGURA + ' ' + ALTURA"
+      class="h-auto w-full"
+      role="img"
+      [attr.aria-label]="title() + '. Os valores estão na tabela abaixo do gráfico.'"
+      (mousemove)="aoMoverPonteiro($event)"
+      (mouseleave)="aoSairDoGrafico()"
+    >
+      @for (marca of marcasDoEixoY(); track marca.value) {
+        <line
+          [attr.x1]="MARGEM.esquerda"
+          [attr.x2]="LARGURA - MARGEM.direita"
+          [attr.y1]="marca.y"
+          [attr.y2]="marca.y"
+          class="stroke-lactec-line-soft"
+          stroke-width="1"
+        />
+        <text
+          [attr.x]="MARGEM.esquerda - 8"
+          [attr.y]="marca.y + 4"
+          text-anchor="end"
+          font-size="11"
+          class="fill-lactec-muted"
+        >
+          {{ marca.rotulo }}
+        </text>
+      }
+
+      @for (barra of barras(); track barra.key) {
+        @if (barra.value !== null) {
+          <rect
+            [attr.x]="barra.x"
+            [attr.y]="barra.y"
+            [attr.width]="barra.largura"
+            [attr.height]="barra.altura"
+            class="fill-lactec-valor-medido"
+          />
+        }
+        <text
+          [attr.x]="barra.centro"
+          [attr.y]="ALTURA - MARGEM.base + 18"
+          text-anchor="middle"
+          font-size="11"
+          class="fill-lactec-ink"
+        >
+          {{ barra.label }}
+        </text>
+      }
+
+      <line
+        [attr.x1]="MARGEM.esquerda"
+        [attr.x2]="LARGURA - MARGEM.direita"
+        [attr.y1]="ALTURA - MARGEM.base"
+        [attr.y2]="ALTURA - MARGEM.base"
+        class="stroke-lactec-ink"
+        stroke-width="1"
+      />
+
+      <text
+        [attr.transform]="'rotate(-90 14 ' + ALTURA / 2 + ')'"
+        x="14"
+        [attr.y]="ALTURA / 2"
+        text-anchor="middle"
+        font-size="11"
+        class="fill-lactec-muted"
+      >
+        {{ yAxisLabel() }}
+      </text>
+    </svg>
+
+    @if (leituraEmFoco(); as foco) {
+      <div
+        class="pointer-events-none absolute top-2 w-fit rounded-lg border border-lactec-line
+               bg-lactec-paper/95 px-3 py-2 shadow-lg"
+        [style.left.%]="(foco.centro / LARGURA) * 100 > 60 ? null : (foco.centro / LARGURA) * 100 + 2"
+        [style.right.%]="(foco.centro / LARGURA) * 100 > 60 ? 100 - (foco.centro / LARGURA) * 100 + 2 : null"
+      >
+        <p class="m-0 mb-1 text-xs font-semibold text-lactec-ink">{{ foco.label }}</p>
+        <p class="m-0 text-xs text-lactec-ink">{{ foco.texto }}</p>
+      </div>
+    }
+  </div>
+</figure>

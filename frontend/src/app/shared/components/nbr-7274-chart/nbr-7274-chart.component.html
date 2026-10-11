@@ -1,0 +1,15 @@
+<div class="rounded-lg border border-lactec-line-soft p-4">
+  <app-bar-chart
+    title="NBR 7274"
+    yAxisLabel="Concentração (ppm)"
+    unit="ppm"
+    [readings]="readings()"
+  />
+
+  @if (block().limitsNotAssessed; as reason) {
+    <p class="mt-2 mb-0 text-xs text-lactec-ink-soft">
+      <span class="font-semibold">Limite por gás {{ notAssessedLabel }}.</span>
+      {{ reason }}
+    </p>
+  }
+</div>

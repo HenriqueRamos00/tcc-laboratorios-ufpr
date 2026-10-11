@@ -5,6 +5,7 @@ import { of } from 'rxjs';
 
 import type { HealthIndicators, MeasuredValue } from '@/app/model/health';
 import { HEALTH_INDICATORS } from '@/app/services/fixtures/health-indicators.fixture';
+import { DissolvedGasDiagnosisService } from '@/app/services/dissolved-gas-diagnosis.service';
 import { HealthService } from '@/app/services/health.service';
 
 import { HealthIndicatorsComponent } from './health-indicators.component';
@@ -206,33 +207,113 @@ describe('HealthIndicatorsComponent, tabela físico-química', () => {
   });
 });
 
-// O backend serve `diagnostico: null` enquanto o núcleo normativo não migrou, e
-// vai continuar servindo nulo em laudo de área que não tem gás dissolvido. O
-// componente lia `dados()?.diagnostico.rogers`, e o `?.` curto-circuita só em
-// `dados()`: com o envelope presente e o bloco nulo, a leitura seguinte
-// derrubava a aba inteira com TypeError, sem estado de erro e sem mensagem.
-describe('HealthIndicatorsComponent, laudo sem bloco de diagnóstico', () => {
+// O backend serve `diagnosis: null` e vai continuar servindo, enquanto o núcleo
+// normativo não migrar. Quem calcula os sete métodos é o
+// `DissolvedGasDiagnosisService`, a partir dos gases dissolvidos do mesmo corpo,
+// e a aba de métodos tem que mostrar isso: antes ela anunciava "este laudo não
+// traz diagnóstico" para TODO laudo, inclusive com os nove gases na tabela ao
+// lado.
+//
+// O bloco continua podendo não existir, e agora por um motivo só: laudo de área
+// que não é Óleos não tem gás dissolvido nenhum para diagnosticar.
+describe('HealthIndicatorsComponent, aba de métodos de diagnóstico', () => {
   afterEach(() => TestBed.resetTestingModule());
 
-  const semDiagnostico: HealthIndicators = { ...HEALTH_INDICATORS, diagnosis: null };
+  const semGasDissolvido: HealthIndicators = {
+    ...HEALTH_INDICATORS,
+    dissolvedGases: {
+      ...HEALTH_INDICATORS.dissolvedGases,
+      analysisDates: [],
+      analyses: [],
+      gases: [],
+    },
+  };
 
-  it('abre a aba de métodos sem derrubar a tela', () => {
-    const raiz = abrirAbaDeMetodos(semDiagnostico);
+  it('desenha os três triângulos de Duval com o bloco de diagnóstico nulo no corpo', () => {
+    const raiz = abrirAbaDeMetodos(HEALTH_INDICATORS);
+
+    expect(HEALTH_INDICATORS.diagnosis).toBeNull();
+    expect(raiz.querySelectorAll('app-duval-triangle').length).toBe(3);
+    expect(raiz.querySelector('#painel-metodos')?.textContent)
+      .not.toContain('não traz diagnóstico');
+  });
+
+  // O pentágono, a NBR 7274, a IEC 60599, Rogers e o IEEE C57.104 aparecem na
+  // mesma aba: estes dois alcançam o painel inteiro, porque painel que desenha
+  // triângulo e cala os outros cinco métodos é o defeito anterior pela metade.
+  it('mostra os sete métodos, cada um com o seu painel', () => {
+    const painel = abrirAbaDeMetodos(HEALTH_INDICATORS).querySelector('#painel-metodos');
+    const texto = painel?.textContent ?? '';
+
+    expect(painel?.querySelectorAll('app-duval-triangle').length).toBe(3);
+    expect(painel?.querySelector('app-duval-pentagon')).not.toBeNull();
+    expect(texto).toContain('MÉTODO IEEE C57.104');
+    expect(texto).toContain('MÉTODO IEC 60599');
+    expect(texto).toContain('NBR 7274');
+    expect(texto).toContain('MÉTODO DE ROGERS');
+  });
+
+  // Razão calculada do gás medido, e não texto de demonstração: na coleta mais
+  // recente da massa, o metano dá 3 ppm e o hidrogênio 12, e 3/12 é 0,25.
+  it('escreve as razões características com o valor medido, no formato do laudo', () => {
+    const painel = abrirAbaDeMetodos(HEALTH_INDICATORS).querySelector('#painel-metodos');
+
+    expect(painel?.textContent).toContain('CH₄ / H₂');
+    expect(painel?.textContent).toContain('0,25');
+  });
+
+  it('diz o que não foi avaliado, em vez de calar ou de inventar faixa', () => {
+    const texto =
+      abrirAbaDeMetodos(HEALTH_INDICATORS).querySelector('#painel-metodos')?.textContent ?? '';
+
+    expect(texto).toContain('Zona Não avaliado');
+    expect(texto).toContain('Faixas Não avaliado');
+    expect(texto).toContain('Limite por gás Não avaliado');
+    expect(texto).toContain('Código de falha Não avaliado');
+  });
+
+  it('fecha a aba com uma conclusão para cada um dos sete métodos', () => {
+    const painel = abrirAbaDeMetodos(HEALTH_INDICATORS).querySelector('#painel-metodos');
+    const conclusoes = [...(painel?.querySelectorAll('ul li') ?? [])]
+      .map((item) => item.textContent?.trim() ?? '')
+      .filter((texto) => texto.includes('>'));
+
+    expect(conclusoes.length).toBe(7);
+    expect(conclusoes[0]).toContain('Triângulo 1');
+    expect(conclusoes.at(-1)).toContain('IEEE C57.104');
+  });
+
+  it('abre a aba de métodos sem derrubar a tela em laudo sem gás dissolvido', () => {
+    const raiz = abrirAbaDeMetodos(semGasDissolvido);
 
     expect(raiz.querySelector('#painel-metodos')).not.toBeNull();
     expect(raiz.querySelector('app-duval-triangle')).toBeNull();
   });
 
-  it('diz que o laudo não traz diagnóstico, em vez de mostrar painel vazio', () => {
-    const painel = abrirAbaDeMetodos(semDiagnostico).querySelector('#painel-metodos');
+  it('diz que o laudo sem gás dissolvido não traz diagnóstico', () => {
+    const painel = abrirAbaDeMetodos(semGasDissolvido).querySelector('#painel-metodos');
 
     expect(painel?.textContent).toContain('não traz diagnóstico');
   });
 
-  it('continua desenhando os métodos quando o bloco vem preenchido', () => {
-    const raiz = abrirAbaDeMetodos(HEALTH_INDICATORS);
+  // No dia em que o núcleo normativo migrar, o bloco servido vence o cálculo da
+  // tela. Sem este caso, a tela poderia passar a ignorar o corpo da API e
+  // nenhum teste perceberia.
+  it('prefere o bloco que a API servir ao que a própria tela calcularia', () => {
+    const calculado = new DissolvedGasDiagnosisService().diagnose(
+      HEALTH_INDICATORS.dissolvedGases,
+    );
+    const servido: HealthIndicators = {
+      ...HEALTH_INDICATORS,
+      diagnosis: {
+        ...calculado!,
+        conclusions: [
+          { method: 'Triângulo 1', code: 'PD', description: 'Veredito que veio da API' },
+        ],
+      },
+    };
 
-    expect(raiz.querySelectorAll('app-duval-triangle').length)
-      .toBe(HEALTH_INDICATORS.diagnosis!.triangles.length);
+    expect(abrirAbaDeMetodos(servido).querySelector('#painel-metodos')?.textContent)
+      .toContain('Veredito que veio da API');
   });
 });

@@ -103,6 +103,12 @@ interface PontoDesenhado {
   readonly resumo: string;
 }
 
+// O retângulo de foco do navegador fica por cima da figura e atravessa as zonas
+// vizinhas, porque o contorno segue a caixa do elemento e não o polígono. Ele sai,
+// e o foco continua anunciado de duas formas: o `aria-label` de cada zona e de cada
+// leitura, e o realce que `emFoco` e `pontoEmFoco` já aplicam na própria figura, que
+// é indicação melhor que a caixa. `outline-hidden` mantém o contorno invisível que o
+// modo de alto contraste do sistema ainda desenha; `outline-none` apagaria também lá.
 @Component({
   selector: 'app-duval-triangle',
   standalone: true,
@@ -128,7 +134,7 @@ interface PontoDesenhado {
             [attr.fill-opacity]="opacidadeDa(zona)"
             [attr.stroke-width]="zona.highlighted ? 1.8 : 0.8"
             stroke-linejoin="round"
-            class="cursor-pointer stroke-lactec-ink transition-[fill-opacity] duration-100"
+            class="cursor-pointer stroke-lactec-ink transition-[fill-opacity] duration-100 focus:outline-hidden"
             [class]="zona.classes.preenchimento"
             tabindex="0"
             [attr.aria-label]="zona.code + ': ' + zona.description"
@@ -158,7 +164,7 @@ interface PontoDesenhado {
             [attr.cy]="point.y"
             r="4.5"
             stroke-width="2"
-            class="cursor-pointer fill-lactec-primary stroke-lactec-paper"
+            class="cursor-pointer fill-lactec-primary stroke-lactec-paper focus:outline-hidden"
             tabindex="0"
             [attr.aria-label]="point.date + ', ' + point.resumo"
             (mouseenter)="pontoEmFoco.set(point)"
@@ -231,6 +237,21 @@ interface PontoDesenhado {
       @if (triangle().notApplicable; as reason) {
         <p class="max-w-64 text-center text-xs text-lactec-ink-soft">
           <span class="font-semibold">Não se aplica.</span> {{ reason }}
+        </p>
+      }
+
+      <!-- Leitura que não virou ponto precisa dizer por quê, e os dois motivos
+           são diferentes: falta de ensaio é do laboratório, soma zero é do
+           próprio resultado. -->
+      @if (incomputaveis().length) {
+        <p class="max-w-64 text-center text-xs text-lactec-ink-soft">
+          {{ incomputaveis().length }} leitura(s) sem ensaio de
+          {{ gasesAusentes() }}
+        </p>
+      }
+      @if (semProporcao().length) {
+        <p class="max-w-64 text-center text-xs text-lactec-ink-soft">
+          {{ semProporcao().length }} leitura(s) com os três gases não detectados
         </p>
       }
     </figure>
@@ -307,6 +328,11 @@ export class DuvalTriangleComponent {
     return [...vistos.values()];
   });
 
+  /** Os gases que faltaram, sem repetir o mesmo gás em duas leituras. */
+  protected readonly gasesAusentes = computed(() =>
+    [...new Set(this.incomputaveis().map((leitura) => leitura.missingGas))].join(', '),
+  );
+
   /** A leitura sob o cursor ganha precedência: é o dado, a zona é o contexto. */
   protected readonly dica = computed(() => {
     const point = this.pontoEmFoco();
@@ -331,11 +357,21 @@ export class DuvalTriangleComponent {
     this.triangle().readings.filter((leitura) => leitura.kind === 'naoAplicavel'),
   );
 
+  /**
+   * Leitura em que os três gases da figura deram não detectado. Não falta
+   * ensaio e não falta licença: falta proporção, porque a figura é a razão
+   * entre os três e a razão de zero por zero não é ponto.
+   */
+  protected readonly semProporcao = computed(() =>
+    this.triangle().readings.filter((leitura) => leitura.kind === 'semProporcao'),
+  );
+
   protected readonly description = computed(() => {
     const triangle = this.triangle();
     const destacadas = triangle.zones.filter((zona) => zona.highlighted).map((zona) => zona.code);
     const incomputaveis = this.incomputaveis();
     const naoAplicaveis = this.naoAplicaveis();
+    const semProporcao = this.semProporcao();
     // Zonas repetem código quando a zona tem mais de um anel (O no triângulo
     // 5); o leitor de tela não precisa ouvir "O, O".
     const codigosUnicos = [...new Set(destacadas)];
@@ -343,6 +379,7 @@ export class DuvalTriangleComponent {
       `Triângulo de Duval ${triangle.number}, eixos ${triangle.leftAxis}, ${triangle.rightAxis} e ${triangle.baseAxis}. ` +
       `${this.pontos().length} de ${triangle.readings.length} leitura(s) plotada(s)` +
       `${incomputaveis.length ? `, ${incomputaveis.length} sem ${[...new Set(incomputaveis.map((leitura) => leitura.missingGas))].join('/')}` : ''}` +
+      `${semProporcao.length ? `, ${semProporcao.length} com os três gases não detectados` : ''}` +
       `${naoAplicaveis.length ? `, ${naoAplicaveis.length} fora da faixa de aplicação desta figura` : ''}. ` +
       `${triangle.notApplicable ? `Figura não aplicável: ${triangle.notApplicable}. ` : ''}` +
       `Zonas em destaque: ${codigosUnicos.join(', ') || 'nenhuma'}.`
