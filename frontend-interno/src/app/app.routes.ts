@@ -118,7 +118,6 @@ export const routes: Routes = [
         ['ensaios', 'Manter Ensaio', 'Cadastro e manutenção de ensaios.', 'science'],
         ['resultados', 'Resultados', 'Consulta e manutenção de resultados de ensaios.', 'fact_check'],
         ['relatorios', 'Pesquisar Relatório', 'Pesquise os relatórios técnicos.', 'description'],
-        ['equipamentos', 'Equipamentos', 'Consulta dos equipamentos do laboratório.', 'precision_manufacturing'],
       ] as const).map(([path, title, description, icon]) => ({
         path,
         loadComponent: () =>
@@ -128,6 +127,14 @@ export const routes: Routes = [
         data: placeholder(title, description, icon),
         title: title + ' - Portal Interno Lactec',
       })),
+      {
+        path: 'equipamentos',
+        loadComponent: () =>
+          import('@/app/pages/tecnico/equipamentos/equipamentos.component').then(
+            (module) => module.EquipamentosComponent,
+          ),
+        title: 'Pesquisar Equipamentos - Portal Interno Lactec',
+      },
     ],
   },
 

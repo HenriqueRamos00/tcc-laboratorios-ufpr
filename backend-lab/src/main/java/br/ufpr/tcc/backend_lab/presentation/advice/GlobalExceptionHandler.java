@@ -4,6 +4,7 @@ import br.ufpr.tcc.backend_lab.domain.exception.CredenciaisInvalidasException;
 import br.ufpr.tcc.backend_lab.domain.exception.EmailJaCadastradoException;
 import br.ufpr.tcc.backend_lab.domain.exception.RegraNegocioException;
 import br.ufpr.tcc.backend_lab.domain.exception.RegraNegocioException.Motivo;
+import br.ufpr.tcc.backend_lab.domain.exception.EquipamentoNaoEncontradoException;
 import br.ufpr.tcc.backend_lab.domain.exception.TecnicoNaoEncontradoException;
 import br.ufpr.tcc.backend_lab.infrastructure.persistence.ViolacaoUnicidade;
 
@@ -62,6 +63,11 @@ public class GlobalExceptionHandler {
         return ResponseEntity.status(HttpStatus.CONFLICT)
                 .body(new ApiErrorResponse(exception.getMessage()));
     }
+
+	@ExceptionHandler(EquipamentoNaoEncontradoException.class)
+	public ResponseEntity<ApiErrorResponse> handleEquipamentoNaoEncontrado(EquipamentoNaoEncontradoException exception) {
+		return ResponseEntity.status(HttpStatus.NOT_FOUND).body(new ApiErrorResponse(exception.getMessage()));
+	}
 
     @ExceptionHandler(MethodArgumentNotValidException.class)
     public ResponseEntity<ApiErrorResponse> handleValidation(
