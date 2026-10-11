@@ -1,5 +1,7 @@
 import { ChangeDetectionStrategy, Component, computed, input, signal } from '@angular/core';
 
+import { eixoDeValores, rotuloDoEixo } from '../eixo-de-valores';
+
 // A escala logarítmica existe porque a cromatografia tem o nitrogênio quatro
 // ordens de grandeza acima do acetileno e some numa escala linear.
 //
@@ -42,8 +44,18 @@ const PALETA: readonly ClassesDaSerie[] = [
 const FORMAS = ['circulo', 'quadrado', 'triangulo', 'losango'] as const;
 type Forma = (typeof FORMAS)[number];
 
-const LARGURA = 720;
-const ALTURA = 320;
+const MARCAS_DO_EIXO_LINEAR = 5;
+
+// Duas proporções, e a escolha é de quem usa, não do componente. A faixa larga é
+// para o gráfico que ocupa a linha inteira da tela; a compacta é para o cartão de uma
+// grade de três colunas, onde a proporção larga deixa o desenho achatado, o texto
+// miúdo e sobra branco em volta.
+const FORMATOS = {
+  wide: { largura: 720, altura: 320 },
+  compact: { largura: 480, altura: 360 },
+} as const;
+
+export type ChartShape = keyof typeof FORMATOS;
 const MARGEM = { topo: 16, direita: 16, base: 46, esquerda: 56 };
 
 interface PontoDesenhado {
@@ -68,7 +80,12 @@ const MARCA_DE_COLETA_NAO_REALIZADA = '-';
 @Component({
   selector: 'app-line-chart',
   standalone: true,
-  host: { class: 'block' },
+  // `title` é input deste componente e também atributo nativo do HTML. Escrever
+  // `title="..."` na tag alimenta o input E deixa o atributo no DOM, e aí o navegador
+  // desenha a própria tooltip dele por cima da figura, competindo com a leitura que o
+  // gráfico mostra ao passar o cursor. Apagar o atributo no host resolve sem mexer no
+  // nome do input, que já é consumido por várias telas.
+  host: { class: 'block', '[attr.title]': 'null' },
   templateUrl: './line-chart.component.html',
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
@@ -80,11 +97,26 @@ export class LineChartComponent {
   readonly yAxisLabel = input('Valor');
   readonly xAxisLabel = input('Data');
 
-  protected readonly LARGURA = LARGURA;
-  protected readonly ALTURA = ALTURA;
+  readonly shape = input<ChartShape>('wide');
+
+  protected readonly LARGURA = computed(() => FORMATOS[this.shape()].largura);
+  protected readonly ALTURA = computed(() => FORMATOS[this.shape()].altura);
   protected readonly MARGEM = MARGEM;
 
   protected readonly indiceEmFoco = signal<number | null>(null);
+
+  /**
+   * Qual série a legenda está destacando. Com oito gases no mesmo quadro, seguir uma
+   * linha só com o olho é difícil; apontar o nome dela na legenda apaga as outras e
+   * resolve sem exigir clique nem filtro.
+   */
+  protected readonly serieEmFoco = signal<string | null>(null);
+
+  protected opacidadeDaSerie(key: string): number {
+    const emFoco = this.serieEmFoco();
+
+    return emFoco === null || emFoco === key ? 1 : 0.15;
+  }
 
   private readonly limites = computed(() => {
     const values = this.series()
@@ -114,8 +146,14 @@ export class LineChartComponent {
         maximo: Math.pow(10, Math.ceil(Math.log10(bruto.maximo))),
       };
     }
-    const folga = (bruto.maximo - bruto.minimo) * 0.1 || 1;
-    return { minimo: Math.max(0, bruto.minimo - folga), maximo: bruto.maximo + folga };
+    // Escala linear fecha em passo redondo, como uma biblioteca de gráfico faz. Fatiar
+    // a faixa medida em cinco partes iguais produzia marca como 270,8 e 309,68: largas
+    // demais para o eixo e, em português, confundidas com decimal por causa do ponto de
+    // milhar. A base não é forçada a zero porque aqui a figura é evolução, e uma
+    // variação pequena colada no topo esconde justamente o que se quer ver.
+    const eixo = eixoDeValores(bruto.minimo, bruto.maximo, MARCAS_DO_EIXO_LINEAR);
+
+    return { minimo: eixo.minimo, maximo: eixo.maximo, marcas: eixo.marcas };
   });
 
   protected readonly marcasDoEixoY = computed(() => {
@@ -132,15 +170,27 @@ export class LineChartComponent {
         return { value, y: this.posicaoY(value), rotulo: this.rotuloLog(de + passo) };
       });
     }
-    return Array.from({ length: 6 }, (_, marca) => {
-      const value = minimo + ((maximo - minimo) * marca) / 5;
-      return { value, y: this.posicaoY(value), rotulo: this.formatarNumero(value) };
-    });
+    const marcas = this.limites().marcas ?? [];
+
+    return marcas.map((value) => ({ value, y: this.posicaoY(value), rotulo: rotuloDoEixo(value) }));
   });
 
-  protected readonly marcasDoEixoX = computed(() =>
-    this.xAxisLabels().map((rotulo, indice) => ({ rotulo, x: this.posicaoX(indice) })),
-  );
+  /**
+   * A primeira e a última data ancoram pela borda, e não pelo centro.
+   *
+   * Centrado, metade do rótulo da ponta fica fora da área de plotagem e o `viewBox`
+   * corta: a última data da série aparecia como "07/06/20". Alargar a margem resolveria
+   * também, mas rouba largura do desenho nas duas pontas por causa de dois rótulos.
+   */
+  protected readonly marcasDoEixoX = computed(() => {
+    const rotulos = this.xAxisLabels();
+
+    return rotulos.map((rotulo, indice) => ({
+      rotulo,
+      x: this.posicaoX(indice),
+      ancora: indice === 0 ? 'start' : indice === rotulos.length - 1 ? 'end' : 'middle',
+    }));
+  });
 
   protected readonly seriesDesenhadas = computed<readonly SerieDesenhada[]>(() =>
     this.series().map((serie, indice) => {
@@ -193,13 +243,13 @@ export class LineChartComponent {
     const caixa = alvo.getBoundingClientRect();
     if (!caixa.width) return;
     const proporcao = (evento.clientX - caixa.left) / caixa.width;
-    const dentro = proporcao * LARGURA;
+    const dentro = proporcao * this.LARGURA();
     const total = this.xAxisLabels().length;
     if (total < 2) {
       this.indiceEmFoco.set(total === 1 ? 0 : null);
       return;
     }
-    const passo = (LARGURA - MARGEM.esquerda - MARGEM.direita) / (total - 1);
+    const passo = (this.LARGURA() - MARGEM.esquerda - MARGEM.direita) / (total - 1);
     const indice = Math.round((dentro - MARGEM.esquerda) / passo);
     this.indiceEmFoco.set(Math.min(Math.max(indice, 0), total - 1));
   }
@@ -230,22 +280,22 @@ export class LineChartComponent {
 
   private posicaoX(indice: number): number {
     const total = this.xAxisLabels().length;
-    const util = LARGURA - MARGEM.esquerda - MARGEM.direita;
+    const util = this.LARGURA() - MARGEM.esquerda - MARGEM.direita;
     if (total < 2) return MARGEM.esquerda + util / 2;
     return MARGEM.esquerda + (util * indice) / (total - 1);
   }
 
   private posicaoY(value: number): number {
     const { minimo, maximo } = this.limites();
-    const util = ALTURA - MARGEM.topo - MARGEM.base;
+    const util = this.ALTURA() - MARGEM.topo - MARGEM.base;
     if (this.scale() === 'log') {
       const de = Math.log10(minimo);
       const ate = Math.log10(maximo);
       const proporcao = (Math.log10(Math.max(value, minimo)) - de) / (ate - de || 1);
-      return ALTURA - MARGEM.base - util * proporcao;
+      return this.ALTURA() - MARGEM.base - util * proporcao;
     }
     const proporcao = (value - minimo) / (maximo - minimo || 1);
-    return ALTURA - MARGEM.base - util * proporcao;
+    return this.ALTURA() - MARGEM.base - util * proporcao;
   }
 
   private rotuloLog(expoente: number): string {
