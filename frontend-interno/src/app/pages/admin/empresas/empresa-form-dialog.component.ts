@@ -3,6 +3,7 @@ import { ChangeDetectionStrategy, Component, inject, signal } from '@angular/cor
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
 import { MAT_DIALOG_DATA, MatDialogRef } from '@angular/material/dialog';
+import { NgxMaskDirective, provideNgxMask } from 'ngx-mask';
 import { catchError, EMPTY, finalize } from 'rxjs';
 
 import { Empresa, EmpresaRequest, EmpresaStatus } from '@/app/model/empresa';
@@ -18,7 +19,8 @@ export interface EmpresaFormDialogData {
 @Component({
   selector: 'app-empresa-form-dialog',
   standalone: true,
-  imports: [ReactiveFormsModule, MatButtonModule, DialogShellComponent],
+  imports: [ReactiveFormsModule, MatButtonModule, DialogShellComponent, NgxMaskDirective],
+  providers: [provideNgxMask()],
   templateUrl: './empresa-form-dialog.component.html',
   changeDetection: ChangeDetectionStrategy.OnPush,
 })

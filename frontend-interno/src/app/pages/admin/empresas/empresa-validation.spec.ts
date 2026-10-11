@@ -15,6 +15,11 @@ describe('Validações de empresa', () => {
     expect(cnpjValido('AB.368.898/0001-06')).toBeFalse();
   });
 
+  it('rejeita o CNPJ informado com 14 dígitos quando os verificadores estão incorretos', () => {
+    expect(cnpjValido('12.345.678/0001-90')).toBeFalse();
+    expect(cnpjValido('12.345.678/0001-95')).toBeTrue();
+  });
+
   it('valida o formato nacional da UF e permite o campo vazio ser tratado por required', () => {
     expect(ufBrasileiraValidator(new FormControl('PR'))).toBeNull();
     expect(ufBrasileiraValidator(new FormControl('xx'))).toEqual({ ufBrasileira: true });

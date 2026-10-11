@@ -36,11 +36,11 @@
     <div class="flex flex-col gap-2">
       <label for="empresa-cnpj" class="text-xs font-medium tracking-wide text-lactec-ink-soft">CNPJ <span class="text-lactec-danger">*</span></label>
       <div class="input-field" [class.input-field--error]="cnpjInvalid">
-        <input id="empresa-cnpj" formControlName="cnpj" maxlength="18" inputmode="numeric" autocomplete="off" placeholder="00.000.000/0000-00"
+        <input id="empresa-cnpj" formControlName="cnpj" mask="00.000.000/0000-00" maxlength="18" inputmode="numeric" autocomplete="off" placeholder="00.000.000/0000-00"
           class="input-field__input" [attr.aria-invalid]="cnpjInvalid" [attr.aria-describedby]="cnpjInvalid ? 'empresa-cnpj-error' : null" />
       </div>
       @if (cnpjInvalid) {
-        <p id="empresa-cnpj-error" class="m-0 text-xs text-lactec-danger" role="alert">Informe um CNPJ válido com 14 dígitos.</p>
+        <p id="empresa-cnpj-error" class="m-0 text-xs text-lactec-danger" role="alert">Informe um CNPJ válido. Confira os 14 dígitos, incluindo os dois dígitos verificadores finais.</p>
       }
     </div>
 
