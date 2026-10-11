@@ -16,7 +16,7 @@ export const DEMONSTRATION_QUOTES: readonly Quote[] = [
     description:
       'Caracterização de materiais poliméricos conforme as normas aplicáveis, com preparo de ' +
       'corpos de prova e ensaio mecânico.',
-    companyName: 'ENGIE Brasil',
+    companyName: 'Geradora de Energia',
     externalContactName: 'Bruno Pereira',
     externalContactEmail: 'bruno.pereira@exemplo.com.br',
     totalPrice: 0,
@@ -31,7 +31,7 @@ export const DEMONSTRATION_QUOTES: readonly Quote[] = [
     description:
       'No orçamento abaixo detectamos as necessidades do seu negócio para que seja feita uma ' +
       'análise completa de suas amostras:',
-    companyName: 'Copel Distribuição',
+    companyName: 'Distribuidora de Energia',
     externalContactName: 'Camila Souza',
     externalContactEmail: 'camila@exemplo.com.br',
     totalPrice: 56292.3,
@@ -44,7 +44,7 @@ export const DEMONSTRATION_QUOTES: readonly Quote[] = [
     status: 'Em Andamento',
     stage: 'Fechado Ganho',
     description: 'Ensaio de tração e flexão em materiais compósitos, com relatório técnico.',
-    companyName: 'Petrobras',
+    companyName: 'Refinaria Nacional',
     externalContactName: 'Pedro bom de Bola',
     externalContactEmail: 'pedro@exemplo.com.br',
     totalPrice: 18200,
@@ -57,7 +57,7 @@ export const DEMONSTRATION_QUOTES: readonly Quote[] = [
     status: 'Finalizado',
     stage: 'Relatório Publicado',
     description: 'Análise físico-química e microbiológica de água potável.',
-    companyName: 'Sanepar',
+    companyName: 'Companhia de Saneamento',
     externalContactName: 'Joselito Bueno',
     externalContactEmail: 'joselito@exemplo.com.br',
     totalPrice: 8500,
@@ -70,7 +70,7 @@ export const DEMONSTRATION_QUOTES: readonly Quote[] = [
     status: 'Cancelado',
     stage: 'Fechado Perdido',
     description: 'Monitoramento de qualidade do ar em ponto fixo, com dois ciclos de coleta.',
-    companyName: 'Copel Distribuição',
+    companyName: 'Distribuidora de Energia',
     externalContactName: 'Bruno Pereira',
     externalContactEmail: 'bruno.pereira@exemplo.com.br',
     totalPrice: 12400,
