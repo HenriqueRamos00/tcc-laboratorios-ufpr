@@ -5,7 +5,7 @@ import { TarjaDeConformidadeComponent } from './tarja-de-conformidade.component'
 // A tarja existe para ser lida em cima de um fundo cheio. Os testes prendem as
 // duas coisas que a fazem falhar calada: o rótulo errado e o par fundo/texto
 // desemparelhado, que é como nasce texto branco sobre amarelo.
-describe('TarjaDeConformidadeComponent', () => {
+describe('tarja de conformidade', () => {
   beforeEach(() => TestBed.configureTestingModule({ imports: [TarjaDeConformidadeComponent] }));
 
   function renderizarCom(classificacao: 'normal' | 'alerta' | 'nao-conforme'): HTMLElement {

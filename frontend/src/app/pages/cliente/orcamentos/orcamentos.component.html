@@ -6,7 +6,7 @@
       {{ greeting }}, {{ firstName() }}
     </h1>
     <p class="text-lactec-muted text-sm md:text-base m-0">
-      Gerencie seus orçamentos e acompanhe o progresso.
+      Consulte os orçamentos disponíveis para as empresas vinculadas à sua conta.
     </p>
   </header>
 
@@ -67,9 +67,9 @@
     </div>
   </div>
 
-  <div class="flex flex-col gap-4 md:gap-5">
+  <div class="flex flex-col gap-4 md:gap-5" [attr.aria-busy]="loading()">
     @for (orcamento of visible; track orcamento.id) {
-      @let badge = badgeFor(orcamento.status);
+      @let badge = badgeFor(orcamento);
 
       <article class="orcamento-card">
         <div class="orcamento-card-body">
@@ -94,6 +94,10 @@
               <span class="orcamento-card-field__value">{{ orcamento.proposalName }}</span>
             </div>
             <div class="orcamento-card-field">
+              <span class="orcamento-card-field__label">Descrição do Serviço</span>
+              <span class="orcamento-card-field__value">{{ orcamento.description }}</span>
+            </div>
+            <div class="orcamento-card-field">
               <span class="orcamento-card-field__label">Contato Externo</span>
               <span class="orcamento-card-field__value">{{ orcamento.externalContact }}</span>
             </div>
@@ -115,45 +119,28 @@
               mat-flat-button
               type="button"
               class="orcamento-card-action"
-              (click)="openStatusDialog(orcamento)"
+              (click)="showTrackingUnavailable()"
             >
               Verificar Status
             </button>
-            @if (orcamento.estimatedValue) {
-              <a
-                mat-flat-button
-                class="orcamento-card-action"
-                [routerLink]="['/cliente/orcamentos', orcamento.id]"
-              >
-                Visualizar Orçamento
-              </a>
-            }
+            <a
+              mat-flat-button
+              class="orcamento-card-action"
+              [routerLink]="['/cliente/orcamentos', orcamento.id]"
+            >
+              Visualizar Orçamento
+            </a>
           </div>
         </div>
-
-        @if (orcamento.pendingReview; as review) {
-          <div class="orcamento-card-review">
-            <mat-icon class="orcamento-card-review__icon" aria-hidden="true">info</mat-icon>
-            <div class="flex flex-col gap-2 flex-1">
-              <div
-                class="flex flex-col gap-1 md:flex-row md:items-center md:justify-between md:gap-6"
-              >
-                <span class="orcamento-card-review__title">Aguardando sua revisão</span>
-                <span class="orcamento-card-review__deadline">Prazo: {{ review.deadline }}</span>
-              </div>
-              <p class="orcamento-card-review__message">{{ review.message }}</p>
-              @if (review.reminder) {
-                <p class="orcamento-card-review__message">{{ review.reminder }}</p>
-              }
-            </div>
-          </div>
-        }
       </article>
     } @empty {
-      @if (loadError()) {
-        <p class="text-lactec-muted text-sm">
-          Não foi possível carregar os orçamentos. Tente novamente mais tarde.
+      @if (loading()) {
+        <p class="text-lactec-muted text-sm" role="status">Carregando orçamentos...</p>
+      } @else if (loadError()) {
+        <p class="text-lactec-muted text-sm" role="alert">
+          Não foi possível carregar os orçamentos no momento.
         </p>
+        <button mat-stroked-button type="button" (click)="loadQuotes()">Tentar novamente</button>
       } @else {
         <p class="text-lactec-muted text-sm">Nenhum orçamento encontrado.</p>
       }

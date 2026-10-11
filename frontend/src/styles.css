@@ -522,6 +522,10 @@ mat-icon.icone-36 {
   background: var(--color-lactec-pill-pend-bg);
   color: var(--color-lactec-pill-pend-ink);
 }
+.orcamento-status-pill--unknown {
+  background: var(--color-lactec-line-soft);
+  color: var(--color-lactec-ink-soft);
+}
 
 .orcamento-card-review {
   display: flex;

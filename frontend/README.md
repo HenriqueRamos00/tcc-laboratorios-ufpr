@@ -1,74 +1,67 @@
-# PortalWeb
+# Portal do Cliente Lactec
 
-Portal do Cliente Lactec: acompanhamento de orçamentos, status de ensaios,
-relatórios e indicadores de saúde de equipamentos.
+Aplicação Angular do Portal do Cliente. A execução local usa o Backend Lab Spring
+para login e orçamentos. Equipamentos, indicadores e relatórios possuem dados
+de demonstração opcionais para desenvolvimento das telas.
 
-As telas do cliente, a linha de etapas do processo e o que ainda é massa de
-demonstração estão documentados em [`docs/telas-do-cliente.md`](docs/telas-do-cliente.md).
+## Configuração da API
 
-## Subir com Docker
+Antes de carregar a aplicação, ajuste `public/runtime-config.js`:
 
-```bash
-docker compose up -d --build web            # http://localhost:4200
-PORTAL_WEB_PORT=4300 docker compose up -d web  # outra porta, se a 4200 estiver ocupada
+```js
+window.__CLIENT_AUTH_API_URL__ = '/api';
 ```
 
-Login de desenvolvimento: `lactec@lactec` / `lactec`.
+A configuração define somente a base usada pelo login. As demais operações do
+cliente sempre usam `/api`, encaminhado ao Spring. O contrato de autenticação
+Lactec ainda será definido; até lá, o padrão usa o Spring local.
 
-This project was generated using [Angular CLI](https://github.com/angular/angular-cli) version 19.2.27.
+## Executar
 
-## Development server
-
-To start a local development server, run:
-
-```bash
-ng serve
-```
-
-Once the server is running, open your browser and navigate to `http://localhost:4200/`. The application will automatically reload whenever you modify any of the source files.
-
-## Code scaffolding
-
-Angular CLI includes powerful code scaffolding tools. To generate a new component, run:
+Com Docker Compose:
 
 ```bash
-ng generate component component-name
+docker compose up -d --build web
 ```
 
-For a complete list of available schematics (such as `components`, `directives`, or `pipes`), run:
+Ou com Node.js 24 ou superior:
 
 ```bash
-ng generate --help
+npm install
+npm start
 ```
 
-## Building
+Abra `http://localhost:4200`. O usuário informa as credenciais que existem na
+API. O portal usa o perfil e as empresas recebidos em `POST /api/auth/login`.
+Orçamentos são lidos de `GET /api/client/quotes`, que responde com um array.
 
-To build the project run:
+Para executar a imagem de produção pelo Compose isolado, use
+`docker compose --profile prod up -d --build web-prod`; ela fica disponível em
+`http://localhost:8082` por padrão. A porta pode ser alterada com
+`PORTAL_WEB_PROD_PORT`.
+
+## Dados de demonstração
+
+Para demonstrar equipamentos, indicadores e relatórios, ajuste
+`public/runtime-config.js` e recarregue o portal:
+
+```js
+window.__CLIENT_DEMO_DATA__ = true;
+```
+
+O padrão é `false`. Quando ativada, a opção habilita esses itens no menu e
+mostra um aviso de dados de demonstração. O login continua exigindo uma conta
+válida na API e a consulta de orçamentos continua usando o Spring, inclusive
+quando ele retorna erro. As fixtures de orçamentos permanecem disponíveis
+para testes e desenvolvimento, sem fallback automático. Aceite e recusa
+continuam indisponíveis.
+
+## Verificação
 
 ```bash
-ng build
+npm test -- --watch=false
+npm run build
 ```
 
-This will compile your project and store the build artifacts in the `dist/` directory. By default, the production build optimizes your application for performance and speed.
-
-## Running unit tests
-
-To execute unit tests with the [Karma](https://karma-runner.github.io) test runner, use the following command:
-
-```bash
-ng test
-```
-
-## Running end-to-end tests
-
-For end-to-end (e2e) testing, run:
-
-```bash
-ng e2e
-```
-
-Angular CLI does not come with an end-to-end testing framework by default. You can choose one that suits your needs.
-
-## Additional Resources
-
-For more information on using the Angular CLI, including detailed command references, visit the [Angular CLI Overview and Command Reference](https://angular.dev/tools/cli) page.
+Consulte [`docs/telas-do-cliente.md`](docs/telas-do-cliente.md) para o estado das
+HUs, rotas pendentes e adaptações em relação aos protótipos.

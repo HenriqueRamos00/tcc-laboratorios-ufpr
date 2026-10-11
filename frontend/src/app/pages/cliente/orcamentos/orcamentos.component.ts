@@ -8,51 +8,35 @@ import {
   signal,
 } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
+import { finalize } from 'rxjs';
 import { FormsModule } from '@angular/forms';
+import { MatSnackBar } from '@angular/material/snack-bar';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 import { MatMenuModule } from '@angular/material/menu';
-import { Router, RouterLink } from '@angular/router';
-
-import { StatusStepperStep } from '@shared/components/status-stepper/status-stepper.component';
+import { RouterLink } from '@angular/router';
 
 import {
   abaDaSituacao,
   type ChaveDaAba,
-  ehTerminal,
-  type EtapaDaLinha,
-  grupoDaEtapa,
-  indiceDaEtapa,
-  LINHA_DE_ETAPAS,
   type SituacaoDaSolicitacao,
 } from '@/app/model/analysis-pipeline';
 
 import { Quote } from '@/app/model/quote';
-import { AppDialogService } from '@/app/services/app-dialog.service';
 import { LoginService } from '@/app/services/login.service';
 import { QuotesService } from '@/app/services/quotes.service';
-
-import {
-  StatusPropostaDialogComponent,
-  StatusPropostaDialogData,
-} from './status-proposta-dialog/status-proposta-dialog.component';
-
-interface PendingReviewNotice {
-  deadline: string;
-  message: string;
-  reminder?: string;
-}
 
 interface Orcamento {
   id: string;
   code: string;
   proposalName: string;
+  description: string;
   createdAt: string;
   company: string;
   externalContact: string;
   estimatedValue?: string;
-  status: SituacaoDaSolicitacao;
-  pendingReview?: PendingReviewNotice;
+  status: string;
+  category: SituacaoDaSolicitacao | null;
 }
 
 interface StatusBadge {
@@ -97,43 +81,6 @@ const STATUS_BADGE: Record<SituacaoDaSolicitacao, StatusBadge> = {
   recusado: { label: 'Recusado', badgeClass: 'orcamento-status-pill--cancelled' },
 };
 
-const PROPOSAL_STEPS: ReadonlyArray<StatusStepperStep> = LINHA_DE_ETAPAS.map((etapa) => ({
-  key: etapa.chave,
-  label: etapa.rotulo,
-  icon: etapa.icone,
-}));
-
-const AVISO_DA_ETAPA: Partial<
-  Record<EtapaDaLinha, { titulo: string; texto: string; acao?: string }>
-> = {
-  'analise-da-area': {
-    titulo: 'Estamos em busca da melhor solução para seu negócio',
-    texto:
-      'Nossos profissionais estão validando qual é o laboratório capaz de solucionar e trazer ' +
-      'resultados para cada uma das análises requisitadas. Em breve seu orçamento ficará ' +
-      'disponível por meio desta plataforma!',
-  },
-  negociacao: {
-    titulo: 'Aguardando sua revisão',
-    texto:
-      'Esta proposta técnica está pronta para execução. Por favor, revise os termos e custos ' +
-      'associados para prosseguir com a análise laboratorial.',
-    acao: 'Ver o orçamento',
-  },
-  'aprovado-pelo-cliente': {
-    titulo: 'Aguardando sua revisão',
-    texto:
-      'Esta proposta técnica está pronta para execução. Por favor, revise os termos e custos ' +
-      'associados para prosseguir com a análise laboratorial.',
-    acao: 'Ver o orçamento',
-  },
-};
-
-// Placeholder de demonstração: o contato real vem do AutoLAB junto do
-// protocolo, e não pode ser endereço de pessoa fixo no bundle.
-const CONTATO_DO_LABORATORIO = 'atendimento@exemplo.com.br';
-
-
 const FILTER_TABS: ReadonlyArray<FilterTab> = [
   { value: 'todos', label: 'Todos' },
   { value: 'pendentes', label: 'Pendentes de aceite' },
@@ -142,7 +89,7 @@ const FILTER_TABS: ReadonlyArray<FilterTab> = [
   { value: 'cancelados', label: 'Cancelados' },
 ];
 
-const FIELD_PLACEHOLDER = '—';
+const FIELD_PLACEHOLDER = '-';
 
 function saudacaoDoDia(agora = new Date()): string {
   const hora = agora.getHours();
@@ -169,17 +116,21 @@ function formatCreatedAt(createdDate: string | null): string {
   return Number.isNaN(date.getTime()) ? FIELD_PLACEHOLDER : DATE_FORMATTER.format(date);
 }
 
-// O match exato cobre os valores conhecidos do Salesforce; o regex abaixo
-// existe para variações futuras não derrubarem a tela.
 const STAGE_BY_NAME: Record<string, SituacaoDaSolicitacao> = {
   'qualificação': 'qualificacao',
   'em análise pela área': 'analise-da-area',
   'em revisão': 'analise-da-area',
   'elaborando proposta': 'elaborando-proposta',
   'negociação': 'negociacao',
+  'em negociação': 'negociacao',
+  'pendente de aceite': 'negociacao',
   'aprovado pelo cliente': 'aprovado-pelo-cliente',
   'aguardando entrega da amostra': 'aguardando-amostra',
   'fechado ganho': 'recebido',
+  'recebido': 'recebido',
+  'protocolado': 'protocolado',
+  'em execução': 'em-execucao',
+  'incompleto': 'incompleto',
   // Etapas que chegam do AutoLAB depois que a amostra entra no laboratório.
   'completo': 'completo',
   'validado': 'validado',
@@ -189,40 +140,33 @@ const STAGE_BY_NAME: Record<string, SituacaoDaSolicitacao> = {
   'fechado perdido': 'cancelado',
   'fechado recusado lactec': 'recusado',
   'cancelado': 'cancelado',
+  'recusado': 'recusado',
 };
 
-function mapStage(rawStage: string): SituacaoDaSolicitacao {
+function mapStage(rawStage: string): SituacaoDaSolicitacao | null {
   const stage = rawStage.trim().toLowerCase();
-  const exact = STAGE_BY_NAME[stage];
-  if (exact) return exact;
-
-  if (/(perdid|recus|cancel|reject|denied|negad)/.test(stage)) return 'cancelado';
-  if (/(ganho|won|recebid|conclu|complete)/.test(stage)) return 'recebido';
-  if (/amostra/.test(stage)) return 'aguardando-amostra';
-  if (/(aprovad|aceit|accept|approv)/.test(stage)) return 'aprovado-pelo-cliente';
-  if (/negocia/.test(stage)) return 'negociacao';
-  if (/(elabor|draft|propost)/.test(stage)) return 'elaborando-proposta';
-  if (/(análise|analise|revis|review|analysis)/.test(stage)) return 'analise-da-area';
-  return 'qualificacao';
+  return STAGE_BY_NAME[stage] ?? null;
 }
 
 function resolveExternalContact(quote: Quote): string {
   return quote.externalContactName?.trim() || quote.externalContactEmail?.trim() || FIELD_PLACEHOLDER;
 }
 
-// Sem fallbacks inventados: exibimos apenas o que vem do Salesforce.
+// Exibe os campos recebidos pela API sem inventar status ou empresa.
 function mapQuoteToOrcamento(quote: Quote): Orcamento {
-  const hasValue = typeof quote.totalPrice === 'number' && quote.totalPrice > 0;
+  const hasValue = typeof quote.totalPrice === 'number' && Number.isFinite(quote.totalPrice);
 
   return {
     id: quote.id?.trim() || '',
     code: quote.code?.trim() || FIELD_PLACEHOLDER,
     proposalName: quote.name?.trim() || FIELD_PLACEHOLDER,
+    description: quote.description?.trim() || FIELD_PLACEHOLDER,
     company: quote.companyName?.trim() || FIELD_PLACEHOLDER,
     externalContact: resolveExternalContact(quote),
     createdAt: formatCreatedAt(quote.createdDate),
     estimatedValue: hasValue ? BRL_FORMATTER.format(quote.totalPrice) : undefined,
-    status: mapStage(quote.stage ?? ''),
+    status: quote.status?.trim() || quote.stage?.trim() || '',
+    category: mapStage(quote.stage?.trim() || quote.status?.trim() || ''),
   };
 }
 
@@ -235,15 +179,15 @@ function mapQuoteToOrcamento(quote: Quote): Orcamento {
 })
 export class ClientOrcamentosComponent {
   private readonly loginService = inject(LoginService);
-  private readonly appDialog = inject(AppDialogService);
   private readonly quotesService = inject(QuotesService);
-  private readonly router = inject(Router);
+  private readonly snackBar = inject(MatSnackBar);
   private readonly destroyRef = inject(DestroyRef);
 
   readonly filterTabs = FILTER_TABS;
   readonly activeFilter = signal<ChaveDaAba>('todos');
   readonly searchTerm = signal('');
   readonly loadError = signal(false);
+  readonly loading = signal(false);
 
   readonly firstName = computed(() => {
     const name = this.loginService.currentUser();
@@ -266,10 +210,14 @@ export class ClientOrcamentosComponent {
     const filter = this.activeFilter();
     const term = this.searchTerm().trim().toLowerCase();
     return this.orcamentos().filter((orcamento) => {
-      if (filter !== 'todos' && abaDaSituacao(orcamento.status) !== filter) return false;
+      const aba = orcamento.category
+        ? abaDaSituacao(orcamento.category)
+        : orcamento.status.toLowerCase() === 'em andamento' ? 'andamento' : null;
+      if (filter !== 'todos' && aba !== filter) return false;
       if (!term) return true;
       return (
         orcamento.code.toLowerCase().includes(term) ||
+        orcamento.description.toLowerCase().includes(term) ||
         orcamento.proposalName.toLowerCase().includes(term) ||
         orcamento.company.toLowerCase().includes(term) ||
         orcamento.externalContact.toLowerCase().includes(term)
@@ -281,11 +229,16 @@ export class ClientOrcamentosComponent {
     this.loadQuotes();
   }
 
-  private loadQuotes(): void {
+  loadQuotes(): void {
+    if (this.loading()) return;
+    this.loading.set(true);
     this.loadError.set(false);
     this.quotesService
       .getQuotes()
-      .pipe(takeUntilDestroyed(this.destroyRef))
+      .pipe(
+        finalize(() => this.loading.set(false)),
+        takeUntilDestroyed(this.destroyRef),
+      )
       .subscribe({
         next: (quotes) => this.orcamentos.set(quotes.map(mapQuoteToOrcamento)),
         error: () => {
@@ -295,49 +248,26 @@ export class ClientOrcamentosComponent {
       });
   }
 
-  badgeFor(status: SituacaoDaSolicitacao): StatusBadge {
-    return STATUS_BADGE[status];
+  badgeFor(orcamento: Orcamento): StatusBadge {
+    if (orcamento.category) {
+      return { ...STATUS_BADGE[orcamento.category], label: orcamento.status };
+    }
+    return {
+      label: orcamento.status || 'Status indisponível',
+      badgeClass: 'orcamento-status-pill--unknown',
+    };
   }
 
   setFilter(value: ChaveDaAba): void {
     this.activeFilter.set(value);
   }
 
-  openStatusDialog(orcamento: Orcamento): void {
-    const cancelado = ehTerminal(orcamento.status);
-    const etapa: EtapaDaLinha = ehTerminal(orcamento.status) ? 'qualificacao' : orcamento.status;
-    const indice = indiceDaEtapa(etapa);
-    const grupo = grupoDaEtapa(indice);
-    const aviso = cancelado ? undefined : AVISO_DA_ETAPA[etapa];
-
-    const data: StatusPropostaDialogData = {
-      proposalId: orcamento.code.replace(/^#/, ''),
-      titulo: cancelado ? 'Solicitação encerrada' : grupo.titulo,
-      // Cada tela mostra um recorte só, não a linha inteira.
-      steps: PROPOSAL_STEPS.slice(grupo.de, grupo.ate + 1),
-      currentIndex: indice - grupo.de,
-      messageTitle: aviso?.titulo,
-      message: cancelado
-        ? 'Esta solicitação foi encerrada e não avança mais na linha de etapas.'
-        : aviso?.texto,
-      callToAction: aviso?.acao,
-      protocolo: grupo.chave === 'proposta' ? undefined : `L-${orcamento.code}-X`,
-      contato: grupo.chave === 'proposta' ? undefined : CONTATO_DO_LABORATORIO,
-    };
-
-    this.appDialog
-      .open<StatusPropostaDialogComponent, StatusPropostaDialogData, string>(
-        StatusPropostaDialogComponent,
-        data,
-        `${data.titulo} ${data.proposalId}`,
-      )
-      .afterClosed()
-      .pipe(takeUntilDestroyed(this.destroyRef))
-      .subscribe((resultado) => {
-        if (resultado === 'confirmed') {
-          void this.router.navigate(['/cliente/orcamentos', orcamento.id]);
-        }
-      });
+  showTrackingUnavailable(): void {
+    this.snackBar.open(
+      'O acompanhamento detalhado ainda não está disponível.',
+      'Fechar',
+      { duration: 6000 },
+    );
   }
 
   onSearchInput(value: string): void {

@@ -1,0 +1,113 @@
+<nav class="mb-2 flex items-center gap-1 text-sm" aria-label="Trilha de navegação">
+  <a routerLink="/admin" class="text-lactec-primary hover:underline">Painel administrativo</a>
+  <mat-icon class="icone-16 text-lactec-muted" aria-hidden="true">chevron_right</mat-icon>
+  <span class="text-lactec-ink-soft" aria-current="page">Empresas</span>
+</nav>
+
+<header class="flex flex-wrap items-start justify-between gap-4">
+  <div class="min-w-0">
+    <h1 class="m-0 text-2xl font-semibold text-lactec-ink md:text-3xl">Pesquisar Empresas</h1>
+    <p class="mt-1 mb-0 text-sm text-lactec-muted">Empresas clientes cadastradas no portal.</p>
+  </div>
+  <button mat-flat-button type="button" class="tecnicos-novo-botao" (click)="novaEmpresa()">
+    <mat-icon aria-hidden="true">add</mat-icon>
+    Nova empresa
+  </button>
+</header>
+
+<section class="mt-6 flex flex-col gap-3 sm:flex-row" aria-label="Filtros de empresas">
+  <label class="relative flex min-w-0 flex-1 items-center">
+    <mat-icon class="icone-20 pointer-events-none absolute left-3 text-lactec-muted" aria-hidden="true">search</mat-icon>
+    <input type="search" [formControl]="searchControl"
+      class="h-11 w-full rounded-lg border border-lactec-line bg-white pl-11 pr-3 text-sm text-lactec-ink placeholder:text-lactec-muted focus:border-lactec-primary focus:outline-none focus:ring-2 focus:ring-lactec-primary/20"
+      placeholder="Buscar por razão social, CNPJ, cidade, contato ou e-mail..."
+      aria-label="Buscar empresas por razão social, CNPJ, cidade, contato ou e-mail" />
+  </label>
+  <label class="sr-only" for="empresas-status-filter">Filtrar empresas por status</label>
+  <select id="empresas-status-filter" [formControl]="statusControl"
+    class="h-11 w-full rounded-lg border border-lactec-line bg-white px-3 text-sm text-lactec-ink focus:border-lactec-primary focus:outline-none focus:ring-2 focus:ring-lactec-primary/20 sm:w-40">
+    <option value="ALL">Todos os status</option>
+    <option value="ACTIVE">Ativas</option>
+    <option value="INACTIVE">Inativas</option>
+  </select>
+</section>
+
+@if (carregando()) {
+  <div class="mt-6 flex min-h-52 items-center justify-center gap-3 rounded-2xl border border-lactec-line bg-white" role="status">
+    <mat-spinner diameter="24" aria-label="Carregando empresas"></mat-spinner>
+    <span class="text-sm text-lactec-muted">Carregando empresas...</span>
+  </div>
+} @else if (erro()) {
+  <section class="mt-6 flex min-h-52 flex-col items-center justify-center gap-3 rounded-2xl border border-red-200 bg-white px-6 text-center" role="alert">
+    <mat-icon class="icone-36 text-red-700" aria-hidden="true">cloud_off</mat-icon>
+    <div>
+      <h2 class="m-0 text-base font-semibold text-lactec-ink">
+        {{ erroPermissao() ? 'Acesso não autorizado' : 'Não foi possível carregar as empresas' }}
+      </h2>
+      <p class="mt-1 mb-0 text-sm text-lactec-muted">
+        {{ erroPermissao() ? 'Sua conta não tem permissão para consultar empresas.' : 'Confira sua conexão e tente novamente.' }}
+      </p>
+    </div>
+    <button mat-stroked-button type="button" (click)="tentarNovamente()">Tentar novamente</button>
+  </section>
+} @else if (!empresas().length) {
+  <section class="mt-6 flex min-h-52 flex-col items-center justify-center gap-2 rounded-2xl border border-dashed border-lactec-line bg-white px-6 text-center" role="status">
+    <mat-icon class="icone-36 text-lactec-muted" aria-hidden="true">search_off</mat-icon>
+    <h2 class="m-0 text-base font-semibold text-lactec-ink">Nenhuma empresa encontrada</h2>
+    <p class="m-0 text-sm text-lactec-muted">Altere a busca ou o filtro de status e tente novamente.</p>
+  </section>
+} @else {
+  <div class="mt-6 overflow-hidden rounded-2xl border border-lactec-line bg-white">
+    <div class="overflow-x-auto">
+      <table class="w-full min-w-[1060px] border-collapse text-sm">
+        <caption class="sr-only">Empresas cadastradas, com CNPJ, endereço, localidade, contato, status e ações.</caption>
+        <thead>
+          <tr class="bg-lactec-line-soft text-left">
+            <th scope="col" class="px-4 py-3 font-semibold text-lactec-ink">Razão social</th>
+            <th scope="col" class="px-4 py-3 font-semibold text-lactec-ink">CNPJ</th>
+            <th scope="col" class="px-4 py-3 font-semibold text-lactec-ink">Endereço</th>
+            <th scope="col" class="px-4 py-3 font-semibold text-lactec-ink">Localidade</th>
+            <th scope="col" class="px-4 py-3 font-semibold text-lactec-ink">Contato</th>
+            <th scope="col" class="px-4 py-3 font-semibold text-lactec-ink">Status</th>
+            <th scope="col" class="px-4 py-3 text-right font-semibold text-lactec-ink">Ações</th>
+          </tr>
+        </thead>
+        <tbody>
+          @for (empresa of empresas(); track empresa.id) {
+            <tr class="border-t border-lactec-line-soft hover:bg-slate-50/70">
+              <td class="px-4 py-3 font-medium text-lactec-ink">{{ empresa.legalName }}</td>
+              <td class="whitespace-nowrap px-4 py-3 text-lactec-ink-soft">{{ formatarCnpj(empresa.cnpj) }}</td>
+              <td class="max-w-64 px-4 py-3 text-lactec-ink-soft">{{ empresa.address }}</td>
+              <td class="whitespace-nowrap px-4 py-3 text-lactec-ink-soft">{{ empresa.city }}/{{ empresa.state }}</td>
+              <td class="px-4 py-3 text-lactec-ink-soft">
+                <span class="block whitespace-nowrap">{{ empresa.contactPhone }}</span>
+                <span class="block text-xs text-lactec-muted">{{ empresa.contactEmail }}</span>
+              </td>
+              <td class="px-4 py-3">
+                <span class="inline-flex min-w-16 justify-center rounded-full px-2.5 py-1 text-xs font-semibold"
+                  [class.bg-emerald-100]="empresa.status === 'ACTIVE'"
+                  [class.text-emerald-900]="empresa.status === 'ACTIVE'"
+                  [class.bg-slate-200]="empresa.status === 'INACTIVE'"
+                  [class.text-slate-700]="empresa.status === 'INACTIVE'">
+                  {{ empresa.status === 'ACTIVE' ? 'Ativa' : 'Inativa' }}
+                </span>
+              </td>
+              <td class="whitespace-nowrap px-3 py-2 text-right">
+                <button mat-icon-button type="button" (click)="editarEmpresa(empresa)"
+                  [attr.aria-label]="'Editar empresa ' + empresa.legalName" matTooltip="Editar empresa">
+                  <mat-icon>edit</mat-icon>
+                </button>
+                <button mat-icon-button type="button" (click)="alternarStatus(empresa)"
+                  [disabled]="alterandoStatus().has(empresa.id)"
+                  [attr.aria-label]="(empresa.status === 'ACTIVE' ? 'Desativar empresa ' : 'Ativar empresa ') + empresa.legalName"
+                  [matTooltip]="empresa.status === 'ACTIVE' ? 'Desativar empresa' : 'Ativar empresa'">
+                  <mat-icon>{{ empresa.status === 'ACTIVE' ? 'business_center' : 'domain_add' }}</mat-icon>
+                </button>
+              </td>
+            </tr>
+          }
+        </tbody>
+      </table>
+    </div>
+  </div>
+}

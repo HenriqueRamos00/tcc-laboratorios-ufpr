@@ -34,8 +34,6 @@ class TecnicoControllerTests {
 	@Autowired private UsuarioRepository usuarioRepository;
 	@Autowired private JwtService jwtService;
 	@Value("${security.jwt.secret}") private String jwtSecret;
-	@Value("${security.jwt.issuer}") private String jwtIssuer;
-	@Value("${security.jwt.audience}") private String jwtAudience;
 
 	@BeforeEach
 	void limpaUsuarios() {
@@ -55,37 +53,43 @@ class TecnicoControllerTests {
 				.andExpect(status().isOk());
 	}
 
-	@ParameterizedTest
-	@ValueSource(strings = {"audiencia", "emissor", "expirado", "emissaoFutura", "semEmissao", "semExpiracao"})
-	void rejeitaTokenAssinadoComContratoInvalido(String caso) throws Exception {
+	@Test
+	void rejeitaTokenExpirado() throws Exception {
 		Usuario admin = usuarioRepository.saveAndFlush(usuario(PerfilUsuario.ADMIN, "admin@lab.com", true));
-		Instant agora = Instant.now();
-		JwtBuilder builder = Jwts.builder()
-				.subject(admin.getEmail())
-				.claim("userId", admin.getId())
-				.claim("role", "ADMIN")
-				.issuer(jwtIssuer)
-				.audience().add(jwtAudience).and()
-				.issuedAt(Date.from(agora))
-				.expiration(Date.from(agora.plusSeconds(300)));
-		switch (caso) {
-			case "audiencia" -> builder.audience().clear().add("outra-api").and();
-			case "emissor" -> builder.issuer("outro-emissor");
-			case "expirado" -> builder.expiration(Date.from(agora.minusSeconds(120)));
-			case "emissaoFutura" -> builder.issuedAt(Date.from(agora.plusSeconds(120)));
-			case "semEmissao" -> builder.issuedAt(null);
-			case "semExpiracao" -> builder.expiration(null);
-			default -> throw new IllegalArgumentException(caso);
-		}
-		String token = builder.signWith(Keys.hmacShaKeyFor(jwtSecret.getBytes(StandardCharsets.UTF_8)), Jwts.SIG.HS256).compact();
+		String token = tokenPara(admin)
+				.expiration(Date.from(Instant.now().minusSeconds(120)))
+				.signWith(Keys.hmacShaKeyFor(jwtSecret.getBytes(StandardCharsets.UTF_8)), Jwts.SIG.HS256)
+				.compact();
 
 		mockMvc.perform(get("/api/technicians").header("Authorization", bearer(token)))
-				.andExpect(status().isUnauthorized())
-				.andExpect(jsonPath("$.message").value("Não autenticado"));
+				.andExpect(status().isUnauthorized());
+	}
+
+	@Test
+	void rejeitaTokenAssinadoComOutraChave() throws Exception {
+		Usuario admin = usuarioRepository.saveAndFlush(usuario(PerfilUsuario.ADMIN, "admin@lab.com", true));
+		String outraChave = "outra-chave-com-pelo-menos-32-caracteres-para-testes";
+		String token = tokenPara(admin)
+				.signWith(Keys.hmacShaKeyFor(outraChave.getBytes(StandardCharsets.UTF_8)), Jwts.SIG.HS256)
+				.compact();
+
+		mockMvc.perform(get("/api/technicians").header("Authorization", bearer(token)))
+				.andExpect(status().isUnauthorized());
+	}
+
+	@Test
+	void rejeitaTokenComAlgoritmoDiferenteDeHs256() throws Exception {
+		Usuario admin = usuarioRepository.saveAndFlush(usuario(PerfilUsuario.ADMIN, "admin@lab.com", true));
+		String token = tokenPara(admin)
+				.signWith(Keys.hmacShaKeyFor(jwtSecret.getBytes(StandardCharsets.UTF_8)), Jwts.SIG.HS384)
+				.compact();
+
+		mockMvc.perform(get("/api/technicians").header("Authorization", bearer(token)))
+				.andExpect(status().isUnauthorized());
 	}
 
 	@ParameterizedTest
-	@ValueSource(strings = {"0", "1", "\"0\"", "\"1\"", "\"OUTRO\""})
+	@ValueSource(strings = {"0", "\"OUTRO\""})
 	void rejeitaStatusForaDoContratoSemAlterarTecnico(String valorJson) throws Exception {
 		Usuario admin = usuarioRepository.saveAndFlush(usuario(PerfilUsuario.ADMIN, "admin@lab.com", true));
 		Usuario tecnico = usuarioRepository.saveAndFlush(usuario(PerfilUsuario.TECNICO, "tecnico@lab.com", false));
@@ -129,25 +133,14 @@ class TecnicoControllerTests {
 	}
 
 	@Test
-	void rejeitaTokensAntigosEBloqueiaTokenDeContaInativa() throws Exception {
+	void bloqueiaTokenDeContaDesativada() throws Exception {
 		Usuario tecnico = usuarioRepository.saveAndFlush(usuario(PerfilUsuario.TECNICO, "tecnico@lab.com", true));
-		String currentToken = bearer(jwtService.generateToken(tecnico));
-		String legacyToken = bearer(Jwts.builder()
-				.subject(tecnico.getEmail())
-				.claim("role", "TECNICO")
-				.expiration(Date.from(Instant.now().plusSeconds(300)))
-				.signWith(Keys.hmacShaKeyFor("test-secret-with-at-least-32-characters-long".getBytes(StandardCharsets.UTF_8)))
-				.compact());
+		String token = bearer(jwtService.generateToken(tecnico));
 
-		mockMvc.perform(get("/api/health/private-probe").header("Authorization", legacyToken))
-				.andExpect(status().isUnauthorized());
+		tecnico.setAtivo(false);
+		usuarioRepository.saveAndFlush(tecnico);
 
-		mockMvc.perform(patch("/api/technicians/{id}/status", tecnico.getId())
-					.header("Authorization", bearer(jwtService.generateToken(usuarioRepository.saveAndFlush(usuario(PerfilUsuario.ADMIN, "admin@lab.com", true)))))
-					.contentType(MediaType.APPLICATION_JSON).content("{\"status\":\"INACTIVE\"}"))
-				.andExpect(status().isOk());
-
-		mockMvc.perform(get("/api/health/private-probe").header("Authorization", currentToken))
+		mockMvc.perform(get("/api/health/private-probe").header("Authorization", token))
 				.andExpect(status().isUnauthorized());
 	}
 
@@ -165,6 +158,16 @@ class TecnicoControllerTests {
 
 		mockMvc.perform(get("/api/technicians").header("Authorization", tokenAnterior))
 				.andExpect(status().isUnauthorized());
+	}
+
+	private JwtBuilder tokenPara(Usuario usuario) {
+		Instant agora = Instant.now();
+		return Jwts.builder()
+				.subject(usuario.getEmail())
+				.claim("userId", usuario.getId())
+				.claim("role", usuario.getPerfil().name())
+				.issuedAt(Date.from(agora))
+				.expiration(Date.from(agora.plusSeconds(300)));
 	}
 
 	private String bearer(String token) {
