@@ -7,7 +7,7 @@ import {
   zonasDuval4Com,
   type CodigoDeDuval4,
 } from './duval-4';
-import type { PontoTernario } from './health';
+import type { TernaryPoint } from './health';
 import { areaTotal, gerarZonas, normalizar, type XY } from './particao-ternaria.spec-util';
 
 // Oráculo dos polígonos do triângulo 4: regenera ZONAS_DUVAL_4 a partir da
@@ -23,16 +23,16 @@ const PARTICAO = {
   classificar: classificarDuval4,
 };
 
-const comoXY = (vertices: readonly PontoTernario[]): XY[] => vertices.map((v) => [v.b, v.c]);
+const comoXY = (vertices: readonly TernaryPoint[]): XY[] => vertices.map((v) => [v.b, v.c]);
 
 /** Agrupa por código: uma zona pode ser publicada em mais de um anel. */
-function aneisPorCodigo(zonas: readonly { codigo: string; vertices: readonly PontoTernario[] }[]) {
+function aneisPorCodigo(zones: readonly { code: string; vertices: readonly TernaryPoint[] }[]) {
   const porCodigo = new Map<string, string[]>();
-  for (const zona of zonas) {
-    const lista = porCodigo.get(zona.codigo) ?? [];
-    porCodigo.set(zona.codigo, [...lista, normalizar(comoXY(zona.vertices))]);
+  for (const zona of zones) {
+    const lista = porCodigo.get(zona.code) ?? [];
+    porCodigo.set(zona.code, [...lista, normalizar(comoXY(zona.vertices))]);
   }
-  for (const [codigo, aneis] of porCodigo) porCodigo.set(codigo, [...aneis].sort());
+  for (const [code, aneis] of porCodigo) porCodigo.set(code, [...aneis].sort());
   return porCodigo;
 }
 
@@ -45,13 +45,13 @@ describe('Triângulo de Duval 4', () => {
     expect(areaTotal(geradas)).toBeCloseTo(5000, 6);
   });
 
-  it('desenha exatamente as zonas que a tabela normativa define', () => {
+  it('desenha exatamente as zones que a tabela normativa define', () => {
     const desenhadas = aneisPorCodigo(ZONAS_DUVAL_4);
     expect([...desenhadas.keys()].sort()).toEqual([...geradas.keys()].sort());
-    for (const [codigo, aneis] of geradas) {
+    for (const [code, aneis] of geradas) {
       const esperados = [...aneis.map(normalizar)].sort();
-      expect(desenhadas.get(codigo))
-        .withContext(`vértices de ${codigo} divergem da tabela`)
+      expect(desenhadas.get(code))
+        .withContext(`vértices de ${code} divergem da tabela`)
         .toEqual(esperados);
     }
   });
@@ -73,9 +73,9 @@ describe('Triângulo de Duval 4', () => {
     expect(duval4({ h2: null, ch4: 601, c2h6: 74 })).toBeNull();
     expect(duval4({ h2: 0, ch4: 0, c2h6: 0 })).toBeNull();
     expect(gasAusenteDoDuval4({ h2: 2028, ch4: null, c2h6: 74 })).toBe('CH₄');
-    const ponto = duval4({ h2: 2028, ch4: 601, c2h6: 74 });
-    expect(ponto).not.toBeNull();
-    expect(ponto!.a + ponto!.b + ponto!.c).toBeCloseTo(100, 9);
+    const point = duval4({ h2: 2028, ch4: 601, c2h6: 74 });
+    expect(point).not.toBeNull();
+    expect(point!.a + point!.b + point!.c).toBeCloseTo(100, 9);
   });
 
   it('respeita as desigualdades meia-abertas nas fronteiras da tabela', () => {
@@ -112,12 +112,12 @@ describe('Triângulo de Duval 4', () => {
     expect(aplicaSeDuval4(null)).toBeFalse();
   });
 
-  it('acende só as zonas em que caiu leitura', () => {
+  it('acende só as zones em que caiu leitura', () => {
     const codigos: readonly CodigoDeDuval4[] = ['S'];
     const acesas = zonasDuval4Com(codigos)
-      .filter((zona) => zona.destacada)
-      .map((zona) => zona.codigo);
+      .filter((zona) => zona.highlighted)
+      .map((zona) => zona.code);
     expect(acesas).toEqual(['S']);
-    expect(zonasDuval4Com([]).every((zona) => !zona.destacada)).toBeTrue();
+    expect(zonasDuval4Com([]).every((zona) => !zona.highlighted)).toBeTrue();
   });
 });

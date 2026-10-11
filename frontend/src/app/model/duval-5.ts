@@ -51,7 +51,7 @@
 // c = %C₂H₆ (base). Bate com a figura publicada.
 
 import type { CodigoDeDuval1 } from './duval-1';
-import type { PontoTernario, ZonaTernaria } from './health';
+import type { TernaryPoint, TernaryZone } from './health';
 
 /** Os três gases que entram no triângulo 5, em ppm. */
 export interface GasesDoDuval5 {
@@ -98,7 +98,7 @@ export const MOTIVO_DUVAL_5_NAO_APLICAVEL =
  * Converte ppm em percentual ternário. `null` quando a coleta não permite o
  * diagnóstico - ausência de gás NÃO é zero medido.
  */
-export function duval5(gases: GasesDoDuval5): PontoTernario | null {
+export function duval5(gases: GasesDoDuval5): TernaryPoint | null {
   const { ch4, c2h4, c2h6 } = gases;
   if (ch4 == null || c2h4 == null || c2h6 == null) return null;
   const total = ch4 + c2h4 + c2h6;
@@ -122,8 +122,8 @@ export function gasAusenteDoDuval5(gases: GasesDoDuval5): string | null {
  * A terceira linha (`b < 10` sem condição em c) é a que fecha a fresta que a
  * norma deixou sem zona - ver o cabeçalho deste arquivo.
  */
-export function classificarDuval5(ponto: PontoTernario): CodigoDeDuval5 {
-  const { b, c } = ponto;
+export function classificarDuval5(point: TernaryPoint): CodigoDeDuval5 {
+  const { b, c } = point;
   if (b < 1 && c >= 2 && c < 14) return 'PD';
   if (b < 10 && c >= 14 && c < 54) return 'S';
   if (b < 10) return 'O';
@@ -134,7 +134,7 @@ export function classificarDuval5(ponto: PontoTernario): CodigoDeDuval5 {
   return 'T3';
 }
 
-const ponto = (a: number, b: number, c: number): PontoTernario => ({ a, b, c });
+const point = (a: number, b: number, c: number): TernaryPoint => ({ a, b, c });
 
 /**
  * Polígonos derivados da tabela acima - `duval-5.spec.ts` os regenera e falha
@@ -147,75 +147,75 @@ const ponto = (a: number, b: number, c: number): PontoTernario => ({ a, b, c });
  * A versão anterior era desenhada "pelo layout da tela" e dava diagnóstico
  * diferente do publicado em 67,5% da área.
  */
-export const ZONAS_DUVAL_5: readonly ZonaTernaria[] = [
+export const ZONAS_DUVAL_5: readonly TernaryZone[] = [
   {
-    codigo: 'PD',
-    destacada: false,
-    vertices: [ponto(98, 0, 2), ponto(97, 1, 2), ponto(85, 1, 14), ponto(86, 0, 14)],
+    code: 'PD',
+    highlighted: false,
+    vertices: [point(98, 0, 2), point(97, 1, 2), point(85, 1, 14), point(86, 0, 14)],
   },
   {
-    codigo: 'O',
-    destacada: false,
+    code: 'O',
+    highlighted: false,
     vertices: [
-      ponto(100, 0, 0),
-      ponto(90, 10, 0),
-      ponto(76, 10, 14),
-      ponto(85, 1, 14),
-      ponto(97, 1, 2),
-      ponto(98, 0, 2),
+      point(100, 0, 0),
+      point(90, 10, 0),
+      point(76, 10, 14),
+      point(85, 1, 14),
+      point(97, 1, 2),
+      point(98, 0, 2),
     ],
   },
   {
-    codigo: 'O',
-    destacada: false,
-    vertices: [ponto(46, 0, 54), ponto(36, 10, 54), ponto(0, 10, 90), ponto(0, 0, 100)],
+    code: 'O',
+    highlighted: false,
+    vertices: [point(46, 0, 54), point(36, 10, 54), point(0, 10, 90), point(0, 0, 100)],
   },
   {
-    codigo: 'S',
-    destacada: false,
-    vertices: [ponto(86, 0, 14), ponto(76, 10, 14), ponto(36, 10, 54), ponto(46, 0, 54)],
+    code: 'S',
+    highlighted: false,
+    vertices: [point(86, 0, 14), point(76, 10, 14), point(36, 10, 54), point(46, 0, 54)],
   },
   {
-    codigo: 'T2',
-    destacada: false,
-    vertices: [ponto(90, 10, 0), ponto(65, 35, 0), ponto(53, 35, 12), ponto(78, 10, 12)],
+    code: 'T2',
+    highlighted: false,
+    vertices: [point(90, 10, 0), point(65, 35, 0), point(53, 35, 12), point(78, 10, 12)],
   },
   {
-    codigo: 'C',
-    destacada: false,
+    code: 'C',
+    highlighted: false,
     vertices: [
-      ponto(78, 10, 12),
-      ponto(38, 50, 12),
-      ponto(36, 50, 14),
-      ponto(16, 70, 14),
-      ponto(0, 70, 30),
-      ponto(60, 10, 30),
+      point(78, 10, 12),
+      point(38, 50, 12),
+      point(36, 50, 14),
+      point(16, 70, 14),
+      point(0, 70, 30),
+      point(60, 10, 30),
     ],
   },
   {
-    codigo: 'T3',
-    destacada: false,
+    code: 'T3',
+    highlighted: false,
     vertices: [
-      ponto(65, 35, 0),
-      ponto(0, 100, 0),
-      ponto(0, 35, 65),
-      ponto(35, 35, 30),
-      ponto(0, 70, 30),
-      ponto(16, 70, 14),
-      ponto(36, 50, 14),
-      ponto(38, 50, 12),
-      ponto(53, 35, 12),
+      point(65, 35, 0),
+      point(0, 100, 0),
+      point(0, 35, 65),
+      point(35, 35, 30),
+      point(0, 70, 30),
+      point(16, 70, 14),
+      point(36, 50, 14),
+      point(38, 50, 12),
+      point(53, 35, 12),
     ],
   },
   {
-    codigo: 'ND',
-    destacada: false,
-    vertices: [ponto(60, 10, 30), ponto(35, 35, 30), ponto(0, 35, 65), ponto(0, 10, 90)],
+    code: 'ND',
+    highlighted: false,
+    vertices: [point(60, 10, 30), point(35, 35, 30), point(0, 35, 65), point(0, 10, 90)],
   },
 ];
 
 /** Marca como destacada toda zona em que caiu pelo menos uma leitura. */
-export function zonasDuval5Com(codigos: readonly CodigoDeDuval5[]): readonly ZonaTernaria[] {
+export function zonasDuval5Com(codigos: readonly CodigoDeDuval5[]): readonly TernaryZone[] {
   const acesas = new Set<string>(codigos);
-  return ZONAS_DUVAL_5.map((zona) => ({ ...zona, destacada: acesas.has(zona.codigo) }));
+  return ZONAS_DUVAL_5.map((zona) => ({ ...zona, highlighted: acesas.has(zona.code) }));
 }

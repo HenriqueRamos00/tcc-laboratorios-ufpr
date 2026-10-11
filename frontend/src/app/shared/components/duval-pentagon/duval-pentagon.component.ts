@@ -6,7 +6,7 @@ const RAIO = 84;
 const CENTRO = 100;
 const ZONAS = ['T2', 'D1', 'D2', 'PD', 'T1'] as const;
 
-export type ZonaDoPentagono = (typeof ZONAS)[number];
+export type PentagonZone = (typeof ZONAS)[number];
 
 function vertice(indice: number, raio: number): { x: number; y: number } {
   const angulo = (Math.PI * 2 * indice) / 5 - Math.PI / 2;
@@ -63,7 +63,7 @@ function vertice(indice: number, raio: number): { x: number; y: number } {
 })
 export class DuvalPentagonComponent {
   /** Zona classificada e posição da leitura, em coordenadas de -1 a 1. */
-  readonly zona = input.required<ZonaDoPentagono>();
+  readonly zone = input.required<PentagonZone>();
   readonly x = input(0);
   readonly y = input(0);
 
@@ -93,6 +93,6 @@ export class DuvalPentagonComponent {
   }));
 
   protected readonly descricao = computed(
-    () => `Pentágono de Duval com a leitura classificada na zona ${this.zona()}.`,
+    () => `Pentágono de Duval com a leitura classificada na zone ${this.zone()}.`,
   );
 }

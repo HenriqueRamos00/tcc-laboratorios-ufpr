@@ -1,6 +1,10 @@
 import { ChangeDetectionStrategy, Component, computed, input } from '@angular/core';
 
-import { type Classificacao, ROTULO_DA_CLASSIFICACAO } from '@/app/model/health';
+import {
+  type Classification,
+  CLASSIFICATION_LABEL,
+  NOT_ASSESSED_LABEL,
+} from '@/app/model/health';
 
 // Classificação do ensaio. A cor acompanha, mas quem carrega a informação é o
 // texto: em impressão preto e branco ou para quem não distingue as matizes, o
@@ -8,11 +12,15 @@ import { type Classificacao, ROTULO_DA_CLASSIFICACAO } from '@/app/model/health'
 //
 // O mapa guarda a classe utilitária inteira, não o tom: assim o Tailwind
 // encontra cada nome escrito por extenso no fonte e emite a utilitária.
-const CLASSE_DE_FUNDO: Record<Classificacao, string> = {
+const BACKGROUND_CLASS: Record<Classification, string> = {
   normal: 'bg-lactec-success',
   alerta: 'bg-lactec-warning',
   'nao-conforme': 'bg-lactec-danger',
 };
+
+// Ensaio sem parecer fica cinza: a bolinha continua na linha para a coluna não
+// desalinhar, e o tom neutro não promete faixa nenhuma.
+const NOT_ASSESSED_BACKGROUND_CLASS = 'bg-lactec-muted';
 
 @Component({
   selector: 'app-classification-badge',
@@ -22,17 +30,24 @@ const CLASSE_DE_FUNDO: Record<Classificacao, string> = {
     <span class="inline-flex items-center gap-1.5 text-sm font-medium text-lactec-ink">
       <span
         class="inline-block h-2.5 w-2.5 shrink-0 rounded-full"
-        [class]="classeDeFundo()"
+        [class]="backgroundClass()"
         aria-hidden="true"
       ></span>
-      {{ rotulo() }}
+      {{ label() }}
     </span>
   `,
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class ClassificationBadgeComponent {
-  readonly classificacao = input.required<Classificacao>();
+  readonly classification = input.required<Classification | null>();
 
-  protected readonly classeDeFundo = computed(() => CLASSE_DE_FUNDO[this.classificacao()]);
-  protected readonly rotulo = computed(() => ROTULO_DA_CLASSIFICACAO[this.classificacao()]);
+  protected readonly backgroundClass = computed(() => {
+    const classification = this.classification();
+    return classification ? BACKGROUND_CLASS[classification] : NOT_ASSESSED_BACKGROUND_CLASS;
+  });
+
+  protected readonly label = computed(() => {
+    const classification = this.classification();
+    return classification ? CLASSIFICATION_LABEL[classification] : NOT_ASSESSED_LABEL;
+  });
 }

@@ -11,4 +11,16 @@
     <Nullable>enable</Nullable>
   </PropertyGroup>
 
+  <!-- The real sample of the views travels inside the assembly: the suite and the API read
+       exactly the same file, so a green test cannot depend on data the API never sees.
+
+       Two files because there are two provenances. LabTestSample.jsonl is measured data,
+       transcribed from vwDadosEnsaios. DemonstrationSeries.jsonl was written by hand to give
+       one piece of equipment more than one report, and none of its numbers came from a
+       laboratory. -->
+  <ItemGroup>
+    <EmbeddedResource Include="LabResults\LabTestSample.jsonl" />
+    <EmbeddedResource Include="LabResults\DemonstrationSeries.jsonl" />
+  </ItemGroup>
+
 </Project>

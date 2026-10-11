@@ -1,5 +1,5 @@
 import { classificarDuval1, duval1, ZONAS_DUVAL_1, type CodigoDeDuval1 } from './duval-1';
-import type { PontoTernario } from './health';
+import type { TernaryPoint } from './health';
 
 // Este arquivo é o oráculo dos polígonos: regenera ZONAS_DUVAL_1 a partir da
 // tabela de desigualdades e falha se alguém editar um vértice na mão. A
@@ -44,7 +44,7 @@ function areaAssinada(anel: readonly XY[]): number {
   return soma / 2;
 }
 
-const chave = (p: XY): string => `${Math.round(p[0] * 1e6)}:${Math.round(p[1] * 1e6)}`;
+const key = (p: XY): string => `${Math.round(p[0] * 1e6)}:${Math.round(p[1] * 1e6)}`;
 
 /** Cola peças adjacentes cancelando as arestas que aparecem nos dois sentidos. */
 function colar(pecas: readonly (readonly XY[])[]): XY[][] {
@@ -54,21 +54,21 @@ function colar(pecas: readonly (readonly XY[])[]): XY[][] {
     for (let i = 0; i < anel.length; i++) {
       const p = anel[i];
       const q = anel[(i + 1) % anel.length];
-      const inversa = `${chave(q)}|${chave(p)}`;
+      const inversa = `${key(q)}|${key(p)}`;
       if (arestas.has(inversa)) arestas.delete(inversa);
-      else arestas.set(`${chave(p)}|${chave(q)}`, [p, q]);
+      else arestas.set(`${key(p)}|${key(q)}`, [p, q]);
     }
   }
   const seguinte = new Map<string, XY[]>();
   for (const [, [p, q]] of arestas) {
-    const k = chave(p);
+    const k = key(p);
     seguinte.set(k, [...(seguinte.get(k) ?? []), q]);
   }
   const aneis: XY[][] = [];
   const pontoDe = new Map<string, XY>();
   for (const [, [p, q]] of arestas) {
-    pontoDe.set(chave(p), p);
-    pontoDe.set(chave(q), q);
+    pontoDe.set(key(p), p);
+    pontoDe.set(key(q), q);
   }
   while (seguinte.size) {
     const inicio = seguinte.keys().next().value as string;
@@ -79,9 +79,9 @@ function colar(pecas: readonly (readonly XY[])[]): XY[][] {
       if (!destinos?.length) throw new Error('anel aberto ao colar as peças');
       const q = destinos.shift()!;
       if (!destinos.length) seguinte.delete(atual);
-      if (chave(q) === inicio) break;
+      if (key(q) === inicio) break;
       anel.push(q);
-      atual = chave(q);
+      atual = key(q);
     }
     aneis.push(anel);
   }
@@ -100,7 +100,7 @@ function semColineares(anel: readonly XY[]): XY[] {
 /** Mesma forma, independente de por onde o anel começa e do sentido. */
 function normalizar(anel: readonly XY[]): string {
   const orientado = areaAssinada(anel) < 0 ? [...anel].reverse() : [...anel];
-  const chaves = orientado.map(chave);
+  const chaves = orientado.map(key);
   const inicio = chaves.indexOf([...chaves].sort()[0]);
   return [...chaves.slice(inicio), ...chaves.slice(0, inicio)].join(' ');
 }
@@ -123,21 +123,21 @@ function gerarZonas(): Map<CodigoDeDuval1, XY[]> {
         if (peca.length < 3 || Math.abs(areaAssinada(peca)) < 1e-9) continue;
         const cx = peca.reduce((s, p) => s + p[0], 0) / peca.length;
         const cy = peca.reduce((s, p) => s + p[1], 0) / peca.length;
-        const codigo = classificarDuval1({ a: 100 - cx - cy, b: cx, c: cy });
-        pecas.set(codigo, [...(pecas.get(codigo) ?? []), peca]);
+        const code = classificarDuval1({ a: 100 - cx - cy, b: cx, c: cy });
+        pecas.set(code, [...(pecas.get(code) ?? []), peca]);
       }
     }
   }
-  const zonas = new Map<CodigoDeDuval1, XY[]>();
-  for (const [codigo, lista] of pecas) {
+  const zones = new Map<CodigoDeDuval1, XY[]>();
+  for (const [code, lista] of pecas) {
     const aneis = colar(lista);
-    if (aneis.length !== 1) throw new Error(`${codigo} virou ${aneis.length} anéis`);
-    zonas.set(codigo, semColineares(aneis[0]));
+    if (aneis.length !== 1) throw new Error(`${code} virou ${aneis.length} anéis`);
+    zones.set(code, semColineares(aneis[0]));
   }
-  return zonas;
+  return zones;
 }
 
-const comoXY = (vertices: readonly PontoTernario[]): XY[] => vertices.map((v) => [v.b, v.c]);
+const comoXY = (vertices: readonly TernaryPoint[]): XY[] => vertices.map((v) => [v.b, v.c]);
 
 describe('Triângulo de Duval 1', () => {
   const geradas = gerarZonas();
@@ -149,14 +149,14 @@ describe('Triângulo de Duval 1', () => {
     expect(total).toBeCloseTo(5000, 6);
   });
 
-  it('desenha exatamente as zonas que a tabela normativa define', () => {
-    const codigosDesenhados = ZONAS_DUVAL_1.map((zona) => zona.codigo).sort();
+  it('desenha exatamente as zones que a tabela normativa define', () => {
+    const codigosDesenhados = ZONAS_DUVAL_1.map((zona) => zona.code).sort();
     expect([...geradas.keys()].sort() as string[]).toEqual(codigosDesenhados);
     for (const zona of ZONAS_DUVAL_1) {
-      const esperada = geradas.get(zona.codigo as CodigoDeDuval1);
-      expect(esperada).withContext(`zona ${zona.codigo} não foi gerada`).toBeDefined();
+      const esperada = geradas.get(zona.code as CodigoDeDuval1);
+      expect(esperada).withContext(`zona ${zona.code} não foi gerada`).toBeDefined();
       expect(normalizar(comoXY(zona.vertices)))
-        .withContext(`vértices de ${zona.codigo} divergem da tabela`)
+        .withContext(`vértices de ${zona.code} divergem da tabela`)
         .toBe(normalizar(esperada!));
     }
   });
@@ -177,9 +177,9 @@ describe('Triângulo de Duval 1', () => {
   it('não computa a coleta sem os três gases, e não a confunde com zero', () => {
     expect(duval1({ ch4: 250, c2h4: 380, c2h2: null })).toBeNull();
     expect(duval1({ ch4: 0, c2h4: 0, c2h2: 0 })).toBeNull();
-    const ponto = duval1({ ch4: 250, c2h4: 380, c2h2: 2 });
-    expect(ponto).not.toBeNull();
-    expect(ponto!.a + ponto!.b + ponto!.c).toBeCloseTo(100, 9);
+    const point = duval1({ ch4: 250, c2h4: 380, c2h2: 2 });
+    expect(point).not.toBeNull();
+    expect(point!.a + point!.b + point!.c).toBeCloseTo(100, 9);
   });
 
   it('respeita as desigualdades meia-abertas nas fronteiras da tabela', () => {

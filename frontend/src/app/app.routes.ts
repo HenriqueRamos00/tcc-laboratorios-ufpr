@@ -34,66 +34,71 @@ export const routes: Routes = [
       {
         path: 'orcamentos',
         loadComponent: () =>
-          import('@/app/pages/cliente/orcamentos/orcamentos.component').then(
-            (modulo) => modulo.ClientOrcamentosComponent,
+          import('@/app/pages/client/quotes/quote-list.component').then(
+            (modulo) => modulo.QuoteListComponent,
           ),
         title: 'Orçamentos - Portal Lactec',
       },
       {
         path: 'orcamentos/:id',
         loadComponent: () =>
-          import('@/app/pages/cliente/orcamentos/detalhe/orcamento-detalhe.component').then(
-            (modulo) => modulo.OrcamentoDetalheComponent,
+          import('@/app/pages/client/quotes/detail/quote-detail.component').then(
+            (modulo) => modulo.QuoteDetailComponent,
           ),
         title: 'Detalhes do orçamento - Portal Lactec',
       },
       {
         path: 'orcamentos/:id/aceite',
         loadComponent: () =>
-          import('@/app/pages/cliente/orcamentos/aceite/termo-de-aceite.component').then(
-            (modulo) => modulo.TermoDeAceiteComponent,
+          import('@/app/pages/client/quotes/acceptance/acceptance-terms.component').then(
+            (modulo) => modulo.AcceptanceTermsComponent,
           ),
         title: 'Termo de aceite - Portal Lactec',
       },
       {
         path: 'relatorios',
         loadComponent: () =>
-          import('@/app/pages/cliente/relatorios/relatorios.component').then(
-            (modulo) => modulo.ClientRelatoriosComponent,
+          import('@/app/pages/client/reports/report-list.component').then(
+            (modulo) => modulo.ReportListComponent,
           ),
         title: 'Relatórios - Portal Lactec',
       },
       {
         path: 'equipamentos',
         loadComponent: () =>
-          import('@/app/pages/cliente/equipamentos/equipamentos.component').then(
-            (modulo) => modulo.ClientEquipamentosComponent,
+          import('@/app/pages/client/equipment/equipment-list.component').then(
+            (modulo) => modulo.EquipmentListComponent,
           ),
         title: 'Equipamentos - Portal Lactec',
       },
       {
         path: 'equipamentos/:id',
         loadComponent: () =>
-          import('@/app/pages/cliente/equipamentos/detalhe/equipamento-detalhe.component').then(
-            (modulo) => modulo.EquipamentoDetalheComponent,
+          import('@/app/pages/client/equipment/detail/equipment-detail.component').then(
+            (modulo) => modulo.EquipmentDetailComponent,
           ),
         title: 'Detalhes do equipamento - Portal Lactec',
       },
       {
         path: 'equipamentos/:id/indicadores',
         loadComponent: () =>
-          import('@/app/pages/cliente/equipamentos/indicadores/indicadores.component').then(
-            (modulo) => modulo.IndicadoresComponent,
+          import('@/app/pages/client/equipment/health-indicators/health-indicators.component').then(
+            (modulo) => modulo.HealthIndicatorsComponent,
           ),
         title: 'Indicadores de saúde - Portal Lactec',
       },
       // Uma análise do histórico, identificada por segmento: o identificador diz
       // qual dado está na tela, então sobrevive ao recarregar e vai no link.
+      //
+      // O nome do segmento tem que ser igual ao nome do input do componente:
+      // `withComponentInputBinding` casa os dois pela chave, e nome diferente não
+      // é erro, é um input que nunca recebe nada. Endereço de rota é o caminho
+      // (`/cliente/equipamentos/.../indicadores`), não o nome do parâmetro.
       {
-        path: 'equipamentos/:id/indicadores/:relatorioId',
+        path: 'equipamentos/:id/indicadores/:reportId',
         loadComponent: () =>
-          import('@/app/pages/cliente/equipamentos/indicadores/indicadores.component').then(
-            (modulo) => modulo.IndicadoresComponent,
+          import('@/app/pages/client/equipment/health-indicators/health-indicators.component').then(
+            (modulo) => modulo.HealthIndicatorsComponent,
           ),
         title: 'Indicadores de saúde - Portal Lactec',
       },

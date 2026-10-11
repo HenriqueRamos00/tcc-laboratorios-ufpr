@@ -1,4 +1,4 @@
-using Portal.Application.Common;
+using Portal.Application.Quotes.Exceptions;
 using Portal.Application.Quotes;
 
 namespace Portal.Adapters.Quotes;
@@ -25,7 +25,7 @@ public sealed class LocalQuoteDocumentRepository : IQuoteDocumentRepository
         }
         catch (FileNotFoundException) { return null; }
         catch (DirectoryNotFoundException) { return null; }
-        catch (IOException) { throw new ExternalServiceException("Could not read the quote document."); }
-        catch (UnauthorizedAccessException) { throw new ExternalServiceException("Could not read the quote document."); }
+        catch (IOException) { throw new QuoteDocumentUnavailableException("Could not read the quote document."); }
+        catch (UnauthorizedAccessException) { throw new QuoteDocumentUnavailableException("Could not read the quote document."); }
     }
 }

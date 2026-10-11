@@ -122,7 +122,7 @@
   --color-lactec-zona-sobreaquecimento-do-oleo: #FFD9A0;
   --color-lactec-zona-nao-determinada: #DCDCDC;
   /* Zona publicada pela norma cujo código ainda não tem cor catalogada aqui. */
-  --color-lactec-zona-sem-catalogo: #E8E8E8;
+  --color-lactec-zona-sem-faixa: #E8E8E8;
 
   /* Diagnóstico de gases dissolvidos. Herdam o tom da paleta categórica por
      `var()` para que cada matiz tenha um dono só, enquanto o nome conta o que
@@ -187,6 +187,34 @@ html {
    competir. Elemento + classe sobe a especificidade sem `!important`. */
 mat-sidenav-content.mat-drawer-content {
   overflow: hidden;
+}
+
+/* O Material declara `box-sizing: border-box`, `overflow-y: auto` e uma borda de
+   1px no HOST da gaveta, em regras sem camada. As utilitárias do Tailwind vivem
+   dentro de `@layer utilities`, e regra sem camada vence camada nomeada
+   independente de especificidade: `border-0` e `overflow-x-hidden` escritos na
+   classe do `mat-sidenav` nunca chegaram a valer. O efeito media-se na tela: dos
+   80px do menu recolhido sobravam 64 de espaço útil, 1 comido pela borda e ~15
+   pela barra de rolagem que nasce dentro da própria largura. O cabeçalho não
+   cabia, e o que vazava virava a rolagem horizontal que o usuário via.
+
+   As duas regras abaixo devolvem os 16px em vez de orçá-los. Elas são declaradas
+   fora de camada, como as do Material, e ganham por especificidade. A rolagem
+   vertical continua existindo onde ela pertence, no `<nav>` de dentro. */
+mat-sidenav.mat-drawer {
+  overflow: hidden;
+}
+
+mat-sidenav.mat-drawer-side {
+  border-right-width: 0;
+}
+
+/* Rede de segurança, não conserto: o container interno também vem com
+   `overflow: auto` do Material, então um rótulo que não coubesse reporia a barra
+   horizontal dentro do menu. A rolagem vertical continua no `<nav>`, que é onde
+   ela pertence. */
+mat-sidenav .mat-drawer-inner-container {
+  overflow-x: hidden;
 }
 
 /* Tamanhos de ícone do Material. O componente fixa 24px em width, height e
