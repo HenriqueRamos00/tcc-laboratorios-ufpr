@@ -40,7 +40,7 @@
 // c = %C₂H₆ (base). Bate com a figura publicada.
 
 import type { CodigoDeDuval1 } from './duval-1';
-import type { PontoTernario, ZonaTernaria } from './health';
+import type { TernaryPoint, TernaryZone } from './health';
 
 /** Os três gases que entram no triângulo 4, em ppm. */
 export interface GasesDoDuval4 {
@@ -85,7 +85,7 @@ export const MOTIVO_DUVAL_4_NAO_APLICAVEL =
  * ponto legítimo na aresta, ausência não é ponto nenhum. Tratar ausência como
  * zero transforma gás não medido em diagnóstico confiante.
  */
-export function duval4(gases: GasesDoDuval4): PontoTernario | null {
+export function duval4(gases: GasesDoDuval4): TernaryPoint | null {
   const { h2, ch4, c2h6 } = gases;
   if (h2 == null || ch4 == null || c2h6 == null) return null;
   const total = h2 + ch4 + c2h6;
@@ -105,8 +105,8 @@ export function gasAusenteDoDuval4(gases: GasesDoDuval4): string | null {
  * A tabela normativa. Ordem e sinais de desigualdade são normativos: não
  * troque `<` por `<=` sem refazer o teste de partição.
  */
-export function classificarDuval4(ponto: PontoTernario): CodigoDeDuval4 {
-  const { a, b, c } = ponto;
+export function classificarDuval4(point: TernaryPoint): CodigoDeDuval4 {
+  const { a, b, c } = point;
   if (c < 1 && b >= 2 && b < 15) return 'PD';
   if (a < 9 && c >= 30) return 'O';
   if (a >= 9 && c >= 46) return 'ND';
@@ -115,7 +115,7 @@ export function classificarDuval4(ponto: PontoTernario): CodigoDeDuval4 {
   return 'S';
 }
 
-const ponto = (a: number, b: number, c: number): PontoTernario => ({ a, b, c });
+const point = (a: number, b: number, c: number): TernaryPoint => ({ a, b, c });
 
 /**
  * Polígonos derivados da tabela acima, cobrindo o triângulo inteiro sem
@@ -127,56 +127,56 @@ const ponto = (a: number, b: number, c: number): PontoTernario => ({ a, b, c });
  * diagnóstico diferente do publicado em 68,0% da área do triângulo (com S e
  * ND praticamente trocadas de lugar).
  */
-export const ZONAS_DUVAL_4: readonly ZonaTernaria[] = [
+export const ZONAS_DUVAL_4: readonly TernaryZone[] = [
   {
-    codigo: 'PD',
-    destacada: false,
-    vertices: [ponto(98, 2, 0), ponto(85, 15, 0), ponto(84, 15, 1), ponto(97, 2, 1)],
+    code: 'PD',
+    highlighted: false,
+    vertices: [point(98, 2, 0), point(85, 15, 0), point(84, 15, 1), point(97, 2, 1)],
   },
   {
-    codigo: 'S',
-    destacada: false,
+    code: 'S',
+    highlighted: false,
     vertices: [
-      ponto(100, 0, 0),
-      ponto(98, 2, 0),
-      ponto(97, 2, 1),
-      ponto(84, 15, 1),
-      ponto(85, 15, 0),
-      ponto(64, 36, 0),
-      ponto(40, 36, 24),
-      ponto(15, 61, 24),
-      ponto(15, 55, 30),
-      ponto(9, 61, 30),
-      ponto(9, 45, 46),
-      ponto(54, 0, 46),
+      point(100, 0, 0),
+      point(98, 2, 0),
+      point(97, 2, 1),
+      point(84, 15, 1),
+      point(85, 15, 0),
+      point(64, 36, 0),
+      point(40, 36, 24),
+      point(15, 61, 24),
+      point(15, 55, 30),
+      point(9, 61, 30),
+      point(9, 45, 46),
+      point(54, 0, 46),
     ],
   },
   {
-    codigo: 'C',
-    destacada: false,
+    code: 'C',
+    highlighted: false,
     vertices: [
-      ponto(64, 36, 0),
-      ponto(0, 100, 0),
-      ponto(0, 70, 30),
-      ponto(15, 55, 30),
-      ponto(15, 61, 24),
-      ponto(40, 36, 24),
+      point(64, 36, 0),
+      point(0, 100, 0),
+      point(0, 70, 30),
+      point(15, 55, 30),
+      point(15, 61, 24),
+      point(40, 36, 24),
     ],
   },
   {
-    codigo: 'O',
-    destacada: false,
-    vertices: [ponto(0, 0, 100), ponto(9, 0, 91), ponto(9, 61, 30), ponto(0, 70, 30)],
+    code: 'O',
+    highlighted: false,
+    vertices: [point(0, 0, 100), point(9, 0, 91), point(9, 61, 30), point(0, 70, 30)],
   },
   {
-    codigo: 'ND',
-    destacada: false,
-    vertices: [ponto(54, 0, 46), ponto(9, 45, 46), ponto(9, 0, 91)],
+    code: 'ND',
+    highlighted: false,
+    vertices: [point(54, 0, 46), point(9, 45, 46), point(9, 0, 91)],
   },
 ];
 
 /** Marca como destacada toda zona em que caiu pelo menos uma leitura. */
-export function zonasDuval4Com(codigos: readonly CodigoDeDuval4[]): readonly ZonaTernaria[] {
+export function zonasDuval4Com(codigos: readonly CodigoDeDuval4[]): readonly TernaryZone[] {
   const acesas = new Set<string>(codigos);
-  return ZONAS_DUVAL_4.map((zona) => ({ ...zona, destacada: acesas.has(zona.codigo) }));
+  return ZONAS_DUVAL_4.map((zona) => ({ ...zona, highlighted: acesas.has(zona.code) }));
 }

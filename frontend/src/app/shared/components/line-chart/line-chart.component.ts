@@ -6,15 +6,15 @@ import { ChangeDetectionStrategy, Component, computed, input, signal } from '@an
 // Identidade nunca vem só da cor: cada série tem uma forma de marcador,
 // repetida na legenda, e o tooltip do cruzamento mostra todas de uma vez.
 
-export interface SerieDoGrafico {
-  readonly chave: string;
-  readonly nome: string;
+export interface ChartSeries {
+  readonly key: string;
+  readonly name: string;
   /** Índice na paleta categórica; sem ciclo automático. */
-  readonly posicaoNaPaleta: number;
-  readonly valores: readonly (number | null)[];
+  readonly palettePosition: number;
+  readonly values: readonly (number | null)[];
 }
 
-export type EscalaDoEixo = 'linear' | 'log';
+export type AxisScale = 'linear' | 'log';
 
 // Paleta categórica validada para superfície clara (checagem de visão de
 // cores, faixa de luminosidade e piso de contraste). A ordem é fixa.
@@ -52,8 +52,8 @@ interface PontoDesenhado {
 }
 
 interface SerieDesenhada {
-  readonly chave: string;
-  readonly nome: string;
+  readonly key: string;
+  readonly name: string;
   readonly classes: ClassesDaSerie;
   readonly forma: Forma;
   readonly tracejada: boolean;
@@ -73,12 +73,12 @@ const MARCA_DE_COLETA_NAO_REALIZADA = '-';
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class LineChartComponent {
-  readonly titulo = input.required<string>();
-  readonly rotulosDoEixoX = input.required<readonly string[]>();
-  readonly series = input.required<readonly SerieDoGrafico[]>();
-  readonly escala = input<EscalaDoEixo>('linear');
-  readonly rotuloDoEixoY = input('Valor');
-  readonly rotuloDoEixoX = input('Data');
+  readonly title = input.required<string>();
+  readonly xAxisLabels = input.required<readonly string[]>();
+  readonly series = input.required<readonly ChartSeries[]>();
+  readonly scale = input<AxisScale>('linear');
+  readonly yAxisLabel = input('Valor');
+  readonly xAxisLabel = input('Data');
 
   protected readonly LARGURA = LARGURA;
   protected readonly ALTURA = ALTURA;
@@ -87,19 +87,28 @@ export class LineChartComponent {
   protected readonly indiceEmFoco = signal<number | null>(null);
 
   private readonly limites = computed(() => {
-    const valores = this.series()
-      .flatMap((serie) => serie.valores)
+    const values = this.series()
+      .flatMap((serie) => serie.values)
       .filter(
-        (valor): valor is number =>
-          valor !== null &&
-          Number.isFinite(valor) &&
-          (this.escala() === 'linear' || valor > 0),
+        (value): value is number =>
+          value !== null &&
+          Number.isFinite(value) &&
+          (this.scale() === 'linear' || value > 0),
       );
 
-    if (!valores.length) return { minimo: 0, maximo: 1 };
+    // Sem nenhum valor plotável não há faixa para calcular, e a faixa vazia precisa ser
+    // válida para a escala em uso. Em escala logarítmica o zero não tem logaritmo:
+    // `Math.log10(0)` é `-Infinity`, a contagem de marcas do eixo virava `Infinity` e
+    // `Array.from` morria com `RangeError`. O estrago não parava no gráfico, porque o erro
+    // acontecia durante a detecção de mudanças: o ciclo inteiro abortava, o `ngDoCheck` do
+    // container do menu deixava de rodar e a barra lateral parava de recalcular a margem do
+    // conteúdo. Medido com um laudo sem nenhum gás dissolvido, na aba de gases.
+    if (!values.length) {
+      return this.scale() === 'log' ? { minimo: 1, maximo: 10 } : { minimo: 0, maximo: 1 };
+    }
 
-    const bruto = { minimo: Math.min(...valores), maximo: Math.max(...valores) };
-    if (this.escala() === 'log') {
+    const bruto = { minimo: Math.min(...values), maximo: Math.max(...values) };
+    if (this.scale() === 'log') {
       return {
         minimo: Math.pow(10, Math.floor(Math.log10(bruto.minimo))),
         maximo: Math.pow(10, Math.ceil(Math.log10(bruto.maximo))),
@@ -111,22 +120,26 @@ export class LineChartComponent {
 
   protected readonly marcasDoEixoY = computed(() => {
     const { minimo, maximo } = this.limites();
-    if (this.escala() === 'log') {
+    if (this.scale() === 'log') {
       const de = Math.log10(minimo);
       const ate = Math.log10(maximo);
-      return Array.from({ length: Math.round(ate - de) + 1 }, (_, passo) => {
-        const valor = Math.pow(10, de + passo);
-        return { valor, y: this.posicaoY(valor), rotulo: this.rotuloLog(de + passo) };
+      // Cinto além da trava acima: nenhuma faixa de entrada pode virar um número de marcas
+      // que `Array.from` recuse. Uma década por marca, no mínimo duas e no máximo dez.
+      const decadas = Math.round(ate - de);
+      const quantidade = Number.isFinite(decadas) ? Math.min(Math.max(decadas, 1), 9) + 1 : 2;
+      return Array.from({ length: quantidade }, (_, passo) => {
+        const value = Math.pow(10, de + passo);
+        return { value, y: this.posicaoY(value), rotulo: this.rotuloLog(de + passo) };
       });
     }
     return Array.from({ length: 6 }, (_, marca) => {
-      const valor = minimo + ((maximo - minimo) * marca) / 5;
-      return { valor, y: this.posicaoY(valor), rotulo: this.formatarNumero(valor) };
+      const value = minimo + ((maximo - minimo) * marca) / 5;
+      return { value, y: this.posicaoY(value), rotulo: this.formatarNumero(value) };
     });
   });
 
   protected readonly marcasDoEixoX = computed(() =>
-    this.rotulosDoEixoX().map((rotulo, indice) => ({ rotulo, x: this.posicaoX(indice) })),
+    this.xAxisLabels().map((rotulo, indice) => ({ rotulo, x: this.posicaoX(indice) })),
   );
 
   protected readonly seriesDesenhadas = computed<readonly SerieDesenhada[]>(() =>
@@ -135,21 +148,21 @@ export class LineChartComponent {
       const trechos: string[] = [];
       let abrindoTrecho = true;
 
-      serie.valores.forEach((valor, posicao) => {
-        if (valor === null || (this.escala() === 'log' && valor <= 0)) {
+      serie.values.forEach((value, posicao) => {
+        if (value === null || (this.scale() === 'log' && value <= 0)) {
           abrindoTrecho = true;
           return;
         }
-        const ponto = { x: this.posicaoX(posicao), y: this.posicaoY(valor) };
+        const ponto = { x: this.posicaoX(posicao), y: this.posicaoY(value) };
         pontos.push(ponto);
         trechos.push(`${abrindoTrecho ? 'M' : 'L'} ${ponto.x} ${ponto.y}`);
         abrindoTrecho = false;
       });
 
       return {
-        chave: serie.chave,
-        nome: serie.nome,
-        classes: PALETA[serie.posicaoNaPaleta % PALETA.length],
+        key: serie.key,
+        name: serie.name,
+        classes: PALETA[serie.palettePosition % PALETA.length],
         forma: FORMAS[Math.floor(indice / PALETA.length) % FORMAS.length],
         // A partir da nona série a cor se repete; o traço passa a tracejado
         // para que a identidade continue distinguível sem inventar matiz nova.
@@ -165,12 +178,12 @@ export class LineChartComponent {
     if (indice === null) return null;
     return {
       x: this.posicaoX(indice),
-      rotulo: this.rotulosDoEixoX()[indice],
-      valores: this.series().map((serie, ordem) => ({
-        nome: serie.nome,
-        classes: PALETA[serie.posicaoNaPaleta % PALETA.length],
+      rotulo: this.xAxisLabels()[indice],
+      values: this.series().map((serie, ordem) => ({
+        name: serie.name,
+        classes: PALETA[serie.palettePosition % PALETA.length],
         forma: FORMAS[Math.floor(ordem / PALETA.length) % FORMAS.length],
-        valor: serie.valores[indice],
+        value: serie.values[indice],
       })),
     };
   });
@@ -181,7 +194,7 @@ export class LineChartComponent {
     if (!caixa.width) return;
     const proporcao = (evento.clientX - caixa.left) / caixa.width;
     const dentro = proporcao * LARGURA;
-    const total = this.rotulosDoEixoX().length;
+    const total = this.xAxisLabels().length;
     if (total < 2) {
       this.indiceEmFoco.set(total === 1 ? 0 : null);
       return;
@@ -209,29 +222,29 @@ export class LineChartComponent {
     }
   }
 
-  protected formatarNumero(valor: number | null): string {
-    if (valor === null) return MARCA_DE_COLETA_NAO_REALIZADA;
-    if (Math.abs(valor) >= 1000) return valor.toLocaleString('pt-BR');
-    return Number.isInteger(valor) ? String(valor) : valor.toLocaleString('pt-BR');
+  protected formatarNumero(value: number | null): string {
+    if (value === null) return MARCA_DE_COLETA_NAO_REALIZADA;
+    if (Math.abs(value) >= 1000) return value.toLocaleString('pt-BR');
+    return Number.isInteger(value) ? String(value) : value.toLocaleString('pt-BR');
   }
 
   private posicaoX(indice: number): number {
-    const total = this.rotulosDoEixoX().length;
+    const total = this.xAxisLabels().length;
     const util = LARGURA - MARGEM.esquerda - MARGEM.direita;
     if (total < 2) return MARGEM.esquerda + util / 2;
     return MARGEM.esquerda + (util * indice) / (total - 1);
   }
 
-  private posicaoY(valor: number): number {
+  private posicaoY(value: number): number {
     const { minimo, maximo } = this.limites();
     const util = ALTURA - MARGEM.topo - MARGEM.base;
-    if (this.escala() === 'log') {
+    if (this.scale() === 'log') {
       const de = Math.log10(minimo);
       const ate = Math.log10(maximo);
-      const proporcao = (Math.log10(Math.max(valor, minimo)) - de) / (ate - de || 1);
+      const proporcao = (Math.log10(Math.max(value, minimo)) - de) / (ate - de || 1);
       return ALTURA - MARGEM.base - util * proporcao;
     }
-    const proporcao = (valor - minimo) / (maximo - minimo || 1);
+    const proporcao = (value - minimo) / (maximo - minimo || 1);
     return ALTURA - MARGEM.base - util * proporcao;
   }
 

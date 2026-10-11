@@ -1,7 +1,7 @@
 import { ApplicationRef } from '@angular/core';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 
-import { type Classificacao } from '@/app/model/health';
+import { type Classification } from '@/app/model/health';
 
 import { ConformityGaugeComponent } from './conformity-gauge.component';
 
@@ -17,11 +17,18 @@ function doisQuadrosDeAnimacao(): Promise<void> {
 describe('medidor de conformidade', () => {
   let fixture: ComponentFixture<ConformityGaugeComponent>;
 
-  function montar(classificacao: Classificacao, animarNaEntrada: boolean): HTMLElement {
+  // A assinatura aceita nulo e literal estranha de proposito: a API tipa o campo
+  // como texto livre, entao o componente precisa ser montavel com o que o fio
+  // pode trazer, e nao so com o que o tipo promete.
+  function montar(
+    classification: Classification | null,
+    animateOnEnter: boolean,
+    verdict: string | null = 'APROVADO',
+  ): HTMLElement {
     fixture = TestBed.createComponent(ConformityGaugeComponent);
-    fixture.componentRef.setInput('classificacao', classificacao);
-    fixture.componentRef.setInput('veredito', 'APROVADO');
-    fixture.componentRef.setInput('animarNaEntrada', animarNaEntrada);
+    fixture.componentRef.setInput('classification', classification);
+    fixture.componentRef.setInput('verdict', verdict);
+    fixture.componentRef.setInput('animateOnEnter', animateOnEnter);
     fixture.detectChanges();
     return fixture.nativeElement as HTMLElement;
   }
@@ -36,6 +43,36 @@ describe('medidor de conformidade', () => {
 
   beforeEach(async () => {
     await TestBed.configureTestingModule({ imports: [ConformityGaugeComponent] }).compileComponents();
+  });
+
+  // Enquanto o nucleo normativo nao migrar, a API serve parecer nulo em todo
+  // laudo. Um medidor que continua desenhando ponteiro nesse estado afirma uma
+  // faixa que ninguem atribuiu, e `role="meter"` sem `aria-valuenow` e invalido
+  // pela ARIA 1.2, que exige a propriedade.
+  it('não desenha ponteiro nem publica medidor quando o laudo vem sem parecer', () => {
+    const raiz = montar(null, false, null);
+
+    expect(medidor(raiz)).toBeNull();
+    expect(grupoDoPonteiro(raiz)).toBeNull();
+    expect(raiz.querySelector('[role="img"]')?.getAttribute('aria-label'))
+      .toBe('Conformidade: Não avaliado');
+  });
+
+  // O campo chega como texto livre do servidor, nao como enum: literal que o
+  // lista de itens conhecidos nao conhece dava indice -1, e o -1 virava a primeira faixa. O
+  // ponteiro cravava NORMAL, em verde, sobre um parecer que ninguem entendeu.
+  it('não aponta faixa nenhuma quando a classificação não está na lista de itens conhecidos', () => {
+    const raiz = montar('critico' as Classification, false);
+
+    expect(medidor(raiz)).toBeNull();
+    expect(grupoDoPonteiro(raiz)).toBeNull();
+  });
+
+  // O veredito é nulável por conta própria: o laudo pode trazer faixa sem frase.
+  it('não anuncia a palavra null quando há faixa e falta o veredito', () => {
+    const alvo = medidor(montar('normal', false, null));
+
+    expect(alvo.getAttribute('aria-valuetext')).toBe('Não avaliado, faixa Normal');
   });
 
   it('expõe o valor pelo papel meter, com o veredito por extenso', () => {
@@ -96,7 +133,7 @@ describe('medidor de conformidade', () => {
     expect(classes).toContain(
       'motion-safe:data-[entrando]:[--recuo-da-entrada:calc(var(--giro-ate-a-faixa)*-1)]',
     );
-    expect(classes.split(/\s+/).every((nome) => nome === '' || nome.startsWith('motion-safe:'))).toBeTrue();
+    expect(classes.split(/\s+/).every((name) => name === '' || name.startsWith('motion-safe:'))).toBeTrue();
   });
 
   it('com a entrada desligada, o ponteiro já nasce na faixa', () => {

@@ -3,6 +3,8 @@ using Microsoft.AspNetCore.Http;
 using Portal.Adapters.Quotes;
 using Portal.Api.Controllers;
 using Portal.Application.Quotes;
+using Portal.Application.Quotes.Exceptions;
+
 using Xunit;
 
 namespace Portal.Tests;
@@ -43,7 +45,7 @@ public sealed class QuoteDocumentTests
 
         var result = await controller.GetDocument("missing", CancellationToken.None);
 
-        Assert.IsType<NotFoundObjectResult>(result);
+        AssertProblem(result, StatusCodes.Status404NotFound);
         Assert.Equal(0, documents.Calls);
     }
 
@@ -55,7 +57,7 @@ public sealed class QuoteDocumentTests
 
         var result = await controller.GetDocument("quote-3", CancellationToken.None);
 
-        Assert.IsType<NotFoundObjectResult>(result);
+        AssertProblem(result, StatusCodes.Status404NotFound);
     }
 
     [Fact]
@@ -144,5 +146,20 @@ public sealed class QuoteDocumentTests
             Calls++;
             return Task.FromResult<byte[]?>(document);
         }
+    }
+
+    /// <summary>
+    /// Confere o contrato, e nao a classe de resultado do MVC: o que o cliente ve e o status
+    /// e o corpo de problema, e trocar <c>NotFound</c> por <c>StatusCode</c> nao muda nenhum
+    /// dos dois.
+    /// </summary>
+    private static void AssertProblem(IActionResult result, int expectedStatus)
+    {
+        ObjectResult response = Assert.IsType<ObjectResult>(result);
+        ProblemDetails problem = Assert.IsType<ProblemDetails>(response.Value);
+
+        Assert.Equal(expectedStatus, response.StatusCode);
+        Assert.Equal(expectedStatus, problem.Status);
+        Assert.False(string.IsNullOrWhiteSpace((string?)problem.Extensions["code"]));
     }
 }

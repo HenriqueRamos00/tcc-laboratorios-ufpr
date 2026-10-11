@@ -1,45 +1,33 @@
-import { Injectable } from '@angular/core';
-import { delay, Observable, of, throwError } from 'rxjs';
+import { HttpClient } from '@angular/common/http';
+import { inject, Injectable } from '@angular/core';
+import { Observable } from 'rxjs';
 
-import { DEMO_DATA_ENABLED } from '@/app/environment/env';
-
-import type {
-  DetalheDoEquipamento,
-  Equipamento,
-  RelatorioDoEquipamento,
-} from '@/app/model/equipment';
-
-import {
-  detalheDoEquipamento,
-  EQUIPAMENTOS,
-  historicoDoEquipamento,
-} from './fixtures/equipamentos.fixture';
-
-const LATENCIA_SIMULADA = 320;
+import { API_URL } from '@/app/environment/env';
+import type { Equipment, EquipmentDetail, EquipmentReport } from '@/app/model/equipment';
 
 @Injectable({ providedIn: 'root' })
 export class EquipmentsService {
-  listar(): Observable<readonly Equipamento[]> {
-    if (!DEMO_DATA_ENABLED) {
-      return throwError(() => new Error('Equipamentos de demonstração estão desativados.'));
-    }
-    return of(EQUIPAMENTOS).pipe(delay(LATENCIA_SIMULADA));
+  private readonly http = inject(HttpClient);
+  private readonly baseUrl = `${API_URL}/api/equipments`;
+
+  /** GET /api/equipments */
+  list(): Observable<readonly Equipment[]> {
+    return this.http.get<Equipment[]>(this.baseUrl);
   }
 
-  buscarPorId(id: string): Observable<DetalheDoEquipamento> {
-    if (!DEMO_DATA_ENABLED) {
-      return throwError(() => new Error('Equipamentos de demonstração estão desativados.'));
-    }
-    const detalhe = detalheDoEquipamento(id);
-    return detalhe
-      ? of(detalhe).pipe(delay(LATENCIA_SIMULADA))
-      : throwError(() => new Error(`Equipamento ${id} não encontrado`));
+  /**
+   * GET /api/equipments/{id}
+   *
+   * O identificador vem opaco da própria API e é usado como veio. Existe número de série
+   * "111.594/1" e laudo endereçado pelo protocolo "01439/2026-004" no dado real, e a barra
+   * dividiria o caminho da rota se o valor cru viajasse aqui.
+   */
+  findById(id: string): Observable<EquipmentDetail> {
+    return this.http.get<EquipmentDetail>(`${this.baseUrl}/${encodeURIComponent(id)}`);
   }
 
-  historicoDeRelatorios(id: string): Observable<readonly RelatorioDoEquipamento[]> {
-    if (!DEMO_DATA_ENABLED) {
-      return throwError(() => new Error('Equipamentos de demonstração estão desativados.'));
-    }
-    return of(historicoDoEquipamento(id)).pipe(delay(LATENCIA_SIMULADA));
+  /** GET /api/equipments/{id}/reports */
+  reportHistory(id: string): Observable<readonly EquipmentReport[]> {
+    return this.http.get<EquipmentReport[]>(`${this.baseUrl}/${encodeURIComponent(id)}/reports`);
   }
 }

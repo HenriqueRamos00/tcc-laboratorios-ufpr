@@ -3,7 +3,7 @@ using System.Net;
 using System.Net.Http.Headers;
 using System.Text.Json;
 using System.Text.Json.Serialization;
-using Portal.Application.Common;
+using Portal.Application.Quotes.Exceptions;
 using Portal.Adapters.Salesforce;
 using Portal.Application.Quotes;
 using Portal.Domain.Quotes;
@@ -70,7 +70,7 @@ public sealed class SalesforceQuoteRepository : IQuoteRepository
                 using StreamReader reader = new(responseStream);
                 string responseContent = await reader.ReadToEndAsync(cancellationToken);
 
-                throw new ExternalServiceException(
+                throw new QuoteSourceUnavailableException(
                     $"External quote service query failed with {(int)response.StatusCode} {response.ReasonPhrase}: {responseContent}");
             }
 

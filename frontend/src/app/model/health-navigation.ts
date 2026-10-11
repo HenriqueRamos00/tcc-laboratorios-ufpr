@@ -1,26 +1,25 @@
-import type { TipoDeAnalise } from './equipment';
+import type { ReportAnalysisType } from './equipment';
 
 // Liga o histórico de relatórios do equipamento à tela de indicadores: o
 // histórico escolhe a análise, e esta tabela decide qual aba abre com ela.
 
 /** Aba da tela de indicadores de saúde. Viaja na URL, como `?aba=gases`. */
-export type AbaDeIndicadores = 'fisico-quimico' | 'gases';
+export type HealthTab = 'fisico-quimico' | 'gases';
 
-export const ABAS_DE_INDICADORES: readonly AbaDeIndicadores[] = ['fisico-quimico', 'gases'];
+export const HEALTH_TABS: readonly HealthTab[] = ['fisico-quimico', 'gases'];
 
-export const ABA_PADRAO: AbaDeIndicadores = 'fisico-quimico';
+export const DEFAULT_HEALTH_TAB: HealthTab = 'fisico-quimico';
 
 /**
- * Cromatografia e análise de gases dissolvidos caem na mesma aba porque a tela
- * de gases é uma só.
+ * Laudo de cromatografia abre a aba de gases, que é a que tem gráfico, totalizador e
+ * diagnóstico. Laudo físico-químico abre a sua.
  */
-export const ABA_DO_TIPO_DE_ANALISE: Record<TipoDeAnalise, AbaDeIndicadores> = {
-  'fisico-quimico': 'fisico-quimico',
-  cromatografia: 'gases',
-  'gases-dissolvidos': 'gases',
+export const TAB_BY_ANALYSIS_TYPE: Record<ReportAnalysisType, HealthTab> = {
+  'physical-chemical': 'fisico-quimico',
+  chromatography: 'gases',
 };
 
 /** A aba vem da URL, que qualquer pessoa pode digitar errado. */
-export function abaConhecida(valor: string | undefined): valor is AbaDeIndicadores {
-  return !!valor && (ABAS_DE_INDICADORES as readonly string[]).includes(valor);
+export function isKnownTab(value: string | undefined): value is HealthTab {
+  return !!value && (HEALTH_TABS as readonly string[]).includes(value);
 }
