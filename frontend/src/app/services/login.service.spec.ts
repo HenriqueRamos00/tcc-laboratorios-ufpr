@@ -25,6 +25,43 @@ describe('Serviço de autenticação', () => {
     window.sessionStorage.clear();
   });
 
+  it('restaura o cliente de demonstração da branch AutoLAB sem chamar a API', () => {
+    service.login({ email: ' LACTEC@LACTEC ', password: 'lactec' }).subscribe();
+
+    http.expectNone(`${AUTH_API_URL}/auth/login`);
+    expect(service.hasValidSession()).toBeTrue();
+    expect(service.currentUser()).toBe('Cliente Lactec');
+    expect(service.currentProfile()?.email).toBe('lactec@lactec');
+    expect(service.currentProfile()?.role).toBe('Client');
+    expect(service.authorizationHeader()).toContain('Bearer ');
+    const stored = JSON.parse(window.localStorage.getItem(LS_SESSION) ?? '{}');
+    expect(stored.user.email).toBe('lactec@lactec');
+    expect(stored.expiresIn).toBe(86400);
+  });
+
+  it('respeita a opção de conexão e o logout no login de demonstração', () => {
+    service.login({ email: 'lactec@lactec', password: 'lactec' }, false).subscribe();
+
+    http.expectNone(`${AUTH_API_URL}/auth/login`);
+    expect(window.localStorage.getItem(LS_SESSION)).toBeNull();
+    expect(JSON.parse(window.sessionStorage.getItem(LS_SESSION) ?? '{}').user.email)
+      .toBe('lactec@lactec');
+    service.logout();
+    expect(window.sessionStorage.getItem(LS_SESSION)).toBeNull();
+    expect(service.hasValidSession()).toBeFalse();
+  });
+
+  it('não aceita a conta de demonstração com senha incorreta', () => {
+    service.login({ email: 'lactec@lactec', password: 'incorreta' })
+      .subscribe({ error: () => undefined });
+    http.expectOne(`${AUTH_API_URL}/auth/login`).flush({}, {
+      status: 401, statusText: 'Não autorizado',
+    });
+
+    expect(service.hasValidSession()).toBeFalse();
+    expect(window.localStorage.getItem(LS_SESSION)).toBeNull();
+  });
+
   it('envia credenciais e preserva o perfil retornado pela API', () => {
     const profile = {
       id: '42',

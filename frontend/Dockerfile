@@ -49,7 +49,7 @@ RUN npm run build
 
 # ---------- prod: nginx servindo os estáticos ----------
 FROM nginx:stable-alpine AS prod
-ENV API_PROXY_TARGET=http://host.docker.internal:8080
+ENV API_PROXY_TARGET=http://host.docker.internal:5125
 ENV NGINX_ENVSUBST_FILTER=^API_PROXY_TARGET$
 COPY docker/nginx.conf /etc/nginx/templates/default.conf.template
 # `ng build` gera dist/portal-web/browser (builder `application` do Angular).

@@ -2,9 +2,11 @@ import { provideHttpClient } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { fakeAsync, TestBed, tick } from '@angular/core/testing';
 import { provideRouter } from '@angular/router';
+import { delay, of } from 'rxjs';
 
 import { API_URL } from '@/app/environment/env';
 import type { EquipmentDetail, EquipmentReport } from '@/app/model/equipment';
+import { ReportsService } from '@/app/services/reports.service';
 
 import { EquipmentDetailComponent } from './equipment-detail.component';
 
@@ -45,7 +47,16 @@ const HISTORY: EquipmentReport[] = [
 
 function montarDetalhe() {
   TestBed.configureTestingModule({
-    providers: [provideRouter([]), provideHttpClient(), provideHttpClientTesting()],
+    providers: [
+      provideRouter([]), provideHttpClient(), provideHttpClientTesting(),
+      {
+        provide: ReportsService,
+        useValue: {
+          baixarRelatorio: () => of(new Blob(['%PDF-1.7'], { type: 'application/pdf' }))
+            .pipe(delay(300)),
+        },
+      },
+    ],
   });
 
   const fixture = TestBed.createComponent(EquipmentDetailComponent);
@@ -53,8 +64,8 @@ function montarDetalhe() {
   fixture.detectChanges();
 
   const http = TestBed.inject(HttpTestingController);
-  http.expectOne(`${API_URL}/api/equipments/${EQUIPMENT_ID}`).flush(DETAIL);
-  http.expectOne(`${API_URL}/api/equipments/${EQUIPMENT_ID}/reports`).flush(HISTORY);
+  http.expectOne(`${API_URL}/equipments/${EQUIPMENT_ID}`).flush(DETAIL);
+  http.expectOne(`${API_URL}/equipments/${EQUIPMENT_ID}/reports`).flush(HISTORY);
 
   fixture.detectChanges();
   return fixture;
@@ -92,9 +103,9 @@ describe('EquipmentDetailComponent', () => {
     fixture.detectChanges();
 
     const http = TestBed.inject(HttpTestingController);
-    http.expectOne(`${API_URL}/api/equipments/${EQUIPMENT_ID}`).flush(DETAIL);
+    http.expectOne(`${API_URL}/equipments/${EQUIPMENT_ID}`).flush(DETAIL);
     http
-      .expectOne(`${API_URL}/api/equipments/${EQUIPMENT_ID}/reports`)
+      .expectOne(`${API_URL}/equipments/${EQUIPMENT_ID}/reports`)
       .flush([{ ...HISTORY[0], reportUrl: null }]);
     fixture.detectChanges();
 

@@ -3,6 +3,8 @@ import { HttpTestingController, provideHttpClientTesting } from '@angular/common
 import { TestBed } from '@angular/core/testing';
 
 import { API_URL } from '@/app/environment/env';
+import { Quote } from '@/app/model/quote';
+import { DEMONSTRATION_QUOTES } from './fixtures/quotes.fixture';
 import { QuotesService } from './quotes.service';
 
 describe('Serviço de orçamentos', () => {
@@ -10,6 +12,7 @@ describe('Serviço de orçamentos', () => {
   let http: HttpTestingController;
 
   beforeEach(() => {
+    spyOn(console, 'warn');
     TestBed.configureTestingModule({ providers: [provideHttpClient(), provideHttpClientTesting()] });
     service = TestBed.inject(QuotesService);
     http = TestBed.inject(HttpTestingController);
@@ -34,26 +37,58 @@ describe('Serviço de orçamentos', () => {
     let returned: unknown;
 
     service.getQuotes().subscribe((response) => returned = response);
-    http.expectOne(`${API_URL}/client/quotes`).flush(quotes);
+    http.expectOne(`${API_URL}/quotes`).flush(quotes);
 
     expect(returned).toEqual(quotes);
   });
 
-  it('propaga indisponibilidade da API sem substituir por dados locais', () => {
-    let status: number | undefined;
-    service.getQuotes().subscribe({ error: (error) => status = error.status });
-    http.expectOne(`${API_URL}/client/quotes`).flush('API indisponível', {
+  it('usa a demonstração quando a API está indisponível', () => {
+    let returned: Quote[] | undefined;
+    service.getQuotes().subscribe((response) => returned = response);
+    http.expectOne(`${API_URL}/quotes`).flush('API indisponível', {
       status: 503,
       statusText: 'Serviço indisponível',
     });
 
-    expect(status).toBe(503);
+    expect(returned).toEqual([...DEMONSTRATION_QUOTES]);
+  });
+
+  it('consulta o detalhe com o identificador codificado e preserva a resposta da API', () => {
+    const quote = { ...DEMONSTRATION_QUOTES[0], id: 'orc/1' };
+    let returned: Quote | undefined;
+    service.getQuoteById(quote.id).subscribe((response) => returned = response);
+    http.expectOne(`${API_URL}/quotes/orc%2F1`).flush(quote);
+
+    expect(returned).toEqual(quote);
+  });
+
+  it('usa o detalhe da demonstração apenas para um identificador conhecido', () => {
+    const quote = DEMONSTRATION_QUOTES[0];
+    let returned: Quote | undefined;
+    service.getQuoteById(quote.id).subscribe((response) => returned = response);
+    http.expectOne(`${API_URL}/quotes/${quote.id}`).flush('API indisponível', {
+      status: 503,
+      statusText: 'Serviço indisponível',
+    });
+
+    expect(returned).toEqual(quote);
+  });
+
+  it('propaga a falha do detalhe quando o identificador não pertence à demonstração', () => {
+    let status: number | undefined;
+    service.getQuoteById('orc-1').subscribe({ error: (error) => status = error.status });
+    http.expectOne(`${API_URL}/quotes/orc-1`).flush('Orçamento não encontrado', {
+      status: 404,
+      statusText: 'Não encontrado',
+    });
+
+    expect(status).toBe(404);
   });
 
   it('rejeita envelopes incompatíveis sem apresentá-los como lista vazia', () => {
     let errorMessage = '';
     service.getQuotes().subscribe({ error: (error: Error) => errorMessage = error.message });
-    http.expectOne(`${API_URL}/client/quotes`).flush({ items: [] });
+    http.expectOne(`${API_URL}/quotes`).flush({ items: [] });
 
     expect(errorMessage).toBe('A resposta de orçamentos precisa ser uma lista.');
   });
@@ -62,7 +97,7 @@ describe('Serviço de orçamentos', () => {
     let returned: Blob | undefined;
     service.getQuoteDocument('orc/1').subscribe((response) => returned = response);
     const file = new Blob(['%PDF-1.7'], { type: 'application/pdf' });
-    const request = http.expectOne(`${API_URL}/client/quotes/orc%2F1/document`);
+    const request = http.expectOne(`${API_URL}/quotes/orc%2F1/document`);
     expect(request.request.method).toBe('GET');
     expect(request.request.responseType).toBe('blob');
     request.flush(file);
@@ -74,7 +109,7 @@ describe('Serviço de orçamentos', () => {
   it('propaga a falha retornada ao tentar baixar o PDF', () => {
     let status: number | undefined;
     service.getQuoteDocument('orc-1').subscribe({ error: (error) => status = error.status });
-    http.expectOne(`${API_URL}/client/quotes/orc-1/document`).flush(new Blob(['Documento indisponível']), {
+    http.expectOne(`${API_URL}/quotes/orc-1/document`).flush(new Blob(['Documento indisponível']), {
       status: 404,
       statusText: 'Não encontrado',
     });

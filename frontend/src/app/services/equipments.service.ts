@@ -8,7 +8,7 @@ import type { Equipment, EquipmentDetail, EquipmentReport } from '@/app/model/eq
 @Injectable({ providedIn: 'root' })
 export class EquipmentsService {
   private readonly http = inject(HttpClient);
-  private readonly baseUrl = `${API_URL}/api/equipments`;
+  private readonly baseUrl = `${API_URL}/equipments`;
 
   /** GET /api/equipments */
   list(): Observable<readonly Equipment[]> {

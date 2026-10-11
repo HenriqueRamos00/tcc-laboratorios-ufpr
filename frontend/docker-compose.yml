@@ -3,7 +3,7 @@
 #   docker compose up --build --renew-anon-volumes
 #
 # O navegador usa /api na origem do portal. O proxy encaminha as chamadas
-# ao Spring no endereço definido por API_PROXY_TARGET.
+# à API C# no endereço definido por API_PROXY_TARGET.
 
 services:
   web:
@@ -11,7 +11,7 @@ services:
       context: .
       target: dev
     environment:
-      API_PROXY_TARGET: ${API_PROXY_TARGET:-http://host.docker.internal:8080}
+      API_PROXY_TARGET: ${API_PROXY_TARGET:-http://host.docker.internal:5125}
     ports:
       - "${PORTAL_WEB_PORT:-4200}:4200"
     volumes:
@@ -33,7 +33,7 @@ services:
       context: .
       target: prod
     environment:
-      API_PROXY_TARGET: ${API_PROXY_TARGET:-http://host.docker.internal:8080}
+      API_PROXY_TARGET: ${API_PROXY_TARGET:-http://host.docker.internal:5125}
       NGINX_ENVSUBST_FILTER: "^API_PROXY_TARGET$$"
     extra_hosts:
       - "host.docker.internal:host-gateway"

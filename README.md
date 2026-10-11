@@ -23,7 +23,9 @@ Esse comando sobe os dois portais de desenvolvimento, as duas APIs e o PostgreSQ
 | `backend-lab` - API Java, somente para desenvolvimento local | http://localhost:8080 |
 | `postgres` | localhost:5432 |
 
-O Portal Interno e o Portal do Cliente encaminham `/api` diretamente ao Backend Lab Spring. O C# continua disponível para suas integrações já existentes, mas não intermedeia essas operações web. O aplicativo Android mantém a integração anterior pela API C#; sua adaptação ao fluxo local não faz parte desta implementação.
+O Portal do Cliente (`frontend`) encaminha `/api` ao `backend-portal-web` C# (`portal-api`). O Portal Interno (`frontend-interno`) encaminha `/api` diretamente ao `backend-lab` Spring, que persiste no PostgreSQL. O aplicativo Android também usa a API C#.
+
+No Portal do Cliente em desenvolvimento, o login de demonstração da branch `angelo/fet/autolab` é `lactec@lactec`, senha `lactec`. A sessão é local e a API C# ainda não implementa autenticação real. Esse login é desativado no build de produção.
 
 Na execução local, a API Java é publicada em `127.0.0.1:8080` para inspeção e desenvolvimento. Em implantação, mantenha o Backend Lab e o PostgreSQL sem publicação externa.
 
@@ -39,7 +41,7 @@ O Compose inicia também as dependências do serviço escolhido:
 
 ```bash
 docker compose up -d --build frontend-interno  # Portal Interno, API Java e banco
-docker compose up -d --build frontend          # Portal do Cliente, API Java e banco
+docker compose up -d --build frontend          # Portal do Cliente e API C#
 docker compose up -d --build backend-lab       # Somente API Java e banco
 docker compose up -d --build portal-api        # Somente API C#, sem exigir Java e PostgreSQL
 docker compose up -d postgres                 # Somente banco
@@ -77,6 +79,6 @@ docker compose up -d --build --renew-anon-volumes frontend frontend-interno
 
 ## Empresas e clientes
 
-O ADMIN mantém empresas e clientes em `/admin/empresas` e `/admin/clientes` no Portal Interno. O cadastro de cliente define a senha inicial e uma ou mais empresas ativas. O Portal Interno acessa diretamente o Spring para login e gestão; o Portal do Cliente usa `POST /api/auth/login` do Spring para autenticação local e `/api/client/quotes` para orçamentos. O aplicativo Android mantém o contrato anterior com a API C# e não foi adaptado neste incremento. O Java armazena hashes BCrypt e consulta os vínculos atuais para autorizar orçamentos e PDFs do Portal do Cliente. A URL de autenticação do Portal do Cliente é configurável separadamente para permitir a futura definição do contrato Lactec; até essa definição, o padrão é o Spring local. Não se exige cadastro no AutoLAB.
+O ADMIN mantém empresas e clientes em `/admin/empresas` e `/admin/clientes` no Portal Interno. O cadastro de cliente define a senha inicial e uma ou mais empresas ativas. O Portal Interno acessa diretamente o Spring para login e gestão. O Portal do Cliente consulta `/api/quotes` e `/api/equipments` na API C#. As contas e vínculos cadastrados no Spring ainda não são sincronizados com o login de demonstração do Portal do Cliente.
 
-Para carregar os dados de demonstração no Backend Lab, configure `DEMO_SEED_ENABLED=true` no `.env` local e reinicie a API. O seed SQL cria a empresa, a conta `lactec@lactec.com` (senha `lactec`), um orçamento e seu PDF estático versionado. A flag fica desativada por padrão; habilite-a somente em ambiente local.
+Para carregar os dados de demonstração no Backend Lab, configure `DEMO_SEED_ENABLED=true` no `.env` local e reinicie a API. O seed SQL cria a empresa, a conta `lactec@lactec.com` (senha `lactec`), um orçamento e seu PDF estático versionado para testar a API Java. Essa conta é independente do login de demonstração do Portal do Cliente. A flag fica desativada por padrão; habilite-a somente em ambiente local.

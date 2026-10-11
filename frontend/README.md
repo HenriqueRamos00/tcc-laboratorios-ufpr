@@ -1,8 +1,8 @@
 # Portal do Cliente Lactec
 
-Aplicação Angular do Portal do Cliente. A execução local usa o Backend Lab Spring
-para login e orçamentos. Equipamentos, indicadores e relatórios possuem dados
-de demonstração opcionais para desenvolvimento das telas.
+Aplicação Angular do Portal do Cliente, conectada ao `backend-portal-web` C#.
+Orçamentos, equipamentos e indicadores são consultados na API. Relatórios
+possuem dados de demonstração opcionais para desenvolvimento das telas.
 
 ## Configuração da API
 
@@ -12,9 +12,15 @@ Antes de carregar a aplicação, ajuste `public/runtime-config.js`:
 window.__CLIENT_AUTH_API_URL__ = '/api';
 ```
 
-A configuração define somente a base usada pelo login. As demais operações do
-cliente sempre usam `/api`, encaminhado ao Spring. O contrato de autenticação
-Lactec ainda será definido; até lá, o padrão usa o Spring local.
+A configuração define a base usada por um futuro login real. A API C# ainda
+não implementa esse endpoint. No desenvolvimento, use o login de demonstração
+da branch `angelo/fet/autolab`: e-mail `lactec@lactec`, senha `lactec`.
+Esse login cria uma sessão local por 24 horas e é desativado no build de produção.
+Outras credenciais são encaminhadas para `POST /api/auth/login`.
+
+As consultas usam `/api` na origem do frontend. O proxy padrão aponta para
+`http://localhost:5125`; no Compose da raiz, aponta para `http://portal-api:8080`.
+O Compose isolado e o Nginx usam `http://host.docker.internal:5125` por padrão.
 
 ## Executar
 
@@ -31,9 +37,11 @@ npm install
 npm start
 ```
 
-Abra `http://localhost:4200`. O usuário informa as credenciais que existem na
-API. O portal usa o perfil e as empresas recebidos em `POST /api/auth/login`.
-Orçamentos são lidos de `GET /api/client/quotes`, que responde com um array.
+Abra `http://localhost:4200` e entre com `lactec@lactec` / `lactec`.
+Orçamentos são lidos de `GET /api/quotes`, que responde com um array; o PDF usa
+`GET /api/quotes/{id}/document`. Equipamentos e indicadores usam `/api/equipments`.
+Para iniciar também a API C# a partir da raiz do repositório, use
+`docker compose up -d --build frontend`.
 
 Para executar a imagem de produção pelo Compose isolado, use
 `docker compose --profile prod up -d --build web-prod`; ela fica disponível em
@@ -42,18 +50,17 @@ Para executar a imagem de produção pelo Compose isolado, use
 
 ## Dados de demonstração
 
-Para demonstrar equipamentos, indicadores e relatórios, ajuste
+Para demonstrar relatórios, ajuste
 `public/runtime-config.js` e recarregue o portal:
 
 ```js
 window.__CLIENT_DEMO_DATA__ = true;
 ```
 
-O padrão é `false`. Quando ativada, a opção habilita esses itens no menu e
-mostra um aviso de dados de demonstração. O login continua exigindo uma conta
-válida na API e a consulta de orçamentos continua usando o Spring, inclusive
-quando ele retorna erro. As fixtures de orçamentos permanecem disponíveis
-para testes e desenvolvimento, sem fallback automático. Aceite e recusa
+O padrão é `false`. Quando ativada, a opção habilita Relatórios no menu e
+mostra um aviso de dados de demonstração. Equipamentos e indicadores usam a
+API C# em ambos os modos. A consulta de orçamentos usa as fixtures locais se
+a API falhar, conforme a configuração em `quotes.service.ts`. Aceite e recusa
 continuam indisponíveis.
 
 ## Verificação

@@ -8,7 +8,7 @@ import type { HealthIndicators } from '@/app/model/health';
 @Injectable({ providedIn: 'root' })
 export class HealthService {
   private readonly http = inject(HttpClient);
-  private readonly baseUrl = `${API_URL}/api/equipments`;
+  private readonly baseUrl = `${API_URL}/equipments`;
 
   /**
    * GET /api/equipments/{id}/health para a visão geral e

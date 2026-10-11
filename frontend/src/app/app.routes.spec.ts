@@ -1,6 +1,5 @@
 import { provideHttpClient } from '@angular/common/http';
 import { TestBed } from '@angular/core/testing';
-import { JwtHelperService } from '@auth0/angular-jwt';
 import { provideRouter, withComponentInputBinding } from '@angular/router';
 import { RouterTestingHarness } from '@angular/router/testing';
 import { of } from 'rxjs';
@@ -9,7 +8,7 @@ import { UserRole } from '@core/store/user-role.store';
 
 import { CLIENT_ROLE } from '@/app/model/roles';
 import { HEALTH_INDICATORS } from '@/app/services/fixtures/health-indicators.fixture';
-import { LS_TOKEN } from '@/app/services/login.service';
+import { LoginService, LS_SESSION } from '@/app/services/login.service';
 import { HealthService } from '@/app/services/health.service';
 
 import { routes } from './app.routes';
@@ -25,19 +24,18 @@ describe('Rotas da área do cliente, ligação dos parâmetros', () => {
 
   beforeEach(() => {
     pedidos.length = 0;
-    // A área do cliente é guardada: sem sessão o roteador desvia para o login e
-    // a navegação nunca chega ao componente que está sendo medido. O papel entra
-    // por substituição e não por localStorage, porque o estado inicial do store é
-    // lido quando o módulo carrega, antes de qualquer preparo de teste.
-    localStorage.setItem(LS_TOKEN, 'token-de-teste');
+    localStorage.removeItem(LS_SESSION);
+    sessionStorage.removeItem(LS_SESSION);
     TestBed.configureTestingModule({
       providers: [
         provideHttpClient(),
         provideRouter(routes, withComponentInputBinding()),
-        { provide: JwtHelperService, useValue: { isTokenExpired: () => false } },
         {
           provide: UserRole,
-          useValue: { role: () => CLIENT_ROLE, dashboardPath: () => '/cliente', clear: () => {} },
+          useValue: {
+            role: () => CLIENT_ROLE, dashboardPath: () => '/cliente',
+            setRole: () => {}, clear: () => {},
+          },
         },
         {
           provide: HealthService,
@@ -50,9 +48,13 @@ describe('Rotas da área do cliente, ligação dos parâmetros', () => {
         },
       ],
     });
+    TestBed.inject(LoginService).login({ email: 'lactec@lactec', password: 'lactec' }).subscribe();
   });
 
-  afterEach(() => localStorage.removeItem(LS_TOKEN));
+  afterEach(() => {
+    localStorage.removeItem(LS_SESSION);
+    sessionStorage.removeItem(LS_SESSION);
+  });
 
   it('entrega ao componente o laudo que o endereço nomeia', async () => {
     const harness = await RouterTestingHarness.create();

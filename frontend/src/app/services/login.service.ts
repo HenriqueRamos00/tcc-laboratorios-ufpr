@@ -1,12 +1,14 @@
 import { HttpClient, HttpHeaders } from '@angular/common/http';
 import { computed, inject, Injectable, signal } from '@angular/core';
-import { map, Observable, tap } from 'rxjs';
+import { map, Observable, of, tap } from 'rxjs';
 
 import { CLIENT_ROLE } from '@/app/model/roles';
 import { Login } from '@/app/model/login';
 import { AuthenticatedUser, Token } from '@/app/model/token';
 import { AUTH_API_URL } from '@/app/environment/env';
 import { UserRole } from '@core/store/user-role.store';
+
+import { tryDevLogin } from './dev-login';
 
 export const LS_SESSION = 'lactec.client.session.v2';
 const LEGACY_STORAGE_KEYS = ['lactec.token', 'lactec.username', 'lactec.role'];
@@ -103,7 +105,11 @@ export class LoginService {
   }
 
   login(credentials: Login, keepConnected = true): Observable<Token> {
-    return this.http.post<unknown>(`${this.baseUrl}/login`, credentials, this.httpOptions).pipe(
+    const demo = tryDevLogin(credentials.email, credentials.password);
+    const response = demo
+      ? of(demo)
+      : this.http.post<unknown>(`${this.baseUrl}/login`, credentials, this.httpOptions);
+    return response.pipe(
       map((response) => {
         if (!isTokenResponse(response)) throw new Error('Resposta de autenticação incompatível.');
         return response;

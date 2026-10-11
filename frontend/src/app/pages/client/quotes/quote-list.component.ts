@@ -14,15 +14,23 @@ import { MatSnackBar } from '@angular/material/snack-bar';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 import { MatMenuModule } from '@angular/material/menu';
-import { RouterLink } from '@angular/router';
+import { Router, RouterLink } from '@angular/router';
+
+import { StatusStepperStep } from '@shared/components/status-stepper/status-stepper.component';
 
 import {
   abaDaSituacao,
   type ChaveDaAba,
+  ehTerminal,
+  grupoDaEtapa,
+  indiceDaEtapa,
+  LINHA_DE_ETAPAS,
+  type EtapaDaLinha,
   type SituacaoDaSolicitacao,
 } from '@/app/model/analysis-pipeline';
 
 import { Quote } from '@/app/model/quote';
+import { AppDialogService } from '@/app/services/app-dialog.service';
 import { LoginService } from '@/app/services/login.service';
 import { QuotesService } from '@/app/services/quotes.service';
 
@@ -30,12 +38,6 @@ import {
   ProposalStatusDialogComponent,
   ProposalStatusDialogData,
 } from './proposal-status-dialog/proposal-status-dialog.component';
-
-interface PendingReviewNotice {
-  deadline: string;
-  message: string;
-  reminder?: string;
-}
 
 interface Orcamento {
   id: string;
@@ -90,6 +92,38 @@ const STATUS_BADGE: Record<SituacaoDaSolicitacao, StatusBadge> = {
   },
   cancelado: { label: 'Cancelado', badgeClass: 'orcamento-status-pill--cancelled' },
   recusado: { label: 'Recusado', badgeClass: 'orcamento-status-pill--cancelled' },
+};
+
+const PROPOSAL_STEPS: ReadonlyArray<StatusStepperStep> = LINHA_DE_ETAPAS.map((etapa) => ({
+  key: etapa.chave,
+  label: etapa.rotulo,
+  icon: etapa.icone,
+}));
+
+const AVISO_DA_ETAPA: Partial<
+  Record<EtapaDaLinha, { titulo: string; texto: string; acao?: string }>
+> = {
+  'analise-da-area': {
+    titulo: 'Estamos em busca da melhor solução para seu negócio',
+    texto:
+      'Nossos profissionais estão validando qual é o laboratório capaz de solucionar e trazer ' +
+      'resultados para cada uma das análises requisitadas. Em breve seu orçamento ficará ' +
+      'disponível por meio desta plataforma!',
+  },
+  negociacao: {
+    titulo: 'Aguardando sua revisão',
+    texto:
+      'Esta proposta técnica está pronta para execução. Por favor, revise os termos e custos ' +
+      'associados para prosseguir com a análise laboratorial.',
+    acao: 'Ver o orçamento',
+  },
+  'aprovado-pelo-cliente': {
+    titulo: 'Aguardando sua revisão',
+    texto:
+      'Esta proposta técnica está pronta para execução. Por favor, revise os termos e custos ' +
+      'associados para prosseguir com a análise laboratorial.',
+    acao: 'Ver o orçamento',
+  },
 };
 
 const FILTER_TABS: ReadonlyArray<FilterTab> = [
@@ -191,6 +225,8 @@ function mapQuoteToOrcamento(quote: Quote): Orcamento {
 export class QuoteListComponent {
   private readonly loginService = inject(LoginService);
   private readonly quotesService = inject(QuotesService);
+  private readonly appDialog = inject(AppDialogService);
+  private readonly router = inject(Router);
   private readonly snackBar = inject(MatSnackBar);
   private readonly destroyRef = inject(DestroyRef);
 
@@ -274,8 +310,15 @@ export class QuoteListComponent {
   }
 
   openStatusDialog(orcamento: Orcamento): void {
-    const cancelado = ehTerminal(orcamento.status);
-    const etapa: EtapaDaLinha = ehTerminal(orcamento.status) ? 'qualificacao' : orcamento.status;
+    const situacao = orcamento.category;
+    if (!situacao) {
+      this.snackBar.open('O acompanhamento detalhado ainda não está disponível.', 'Fechar', {
+        duration: 6000,
+      });
+      return;
+    }
+    const cancelado = ehTerminal(situacao);
+    const etapa: EtapaDaLinha = ehTerminal(situacao) ? 'qualificacao' : situacao;
     const indice = indiceDaEtapa(etapa);
     const grupo = grupoDaEtapa(indice);
     const aviso = cancelado ? undefined : AVISO_DA_ETAPA[etapa];
@@ -291,8 +334,7 @@ export class QuoteListComponent {
         ? 'Esta solicitação foi encerrada e não avança mais na linha de etapas.'
         : aviso?.texto,
       callToAction: aviso?.acao,
-      protocolo: grupo.chave === 'proposta' ? undefined : `L-${orcamento.code}-X`,
-      contato: grupo.chave === 'proposta' ? undefined : CONTATO_DO_LABORATORIO,
+      // shortcut: a API ainda não fornece protocolo e contato do laboratório; preencher quando expostos.
     };
 
     this.appDialog

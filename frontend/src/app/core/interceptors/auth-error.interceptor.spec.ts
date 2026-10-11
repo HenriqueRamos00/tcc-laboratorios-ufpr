@@ -37,8 +37,8 @@ describe('Interceptor de autenticação', () => {
   afterEach(() => http.verify());
 
   it('limpa a sessão e solicita novo login após resposta 401', () => {
-    client.get(`${API_URL}/client/quotes`).subscribe({ error: () => undefined });
-    const request = http.expectOne(`${API_URL}/client/quotes`);
+    client.get(`${API_URL}/quotes`).subscribe({ error: () => undefined });
+    const request = http.expectOne(`${API_URL}/quotes`);
     expect(request.request.headers.get('Authorization')).toBe('Bearer token-de-teste');
     request.flush({}, { status: 401, statusText: 'Não autorizado' });
 
@@ -48,8 +48,8 @@ describe('Interceptor de autenticação', () => {
   });
 
   it('informa uma resposta 403 e mantém a sessão ativa', () => {
-    client.get(`${API_URL}/client/quotes`).subscribe({ error: () => undefined });
-    const request = http.expectOne(`${API_URL}/client/quotes`);
+    client.get(`${API_URL}/quotes`).subscribe({ error: () => undefined });
+    const request = http.expectOne(`${API_URL}/quotes`);
     expect(request.request.headers.get('Authorization')).toBe('Bearer token-de-teste');
     request.flush({}, { status: 403, statusText: 'Proibido' });
 
