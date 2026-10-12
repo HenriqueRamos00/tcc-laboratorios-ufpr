@@ -17,12 +17,6 @@
         android:paddingBottom="8dp">
 
         <TextView
-            android:id="@+id/navHome"
-            style="@style/Widget.Lactec.PortalDrawerItem"
-            android:drawableStart="@drawable/ic_nav_home"
-            android:text="@string/nav_home" />
-
-        <TextView
             android:id="@+id/navQuotes"
             style="@style/Widget.Lactec.PortalDrawerItem"
             android:background="@drawable/bg_portal_nav_item"
@@ -45,12 +39,6 @@
             android:layout_width="match_parent"
             android:layout_height="0dp"
             android:layout_weight="1" />
-
-        <TextView
-            android:id="@+id/navProfile"
-            style="@style/Widget.Lactec.PortalDrawerItem"
-            android:drawableStart="@drawable/ic_nav_profile"
-            android:text="@string/nav_profile" />
 
         <View
             android:layout_width="match_parent"

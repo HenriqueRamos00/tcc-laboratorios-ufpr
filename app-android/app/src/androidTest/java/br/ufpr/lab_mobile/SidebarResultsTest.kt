@@ -17,6 +17,7 @@ import androidx.test.platform.app.InstrumentationRegistry
 import androidx.test.runner.lifecycle.ActivityLifecycleMonitorRegistry
 import androidx.test.runner.lifecycle.Stage
 import br.ufpr.lab_mobile.controller.LoginActivity
+import br.ufpr.lab_mobile.controller.EquipmentActivity
 import br.ufpr.lab_mobile.controller.QuotesActivity
 import br.ufpr.lab_mobile.controller.ResultsActivity
 import br.ufpr.lab_mobile.model.QuoteSimulations
@@ -148,21 +149,51 @@ class SidebarResultsTest {
             activity.findViewById<EditText>(R.id.search).setText("preserve this search")
         }
 
-        repeat(2) { pass ->
-            navigate(R.id.navHome, QuotesActivity::class.java)
-            assertSame("Home on Quotes keeps the current instance", original, activeActivity())
+        repeat(2) {
             navigate(R.id.navQuotes, QuotesActivity::class.java)
             assertSame("Quotes on Quotes keeps the current instance", original, activeActivity())
             navigate(R.id.navReports, ResultsActivity::class.java)
             navigate(R.id.navReports, ResultsActivity::class.java)
-            val returnDestination = if (pass == 0) R.id.navHome else R.id.navQuotes
-            navigate(returnDestination, QuotesActivity::class.java)
+            val reports = activeActivity()
+            navigate(R.id.navEquipment, EquipmentActivity::class.java)
+            assertTrue("Switching secondary destinations finishes Reports", reports!!.isFinishing || reports.isDestroyed)
+            val equipment = activeActivity()
+            navigate(R.id.navEquipment, EquipmentActivity::class.java)
+            assertSame("Current equipment destination keeps the activity", equipment, activeActivity())
+            navigate(R.id.navQuotes, QuotesActivity::class.java)
+            assertTrue("Returning to Quotes finishes Equipment", equipment!!.isFinishing || equipment.isDestroyed)
             assertSame("Returning from reports reuses the original quotes activity", original, activeActivity())
             onActive { activity ->
                 assertEquals("preserve this search", activity.findViewById<EditText>(R.id.search).text.toString())
                 assertEquals(2, activity.findViewById<Spinner>(R.id.statusFilter).selectedItemPosition)
             }
         }
+    }
+
+    @Test
+    fun equipmentBackReturnsToQuotesAndLogoutClearsSession() {
+        launchQuotes()
+        val quotes = activeActivity()
+        navigate(R.id.navReports, ResultsActivity::class.java)
+        navigate(R.id.navEquipment, EquipmentActivity::class.java)
+        openDrawer(R.id.navEquipment)
+        tapOutsideDrawer()
+        await("equipment drawer closed by outside tap") { !drawerOpen() }
+        openDrawer(R.id.navEquipment)
+        closeWithMenu(R.id.navEquipment)
+        openDrawer(R.id.navEquipment)
+        instrumentation.sendKeyDownUpSync(KeyEvent.KEYCODE_BACK)
+        await("Back closes equipment drawer") { !drawerOpen() }
+        assertTrue(activeActivity() is EquipmentActivity)
+        instrumentation.sendKeyDownUpSync(KeyEvent.KEYCODE_BACK)
+        await("Back returns to original Quotes") { activeActivity() === quotes }
+        navigate(R.id.navEquipment, EquipmentActivity::class.java)
+        context.getSharedPreferences(LoginActivity.SESSION_PREFERENCES, 0).edit()
+            .putString(LoginActivity.ACCESS_TOKEN, "test-session").commit()
+        openDrawer(R.id.navEquipment)
+        onActive { it.findViewById<View>(R.id.logoutButton).performClick() }
+        await("equipment logout returns to Login") { activeActivity() is LoginActivity }
+        assertNull(context.getSharedPreferences(LoginActivity.SESSION_PREFERENCES, 0).getString(LoginActivity.ACCESS_TOKEN, null))
     }
 
     @Test
@@ -197,8 +228,15 @@ class SidebarResultsTest {
     }
 
     private fun navigate(itemId: Int, destination: Class<*>) {
-        openDrawer(if (activeActivity() is ResultsActivity) R.id.navReports else R.id.navQuotes)
-        onActive { it.findViewById<View>(itemId).performClick() }
+        openDrawer(when (activeActivity()) {
+            is ResultsActivity -> R.id.navReports
+            is EquipmentActivity -> R.id.navEquipment
+            else -> R.id.navQuotes
+        })
+        onActive {
+            it.findViewById<View>(itemId).performClick()
+            it.findViewById<View>(itemId).performClick()
+        }
         await("navigation completed") { activeActivity()?.javaClass == destination && !drawerOpen() }
     }
 
@@ -242,8 +280,9 @@ class SidebarResultsTest {
             val menu = activity.findViewById<View>(R.id.menuButton)
             assertEquals(context.getString(if (open) R.string.menu_close else R.string.menu_open), menu.contentDescription)
             assertTrue(activity.findViewById<View>(selected).isSelected)
-            val other = if (selected == R.id.navReports) R.id.navQuotes else R.id.navReports
-            assertFalse(activity.findViewById<View>(other).isSelected)
+            listOf(R.id.navQuotes, R.id.navReports, R.id.navEquipment).forEach {
+                assertEquals("only the current destination is selected", it == selected, activity.findViewById<View>(it).isSelected)
+            }
         }
     }
 

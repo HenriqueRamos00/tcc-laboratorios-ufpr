@@ -16,6 +16,7 @@
         android:theme="@style/Theme.Labmobile">
         <activity android:name=".controller.QuotesActivity" android:exported="false" />
         <activity android:name=".controller.ResultsActivity" android:exported="false" />
+        <activity android:name=".controller.EquipmentActivity" android:exported="false" android:windowSoftInputMode="adjustResize" />
         <activity android:name=".controller.QuoteDetailsActivity" android:exported="false" />
         <activity
             android:name=".controller.LoginActivity"

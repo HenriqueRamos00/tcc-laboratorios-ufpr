@@ -1,0 +1,82 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:orientation="vertical"
+    android:paddingBottom="10dp">
+
+    <TextView
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:accessibilityHeading="true"
+        android:fontFamily="@font/instrument_sans"
+        android:text="@string/quotes_greeting"
+        android:textColor="@color/lactec_ink"
+        android:textSize="22sp"
+        android:textStyle="bold" />
+    <TextView
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="2dp"
+        android:fontFamily="@font/inter"
+        android:text="@string/quotes_subtitle"
+        android:textColor="@color/lactec_muted"
+        android:textSize="13sp" />
+    <TextView
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="12dp"
+        android:accessibilityHeading="true"
+        android:fontFamily="@font/instrument_sans"
+        android:text="@string/equipment_list_title"
+        android:textColor="@color/lactec_ink"
+        android:textSize="17sp"
+        android:textStyle="bold" />
+    <com.google.android.material.textfield.TextInputLayout
+        style="@style/Widget.Lactec.TextInputLayout"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="12dp"
+        app:hintEnabled="false"
+        app:startIconDrawable="@drawable/ic_search">
+        <com.google.android.material.textfield.TextInputEditText
+            android:id="@+id/search"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:minHeight="48dp"
+            android:hint="@string/equipment_search_hint"
+            android:imeOptions="actionSearch"
+            android:inputType="text|textMultiLine"
+            android:maxLines="3"
+            android:saveEnabled="false" />
+    </com.google.android.material.textfield.TextInputLayout>
+    <ProgressBar
+        android:id="@+id/loading"
+        android:layout_width="48dp"
+        android:layout_height="48dp"
+        android:layout_gravity="center_horizontal"
+        android:layout_marginTop="24dp"
+        android:contentDescription="@string/equipment_loading"
+        android:indeterminateTint="@color/lactec_primary" />
+    <TextView
+        android:id="@+id/equipmentState"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:accessibilityLiveRegion="polite"
+        android:fontFamily="@font/inter"
+        android:gravity="center"
+        android:padding="24dp"
+        android:textColor="@color/lactec_muted"
+        android:textSize="14sp"
+        android:visibility="gone" />
+    <com.google.android.material.button.MaterialButton
+        android:id="@+id/retry"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:minHeight="48dp"
+        android:text="@string/quote_status_retry"
+        android:textAllCaps="false"
+        android:visibility="gone"
+        app:cornerRadius="6dp" />
+</LinearLayout>

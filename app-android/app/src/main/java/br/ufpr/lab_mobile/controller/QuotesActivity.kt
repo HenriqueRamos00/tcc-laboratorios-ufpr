@@ -65,7 +65,7 @@ class QuotesActivity : AppCompatActivity() {
                 .create(QuoteApiService::class.java),
         )
         QuoteSimulations.startSession(token)
-        portalDrawer = PortalDrawer(this, token, reports = false)
+        portalDrawer = PortalDrawer(this, token, PortalDestination.QUOTES)
         supportFragmentManager.setFragmentResultListener(QuoteDecisionDialogFragment.RESULT, this) { _, _ ->
             quoteAdapter.notifyDataSetChanged()
         }

@@ -36,7 +36,7 @@ class ResultsActivity : AppCompatActivity() {
             view.setPadding(bars.left, bars.top, bars.right, bars.bottom)
             insets
         }
-        portalDrawer = PortalDrawer(this, token, reports = true)
+        portalDrawer = PortalDrawer(this, token, PortalDestination.REPORTS)
         // shortcut: standalone demonstration, replace this source when HU 4 API integration lands.
         renderReports(DemoLabReports.reports)
     }

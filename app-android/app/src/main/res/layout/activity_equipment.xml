@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:id="@+id/equipmentRoot"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@color/lactec_surface"
+    android:orientation="vertical"
+    tools:context=".controller.EquipmentActivity">
+
+    <include layout="@layout/layout_portal_header" />
+
+    <androidx.drawerlayout.widget.DrawerLayout
+        android:id="@+id/portalDrawer"
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1">
+
+        <androidx.recyclerview.widget.RecyclerView
+            android:id="@+id/equipmentList"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:clipToPadding="false"
+            android:paddingStart="16dp"
+            android:paddingTop="14dp"
+            android:paddingEnd="16dp"
+            android:paddingBottom="16dp"
+            android:saveEnabled="false"
+            tools:listitem="@layout/item_equipment" />
+
+        <include
+            layout="@layout/layout_portal_drawer"
+            android:layout_width="200dp"
+            android:layout_height="match_parent"
+            android:layout_gravity="right" />
+    </androidx.drawerlayout.widget.DrawerLayout>
+</LinearLayout>

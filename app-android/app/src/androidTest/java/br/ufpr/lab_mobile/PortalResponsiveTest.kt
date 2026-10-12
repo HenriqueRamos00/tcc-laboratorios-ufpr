@@ -186,8 +186,9 @@ class PortalResponsiveTest {
         assertTrue("content root applies the right safe inset", root.paddingRight >= maxOf(systemBars.right, cutout.right))
         assertTrue("content root applies the bottom safe inset", root.paddingBottom >= maxOf(systemBars.bottom, cutout.bottom))
         assertTrue(activity.findViewById<View>(selectedId).isSelected)
-        val otherSelected = if (selectedId == R.id.navReports) R.id.navQuotes else R.id.navReports
-        assertFalse("only the current destination is selected", activity.findViewById<View>(otherSelected).isSelected)
+        listOf(R.id.navQuotes, R.id.navReports, R.id.navEquipment).forEach {
+            assertEquals("only the current destination is selected", it == selectedId, activity.findViewById<View>(it).isSelected)
+        }
         assertEquals(context.getString(R.string.menu_open), headerButton.contentDescription)
         assertMinimumTarget(activity, R.id.menuButton)
         assertTrue(rootRect.width() >= dp(320))
@@ -202,7 +203,7 @@ class PortalResponsiveTest {
         assertTrue("drawer panel opens on the right", panelRect.left > drawerRect.left)
         assertEquals(context.getString(R.string.menu_close), activity.findViewById<View>(R.id.menuButton).contentDescription)
         assertTrue(activity.findViewById<View>(selectedId).isSelected)
-        listOf(R.id.navHome, R.id.navQuotes, R.id.navReports, R.id.navEquipment, R.id.navProfile, R.id.logoutButton)
+        listOf(R.id.navQuotes, R.id.navReports, R.id.navEquipment, R.id.logoutButton)
             .forEach { assertMinimumTarget(activity, it) }
         assertTrue(activity.findViewById<View>(selectedId).contentDescription?.isNotBlank() == true ||
             (activity.findViewById<View>(selectedId) as? TextView)?.text?.isNotBlank() == true)
@@ -243,7 +244,10 @@ class PortalResponsiveTest {
     }
 
     private fun openDrawer(selectedId: Int) {
-        onActive { it.findViewById<View>(R.id.menuButton).performClick() }
+        onActive {
+            assertFalse("drawer must be closed before the menu click", it.findViewById<DrawerLayout>(R.id.portalDrawer).isDrawerVisible(Gravity.RIGHT))
+            it.findViewById<View>(R.id.menuButton).performClick()
+        }
         await("drawer fully open") { checkActive { it.findViewById<DrawerLayout>(R.id.portalDrawer).isDrawerOpen(Gravity.RIGHT) } }
         assertDrawer(selectedId)
     }
