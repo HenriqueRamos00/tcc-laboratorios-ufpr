@@ -23,6 +23,9 @@ services:
     # Nesse caso: npx ng serve --host 0.0.0.0 --port 4200 --poll 2000
     stdin_open: true
     tty: true
+    # Volta sozinho quando o daemon do Docker reinicia junto com o WSL, em vez
+    # de exigir um novo `docker compose up`. Parar à mão continua parando.
+    restart: unless-stopped
 
   web-prod:
     profiles: ["prod"]
