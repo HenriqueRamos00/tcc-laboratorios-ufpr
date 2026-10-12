@@ -23,6 +23,7 @@ describe('Página de equipamentos', () => {
     substation: 'Subestação Norte',
     primaryVoltage: '138',
     owner: 'Copel',
+    companyId: '3',
     type: 'TRANSFORMADOR',
     riskLevel: 'ATENCAO',
   };
@@ -33,6 +34,7 @@ describe('Página de equipamentos', () => {
     substation: 'Subestação Sul',
     primaryVoltage: '69',
     owner: 'Lactec',
+    companyId: '4',
     type: 'DISJUNTOR',
     riskLevel: 'CRITICO',
   };

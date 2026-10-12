@@ -2,9 +2,11 @@ package br.ufpr.tcc.backend_lab.presentation.rest;
 
 import br.ufpr.tcc.backend_lab.application.dto.request.EquipamentoRequest;
 import br.ufpr.tcc.backend_lab.application.dto.response.EquipamentoResponse;
+import br.ufpr.tcc.backend_lab.application.dto.response.EmpresaEquipamentoResponse;
 import br.ufpr.tcc.backend_lab.application.usecase.CreateEquipamentoUseCase;
 import br.ufpr.tcc.backend_lab.application.usecase.DeactivateEquipamentoUseCase;
 import br.ufpr.tcc.backend_lab.application.usecase.ListEquipamentosUseCase;
+import br.ufpr.tcc.backend_lab.application.usecase.ListEmpresasEquipamentoUseCase;
 import br.ufpr.tcc.backend_lab.application.usecase.UpdateEquipamentoUseCase;
 import br.ufpr.tcc.backend_lab.domain.model.entity.NivelRisco;
 import br.ufpr.tcc.backend_lab.domain.model.entity.TipoEquipamento;
@@ -31,6 +33,12 @@ public class EquipamentoController {
 	private final CreateEquipamentoUseCase createEquipamentoUseCase;
 	private final UpdateEquipamentoUseCase updateEquipamentoUseCase;
 	private final DeactivateEquipamentoUseCase deactivateEquipamentoUseCase;
+	private final ListEmpresasEquipamentoUseCase listEmpresasEquipamentoUseCase;
+
+	@GetMapping("/companies")
+	public List<EmpresaEquipamentoResponse> listarEmpresas() {
+		return listEmpresasEquipamentoUseCase.execute();
+	}
 
 	@GetMapping
 	public ResponseEntity<List<EquipamentoResponse>> pesquisar(

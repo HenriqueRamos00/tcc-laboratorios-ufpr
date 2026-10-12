@@ -1,13 +1,13 @@
 import { HttpErrorResponse } from '@angular/common/http';
 import { ChangeDetectionStrategy, Component, DestroyRef, inject, signal } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
-import { FormBuilder, ValidatorFn, ReactiveFormsModule, Validators } from '@angular/forms';
+import { AbstractControl, FormBuilder, ValidatorFn, ReactiveFormsModule, Validators } from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
 import { MAT_DIALOG_DATA, MatDialogRef } from '@angular/material/dialog';
 import { catchError, EMPTY, finalize } from 'rxjs';
 
 import { Equipamento, EquipamentoRequest, EquipamentoRisco, EquipamentoTipo, EQUIPAMENTO_RISCOS, EQUIPAMENTO_TIPOS } from '@/app/model/equipamento';
-import { EquipamentosService } from '@/app/services/equipamentos.service';
+import { EmpresaEquipamento, EquipamentosService } from '@/app/services/equipamentos.service';
 import { DialogShellComponent } from '@shared/components/dialog-shell/dialog-shell.component';
 
 const textValidator = (max: number): ValidatorFn => (control) => {
@@ -40,6 +40,9 @@ export class EquipamentoFormDialogComponent {
   readonly data = inject<EquipamentoFormDialogData>(MAT_DIALOG_DATA);
   readonly saving = signal(false);
   readonly serverError = signal('');
+  readonly loadingCompanies = signal(true);
+  readonly companiesError = signal(false);
+  readonly companyOptions = signal<EmpresaEquipamento[]>([]);
   readonly isEditing = this.data.equipamento !== null;
   readonly tipos = EQUIPAMENTO_TIPOS;
   readonly riscos = EQUIPAMENTO_RISCOS;
@@ -50,16 +53,38 @@ export class EquipamentoFormDialogComponent {
     type: [this.data.equipamento?.type ?? ('' as EquipamentoTipo | ''), Validators.required],
     substation: [this.data.equipamento?.substation ?? '', textValidator(150)],
     primaryVoltage: [this.data.equipamento?.primaryVoltage ?? '', voltageValidator],
-    owner: [this.data.equipamento?.owner ?? '', textValidator(200)],
+    companyId: [this.data.equipamento?.companyId ?? '', [Validators.required, (control: AbstractControl) =>
+      this.companyOptions().some((empresa) => empresa.id === control.value) ? null : { company: true }]],
     riskLevel: [this.data.equipamento?.riskLevel ?? ('' as EquipamentoRisco | ''), Validators.required],
   });
+
+  constructor() {
+    this.loadCompanies();
+  }
+
+  loadCompanies(): void {
+    this.loadingCompanies.set(true);
+    this.companiesError.set(false);
+    this.equipmentService.listCompanies().pipe(
+      catchError(() => {
+        this.companiesError.set(true);
+        return EMPTY;
+      }),
+      finalize(() => this.loadingCompanies.set(false)),
+      takeUntilDestroyed(this.destroyRef),
+    ).subscribe((empresas) => {
+      this.companyOptions.set(empresas.filter((empresa) =>
+        empresa.status === 'ACTIVE' || empresa.id === this.data.equipamento?.companyId));
+      this.form.controls.companyId.updateValueAndValidity();
+    });
+  }
 
   close(): void {
     if (!this.saving()) this.dialogRef.close();
   }
 
   save(): void {
-    if (this.saving()) return;
+    if (this.saving() || this.loadingCompanies() || this.companiesError()) return;
     this.serverError.set('');
     if (this.form.invalid) {
       this.form.markAllAsTouched();
@@ -73,7 +98,7 @@ export class EquipamentoFormDialogComponent {
       type: value.type,
       substation: value.substation.trim(),
       primaryVoltage: value.primaryVoltage.trim().replace(',', '.'),
-      owner: value.owner.trim(),
+      companyId: value.companyId,
       riskLevel: value.riskLevel,
     };
     this.saving.set(true);

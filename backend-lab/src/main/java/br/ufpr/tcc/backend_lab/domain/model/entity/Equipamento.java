@@ -2,11 +2,14 @@ package br.ufpr.tcc.backend_lab.domain.model.entity;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
+import jakarta.persistence.FetchType;
 import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
+import jakarta.persistence.JoinColumn;
+import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
 import java.math.BigDecimal;
 import lombok.Getter;
@@ -39,9 +42,9 @@ public class Equipamento {
 	@Column(nullable = false, precision = 9, scale = 3)
 	private BigDecimal tensaoPrimaria;
 
-	// shortcut: proprietário em texto, substituir pela empresa entregue preservando os nomes existentes.
-	@Column(nullable = false, length = 200)
-	private String proprietario;
+	@ManyToOne(optional = false, fetch = FetchType.LAZY)
+	@JoinColumn(name = "empresa_id", nullable = false)
+	private Empresa empresa;
 
 	@Enumerated(EnumType.STRING)
 	@Column(nullable = false, length = 20)

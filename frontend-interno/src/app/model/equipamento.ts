@@ -7,13 +7,14 @@ export interface EquipamentoRequest {
   tag: string;
   substation: string;
   primaryVoltage: string;
-  owner: string;
+  companyId: string;
   type: EquipamentoTipo;
   riskLevel: EquipamentoRisco;
 }
 
 export interface Equipamento extends EquipamentoRequest {
   id: number;
+  owner: string;
 }
 
 export const EQUIPAMENTO_TIPOS: { value: EquipamentoTipo; label: string }[] = [

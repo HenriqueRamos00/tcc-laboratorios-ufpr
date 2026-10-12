@@ -4,7 +4,7 @@
 @let typeInvalid = controls.type.touched && controls.type.invalid;
 @let substationInvalid = controls.substation.touched && controls.substation.invalid;
 @let voltageInvalid = controls.primaryVoltage.touched && controls.primaryVoltage.invalid;
-@let ownerInvalid = controls.owner.touched && controls.owner.invalid;
+@let ownerInvalid = controls.companyId.touched && controls.companyId.invalid;
 @let riskInvalid = controls.riskLevel.touched && controls.riskLevel.invalid;
 
 <form class="flex h-full min-h-0 flex-col" [formGroup]="form" (ngSubmit)="save()" novalidate>
@@ -80,11 +80,24 @@
       <div class="flex flex-col gap-2">
         <label for="equipamento-owner" class="text-xs font-medium tracking-wide text-lactec-ink-soft">Proprietário <span class="text-lactec-danger">*</span></label>
         <div class="input-field" [class.input-field--error]="ownerInvalid">
-          <input id="equipamento-owner" formControlName="owner" required autocomplete="organization" class="input-field__input"
-            [attr.aria-invalid]="ownerInvalid" [attr.aria-describedby]="ownerInvalid ? 'equipamento-owner-error' : null" />
+          <select id="equipamento-owner" formControlName="companyId" required class="input-field__input"
+            [attr.aria-invalid]="ownerInvalid" [attr.aria-describedby]="ownerInvalid ? 'equipamento-owner-error' : null">
+            <option value="" disabled>Selecione a empresa</option>
+            @for (empresa of companyOptions(); track empresa.id) {
+              <option [value]="empresa.id">{{ empresa.legalName }} — {{ empresa.cnpj }}{{ empresa.status === 'INACTIVE' ? ' (inativa)' : '' }}</option>
+            }
+          </select>
         </div>
+        @if (loadingCompanies()) {
+          <p class="m-0 text-xs text-lactec-ink-soft" role="status">Carregando empresas…</p>
+        } @else if (companiesError()) {
+          <p class="m-0 text-xs text-lactec-danger" role="alert">Não foi possível carregar as empresas.</p>
+          <button mat-stroked-button type="button" (click)="loadCompanies()">Tentar novamente</button>
+        } @else if (!companyOptions().length) {
+          <p class="m-0 text-xs text-lactec-ink-soft" role="status">Nenhuma empresa ativa disponível. Solicite o cadastro ao administrador.</p>
+        }
         @if (ownerInvalid) {
-          <p id="equipamento-owner-error" class="m-0 text-xs text-lactec-danger" role="alert">Informe o proprietário, com até 200 caracteres.</p>
+          <p id="equipamento-owner-error" class="m-0 text-xs text-lactec-danger" role="alert">Selecione uma empresa disponível.</p>
         }
       </div>
 
@@ -107,7 +120,7 @@
 
     <div dialog-footer class="flex w-full flex-wrap justify-end gap-3">
       <button mat-stroked-button type="button" [disabled]="saving()" (click)="close()">Cancelar</button>
-      <button mat-flat-button type="submit" [disabled]="saving()">{{ saving() ? 'Salvando…' : 'Salvar' }}</button>
+      <button mat-flat-button type="submit" [disabled]="saving() || loadingCompanies() || companiesError() || !companyOptions().length">{{ saving() ? 'Salvando…' : 'Salvar' }}</button>
     </div>
   </app-dialog-shell>
 </form>

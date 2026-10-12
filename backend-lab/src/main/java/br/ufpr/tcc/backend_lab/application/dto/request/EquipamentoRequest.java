@@ -30,8 +30,8 @@ public record EquipamentoRequest(
 		String primaryVoltage,
 
 		@NotBlank(message = "Proprietário é obrigatório")
-		@Size(max = 200, message = "Proprietário deve ter no máximo 200 caracteres")
-		String owner,
+		@Pattern(regexp = "[1-9][0-9]{0,18}", message = "Identificador da empresa deve ser um número inteiro positivo")
+		String companyId,
 
 		@NotNull(message = "Nível de risco é obrigatório")
 		NivelRisco riskLevel
@@ -41,6 +41,5 @@ public record EquipamentoRequest(
 		tag = tag == null ? null : tag.trim();
 		substation = substation == null ? null : substation.trim();
 		primaryVoltage = primaryVoltage == null ? null : primaryVoltage.trim();
-		owner = owner == null ? null : owner.trim();
 	}
 }

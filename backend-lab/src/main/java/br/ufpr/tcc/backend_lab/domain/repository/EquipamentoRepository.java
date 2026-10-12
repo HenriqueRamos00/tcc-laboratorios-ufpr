@@ -12,12 +12,12 @@ import org.springframework.stereotype.Repository;
 @Repository
 public interface EquipamentoRepository extends JpaRepository<Equipamento, Long> {
 	@Query("""
-			select e from Equipamento e
+			select e from Equipamento e join fetch e.empresa empresa
 			where e.ativo = true
 			  and (:busca = ''
 			       or locate(:busca, lower(e.numeroSerie)) > 0
 			       or locate(:busca, lower(e.tag)) > 0
-			       or locate(:busca, lower(e.proprietario)) > 0)
+			       or locate(:busca, lower(empresa.legalName)) > 0)
 			  and (:tipo is null or e.tipo = :tipo)
 			  and (:risco is null or e.nivelRisco = :risco)
 			order by e.numeroSerie asc, e.id asc

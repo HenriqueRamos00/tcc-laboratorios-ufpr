@@ -11,6 +11,7 @@ public record EquipamentoResponse(
 		TipoEquipamento type,
 		String substation,
 		String primaryVoltage,
+		String companyId,
 		String owner,
 		NivelRisco riskLevel
 ) {
@@ -19,7 +20,8 @@ public record EquipamentoResponse(
 				equipamento.getId(), equipamento.getNumeroSerie(), equipamento.getTag(),
 				equipamento.getTipo(), equipamento.getSubestacao(),
 				equipamento.getTensaoPrimaria().stripTrailingZeros().toPlainString(),
-				equipamento.getProprietario(), equipamento.getNivelRisco()
+				equipamento.getEmpresa().getId().toString(),
+				equipamento.getEmpresa().getLegalName(), equipamento.getNivelRisco()
 		);
 	}
 }

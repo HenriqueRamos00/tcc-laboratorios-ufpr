@@ -14,11 +14,11 @@ describe('Serviço de equipamentos', () => {
     tag: 'TR-B05',
     substation: 'Subestação Norte',
     primaryVoltage: '138',
-    owner: 'Copel',
+    companyId: '3',
     type: 'TRANSFORMADOR',
     riskLevel: 'ATENCAO',
   };
-  const equipamento: Equipamento = { ...request, id: 12 };
+  const equipamento: Equipamento = { ...request, id: 12, owner: 'Copel' };
 
   beforeEach(() => {
     TestBed.configureTestingModule({
@@ -29,6 +29,13 @@ describe('Serviço de equipamentos', () => {
   });
 
   afterEach(() => http.verify());
+
+  it('consulta as opções de empresas pela rota exclusiva de equipamentos', () => {
+    service.listCompanies().subscribe();
+    const req = http.expectOne('/api/equipments/companies');
+    expect(req.request.method).toBe('GET');
+    req.flush([{ id: '3', legalName: 'Copel', cnpj: '04368898000106', status: 'ACTIVE' }]);
+  });
 
   it('lista todos os equipamentos sem filtros', () => {
     service.list('', null, null).subscribe();

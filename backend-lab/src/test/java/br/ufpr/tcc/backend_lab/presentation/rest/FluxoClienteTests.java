@@ -79,17 +79,17 @@ class FluxoClienteTests {
 
     @BeforeEach
     void prepararDados() {
-        empresaA = empresa("Empresa A", "11222333000181");
-        empresaB = empresa("Empresa B", "11444777000161");
-        empresaSemVinculo = empresa("Empresa C", "04368898000106");
-        clienteA = cliente("cliente-a@demo.com", empresaA);
+        empresaA = empresa("Empresa A", "00000001000136");
+        empresaB = empresa("Empresa B", "00000002000180");
+        empresaSemVinculo = empresa("Empresa C", "00000003000125");
+        clienteA = cliente("cliente-a@example.test", empresaA);
         orcamentoA = criarOrcamento(empresaA, "QA");
         orcamentoB = criarOrcamento(empresaB, "QB");
         orcamentoSemVinculo = criarOrcamento(empresaSemVinculo, "QC");
         LoginRequest credenciais = new LoginRequest(clienteA.getUsuario().getEmail(), " senha ");
         tokenClienteA = "Bearer " + loginCliente.execute(credenciais).accessToken();
-        administrador = usuario(PerfilUsuario.ADMIN, "admin-fluxo@demo.com");
-        tecnico = usuario(PerfilUsuario.TECNICO, "tecnico-fluxo@demo.com");
+        administrador = usuario(PerfilUsuario.ADMIN, "admin-fluxo@example.test");
+        tecnico = usuario(PerfilUsuario.TECNICO, "tecnico-fluxo@example.test");
     }
 
     @Test
@@ -156,7 +156,7 @@ class FluxoClienteTests {
     @Test
     void desativacaoDeEmpresaRetiraAcessoEMantemLoginSemEmpresas() throws Exception {
         statusEmpresa.execute(empresaA.getId(), CadastroStatus.INACTIVE);
-        var respostaLogin = loginCliente.execute(new LoginRequest("cliente-a@demo.com", " senha "));
+        var respostaLogin = loginCliente.execute(new LoginRequest("cliente-a@example.test", " senha "));
 
         assertTrue(respostaLogin.user().companies().isEmpty());
         assertEquals(1, clientes.findById(clienteA.getId()).orElseThrow().getEmpresas().size());
@@ -173,7 +173,7 @@ class FluxoClienteTests {
         statusCliente.execute(clienteA.getId(), CadastroStatus.INACTIVE);
         assertThrows(
                 CredenciaisInvalidasException.class,
-                () -> loginCliente.execute(new LoginRequest("cliente-a@demo.com", " senha ")));
+                () -> loginCliente.execute(new LoginRequest("cliente-a@example.test", " senha ")));
         mockMvc.perform(get("/api/client/quotes").header("Authorization", tokenClienteA))
                 .andExpect(status().isUnauthorized());
     }
@@ -205,7 +205,7 @@ class FluxoClienteTests {
 
     @Test
     void loginInternoRejeitaCliente() {
-        LoginRequest credenciais = new LoginRequest("cliente-a@demo.com", " senha ");
+        LoginRequest credenciais = new LoginRequest("cliente-a@example.test", " senha ");
 
         assertThrows(CredenciaisInvalidasException.class, () -> loginInterno.execute(credenciais));
     }
@@ -229,7 +229,7 @@ class FluxoClienteTests {
 
         mockMvc.perform(
                         get("/api/companies")
-                                .param("search", "11.222.333/0001-81")
+                                .param("search", "00.000.001/0001-36")
                                 .header("Authorization", tokenAdministrador))
                 .andExpect(jsonPath("$.length()").value(1))
                 .andExpect(jsonPath("$[0].origin").value("LOCAL"));
@@ -254,7 +254,7 @@ class FluxoClienteTests {
                         post("/api/auth/login")
                                 .contentType(MediaType.APPLICATION_JSON)
                                 .content("""
-                                        {"email":" CLIENTE-A@DEMO.COM ","password":" senha "}
+                                        {"email":" CLIENTE-A@EXAMPLE.TEST ","password":" senha "}
                                         """))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.user.role").value("Client"))
@@ -269,7 +269,7 @@ class FluxoClienteTests {
         assertEquals(hash, clienteA.getUsuario().getSenhaHash());
         assertThrows(
                 CredenciaisInvalidasException.class,
-                () -> loginCliente.execute(new LoginRequest("cliente-a@demo.com", "senha")));
+                () -> loginCliente.execute(new LoginRequest("cliente-a@example.test", "senha")));
     }
 
     @Test
@@ -277,8 +277,8 @@ class FluxoClienteTests {
         long quantidadeUsuariosAntes = usuarios.count();
         CreateClienteRequest dados = new CreateClienteRequest(
                 "Novo cliente",
-                "novo@demo.com",
-                "41999999999",
+                "novo@example.test",
+                "00000000000",
                 "Contato",
                 CadastroStatus.ACTIVE,
                 List.of(empresaA.getId().toString(), "999999"),
@@ -301,7 +301,7 @@ class FluxoClienteTests {
 
     @Test
     void rejeitaCnpjJaCadastrado() {
-        CreateEmpresaRequest dados = dadosEmpresa("Duplicada", "11.222.333/0001-81");
+        CreateEmpresaRequest dados = dadosEmpresa("Duplicada", "00.000.001/0001-36");
 
         assertThrows(RegraNegocioException.class, () -> criarEmpresa.execute(dados));
     }
@@ -311,7 +311,7 @@ class FluxoClienteTests {
         CreateClienteRequest dados = new CreateClienteRequest(
                 "Cliente",
                 administrador.getEmail().toUpperCase(),
-                "41999999999",
+                "00000000000",
                 "Contato",
                 CadastroStatus.ACTIVE,
                 List.of(empresaA.getId().toString()),
@@ -343,12 +343,12 @@ class FluxoClienteTests {
         return new CreateEmpresaRequest(
                 nome,
                 cnpj,
-                "Rua 1",
-                "Curitiba",
+                "Endereço Teste, 1",
+                "Cidade Teste",
                 "PR",
                 "Contato",
-                "41999999999",
-                "contato@example.com",
+                "00000000000",
+                "contato@example.test",
                 CadastroStatus.ACTIVE);
     }
 
@@ -358,7 +358,7 @@ class FluxoClienteTests {
                         new CreateClienteRequest(
                                 email,
                                 email,
-                                "41999999999",
+                                "00000000000",
                                 "Cargo",
                                 CadastroStatus.ACTIVE,
                                 List.of(empresa.getId().toString()),
@@ -369,8 +369,8 @@ class FluxoClienteTests {
     private UpdateClienteRequest dadosAtualizacaoCliente(List<Long> idsEmpresas, String senha) {
         return new UpdateClienteRequest(
                 "Cliente A",
-                "cliente-a@demo.com",
-                "41999999999",
+                "cliente-a@example.test",
+                "00000000000",
                 "Cargo",
                 CadastroStatus.ACTIVE,
                 idsEmpresas.stream().map(String::valueOf).toList(),

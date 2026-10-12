@@ -36,16 +36,16 @@ class TecnicosUseCaseTests {
 
 	@Test
 	void pesquisaSomenteTecnicosPorNomeEmailOuUnidadeEStatus() {
-		usuarioRepository.save(tecnico("Ana Lima", "ana@lab.com", "DOLEO", true));
-		usuarioRepository.save(tecnico("Bruno Reis", "bruno@lab.com", "DIMAT", false));
-		usuarioRepository.save(usuario(PerfilUsuario.ADMIN, "Ana Admin", "admin@lab.com", "DOLEO", true));
+		usuarioRepository.save(tecnico("Técnico A", "tecnico-a@example.test", "UNIDADE_A", true));
+		usuarioRepository.save(tecnico("Técnico B", "tecnico-b@example.test", "UNIDADE_B", false));
+		usuarioRepository.save(usuario(PerfilUsuario.ADMIN, "Administrador Teste", "admin@example.test", "UNIDADE_A", true));
 
-		var porUnidade = listTecnicosUseCase.execute("doleo", null);
+		var porUnidade = listTecnicosUseCase.execute("unidade_a", null);
 		assertEquals(1, porUnidade.size());
-		assertEquals("Ana Lima", porUnidade.getFirst().name());
-		assertEquals(1, listTecnicosUseCase.execute("ana lima", null).size());
+		assertEquals("Técnico A", porUnidade.getFirst().name());
+		assertEquals(1, listTecnicosUseCase.execute("técnico a", null).size());
 
-		var ativos = listTecnicosUseCase.execute("ana@LAB.COM", TecnicoStatus.ACTIVE);
+		var ativos = listTecnicosUseCase.execute("tecnico-a@EXAMPLE.TEST", TecnicoStatus.ACTIVE);
 		assertEquals(1, ativos.size());
 		assertEquals("ACTIVE", ativos.getFirst().status().name());
 	}
@@ -53,14 +53,14 @@ class TecnicosUseCaseTests {
 	@Test
 	void criaTecnicoComDadosNormalizadosESenhaComBcrypt() {
 		var response = createTecnicoUseCase.execute(new CreateTecnicoRequest(
-				"  Maria Santos ", " MARIA@EXAMPLE.COM ", " DOLEO ", " Análise de Óleos ",
+				"  Técnico C ", " TECNICO-C@EXAMPLE.TEST ", " UNIDADE_A ", " Análise de Óleos ",
 				TecnicoStatus.ACTIVE, "senha inicial"
 		));
 
 		Usuario saved = usuarioRepository.findById(response.id()).orElseThrow();
-		assertEquals("Maria Santos", response.name());
-		assertEquals("maria@example.com", response.email());
-		assertEquals("DOLEO", response.unit());
+		assertEquals("Técnico C", response.name());
+		assertEquals("tecnico-c@example.test", response.email());
+		assertEquals("UNIDADE_A", response.unit());
 		assertEquals("TECNICO", saved.getPerfil().name());
 		assertTrue(passwordEncoder.matches("senha inicial", saved.getSenhaHash()));
 		assertNotEquals("senha inicial", saved.getSenhaHash());
@@ -68,40 +68,40 @@ class TecnicosUseCaseTests {
 
 	@Test
 	void preservaSenhaNaEdicaoESubstituiSeInformada() {
-		Usuario original = tecnico("Maria Santos", "maria@lab.com", "DOLEO", true);
+		Usuario original = tecnico("Técnico C", "tecnico-c@example.test", "UNIDADE_A", true);
 		original.setSenhaHash(passwordEncoder.encode("senha antiga"));
 		original = usuarioRepository.saveAndFlush(original);
 		String hashAnterior = original.getSenhaHash();
 
 		updateTecnicoUseCase.execute(original.getId(), new UpdateTecnicoRequest(
-				"Maria Santos", "maria@lab.com", "DIMAT", "Compósitos", TecnicoStatus.ACTIVE, ""
+				"Técnico C", "tecnico-c@example.test", "UNIDADE_B", "Compósitos", TecnicoStatus.ACTIVE, ""
 		));
 		Usuario editado = usuarioRepository.findById(original.getId()).orElseThrow();
 		assertEquals(hashAnterior, editado.getSenhaHash());
-		assertEquals("DIMAT", editado.getUnidade());
+		assertEquals("UNIDADE_B", editado.getUnidade());
 
 		updateTecnicoUseCase.execute(original.getId(), new UpdateTecnicoRequest(
-				"Maria Santos", "maria@lab.com", "DIMAT", "Compósitos", TecnicoStatus.ACTIVE, "senha nova"
+				"Técnico C", "tecnico-c@example.test", "UNIDADE_B", "Compósitos", TecnicoStatus.ACTIVE, "senha nova"
 		));
 		assertTrue(passwordEncoder.matches("senha nova", usuarioRepository.findById(original.getId()).orElseThrow().getSenhaHash()));
 	}
 
 	@Test
 	void rejeitaEmailDuplicadoSemDiferenciarMaiusculasETrataIdDeAdministradorComoNaoEncontrado() {
-		usuarioRepository.saveAndFlush(usuario(PerfilUsuario.ADMIN, "Admin", "admin@lab.com", null, true));
+		usuarioRepository.saveAndFlush(usuario(PerfilUsuario.ADMIN, "Admin", "admin@example.test", null, true));
 		assertThrows(EmailJaCadastradoException.class, () -> createTecnicoUseCase.execute(new CreateTecnicoRequest(
-				"Pessoa", "ADMIN@LAB.COM", "DOLEO", "Química", TecnicoStatus.ACTIVE, "senha"
+				"Pessoa", "ADMIN@EXAMPLE.TEST", "UNIDADE_A", "Química", TecnicoStatus.ACTIVE, "senha"
 		)));
 
-		Usuario admin = usuarioRepository.findByEmailIgnoreCase("admin@lab.com").orElseThrow();
+		Usuario admin = usuarioRepository.findByEmailIgnoreCase("admin@example.test").orElseThrow();
 		assertThrows(TecnicoNaoEncontradoException.class, () -> updateTecnicoUseCase.execute(admin.getId(), new UpdateTecnicoRequest(
-				"Admin", "admin@lab.com", "DOLEO", "Química", TecnicoStatus.ACTIVE, null
+				"Admin", "admin@example.test", "UNIDADE_A", "Química", TecnicoStatus.ACTIVE, null
 		)));
 	}
 
 	@Test
 	void alteraStatusDoTecnico() {
-		Usuario tecnico = usuarioRepository.saveAndFlush(tecnico("Rui", "rui@lab.com", "DOLEO", true));
+		Usuario tecnico = usuarioRepository.saveAndFlush(tecnico("Técnico D", "tecnico-d@example.test", "UNIDADE_A", true));
 		var response = changeTecnicoStatusUseCase.execute(tecnico.getId(), TecnicoStatus.INACTIVE);
 
 		assertEquals(TecnicoStatus.INACTIVE, response.status());

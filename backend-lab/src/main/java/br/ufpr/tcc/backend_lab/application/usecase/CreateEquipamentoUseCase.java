@@ -2,6 +2,7 @@ package br.ufpr.tcc.backend_lab.application.usecase;
 
 import br.ufpr.tcc.backend_lab.application.dto.request.EquipamentoRequest;
 import br.ufpr.tcc.backend_lab.application.dto.response.EquipamentoResponse;
+import br.ufpr.tcc.backend_lab.application.service.ResolvedorEmpresaEquipamento;
 import br.ufpr.tcc.backend_lab.domain.model.entity.Equipamento;
 import br.ufpr.tcc.backend_lab.domain.repository.EquipamentoRepository;
 import java.math.BigDecimal;
@@ -13,6 +14,7 @@ import org.springframework.transaction.annotation.Transactional;
 @RequiredArgsConstructor
 public class CreateEquipamentoUseCase {
 	private final EquipamentoRepository equipamentoRepository;
+	private final ResolvedorEmpresaEquipamento empresas;
 
 	@Transactional
 	public EquipamentoResponse execute(EquipamentoRequest request) {
@@ -22,7 +24,7 @@ public class CreateEquipamentoUseCase {
 		equipamento.setTipo(request.type());
 		equipamento.setSubestacao(request.substation());
 		equipamento.setTensaoPrimaria(new BigDecimal(request.primaryVoltage()));
-		equipamento.setProprietario(request.owner());
+		equipamento.setEmpresa(empresas.resolver(request.companyId(), null));
 		equipamento.setNivelRisco(request.riskLevel());
 		return EquipamentoResponse.fromEntity(equipamentoRepository.saveAndFlush(equipamento));
 	}

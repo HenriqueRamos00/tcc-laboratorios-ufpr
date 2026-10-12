@@ -4,19 +4,22 @@ import { MAT_DIALOG_DATA, MatDialogRef } from '@angular/material/dialog';
 import { of, Subject, throwError } from 'rxjs';
 
 import { Equipamento, EquipamentoRequest } from '@/app/model/equipamento';
-import { EquipamentosService } from '@/app/services/equipamentos.service';
+import { EmpresaEquipamento, EquipamentosService } from '@/app/services/equipamentos.service';
 import { EquipamentoFormDialogComponent } from './equipamento-form-dialog.component';
 
 describe('Formulário de equipamento', () => {
   const fields: EquipamentoRequest = {
     serialNumber: '00099001', tag: 'TR-C10', type: 'TRANSFORMADOR', substation: 'SE Norte',
-    primaryVoltage: '13.8', owner: 'UFPR', riskLevel: 'SAUDAVEL',
+    primaryVoltage: '13.8', companyId: '3', riskLevel: 'SAUDAVEL',
   };
+  const empresa: EmpresaEquipamento = { id: '3', legalName: 'UFPR', cnpj: '04368898000106', status: 'ACTIVE' };
+  const equipamento: Equipamento = { id: 12, ...fields, owner: 'UFPR' };
   let service: jasmine.SpyObj<EquipamentosService>;
   let dialogRef: jasmine.SpyObj<MatDialogRef<EquipamentoFormDialogComponent>>;
 
   beforeEach(() => {
-    service = jasmine.createSpyObj<EquipamentosService>('EquipamentosService', ['create', 'update']);
+    service = jasmine.createSpyObj<EquipamentosService>('EquipamentosService', ['create', 'update', 'listCompanies']);
+    service.listCompanies.and.returnValue(of([empresa]));
     dialogRef = jasmine.createSpyObj<MatDialogRef<EquipamentoFormDialogComponent>>('MatDialogRef', ['close']);
   });
 
@@ -45,7 +48,6 @@ describe('Formulário de equipamento', () => {
   });
 
   it('preenche a edição sem modificar a linha ao cancelar', () => {
-    const equipamento = { id: 12, ...fields };
     const component = createComponent(equipamento).componentInstance;
     expect(component.form.getRawValue()).toEqual(fields);
     component.form.controls.tag.setValue('TR-B08');
@@ -56,7 +58,7 @@ describe('Formulário de equipamento', () => {
     expect(dialogRef.close).toHaveBeenCalledWith();
   });
 
-  for (const [field, limit] of [['serialNumber', 100], ['tag', 100], ['substation', 150], ['owner', 200]] as const) {
+  for (const [field, limit] of [['serialNumber', 100], ['tag', 100], ['substation', 150]] as const) {
     it(`valida ${field} após remover espaços e aplica seu limite`, () => {
       const component = createComponent().componentInstance;
       const control = component.form.controls[field];
@@ -82,19 +84,19 @@ describe('Formulário de equipamento', () => {
   });
 
   it('normaliza textos e vírgula, preserva zeros e fecha com o equipamento criado', () => {
-    const saved = { id: 12, ...fields };
+    const saved = equipamento;
     service.create.and.returnValue(of(saved));
     const component = createComponent().componentInstance;
-    component.form.setValue({ ...fields, serialNumber: ' 00099001 ', tag: ' TR-C10 ', owner: ' UFPR ', substation: ' SE Norte ', primaryVoltage: ' 13,8 ' });
+    component.form.setValue({ ...fields, serialNumber: ' 00099001 ', tag: ' TR-C10 ', substation: ' SE Norte ', primaryVoltage: ' 13,8 ' });
     component.save();
     expect(service.create).toHaveBeenCalledOnceWith(fields);
     expect(dialogRef.close).toHaveBeenCalledOnceWith(saved);
   });
 
   it('envia todos os campos editáveis na atualização', () => {
-    const updated = { id: 12, ...fields, tag: 'TR-B08', riskLevel: 'ATENCAO' as const };
+    const updated = { ...equipamento, tag: 'TR-B08', riskLevel: 'ATENCAO' as const };
     service.update.and.returnValue(of(updated));
-    const component = createComponent({ id: 12, ...fields }).componentInstance;
+    const component = createComponent(equipamento).componentInstance;
     component.form.patchValue({ tag: 'TR-B08', riskLevel: 'ATENCAO' });
     component.save();
     expect(service.update).toHaveBeenCalledOnceWith(12, { ...fields, tag: 'TR-B08', riskLevel: 'ATENCAO' });
@@ -107,8 +109,8 @@ describe('Formulário de equipamento', () => {
       const failure = throwError(() => new HttpErrorResponse({ status: 400, error: { message: 'Tensão inválida' } }));
       service.create.and.returnValue(failure);
       service.update.and.returnValue(failure);
-      const component = createComponent(editing ? { id: 12, ...fields } : null).componentInstance;
-      const entered = { ...fields, primaryVoltage: '13,8', owner: ' UFPR ' };
+      const component = createComponent(editing ? equipamento : null).componentInstance;
+      const entered = { ...fields, primaryVoltage: '13,8' };
       component.form.setValue(entered);
       component.save();
       expect(component.form.getRawValue()).toEqual(entered);
@@ -139,8 +141,76 @@ describe('Formulário de equipamento', () => {
       expect(button.disabled).toBeTrue();
     }
     expect((fixture.nativeElement.querySelector('fieldset') as HTMLFieldSetElement).disabled).toBeTrue();
-    pending.next({ id: 12, ...fields });
+    pending.next(equipamento);
     pending.complete();
-    expect(dialogRef.close).toHaveBeenCalledOnceWith({ id: 12, ...fields });
+    expect(dialogRef.close).toHaveBeenCalledOnceWith(equipamento);
+  });
+
+  it('mostra razão social e CNPJ e envia somente o identificador da empresa escolhida', () => {
+    const outra = { ...empresa, id: '4', cnpj: '11222333000181' };
+    service.listCompanies.and.returnValue(of([empresa, outra]));
+    service.create.and.returnValue(of({ ...equipamento, companyId: '4' }));
+    const fixture = createComponent();
+    const component = fixture.componentInstance;
+    const select = fixture.nativeElement.querySelector('#equipamento-owner') as HTMLSelectElement;
+    expect(select.options[1].textContent).toContain(empresa.cnpj);
+    expect(select.options[2].textContent).toContain(outra.cnpj);
+    component.form.setValue({ ...fields, companyId: '4' });
+    component.save();
+    expect(service.create).toHaveBeenCalledOnceWith({ ...fields, companyId: '4' });
+  });
+
+  it('oferece empresas ativas e preserva apenas a empresa inativa já vinculada', () => {
+    const inativa = { ...empresa, status: 'INACTIVE' as const };
+    const outraInativa = { ...inativa, id: '5' };
+    const ativa = { ...empresa, id: '4' };
+    service.listCompanies.and.returnValue(of([inativa, outraInativa, ativa]));
+    const fixture = createComponent(equipamento);
+    const component = fixture.componentInstance;
+    expect(component.companyOptions()).toEqual([inativa, ativa]);
+    expect(component.form.controls.companyId.valid).toBeTrue();
+    expect(fixture.nativeElement.textContent).toContain('(inativa)');
+    component.form.controls.companyId.setValue('5');
+    component.save();
+    expect(component.form.invalid).toBeTrue();
+    expect(service.update).not.toHaveBeenCalled();
+  });
+
+  it('informa ausência de empresas e impede salvar sem um proprietário cadastrado', () => {
+    service.listCompanies.and.returnValue(of([{ ...empresa, status: 'INACTIVE' as const }]));
+    const fixture = createComponent();
+    const component = fixture.componentInstance;
+    expect(component.companyOptions()).toEqual([]);
+    expect(fixture.nativeElement.textContent).toContain('Nenhuma empresa ativa disponível');
+    component.form.setValue(fields);
+    component.save();
+    expect(service.create).not.toHaveBeenCalled();
+    expect(fixture.nativeElement.querySelector('button[type="submit"]').disabled).toBeTrue();
+  });
+
+  it('bloqueia gravação durante o carregamento e permite repetir a consulta após falha', () => {
+    const pending = new Subject<EmpresaEquipamento[]>();
+    service.listCompanies.and.returnValue(pending);
+    const fixture = createComponent();
+    const component = fixture.componentInstance;
+    component.form.setValue(fields);
+    component.save();
+    expect(component.loadingCompanies()).toBeTrue();
+    expect(service.create).not.toHaveBeenCalled();
+    expect(fixture.nativeElement.textContent).toContain('Carregando empresas');
+    pending.error(new HttpErrorResponse({ status: 500 }));
+    fixture.detectChanges();
+    expect(component.companiesError()).toBeTrue();
+    expect(component.loadingCompanies()).toBeFalse();
+    component.save();
+    expect(service.create).not.toHaveBeenCalled();
+    service.listCompanies.and.returnValue(of([empresa]));
+    const retry = Array.from(fixture.nativeElement.querySelectorAll('button'))
+      .find((button) => (button as HTMLButtonElement).textContent?.includes('Tentar novamente')) as HTMLButtonElement;
+    retry.click();
+    fixture.detectChanges();
+    expect(component.companiesError()).toBeFalse();
+    expect(component.form.getRawValue()).toEqual(fields);
+    expect(component.form.valid).toBeTrue();
   });
 });
