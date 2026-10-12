@@ -3,7 +3,9 @@ using System.Text.Json.Serialization;
 
 using Portal.Adapters.Quotes;
 using Portal.Adapters.Salesforce;
+using Portal.Api.Configuration;
 using Portal.Api.LabResults;
+using Portal.Application.Authentication;
 using Portal.Application.LabResults;
 using Portal.Application.Quotes;
 
@@ -41,7 +43,10 @@ builder.Services
     });
 
 builder.Services.AddScoped<IQuoteUseCase, QuoteService>();
+builder.Services.AddScoped<ILoginUseCase, LoginService>();
 builder.Services.AddScoped<IForConsultingLabResults, LabResultsConsultation>();
+
+builder.Services.AddPortalDataSource(builder.Configuration);
 
 builder.Services.AddScoped<IQuoteRepository, FakeSalesforceQuoteRepository>();
 // A proposta escrita a mao continua valendo; o orcamento sem arquivo recebe a pagina

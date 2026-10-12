@@ -8,6 +8,10 @@ services:
         required: false
     environment:
       ASPNETCORE_URLS: ${ASPNETCORE_URLS:-http://+:8080}
+      Portal__DataSource: ${Portal__DataSource}
+      BackendLab__BaseUrl: ${BackendLab__BaseUrl-}
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
     ports:
       - "${PORT:-5125}:8080"
     # Volta sozinho quando o daemon do Docker reinicia junto com o WSL, em vez
