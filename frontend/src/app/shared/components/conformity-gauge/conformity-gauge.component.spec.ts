@@ -14,7 +14,7 @@ function doisQuadrosDeAnimacao(): Promise<void> {
   );
 }
 
-describe('medidor de conformidade', () => {
+describe('ConformityGaugeComponent', () => {
   let fixture: ComponentFixture<ConformityGaugeComponent>;
 
   function montar(classificacao: Classificacao, animarNaEntrada: boolean): HTMLElement {

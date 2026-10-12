@@ -66,7 +66,7 @@ function celulasDaPrimeiraLinha(raiz: HTMLElement): string[] {
   return [...linha.cells].map((celula) => celula.textContent?.trim() ?? '');
 }
 
-describe('componente de indicadores, tabela físico-química', () => {
+describe('IndicadoresComponent, tabela físico-química', () => {
   afterEach(() => TestBed.resetTestingModule());
 
   it('omite o grupo Histórico inteiro quando só existe uma coleta', () => {

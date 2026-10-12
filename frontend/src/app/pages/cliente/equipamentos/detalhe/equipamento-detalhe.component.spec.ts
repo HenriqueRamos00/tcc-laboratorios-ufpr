@@ -1,35 +1,21 @@
 import { fakeAsync, TestBed, tick } from '@angular/core/testing';
 import { provideRouter } from '@angular/router';
-import { delay, of } from 'rxjs';
-
-import { EquipmentsService } from '@/app/services/equipments.service';
-import { detalheDoEquipamento, historicoDoEquipamento } from '@/app/services/fixtures/equipamentos.fixture';
-import { ReportsService } from '@/app/services/reports.service';
 
 import { EquipamentoDetalheComponent } from './equipamento-detalhe.component';
 
 const ENDERECO_TEMPORARIO = 'blob:relatorio-de-teste';
 
 function montarDetalhe() {
-  TestBed.configureTestingModule({ providers: [
-    provideRouter([]),
-    { provide: EquipmentsService, useValue: {
-      buscarPorId: () => of(detalheDoEquipamento('60101')),
-      historicoDeRelatorios: () => of(historicoDoEquipamento('60101')),
-    } },
-    { provide: ReportsService, useValue: {
-      baixarRelatorio: () => of(new Blob(['PDF de teste'], { type: 'application/pdf' })).pipe(delay(300)),
-    } },
-  ] });
+  TestBed.configureTestingModule({ providers: [provideRouter([])] });
   const fixture = TestBed.createComponent(EquipamentoDetalheComponent);
   fixture.componentRef.setInput('id', '60101');
   fixture.detectChanges();
-  tick();
+  tick(400);
   fixture.detectChanges();
   return fixture;
 }
 
-describe('componente de detalhes do equipamento', () => {
+describe('EquipamentoDetalheComponent', () => {
   it('leva cada linha do histórico para a sua própria análise, na aba certa', fakeAsync(() => {
     const fixture = montarDetalhe();
 
@@ -51,7 +37,7 @@ describe('componente de detalhes do equipamento', () => {
     const fixture = montarDetalhe();
 
     const tela: HTMLElement = fixture.nativeElement;
-    const botao = tela.querySelector<HTMLButtonElement>('tbody button')!;
+    const botao = tela.querySelector('tbody button') as HTMLButtonElement;
     botao.click();
     fixture.detectChanges();
 

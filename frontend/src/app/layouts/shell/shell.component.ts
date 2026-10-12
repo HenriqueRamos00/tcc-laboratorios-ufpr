@@ -12,7 +12,6 @@ import { map } from 'rxjs';
 import { LogoComponent } from '@shared/components/logo/logo.component';
 
 import { LoginService } from '@/app/services/login.service';
-import { DEMO_DATA_ENABLED } from '@/app/environment/env';
 
 interface NavItem {
   label: string;
@@ -66,13 +65,9 @@ export class ShellComponent {
 
   readonly nav: readonly NavItem[] = [
     { label: 'Orçamentos', path: '/cliente/orcamentos', icon: 'description', exact: false },
-    ...(DEMO_DATA_ENABLED ? [
-      { label: 'Equipamentos', path: '/cliente/equipamentos', icon: 'electrical_services', exact: false },
-      { label: 'Relatórios', path: '/cliente/relatorios', icon: 'summarize', exact: false },
-    ] : []),
+    { label: 'Relatórios', path: '/cliente/relatorios', icon: 'science', exact: false },
+    { label: 'Equipamentos', path: '/cliente/equipamentos', icon: 'settings', exact: false },
   ];
-
-  readonly demoDataEnabled = DEMO_DATA_ENABLED;
 
   readonly bottomActions: readonly SecondaryAction[] = [
     { label: 'Ajuda', icon: 'help_outline', action: 'help' },

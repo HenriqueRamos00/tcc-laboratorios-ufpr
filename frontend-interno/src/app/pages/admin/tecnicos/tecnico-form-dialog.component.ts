@@ -1,14 +1,19 @@
 import { HttpErrorResponse } from '@angular/common/http';
 import { ChangeDetectionStrategy, Component, inject, signal } from '@angular/core';
-import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
+import { AbstractControl, FormBuilder, FormControl, ReactiveFormsModule, ValidatorFn, Validators } from '@angular/forms';
 import { MAT_DIALOG_DATA, MatDialogRef } from '@angular/material/dialog';
 import { MatButtonModule } from '@angular/material/button';
 import { catchError, EMPTY, finalize } from 'rxjs';
 
 import { CreateTecnicoRequest, Tecnico, TecnicoStatus, UpdateTecnicoRequest } from '@/app/model/tecnico';
 import { TecnicosService } from '@/app/services/tecnicos.service';
-import { trimmedEmailValidator } from '@shared/validators/trimmed-email.validator';
 import { DialogShellComponent } from '@shared/components/dialog-shell/dialog-shell.component';
+
+const trimmedEmailValidator: ValidatorFn = (control: AbstractControl) => {
+  const value = control.value;
+  if (typeof value !== 'string' || !value.trim()) return null;
+  return Validators.email(new FormControl(value.trim()));
+};
 
 export interface TecnicoFormDialogData {
   tecnico: Tecnico | null;

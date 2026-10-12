@@ -12,7 +12,8 @@ export const ABA_PADRAO: AbaDeIndicadores = 'fisico-quimico';
 
 /**
  * Cromatografia e análise de gases dissolvidos caem na mesma aba porque a tela
- * de gases é uma só.
+ * de gases é uma só. Pergunta aberta para o usuário: os dois tipos devem abrir
+ * exatamente a mesma leitura?
  */
 export const ABA_DO_TIPO_DE_ANALISE: Record<TipoDeAnalise, AbaDeIndicadores> = {
   'fisico-quimico': 'fisico-quimico',

@@ -116,7 +116,7 @@ const ABA_DA_ETAPA: Record<EtapaDaLinha, Exclude<ChaveDaAba, 'todos'>> = {
   incompleto: 'andamento',
   completo: 'andamento',
   validado: 'andamento',
-  finalizado: 'finalizados',
+  finalizado: 'andamento',
   'elaborando-relatorio': 'andamento',
   'relatorio-publicado': 'finalizados',
 };

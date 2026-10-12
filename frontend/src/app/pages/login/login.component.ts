@@ -1,4 +1,3 @@
-import { HttpErrorResponse } from '@angular/common/http';
 import { ChangeDetectionStrategy, Component, inject, signal } from '@angular/core';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
@@ -37,7 +36,7 @@ export class LoginComponent {
 
   readonly form = this.fb.nonNullable.group({
     email: ['', [Validators.required, Validators.email]],
-    password: ['', Validators.required],
+    password: ['', [Validators.required, Validators.minLength(4)]],
     keepConnected: [true],
   });
 
@@ -53,18 +52,16 @@ export class LoginComponent {
     this.errorMessage.set(null);
     this.submitting.set(true);
 
-    const { email, password, keepConnected } = this.form.getRawValue();
-    this.loginService.login({ email: email.trim(), password }, keepConnected).subscribe({
+    const { email, password } = this.form.getRawValue();
+    this.loginService.login({ email, password }).subscribe({
       next: () => {
         this.submitting.set(false);
         this.router.navigateByUrl(this.userRole.dashboardPath());
       },
-      error: (error: HttpErrorResponse) => {
+      error: () => {
         this.submitting.set(false);
         this.errorMessage.set(
-          error.status === 401 || error.status === 400
-            ? 'Credenciais inválidas.'
-            : 'Não foi possível acessar o serviço. Tente novamente mais tarde.',
+          'Credenciais inválidas. Por favor, cheque seu e-mail e senha e tente novamente.',
         );
       },
     });

@@ -6,8 +6,6 @@ import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
 
-import java.util.Locale;
-
 public record CreateTecnicoRequest(
 		@NotBlank(message = "Nome é obrigatório")
 		@Size(max = 150, message = "Nome deve ter no máximo 150 caracteres")
@@ -35,7 +33,7 @@ public record CreateTecnicoRequest(
 ) {
 	public CreateTecnicoRequest {
 		name = name == null ? null : name.trim();
-		email = email == null ? null : email.trim().toLowerCase(Locale.ROOT);
+		email = email == null ? null : email.trim().toLowerCase(java.util.Locale.ROOT);
 		unit = unit == null ? null : unit.trim();
 		specialty = specialty == null ? null : specialty.trim();
 	}

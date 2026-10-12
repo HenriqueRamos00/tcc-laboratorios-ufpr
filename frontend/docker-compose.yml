@@ -2,16 +2,15 @@
 # node_modules antigo continua montado por cima do novo:
 #   docker compose up --build --renew-anon-volumes
 #
-# O navegador usa /api na origem do portal. O proxy encaminha as chamadas
-# ao Spring no endereço definido por API_PROXY_TARGET.
+# A API fica fora deste compose. As chamadas partem do navegador, então o
+# http://localhost:5125 de src/app/environment/env.ts resolve para a porta da
+# máquina do desenvolvedor, não para dentro da rede do compose.
 
 services:
   web:
     build:
       context: .
       target: dev
-    environment:
-      API_PROXY_TARGET: ${API_PROXY_TARGET:-http://host.docker.internal:8080}
     ports:
       - "${PORTAL_WEB_PORT:-4200}:4200"
     volumes:
@@ -20,8 +19,6 @@ services:
       # instalado no build.
       - /app/node_modules
       - /app/.angular
-    extra_hosts:
-      - "host.docker.internal:host-gateway"
     # Em alguns bind mounts o inotify não propaga e o hot reload não dispara.
     # Nesse caso: npx ng serve --host 0.0.0.0 --port 4200 --poll 2000
     stdin_open: true
@@ -32,11 +29,6 @@ services:
     build:
       context: .
       target: prod
-    environment:
-      API_PROXY_TARGET: ${API_PROXY_TARGET:-http://host.docker.internal:8080}
-      NGINX_ENVSUBST_FILTER: "^API_PROXY_TARGET$$"
-    extra_hosts:
-      - "host.docker.internal:host-gateway"
     ports:
-      - "${PORTAL_WEB_PROD_PORT:-8082}:80"
+      - "8080:80"
     restart: unless-stopped

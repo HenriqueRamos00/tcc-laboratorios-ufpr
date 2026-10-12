@@ -7,10 +7,7 @@ import br.ufpr.tcc.backend_lab.domain.exception.TecnicoNaoEncontradoException;
 import br.ufpr.tcc.backend_lab.domain.model.entity.PerfilUsuario;
 import br.ufpr.tcc.backend_lab.domain.model.entity.Usuario;
 import br.ufpr.tcc.backend_lab.domain.repository.UsuarioRepository;
-import br.ufpr.tcc.backend_lab.infrastructure.persistence.ViolacaoUnicidade;
-
-import java.util.Locale;
-
+import br.ufpr.tcc.backend_lab.infrastructure.security.EmailUniqueConstraint;
 import lombok.RequiredArgsConstructor;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -29,7 +26,7 @@ public class UpdateTecnicoUseCase {
 				.filter(usuario -> usuario.getPerfil() == PerfilUsuario.TECNICO)
 				.orElseThrow(() -> new TecnicoNaoEncontradoException(id));
 
-		String email = request.email().trim().toLowerCase(Locale.ROOT);
+		String email = request.email().trim().toLowerCase(java.util.Locale.ROOT);
 		if (!tecnico.getEmail().equalsIgnoreCase(email) && usuarioRepository.existsByEmailIgnoreCase(email)) {
 			throw new EmailJaCadastradoException();
 		}
@@ -45,7 +42,7 @@ public class UpdateTecnicoUseCase {
 		try {
 			return TecnicoResponse.fromEntity(usuarioRepository.saveAndFlush(tecnico));
 		} catch (DataIntegrityViolationException exception) {
-			if (ViolacaoUnicidade.email(exception)) throw new EmailJaCadastradoException();
+			if (EmailUniqueConstraint.isViolation(exception)) throw new EmailJaCadastradoException();
 			throw exception;
 		}
 	}

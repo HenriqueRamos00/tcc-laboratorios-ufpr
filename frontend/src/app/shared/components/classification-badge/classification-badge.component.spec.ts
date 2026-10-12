@@ -6,7 +6,7 @@ import { ClassificationBadgeComponent } from './classification-badge.component';
 // O teste fixa as duas garantias que isso depende: o Angular mescla a classe
 // estática do gabarito com a vinda do binding, e o mapa cobre as três
 // classificações.
-describe('componente de classificação', () => {
+describe('ClassificationBadgeComponent', () => {
   function classesDaMarca(classificacao: 'normal' | 'alerta' | 'nao-conforme'): string[] {
     const fixture = TestBed.createComponent(ClassificationBadgeComponent);
     fixture.componentRef.setInput('classificacao', classificacao);

@@ -51,6 +51,8 @@ export const routes: Routes = [
       },
       ...([
         ['orcamentos', 'Orçamentos', 'Gestão dos orçamentos do laboratório.', 'description'],
+        ['empresas', 'Empresas', 'Cadastro e consulta de empresas atendidas.', 'business'],
+        ['clientes', 'Clientes', 'Cadastro e consulta de clientes.', 'groups'],
       ] as const).map(([path, title, description, icon]) => ({
         path,
         loadComponent: () =>
@@ -60,22 +62,6 @@ export const routes: Routes = [
         data: placeholder(title, description, icon),
         title: title + ' - Portal Interno Lactec',
       })),
-      {
-        path: 'empresas',
-        loadComponent: () =>
-          import('@/app/pages/admin/empresas/empresas.component').then(
-            (module) => module.EmpresasComponent,
-          ),
-        title: 'Pesquisar Empresas - Portal Interno Lactec',
-      },
-      {
-        path: 'clientes',
-        loadComponent: () =>
-          import('@/app/pages/admin/clientes/clientes.component').then(
-            (module) => module.ClientesComponent,
-          ),
-        title: 'Pesquisar Clientes - Portal Interno Lactec',
-      },
       {
         path: 'tecnicos',
         loadComponent: () =>
