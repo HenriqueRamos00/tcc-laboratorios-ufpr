@@ -7,7 +7,7 @@ import {
   zonasDuval5Com,
   type CodigoDeDuval5,
 } from './duval-5';
-import type { PontoTernario } from './health';
+import type { TernaryPoint } from './health';
 import { areaTotal, gerarZonas, normalizar, type XY } from './particao-ternaria.spec-util';
 
 // Oráculo dos polígonos do triângulo 5: regenera ZONAS_DUVAL_5 a partir da
@@ -23,16 +23,16 @@ const PARTICAO = {
   classificar: classificarDuval5,
 };
 
-const comoXY = (vertices: readonly PontoTernario[]): XY[] => vertices.map((v) => [v.b, v.c]);
+const comoXY = (vertices: readonly TernaryPoint[]): XY[] => vertices.map((v) => [v.b, v.c]);
 
 /** Agrupa por código: a zona O é publicada em dois anéis disjuntos. */
-function aneisPorCodigo(zonas: readonly { codigo: string; vertices: readonly PontoTernario[] }[]) {
+function aneisPorCodigo(zones: readonly { code: string; vertices: readonly TernaryPoint[] }[]) {
   const porCodigo = new Map<string, string[]>();
-  for (const zona of zonas) {
-    const lista = porCodigo.get(zona.codigo) ?? [];
-    porCodigo.set(zona.codigo, [...lista, normalizar(comoXY(zona.vertices))]);
+  for (const zona of zones) {
+    const lista = porCodigo.get(zona.code) ?? [];
+    porCodigo.set(zona.code, [...lista, normalizar(comoXY(zona.vertices))]);
   }
-  for (const [codigo, aneis] of porCodigo) porCodigo.set(codigo, [...aneis].sort());
+  for (const [code, aneis] of porCodigo) porCodigo.set(code, [...aneis].sort());
   return porCodigo;
 }
 
@@ -43,13 +43,13 @@ describe('Triângulo de Duval 5', () => {
     expect(areaTotal(geradas)).toBeCloseTo(5000, 6);
   });
 
-  it('desenha exatamente as zonas que a tabela normativa define', () => {
+  it('desenha exatamente as zones que a tabela normativa define', () => {
     const desenhadas = aneisPorCodigo(ZONAS_DUVAL_5);
     expect([...desenhadas.keys()].sort()).toEqual([...geradas.keys()].sort());
-    for (const [codigo, aneis] of geradas) {
+    for (const [code, aneis] of geradas) {
       const esperados = [...aneis.map(normalizar)].sort();
-      expect(desenhadas.get(codigo))
-        .withContext(`vértices de ${codigo} divergem da tabela`)
+      expect(desenhadas.get(code))
+        .withContext(`vértices de ${code} divergem da tabela`)
         .toEqual(esperados);
     }
   });
@@ -57,17 +57,17 @@ describe('Triângulo de Duval 5', () => {
   it('desenha a zona O em dois anéis, como a figura publicada', () => {
     // Não é duplicata: a figura da norma rotula "O" duas vezes, em regiões
     // disjuntas. Se alguém "consertar" isso fundindo as duas, o teste cai.
-    expect(ZONAS_DUVAL_5.filter((zona) => zona.codigo === 'O').length).toBe(2);
+    expect(ZONAS_DUVAL_5.filter((zona) => zona.code === 'O').length).toBe(2);
     expect(geradas.get('O')?.length).toBe(2);
   });
 
   it('não usa a nomenclatura T2-H / T3-H', () => {
     // "T3-H" é zona do Pentágono 2, não do triângulo 5, e "T2-H" não existe
     // em fonte publicada nenhuma. A versão anterior desta tela usava as duas.
-    const codigos = ZONAS_DUVAL_5.map((zona) => zona.codigo);
+    const codigos = ZONAS_DUVAL_5.map((zona) => zona.code);
     expect(codigos).toContain('T2');
     expect(codigos).toContain('T3');
-    expect(codigos.some((codigo) => codigo.endsWith('-H'))).toBeFalse();
+    expect(codigos.some((code) => code.endsWith('-H'))).toBeFalse();
   });
 
   it('classifica todo ponto do triângulo', () => {
@@ -86,9 +86,9 @@ describe('Triângulo de Duval 5', () => {
     expect(duval5({ ch4: null, c2h4: 3800, c2h6: 2400 })).toBeNull();
     expect(duval5({ ch4: 0, c2h4: 0, c2h6: 0 })).toBeNull();
     expect(gasAusenteDoDuval5({ ch4: 3600, c2h4: null, c2h6: 2400 })).toBe('C₂H₄');
-    const ponto = duval5({ ch4: 3600, c2h4: 3800, c2h6: 2400 });
-    expect(ponto).not.toBeNull();
-    expect(ponto!.a + ponto!.b + ponto!.c).toBeCloseTo(100, 9);
+    const point = duval5({ ch4: 3600, c2h4: 3800, c2h6: 2400 });
+    expect(point).not.toBeNull();
+    expect(point!.a + point!.b + point!.c).toBeCloseTo(100, 9);
   });
 
   it('respeita as desigualdades meia-abertas da Tabela D.4', () => {
@@ -133,9 +133,9 @@ describe('Triângulo de Duval 5', () => {
     expect(aplicaSeDuval5(null)).toBeFalse();
   });
 
-  it('acende só as zonas em que caiu leitura, nos dois anéis de O', () => {
+  it('acende só as zones em que caiu leitura, nos dois anéis de O', () => {
     const codigos: readonly CodigoDeDuval5[] = ['O'];
-    expect(zonasDuval5Com(codigos).filter((zona) => zona.destacada).length).toBe(2);
-    expect(zonasDuval5Com([]).every((zona) => !zona.destacada)).toBeTrue();
+    expect(zonasDuval5Com(codigos).filter((zona) => zona.highlighted).length).toBe(2);
+    expect(zonasDuval5Com([]).every((zona) => !zona.highlighted)).toBeTrue();
   });
 });

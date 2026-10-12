@@ -7,9 +7,9 @@ import { ClassificationBadgeComponent } from './classification-badge.component';
 // estática do gabarito com a vinda do binding, e o mapa cobre as três
 // classificações.
 describe('ClassificationBadgeComponent', () => {
-  function classesDaMarca(classificacao: 'normal' | 'alerta' | 'nao-conforme'): string[] {
+  function classesDaMarca(classification: 'normal' | 'alerta' | 'nao-conforme'): string[] {
     const fixture = TestBed.createComponent(ClassificationBadgeComponent);
-    fixture.componentRef.setInput('classificacao', classificacao);
+    fixture.componentRef.setInput('classification', classification);
     fixture.detectChanges();
     const marca: HTMLElement = fixture.nativeElement.querySelector('span span');
     return Array.from(marca.classList);

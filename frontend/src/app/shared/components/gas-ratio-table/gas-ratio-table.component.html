@@ -1,0 +1,36 @@
+<div class="rounded-lg border border-lactec-line-soft p-4">
+  <h3 class="display m-0 text-center text-sm font-semibold tracking-wide text-lactec-ink">
+    {{ title() }}
+  </h3>
+
+  <p class="mt-2 mb-0 text-xs text-lactec-muted">{{ legend() }}</p>
+
+  <dl class="mt-3 mb-0 grid grid-cols-1 gap-1 text-xs">
+    @for (ratio of rows(); track ratio.key) {
+      <div class="flex items-baseline justify-between gap-2">
+        <dt class="text-lactec-muted">{{ ratio.label }}</dt>
+        <dd
+          class="m-0 text-right"
+          [class.tabular-nums]="ratio.measured"
+          [class.text-lactec-ink]="ratio.measured"
+          [class.text-lactec-ink-soft]="!ratio.measured"
+        >
+          {{ ratio.text }}
+        </dd>
+      </div>
+    }
+  </dl>
+
+  @if (faultCode(); as code) {
+    <p class="mt-2 mb-0 text-xs text-lactec-ink">
+      <span class="font-semibold">Código de falha:</span> {{ code }}
+    </p>
+  } @else {
+    @if (faultCodeNotAssessed(); as reason) {
+      <p class="mt-2 mb-0 text-xs text-lactec-ink-soft">
+        <span class="font-semibold">Código de falha {{ notAssessedLabel }}.</span>
+        {{ reason }}
+      </p>
+    }
+  }
+</div>

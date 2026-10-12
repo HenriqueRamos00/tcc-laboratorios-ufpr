@@ -1,6 +1,9 @@
-using Portal.Adapters.LabResults;
+using System.Text.Json;
+using System.Text.Json.Serialization;
+
 using Portal.Adapters.Quotes;
 using Portal.Adapters.Salesforce;
+using Portal.Api.LabResults;
 using Portal.Application.LabResults;
 using Portal.Application.Quotes;
 
@@ -20,14 +23,29 @@ builder.Services.AddCors(options =>
             .AllowAnyMethod());
 });
 
-builder.Services.AddControllers();
+// The portal's camelCase used to be a default inherited from the host, not a declared
+// contract: it was enough for someone to serialize from outside for the body to turn
+// PascalCase, and the screen would not error, it would say there is no test data at all.
+// An enum as a number fails the same silent way, because the classification label and
+// color disappear without a message. Ignoring nulls also erases the field the screen uses
+// to tell an overview from a selected analysis.
+builder.Services
+    .AddControllers()
+    .AddJsonOptions(options =>
+    {
+        options.JsonSerializerOptions.PropertyNamingPolicy = JsonNamingPolicy.CamelCase;
+        options.JsonSerializerOptions.DictionaryKeyPolicy = null;
+        options.JsonSerializerOptions.DefaultIgnoreCondition = JsonIgnoreCondition.Never;
+        options.JsonSerializerOptions.Converters.Add(
+            new JsonStringEnumConverter(JsonNamingPolicy.KebabCaseLower));
+    });
 
 builder.Services.AddScoped<IQuoteUseCase, QuoteService>();
-builder.Services.AddScoped<ILabResultUseCase, LabResultService>();
+builder.Services.AddScoped<IForConsultingLabResults, LabResultsConsultation>();
 
 builder.Services.AddScoped<IQuoteRepository, FakeSalesforceQuoteRepository>();
 builder.Services.AddScoped<IQuoteDocumentRepository, LocalQuoteDocumentRepository>();
-builder.Services.AddScoped<ILabResultRepository, FakeSqlServerLabResultRepository>();
+builder.Services.AddLabTestRepository(builder.Configuration);
 builder.Services.AddSingleton(
     builder.Configuration.GetSection(SalesforceOptions.SectionName).Get<SalesforceOptions>() ?? new SalesforceOptions());
 builder.Services.AddHttpClient<ISalesforceTokenClient, SalesforceTokenClient>();
@@ -45,3 +63,13 @@ app.UseCors(PortalWebCorsPolicy);
 app.MapControllers();
 
 app.Run();
+
+/// <summary>
+/// The contract suite boots the real application with
+/// <c>WebApplicationFactory&lt;Program&gt;</c> and asserts on the HTTP body, not on
+/// isolated serialization. For that, the generated type of the top level file has to be
+/// reachable from outside the assembly.
+/// </summary>
+public partial class Program
+{
+}

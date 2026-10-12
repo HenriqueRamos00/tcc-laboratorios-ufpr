@@ -1,0 +1,348 @@
+@switch (state().kind) {
+@case ('ok') {
+@if (data(); as data) {
+  <app-page-header
+    [titulo]="'Indicadores de Saúde do Transformador - ' + data.tag"
+    [migalhas]="breadcrumbs()"
+  >
+    <div acoes class="flex flex-col items-end gap-1">
+      <span class="text-xs text-lactec-muted">Baixar relatório</span>
+      <button
+        type="button"
+        class="flex h-11 w-11 items-center justify-center rounded-lg bg-lactec-nav
+               text-lactec-on-primary hover:bg-lactec-nav-dark"
+        aria-label="Baixar relatório histórico dos indicadores"
+      >
+        <mat-icon aria-hidden="true">download</mat-icon>
+      </button>
+    </div>
+  </app-page-header>
+
+  <div class="mt-4 border-b border-lactec-line" role="tablist" aria-label="Tipo de ensaio">
+    <button
+      type="button"
+      role="tab"
+      id="aba-fisico-quimico"
+      aria-controls="painel-fisico-quimico"
+      [attr.aria-selected]="activeTab() === 'fisico-quimico'"
+      [attr.tabindex]="activeTab() === 'fisico-quimico' ? 0 : -1"
+      class="px-4 py-3 text-sm"
+      [class.font-semibold]="activeTab() === 'fisico-quimico'"
+      [class.text-lactec-ink]="activeTab() === 'fisico-quimico'"
+      [class.text-lactec-muted]="activeTab() !== 'fisico-quimico'"
+      (click)="selectTab('fisico-quimico')"
+    >
+      Fisico Quimico
+    </button>
+    <button
+      type="button"
+      role="tab"
+      id="aba-gases"
+      aria-controls="painel-gases"
+      [attr.aria-selected]="activeTab() === 'gases'"
+      [attr.tabindex]="activeTab() === 'gases' ? 0 : -1"
+      class="px-4 py-3 text-sm"
+      [class.font-semibold]="activeTab() === 'gases'"
+      [class.text-lactec-ink]="activeTab() === 'gases'"
+      [class.text-lactec-muted]="activeTab() !== 'gases'"
+      (click)="selectTab('gases')"
+    >
+      Gases Dissolvidos
+    </button>
+  </div>
+
+  @if (activeTab() === 'fisico-quimico') {
+    <section
+      id="painel-fisico-quimico"
+      role="tabpanel"
+      aria-labelledby="aba-fisico-quimico"
+      tabindex="0"
+      class="mt-6 rounded-2xl border border-lactec-line bg-lactec-paper p-6"
+    >
+      <h2 class="sr-only">Ensaios físico-químicos</h2>
+
+      <div class="grid grid-cols-1 items-center gap-6 lg:grid-cols-[minmax(0,20rem)_1fr]">
+        <app-conformity-gauge
+          [classification]="data.physicalChemical.conformity"
+          [verdict]="data.physicalChemical.verdict"
+        />
+        <app-line-chart
+          title="Evolução dos Ensaios Físico-Químicos (FQ)"
+          [xAxisLabels]="physicalChemicalDates()"
+          [series]="physicalChemicalSeries()"
+          yAxisLabel="Valor"
+        />
+      </div>
+
+      <div class="mt-6 overflow-x-auto">
+        <table class="w-full border-collapse text-sm">
+          <caption class="sr-only">
+            Ensaios físico-químicos, com método, valor-limite da ABNT NBR 10576/17, histórico de
+            resultados por data de coleta, resultado da coleta mais recente e classificação. ND
+            marca ensaio não detectado e um hífen marca coleta não realizada.
+          </caption>
+          <thead>
+            <tr class="bg-lactec-line-soft text-left align-bottom">
+              <th
+                scope="col"
+                rowspan="2"
+                class="sticky left-0 z-10 bg-lactec-line-soft px-4 py-3 font-semibold text-lactec-ink"
+              >
+                Análises físico-químicas
+              </th>
+              <th scope="col" rowspan="2" class="px-4 py-3 font-semibold text-lactec-ink">Método</th>
+              <th scope="col" rowspan="2" class="px-4 py-3 font-semibold text-lactec-ink">
+                ABNT NBR 10576/17
+                <span class="block font-normal text-lactec-muted">
+                  Valores-limite para óleo de transformador em uso
+                  ({{ data.physicalChemical.nominalVoltage }})
+                </span>
+              </th>
+              @if (historyColumns().length) {
+                <th
+                  scope="colgroup"
+                  [attr.colspan]="historyColumns().length"
+                  class="px-4 py-2 text-center font-semibold text-lactec-ink"
+                >
+                  Histórico de resultados
+                </th>
+              }
+              <th scope="col" class="px-4 py-2 text-center font-semibold text-lactec-ink">
+                Resultado
+                <app-conformity-banner
+                  class="mt-2"
+                  [classification]="data.physicalChemical.conformity"
+                />
+              </th>
+              <th scope="col" rowspan="2" class="px-4 py-3 font-semibold text-lactec-ink">
+                Classificação
+              </th>
+            </tr>
+            <tr class="bg-lactec-line-soft text-left">
+              @for (column of historyColumns(); track $index) {
+                <th scope="col" class="px-4 py-2 text-right font-medium text-lactec-ink">
+                  {{ column.readableDate }}
+                </th>
+              }
+              @if (resultColumn(); as currentColumn) {
+                <th scope="col" class="px-4 py-2 text-center font-medium text-lactec-ink">
+                  {{ currentColumn.readableDate }}
+                </th>
+              }
+            </tr>
+          </thead>
+          <tbody>
+            @for (row of physicalChemicalRows(); track row.key) {
+              <tr class="border-t border-lactec-line-soft">
+                <th
+                  scope="row"
+                  class="sticky left-0 z-10 bg-lactec-paper px-4 py-3 text-left font-normal
+                         text-lactec-ink"
+                >
+                  {{ row.name }}
+                </th>
+                <td class="px-4 py-3 text-lactec-ink">{{ row.method }}</td>
+                <td class="px-4 py-3 text-lactec-ink">{{ row.limit }}</td>
+                @for (value of row.history; track $index) {
+                  <td class="px-4 py-3 text-right tabular-nums text-lactec-ink">{{ value }}</td>
+                }
+                @if (resultColumn()) {
+                  <td
+                    class="bg-lactec-line-soft px-4 py-3 text-center font-semibold tabular-nums
+                           text-lactec-ink"
+                  >
+                    {{ row.result }}
+                  </td>
+                }
+                <td class="px-4 py-3">
+                  <app-classification-badge [classification]="row.classification" />
+                </td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <section
+      aria-labelledby="report-title-physical-chemical"
+      class="mt-4 rounded-2xl border border-lactec-line bg-lactec-paper p-6"
+    >
+      <h2
+        id="report-title-physical-chemical"
+        class="display m-0 text-base font-semibold tracking-wide text-lactec-ink uppercase"
+      >
+        {{ data.physicalChemical.report.title }}
+      </h2>
+      @for (paragraph of data.physicalChemical.report.paragraphs; track $index) {
+        <p class="mt-2 mb-0 text-sm text-lactec-ink-soft">{{ paragraph }}</p>
+      }
+    </section>
+  } @else {
+    <div
+      id="painel-gases"
+      role="tabpanel"
+      aria-labelledby="aba-gases"
+      tabindex="0"
+      class="mt-6"
+    >
+      <div class="grid grid-cols-1 gap-3 sm:grid-cols-2" role="tablist" aria-label="Critério de análise">
+      <button
+        type="button"
+        role="tab"
+        id="aba-criterios"
+        aria-controls="painel-criterios"
+        [attr.aria-selected]="gasSubTab() === 'criterios'"
+        [attr.tabindex]="gasSubTab() === 'criterios' ? 0 : -1"
+        class="rounded-lg px-4 py-3 text-sm font-semibold text-lactec-on-primary"
+        [class.bg-lactec-nav]="gasSubTab() === 'criterios'"
+        [class.bg-lactec-primary]="gasSubTab() !== 'criterios'"
+        (click)="selectGasSubTab('criterios')"
+      >
+        Critérios LACTEC
+      </button>
+      <button
+        type="button"
+        role="tab"
+        id="aba-metodos"
+        aria-controls="painel-metodos"
+        [attr.aria-selected]="gasSubTab() === 'metodos'"
+        [attr.tabindex]="gasSubTab() === 'metodos' ? 0 : -1"
+        class="rounded-lg px-4 py-3 text-sm font-semibold text-lactec-on-primary"
+        [class.bg-lactec-nav]="gasSubTab() === 'metodos'"
+        [class.bg-lactec-primary]="gasSubTab() !== 'metodos'"
+        (click)="selectGasSubTab('metodos')"
+      >
+        Métodos de Diagnóstico (Mineral)
+      </button>
+      </div>
+
+    @if (gasSubTab() === 'criterios') {
+      <section
+        id="painel-criterios"
+        role="tabpanel"
+        aria-labelledby="aba-criterios"
+        tabindex="0"
+        class="mt-4 rounded-2xl border border-lactec-line bg-lactec-paper p-6"
+      >
+        <h2 class="sr-only">Cromatografia de gases dissolvidos</h2>
+
+        <div class="flex justify-center">
+          <app-conformity-gauge
+            [classification]="data.dissolvedGases.conformity"
+            [verdict]="data.dissolvedGases.verdict"
+          />
+        </div>
+
+        <app-line-chart
+          class="mt-6"
+          title="Evolução dos Gases Dissolvidos (GD) - Escala Log"
+          scale="log"
+          [xAxisLabels]="gasDates()"
+          [series]="gasSeries()"
+          yAxisLabel="Concentração (ppm)"
+        />
+
+        <div class="mt-6 overflow-x-auto">
+          <table class="w-full border-collapse text-sm">
+            <caption class="sr-only">
+              Análise cromatográfica ABNT NBR 7070, com o histórico de resultados por data de coleta.
+            </caption>
+            <thead>
+              <tr class="bg-lactec-line-soft text-left">
+                <th scope="col" rowspan="2" class="px-4 py-3 font-semibold text-lactec-ink">
+                  Análise cromatográfica ABNT NBR 7070
+                  <span class="block font-normal text-lactec-muted">Gases dissolvidos (ppm)</span>
+                </th>
+                <th
+                  scope="colgroup"
+                  [attr.colspan]="gasColumnDates().length"
+                  class="px-4 py-2 text-center font-semibold text-lactec-ink"
+                >
+                  Histórico de resultados
+                </th>
+              </tr>
+              <tr class="bg-lactec-line-soft text-left">
+                @for (columnDate of gasColumnDates(); track $index) {
+                  <th scope="col" class="px-4 py-2 text-right font-medium text-lactec-ink">
+                    {{ columnDate }}
+                  </th>
+                }
+              </tr>
+            </thead>
+            <tbody>
+              @for (gas of measuredGases(); track gas.key) {
+                <tr class="border-t border-lactec-line-soft">
+                  <th scope="row" class="px-4 py-2 text-left font-normal text-lactec-ink">
+                    {{ gas.name }} <span class="text-lactec-muted">{{ gas.formula }}</span>
+                  </th>
+                  @for (value of gas.results; track $index) {
+                    <td class="px-4 py-2 text-right tabular-nums text-lactec-ink">
+                      {{ value }}
+                    </td>
+                  }
+                </tr>
+              }
+              @for (gas of totalizerGases(); track gas.key) {
+                <tr class="border-t border-lactec-divider font-semibold">
+                  <th scope="row" class="px-4 py-2 text-left text-lactec-ink">{{ gas.name }}</th>
+                  @for (value of gas.results; track $index) {
+                    <td class="px-4 py-2 text-right tabular-nums text-lactec-ink">
+                      {{ value }}
+                    </td>
+                  }
+                </tr>
+              }
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <section
+        aria-labelledby="report-title-chromatography"
+        class="mt-4 rounded-2xl border border-lactec-line bg-lactec-paper p-6"
+      >
+        <h2
+          id="report-title-chromatography"
+          class="display m-0 text-base font-semibold tracking-wide text-lactec-ink uppercase"
+        >
+          {{ data.dissolvedGases.report.title }}
+        </h2>
+        @for (paragraph of data.dissolvedGases.report.paragraphs; track $index) {
+          <p class="mt-2 mb-0 text-sm text-lactec-ink-soft">{{ paragraph }}</p>
+        }
+      </section>
+    } @else {
+      <section
+        id="painel-metodos"
+        role="tabpanel"
+        aria-labelledby="aba-metodos"
+        tabindex="0"
+        class="mt-4 rounded-2xl border border-lactec-line bg-lactec-paper p-6"
+      >
+        <app-diagnostic-methods [diagnosis]="diagnosis()" />
+      </section>
+    }
+    </div>
+  }
+}
+}
+@case ('failure') {
+  <app-empty-state
+    tom="erro"
+    icone="cloud_off"
+    titulo="Não foi possível carregar os indicadores no momento"
+    [descricao]="errorReason()"
+  />
+}
+@case ('empty') {
+  <app-empty-state
+    icone="science"
+    titulo="Nenhum ensaio registrado para este equipamento"
+    descricao="Assim que o laboratório lançar a primeira análise, ela aparece aqui."
+  />
+}
+@default {
+  <p class="text-sm text-lactec-muted" role="status">Carregando indicadores…</p>
+}
+}

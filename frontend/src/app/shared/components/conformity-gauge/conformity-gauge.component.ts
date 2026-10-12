@@ -9,7 +9,12 @@ import {
   signal,
 } from '@angular/core';
 
-import { type Classificacao, FAIXAS_DE_CONFORMIDADE, ROTULO_DA_CLASSIFICACAO } from '@/app/model/health';
+import {
+  type Classification,
+  CONFORMITY_RANGES,
+  CLASSIFICATION_LABEL,
+  NOT_ASSESSED_LABEL,
+} from '@/app/model/health';
 
 // É um resumo do laudo e não uma medição contínua: por isso o ponteiro aponta
 // para o meio da faixa, e o veredito aparece escrito abaixo, porque cor sozinha
@@ -26,26 +31,26 @@ const PROPORCAO_DO_COMPRIMENTO_DO_PONTEIRO = 0.82;
 const ANGULO_INICIAL = 180;
 const ANGULO_FINAL = 0;
 
-const CLASSE_DE_PREENCHIMENTO_DA_FAIXA: Record<Classificacao, string> = {
+const CLASSE_DE_PREENCHIMENTO_DA_FAIXA: Record<Classification, string> = {
   normal: 'fill-lactec-success',
   alerta: 'fill-lactec-warning',
   'nao-conforme': 'fill-lactec-danger',
 };
 
-const CLASSE_DE_FUNDO_DA_FAIXA: Record<Classificacao, string> = {
+const CLASSE_DE_FUNDO_DA_FAIXA: Record<Classification, string> = {
   normal: 'bg-lactec-success',
   alerta: 'bg-lactec-warning',
   'nao-conforme': 'bg-lactec-danger',
 };
 
-const CLASSE_DE_TEXTO_DA_FAIXA: Record<Classificacao, string> = {
+const CLASSE_DE_TEXTO_DA_FAIXA: Record<Classification, string> = {
   normal: 'text-lactec-success',
   alerta: 'text-lactec-warning',
   'nao-conforme': 'text-lactec-danger',
 };
 
 interface Arco {
-  readonly chave: Classificacao;
+  readonly key: Classification;
   readonly caminho: string;
   readonly classeDePreenchimento: string;
 }
@@ -58,7 +63,7 @@ function pontoNoArco(anguloEmGraus: number, raio: number): [number, number] {
 }
 
 function larguraDeCadaFaixaEmGraus(): number {
-  return (ANGULO_INICIAL - ANGULO_FINAL) / FAIXAS_DE_CONFORMIDADE.length;
+  return (ANGULO_INICIAL - ANGULO_FINAL) / CONFORMITY_RANGES.length;
 }
 
 function anguloOndeAFaixaComeca(indiceDaFaixa: number): number {
@@ -121,58 +126,68 @@ const ESPERA_MAXIMA_PELA_LARGADA_EM_MS = 150;
   host: { class: 'block' },
   template: `
     <figure class="m-0 flex flex-col items-center gap-3">
-      <figcaption class="text-lg text-lactec-ink-soft">{{ titulo() }}</figcaption>
+      <figcaption class="text-lg text-lactec-ink-soft">{{ title() }}</figcaption>
 
+      @if (assessed()) {
       <div
         role="meter"
-        [attr.aria-label]="titulo()"
+        [attr.aria-label]="title()"
         [attr.aria-valuemin]="primeiraPosicao"
         [attr.aria-valuemax]="ultimaPosicao"
         [attr.aria-valuenow]="posicaoDaFaixa()"
         [attr.aria-valuetext]="leituraPorExtenso()"
       >
         <svg viewBox="0 0 160 96" class="w-40 h-24" aria-hidden="true">
-          @for (arco of arcos(); track arco.chave) {
+          @for (arco of arcos(); track arco.key) {
             <path [attr.d]="arco.caminho" [class]="arco.classeDePreenchimento" />
           }
           <g
-            class="motion-safe:transition-transform motion-safe:duration-700 motion-safe:ease-out motion-safe:data-[entrando]:[--recuo-da-entrada:calc(var(--giro-ate-a-faixa)*-1)]"
-            [attr.data-entrando]="estaEntrando() ? '' : null"
-            [attr.style]="estiloDoGiro()"
-          >
-            <line
-              [attr.x1]="CENTRO_X"
-              [attr.y1]="CENTRO_Y"
-              [attr.x2]="pontaDoPonteiro.x"
-              [attr.y2]="pontaDoPonteiro.y"
-              class="stroke-lactec-ink"
-              stroke-width="5"
-              stroke-linecap="round"
-            />
-          </g>
-          <circle [attr.cx]="CENTRO_X" [attr.cy]="CENTRO_Y" r="7" class="fill-lactec-ink" />
+              class="motion-safe:transition-transform motion-safe:duration-700 motion-safe:ease-out motion-safe:data-[entrando]:[--recuo-da-entrada:calc(var(--giro-ate-a-faixa)*-1)]"
+              [attr.data-entrando]="estaEntrando() ? '' : null"
+              [attr.style]="estiloDoGiro()"
+            >
+              <line
+                [attr.x1]="CENTRO_X"
+                [attr.y1]="CENTRO_Y"
+                [attr.x2]="pontaDoPonteiro.x"
+                [attr.y2]="pontaDoPonteiro.y"
+                class="stroke-lactec-ink"
+                stroke-width="5"
+                stroke-linecap="round"
+              />
+            </g>
+            <circle [attr.cx]="CENTRO_X" [attr.cy]="CENTRO_Y" r="7" class="fill-lactec-ink" />
         </svg>
       </div>
+      } @else {
+      <div role="img" [attr.aria-label]="title() + ': ' + NOT_ASSESSED_LABEL">
+        <svg viewBox="0 0 160 96" class="w-40 h-24" aria-hidden="true">
+          @for (arco of arcos(); track arco.key) {
+            <path [attr.d]="arco.caminho" [class]="arco.classeDePreenchimento" />
+          }
+        </svg>
+      </div>
+      }
 
       <p class="display m-0 text-xl font-semibold tracking-wide text-lactec-ink">
-        {{ veredito() }}
+        {{ verdictText() }}
       </p>
 
       <ul class="m-0 flex list-none flex-wrap justify-center gap-x-5 gap-y-1 p-0">
-        @for (faixa of faixas; track faixa.chave) {
+        @for (faixa of faixas; track faixa.key) {
           <li class="flex flex-col items-center gap-1">
             <span
               class="flex items-center gap-2 text-sm font-medium"
-              [class]="classeDeTextoDaFaixa(faixa.chave)"
+              [class]="classeDeTextoDaFaixa(faixa.key)"
             >
               <span
                 class="inline-block h-3 w-3 rounded-full"
-                [class]="classeDeFundoDaFaixa(faixa.chave)"
+                [class]="classeDeFundoDaFaixa(faixa.key)"
                 aria-hidden="true"
               ></span>
-              <span>{{ faixa.rotulo }}</span>
+              <span>{{ faixa.label }}</span>
             </span>
-            <span class="text-xs text-lactec-muted">{{ faixa.criterio }}</span>
+            <span class="text-xs text-lactec-muted">{{ faixa.criterion }}</span>
           </li>
         }
       </ul>
@@ -181,17 +196,18 @@ const ESPERA_MAXIMA_PELA_LARGADA_EM_MS = 150;
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class ConformityGaugeComponent {
-  readonly classificacao = input.required<Classificacao>();
-  readonly veredito = input.required<string>();
-  readonly titulo = input('Conformidade');
+  readonly classification = input.required<Classification | null>();
+  readonly verdict = input.required<string | null>();
+  readonly title = input('Conformidade');
   /** Desligar a entrada deixa o ponteiro no destino desde o primeiro quadro. */
-  readonly animarNaEntrada = input(true);
+  readonly animateOnEnter = input(true);
 
-  protected readonly faixas = FAIXAS_DE_CONFORMIDADE;
+  protected readonly faixas = CONFORMITY_RANGES;
+  protected readonly NOT_ASSESSED_LABEL = NOT_ASSESSED_LABEL;
   protected readonly CENTRO_X = CENTRO_X;
   protected readonly CENTRO_Y = CENTRO_Y;
   protected readonly primeiraPosicao = 1;
-  protected readonly ultimaPosicao = FAIXAS_DE_CONFORMIDADE.length;
+  protected readonly ultimaPosicao = CONFORMITY_RANGES.length;
 
   // O ponteiro nasce deitado na ponta esquerda do arco e todo o resto do
   // caminho é giro, por isso a ponta não depende da faixa.
@@ -205,31 +221,40 @@ export class ConformityGaugeComponent {
   private readonly chegouAoDestino = signal(false);
 
   protected readonly arcos = computed<readonly Arco[]>(() =>
-    FAIXAS_DE_CONFORMIDADE.map((faixa, indice) => ({
-      chave: faixa.chave,
-      classeDePreenchimento: CLASSE_DE_PREENCHIMENTO_DA_FAIXA[faixa.chave],
+    CONFORMITY_RANGES.map((faixa, indice) => ({
+      key: faixa.key,
+      classeDePreenchimento: CLASSE_DE_PREENCHIMENTO_DA_FAIXA[faixa.key],
       caminho: caminhoDoArcoDaFaixa(indice),
     })),
   );
 
   protected readonly posicaoDaFaixa = computed(() => this.indiceDaFaixa() + this.primeiraPosicao);
 
-  protected readonly leituraPorExtenso = computed(
-    () => `${this.veredito()}, faixa ${ROTULO_DA_CLASSIFICACAO[this.classificacao()]}`,
+  // A pergunta não é "veio nula?", é "esta é uma das faixas que eu conheço?".
+  // Classificação que a lista de itens conhecidos não reconhece daria índice -1, e o -1 virava a
+  // primeira faixa: o ponteiro cravava NORMAL, em verde, sobre um parecer que
+  // ninguém entendeu. Sem faixa reconhecida o medidor inteiro sai do ar.
+  private readonly indiceDaFaixa = computed(() =>
+    CONFORMITY_RANGES.findIndex((faixa) => faixa.key === this.classification()),
   );
+
+  protected readonly assessed = computed(() => this.indiceDaFaixa() >= 0);
+
+  protected readonly verdictText = computed(() => this.verdict() ?? NOT_ASSESSED_LABEL);
+
+  // O veredito é nulável por conta própria, independente da classificação: sem o
+  // derivado protegido, o leitor de tela ouvia a palavra "null".
+  protected readonly leituraPorExtenso = computed(() => {
+    const classification = this.classification();
+    if (!classification) return NOT_ASSESSED_LABEL;
+    return `${this.verdictText()}, faixa ${CLASSIFICATION_LABEL[classification]}`;
+  });
 
   protected readonly estiloDoGiro = computed(() =>
     estiloDoGiroDoPonteiro(giroDoPonteiroAteOMeioDaFaixa(this.indiceDaFaixa())),
   );
 
-  protected readonly estaEntrando = computed(() => this.animarNaEntrada() && !this.chegouAoDestino());
-
-  private readonly indiceDaFaixa = computed(() =>
-    Math.max(
-      FAIXAS_DE_CONFORMIDADE.findIndex((faixa) => faixa.chave === this.classificacao()),
-      0,
-    ),
-  );
+  protected readonly estaEntrando = computed(() => this.animateOnEnter() && !this.chegouAoDestino());
 
   // afterNextRender roda no navegador depois que o Angular renderiza, mas ainda
   // ANTES de o navegador pintar. Soltar o ponteiro ali deixa os dois estados no
@@ -249,7 +274,7 @@ export class ConformityGaugeComponent {
   constructor() {
     afterNextRender({
       write: () => {
-        if (!this.animarNaEntrada()) {
+        if (!this.animateOnEnter()) {
           this.chegouAoDestino.set(true);
           return;
         }
@@ -260,11 +285,11 @@ export class ConformityGaugeComponent {
     });
   }
 
-  protected classeDeFundoDaFaixa(chave: Classificacao): string {
-    return CLASSE_DE_FUNDO_DA_FAIXA[chave];
+  protected classeDeFundoDaFaixa(key: Classification): string {
+    return CLASSE_DE_FUNDO_DA_FAIXA[key];
   }
 
-  protected classeDeTextoDaFaixa(chave: Classificacao): string {
-    return CLASSE_DE_TEXTO_DA_FAIXA[chave];
+  protected classeDeTextoDaFaixa(key: Classification): string {
+    return CLASSE_DE_TEXTO_DA_FAIXA[key];
   }
 }

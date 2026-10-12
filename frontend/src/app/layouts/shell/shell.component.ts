@@ -85,6 +85,7 @@ export class ShellComponent {
     this.collapsed.update((recolhido) => !recolhido);
   }
 
+
   onSecondaryAction(action: SecondaryAction['action']): void {
     void action;
   }

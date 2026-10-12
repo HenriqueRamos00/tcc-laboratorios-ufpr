@@ -10,3 +10,6 @@ services:
       ASPNETCORE_URLS: ${ASPNETCORE_URLS:-http://+:8080}
     ports:
       - "${PORT:-5125}:8080"
+    # Volta sozinho quando o daemon do Docker reinicia junto com o WSL, em vez
+    # de exigir um novo `docker compose up`. Parar à mão continua parando.
+    restart: unless-stopped

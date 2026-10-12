@@ -5,19 +5,19 @@
 // template cobria isso com uma cascata de `?.` e `?? []`. Aqui cada estado é
 // um caso e o `@switch` obriga a tratar todos.
 //
-// Incomputabilidade NÃO mora aqui: uma coleta sem C₂H₂ é resposta bem-sucedida
+// Incomputabilidade NÃO mora aqui: uma análise sem C₂H₂ é resposta bem-sucedida
 // do servidor com um diagnóstico a menos, não falha de requisição. Esse caso é
-// `LeituraDoTriangulo` em `health.ts`, por coleta.
+// `TriangleReading` em `health.ts`, por análise.
 
 export type RemoteData<T> =
-  | { readonly tipo: 'carregando' }
-  | { readonly tipo: 'vazio' }
-  | { readonly tipo: 'erro'; readonly motivo: string }
-  | { readonly tipo: 'ok'; readonly dados: T };
+  | { readonly kind: 'loading' }
+  | { readonly kind: 'empty' }
+  | { readonly kind: 'failure'; readonly reason: string }
+  | { readonly kind: 'ok'; readonly data: T };
 
-export const carregando = { tipo: 'carregando' } as const;
-export const vazio = { tipo: 'vazio' } as const;
+export const loading = { kind: 'loading' } as const;
+export const empty = { kind: 'empty' } as const;
 
-export const erro = (motivo: string): RemoteData<never> => ({ tipo: 'erro', motivo });
+export const failure = (reason: string): RemoteData<never> => ({ kind: 'failure', reason });
 
-export const ok = <T>(dados: T): RemoteData<T> => ({ tipo: 'ok', dados });
+export const ok = <T>(data: T): RemoteData<T> => ({ kind: 'ok', data });

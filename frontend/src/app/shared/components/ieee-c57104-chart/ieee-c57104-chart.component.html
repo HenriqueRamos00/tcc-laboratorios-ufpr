@@ -1,0 +1,21 @@
+<div class="rounded-lg border border-lactec-line-soft p-4">
+  <app-line-chart
+    title="MÉTODO IEEE C57.104"
+    yAxisLabel="Gases combustíveis (ppm)"
+    xAxisLabel="Coleta"
+    shape="compact"
+    [xAxisLabels]="dates()"
+    [series]="series()"
+  />
+
+  @if (combustibleGasSummary(); as resumo) {
+    <p class="mt-2 mb-0 text-center text-xs text-lactec-ink">{{ resumo }}</p>
+  }
+
+  @if (block().thresholdsNotAssessed; as reason) {
+    <p class="mt-2 mb-0 text-xs text-lactec-ink-soft">
+      <span class="font-semibold">Faixas {{ notAssessedLabel }}.</span>
+      {{ reason }}
+    </p>
+  }
+</div>

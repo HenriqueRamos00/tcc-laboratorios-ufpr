@@ -5,10 +5,10 @@ import { catchError, Observable, of, throwError } from 'rxjs';
 import { API_URL } from '@/app/environment/env';
 import { Quote } from '@/app/model/quote';
 
-import { ORCAMENTOS_DE_DEMONSTRACAO } from './fixtures/orcamentos.fixture';
+import { DEMONSTRATION_QUOTES } from './fixtures/quotes.fixture';
 
 // MODO DEMONSTRAÇÃO: quando a API não responde, o serviço cai na massa de
-// `orcamentos.fixture.ts` em vez de deixar a tela vazia, para que o portal
+// `quotes.fixture.ts` em vez de deixar a tela vazia, para que o portal
 // possa ser apresentado sem o backend no ar. Para exigir a API de verdade,
 // troque a constante abaixo para `false`: os erros voltam a subir e a tela
 // mostra "Não foi possível carregar os orçamentos no momento".
@@ -24,7 +24,7 @@ export class QuotesService {
       catchError((erro) => {
         if (!CAI_PARA_DEMONSTRACAO_SEM_API) return throwError(() => erro);
         console.warn('[portal] API indisponível; exibindo a massa de demonstração.', erro);
-        return of([...ORCAMENTOS_DE_DEMONSTRACAO]);
+        return of([...DEMONSTRATION_QUOTES]);
       }),
     );
   }
@@ -32,7 +32,7 @@ export class QuotesService {
   getQuoteById(id: string): Observable<Quote> {
     return this.http.get<Quote>(`${this.baseUrl}/${encodeURIComponent(id)}`).pipe(
       catchError((erro) => {
-        const daDemonstracao = ORCAMENTOS_DE_DEMONSTRACAO.find((orcamento) => orcamento.id === id);
+        const daDemonstracao = DEMONSTRATION_QUOTES.find((orcamento) => orcamento.id === id);
         if (!CAI_PARA_DEMONSTRACAO_SEM_API || !daDemonstracao) return throwError(() => erro);
         console.warn('[portal] API indisponível; exibindo a massa de demonstração.', erro);
         return of(daDemonstracao);
