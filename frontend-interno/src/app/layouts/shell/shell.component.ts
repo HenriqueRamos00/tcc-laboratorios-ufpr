@@ -20,6 +20,12 @@ interface NavItem {
   exact: boolean;
 }
 
+interface SecondaryAction {
+  label: string;
+  icon: string;
+  action: 'help' | 'profile';
+}
+
 const COLLAPSED_KEY = 'lactec.internal.shell.collapsed';
 const HANDSET_QUERY = '(max-width: 767.98px)';
 
@@ -40,7 +46,6 @@ const TECHNICIAN_NAV: readonly NavItem[] = [
   { label: 'Dashboard', path: '/tecnico', icon: 'dashboard', exact: true },
   { label: 'Pesquisar Ensaios e Amostras', path: '/tecnico/ensaios-amostras', icon: 'search', exact: false },
   { label: 'Manter Ensaio', path: '/tecnico/ensaios', icon: 'science', exact: false },
-  { label: 'Manter Amostra', path: '/tecnico/amostras', icon: 'biotech', exact: false },
   { label: 'Resultados', path: '/tecnico/resultados', icon: 'fact_check', exact: false },
   { label: 'Pesquisar Relatório', path: '/tecnico/relatorios', icon: 'description', exact: false },
   { label: 'Equipamentos', path: '/tecnico/equipamentos', icon: 'precision_manufacturing', exact: false },
@@ -78,10 +83,11 @@ export class ShellComponent {
   readonly nav = computed(() =>
     this.userRole.role() === 'ADMIN' ? ADMIN_NAV : TECHNICIAN_NAV,
   );
-  readonly userName = computed(() => this.userRole.user()?.name ?? 'Usuário');
-  readonly roleLabel = computed(() =>
-    this.userRole.role() === 'ADMIN' ? 'Administrador' : 'Técnico',
-  );
+
+  readonly bottomActions: readonly SecondaryAction[] = [
+    { label: 'Ajuda', icon: 'help_outline', action: 'help' },
+    { label: 'Perfil', icon: 'person_outline', action: 'profile' },
+  ];
 
   constructor() {
     effect(() => {
@@ -92,6 +98,11 @@ export class ShellComponent {
 
   toggleCollapse(): void {
     this.collapsed.update((collapsed) => !collapsed);
+  }
+
+  onSecondaryAction(action: SecondaryAction['action']): void {
+    // As ações de Ajuda e Perfil aguardam implementação, como no Portal do Cliente.
+    void action;
   }
 
   logout(): void {

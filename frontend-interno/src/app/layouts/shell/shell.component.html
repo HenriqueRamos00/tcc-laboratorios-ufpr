@@ -52,29 +52,40 @@
         }
       </nav>
 
-      <div class="flex flex-col gap-2 px-3 py-3 border-t border-white/10 shrink-0">
-        @if (showLabels) {
-          <div class="truncate px-2">
-            <span class="block truncate text-sm font-medium text-white">{{ userName() }}</span>
-            <span class="block text-xs text-lactec-on-nav">{{ roleLabel() }}</span>
-          </div>
+      <nav
+        class="flex flex-col gap-1 px-2 py-3 border-t border-white/10 shrink-0"
+        aria-label="Ações de conta"
+      >
+        @for (item of bottomActions; track item.action) {
+          <button
+            type="button"
+            (click)="onSecondaryAction(item.action)"
+            [matTooltip]="isCollapsed ? item.label : ''"
+            matTooltipPosition="right"
+            matTooltipShowDelay="120"
+            class="flex items-center gap-3 h-11 rounded-lg hover:bg-white/5 hover:text-white transition-colors text-left"
+            [class.justify-center]="isCollapsed"
+            [class.px-3]="!isCollapsed"
+            [attr.aria-label]="item.label"
+          >
+            <mat-icon class="shrink-0">{{ item.icon }}</mat-icon>
+            @if (showLabels) {
+              <span class="font-medium text-sm truncate">{{ item.label }}</span>
+            }
+          </button>
         }
-        <button
-          type="button"
-          (click)="logout()"
-          [matTooltip]="isCollapsed ? 'Sair' : ''"
-          matTooltipPosition="right"
-          class="flex items-center gap-3 h-11 rounded-lg hover:bg-white/5 hover:text-white transition-colors text-left"
-          [class.justify-center]="isCollapsed"
-          [class.px-3]="!isCollapsed"
-          aria-label="Sair"
-        >
-          <mat-icon class="shrink-0">logout</mat-icon>
-          @if (showLabels) {
-            <span class="font-medium text-sm">Sair</span>
-          }
-        </button>
-      </div>
+        @if (handset) {
+          <button
+            type="button"
+            (click)="drawer.close(); logout()"
+            class="flex items-center gap-3 h-11 rounded-lg hover:bg-white/5 hover:text-white transition-colors text-left px-3"
+            aria-label="Sair"
+          >
+            <mat-icon class="shrink-0">logout</mat-icon>
+            <span class="font-medium text-sm truncate">Sair</span>
+          </button>
+        }
+      </nav>
     </div>
   </mat-sidenav>
 
@@ -99,10 +110,14 @@
               [class.rotate-180]="isCollapsed"
             >chevron_left</mat-icon>
           </button>
-          <div class="text-right">
-            <span class="block text-sm font-medium text-lactec-ink">{{ userName() }}</span>
-            <span class="block text-xs text-lactec-muted">{{ roleLabel() }}</span>
-          </div>
+          <button
+            mat-icon-button
+            type="button"
+            (click)="logout()"
+            aria-label="Sair"
+          >
+            <mat-icon>logout</mat-icon>
+          </button>
         } @else {
           <button
             mat-icon-button

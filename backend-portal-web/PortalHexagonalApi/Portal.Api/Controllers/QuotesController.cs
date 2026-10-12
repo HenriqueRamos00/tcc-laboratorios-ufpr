@@ -1,10 +1,20 @@
 using Microsoft.AspNetCore.Mvc;
-using Portal.Application.Common;
+
 using Portal.Application.Quotes;
+using Portal.Application.Quotes.Exceptions;
 using Portal.Domain.Quotes;
 
 namespace Portal.Api.Controllers;
 
+/// <summary>
+/// Os tres caminhos de orcamento. O controller resolve o endereco, chama a porta condutora
+/// e traduz; nenhuma regra de orcamento passa por aqui.
+///
+/// As quatro falhas possiveis eram tratadas em cada metodo, com o mesmo bloco repetido tres
+/// vezes e um corpo de erro proprio, diferente do que o resto da API publica. Agora o
+/// tratamento fica em <see cref="AnswerAsync"/> e o corpo sai de
+/// <see cref="ProblemResponses"/>, que e o mesmo das demais rotas.
+/// </summary>
 [ApiController]
 [Route("api/quotes")]
 public sealed class QuotesController : ControllerBase
@@ -17,74 +27,69 @@ public sealed class QuotesController : ControllerBase
     }
 
     [HttpGet]
-    public async Task<ActionResult<IReadOnlyList<Quote>>> GetQuotes(CancellationToken cancellationToken)
+    [ProducesResponseType(typeof(IReadOnlyList<Quote>), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status502BadGateway)]
+    public Task<IActionResult> GetQuotes(CancellationToken cancellationToken)
     {
-        try
+        return AnswerAsync(async () =>
         {
             IReadOnlyList<Quote> quotes = await _quoteUseCase.GetQuotesAsync(cancellationToken);
+
             return Ok(quotes);
-        }
-        catch (InvalidOperationException exception)
+        });
+    }
+
+    [HttpGet("{id}")]
+    [ProducesResponseType(typeof(Quote), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public Task<IActionResult> GetQuoteById(string id, CancellationToken cancellationToken)
+    {
+        return AnswerAsync(async () =>
         {
-            return BadRequest(new { message = exception.Message });
-        }
-        catch (ExternalServiceException exception)
-        {
-            return StatusCode(StatusCodes.Status502BadGateway, new { message = exception.Message });
-        }
-        catch (HttpRequestException exception)
-        {
-            return StatusCode(StatusCodes.Status502BadGateway, new { message = exception.Message });
-        }
+            Quote? quote = await _quoteUseCase.GetQuoteByIdAsync(id, cancellationToken);
+
+            return quote is null ? this.QuoteNotFound() : Ok(quote);
+        });
     }
 
     [HttpGet("{id}/document")]
     [ProducesResponseType(typeof(FileContentResult), StatusCodes.Status200OK, "application/pdf")]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     [ProducesResponseType(StatusCodes.Status502BadGateway)]
-    public async Task<IActionResult> GetDocument(string id, CancellationToken cancellationToken)
+    public Task<IActionResult> GetDocument(string id, CancellationToken cancellationToken)
     {
-        try
+        return AnswerAsync(async () =>
         {
             byte[]? document = await _quoteUseCase.GetDocumentAsync(id, cancellationToken);
-            if (document is null) return NotFound(new { message = "Quote document not found." });
-            return File(document, "application/pdf", "orcamento.pdf", enableRangeProcessing: true);
-        }
-        catch (ExternalServiceException exception)
-        {
-            return StatusCode(StatusCodes.Status502BadGateway, new { message = exception.Message });
-        }
-        catch (HttpRequestException exception)
-        {
-            return StatusCode(StatusCodes.Status502BadGateway, new { message = exception.Message });
-        }
+
+            return document is null
+                ? this.QuoteDocumentNotFound()
+                : File(document, "application/pdf", "orcamento.pdf", enableRangeProcessing: true);
+        });
     }
 
-    [HttpGet("{id}")]
-    public async Task<ActionResult<Quote>> GetQuoteById(string id, CancellationToken cancellationToken)
+    /// <summary>
+    /// As quatro falhas que uma consulta de orcamento pode produzir, num lugar so. A fonte
+    /// indisponivel e o documento ilegivel sao casos distintos de proposito: o primeiro manda
+    /// olhar o Salesforce, o segundo manda olhar o arquivo.
+    /// </summary>
+    private async Task<IActionResult> AnswerAsync(Func<Task<IActionResult>> answer)
     {
-        Quote? quote;
-
         try
         {
-            quote = await _quoteUseCase.GetQuoteByIdAsync(id, cancellationToken);
+            return await answer();
         }
-        catch (InvalidOperationException exception)
+        catch (InvalidOperationException failure)
         {
-            return BadRequest(new { message = exception.Message });
+            return this.QuoteRequestRefused(failure.Message);
         }
-        catch (ExternalServiceException exception)
+        catch (QuoteDocumentUnavailableException)
         {
-            return StatusCode(StatusCodes.Status502BadGateway, new { message = exception.Message });
+            return this.QuoteDocumentUnavailable();
         }
-        catch (HttpRequestException exception)
+        catch (Exception failure) when (failure is QuoteSourceUnavailableException or HttpRequestException)
         {
-            return StatusCode(StatusCodes.Status502BadGateway, new { message = exception.Message });
+            return this.QuoteSourceUnavailable();
         }
-
-        if (quote is null)
-            return NotFound(new { message = "Quote not found." });
-
-        return Ok(quote);
     }
 }

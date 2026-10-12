@@ -1,39 +1,33 @@
-import { Injectable } from '@angular/core';
-import { delay, Observable, of, throwError } from 'rxjs';
+import { HttpClient } from '@angular/common/http';
+import { inject, Injectable } from '@angular/core';
+import { Observable } from 'rxjs';
 
-import type {
-  DetalheDoEquipamento,
-  Equipamento,
-  RelatorioDoEquipamento,
-} from '@/app/model/equipment';
+import { API_URL } from '@/app/environment/env';
+import type { Equipment, EquipmentDetail, EquipmentReport } from '@/app/model/equipment';
 
-import {
-  detalheDoEquipamento,
-  EQUIPAMENTOS,
-  historicoDoEquipamento,
-} from './fixtures/equipamentos.fixture';
-
-const LATENCIA_SIMULADA = 320;
-
-// O AutoLAB ainda não expõe estes endpoints. As assinaturas já são as da versão
-// HTTP, então a troca é substituir o corpo de cada método.
 @Injectable({ providedIn: 'root' })
 export class EquipmentsService {
+  private readonly http = inject(HttpClient);
+  private readonly baseUrl = `${API_URL}/api/equipments`;
+
   /** GET /api/equipments */
-  listar(): Observable<readonly Equipamento[]> {
-    return of(EQUIPAMENTOS).pipe(delay(LATENCIA_SIMULADA));
+  list(): Observable<readonly Equipment[]> {
+    return this.http.get<Equipment[]>(this.baseUrl);
   }
 
-  /** GET /api/equipments/{id} */
-  buscarPorId(id: string): Observable<DetalheDoEquipamento> {
-    const detalhe = detalheDoEquipamento(id);
-    return detalhe
-      ? of(detalhe).pipe(delay(LATENCIA_SIMULADA))
-      : throwError(() => new Error(`Equipamento ${id} não encontrado`));
+  /**
+   * GET /api/equipments/{id}
+   *
+   * O identificador vem opaco da própria API e é usado como veio. Existe número de série
+   * "111.594/1" e laudo endereçado pelo protocolo "01439/2026-004" no dado real, e a barra
+   * dividiria o caminho da rota se o valor cru viajasse aqui.
+   */
+  findById(id: string): Observable<EquipmentDetail> {
+    return this.http.get<EquipmentDetail>(`${this.baseUrl}/${encodeURIComponent(id)}`);
   }
 
   /** GET /api/equipments/{id}/reports */
-  historicoDeRelatorios(id: string): Observable<readonly RelatorioDoEquipamento[]> {
-    return of(historicoDoEquipamento(id)).pipe(delay(LATENCIA_SIMULADA));
+  reportHistory(id: string): Observable<readonly EquipmentReport[]> {
+    return this.http.get<EquipmentReport[]>(`${this.baseUrl}/${encodeURIComponent(id)}/reports`);
   }
 }

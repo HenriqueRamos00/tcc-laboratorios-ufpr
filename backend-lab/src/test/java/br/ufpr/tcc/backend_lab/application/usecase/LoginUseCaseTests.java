@@ -2,6 +2,7 @@ package br.ufpr.tcc.backend_lab.application.usecase;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import br.ufpr.tcc.backend_lab.application.dto.request.LoginRequest;
 import br.ufpr.tcc.backend_lab.application.dto.response.LoginResponse;
@@ -9,6 +10,7 @@ import br.ufpr.tcc.backend_lab.domain.exception.CredenciaisInvalidasException;
 import br.ufpr.tcc.backend_lab.domain.model.entity.PerfilUsuario;
 import br.ufpr.tcc.backend_lab.domain.model.entity.Usuario;
 import br.ufpr.tcc.backend_lab.domain.repository.UsuarioRepository;
+import br.ufpr.tcc.backend_lab.infrastructure.security.JwtService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -26,6 +28,9 @@ class LoginUseCaseTests {
 
 	@Autowired
 	private LoginUseCase loginUseCase;
+
+	@Autowired
+	private JwtService jwtService;
 
 	@BeforeEach
 	void cleanUsers() {
@@ -46,6 +51,12 @@ class LoginUseCaseTests {
 		assertEquals(3, response.accessToken().split("\\.").length);
 		assertEquals("TECNICO", response.user().role());
 		assertEquals(3600L, response.expiresIn());
+		var claims = jwtService.parseToken(response.accessToken()).getPayload();
+		assertEquals("tcc-backend-lab", claims.getIssuer());
+		assertTrue(claims.getAudience().contains("tcc-backend-lab-internal"));
+		assertEquals(usuario.getId(), ((Number) claims.get("userId")).longValue());
+		assertEquals("TECNICO", claims.get("role", String.class));
+		assertEquals("HS256", jwtService.parseToken(response.accessToken()).getHeader().getAlgorithm());
 	}
 
 	@Test

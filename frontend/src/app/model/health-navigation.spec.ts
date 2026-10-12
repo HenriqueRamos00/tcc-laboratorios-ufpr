@@ -1,37 +1,23 @@
-import {
-  analiseSelecionadaDoHistorico,
-  historicoDoEquipamento,
-} from '@/app/services/fixtures/equipamentos.fixture';
+import { ANALYSIS_TYPE_LABEL, type ReportAnalysisType } from './equipment';
 
-import { ABA_DO_TIPO_DE_ANALISE, abaConhecida } from './health-navigation';
+import { isKnownTab, TAB_BY_ANALYSIS_TYPE } from './health-navigation';
 
 describe('navegação dos indicadores de saúde', () => {
-  it('abre a aba certa para cada tipo de análise do histórico', () => {
-    const abas = historicoDoEquipamento('60101').map(
-      (relatorio) => ABA_DO_TIPO_DE_ANALISE[relatorio.tipoDeAnalise],
-    );
+  it('abre uma aba conhecida para todo tipo de análise que a API pode devolver', () => {
+    const tipos = Object.keys(ANALYSIS_TYPE_LABEL) as ReportAnalysisType[];
 
-    expect(new Set(abas)).toEqual(new Set(['fisico-quimico', 'gases']));
+    expect(tipos.length).toBeGreaterThan(0);
+    tipos.forEach((tipo) => expect(isKnownTab(TAB_BY_ANALYSIS_TYPE[tipo])).toBeTrue());
+  });
+
+  it('manda cromatografia para a aba de gases e físico-química para a sua', () => {
+    expect(TAB_BY_ANALYSIS_TYPE.chromatography).toBe('gases');
+    expect(TAB_BY_ANALYSIS_TYPE['physical-chemical']).toBe('fisico-quimico');
   });
 
   it('recusa aba que não existe, para a URL digitada à mão cair no padrão', () => {
-    expect(abaConhecida('gases')).toBeTrue();
-    expect(abaConhecida('gazes')).toBeFalse();
-    expect(abaConhecida(undefined)).toBeFalse();
-  });
-
-  it('nomeia a análise escolhida a partir do identificador que veio na URL', () => {
-    const primeira = historicoDoEquipamento('60101')[0];
-
-    expect(analiseSelecionadaDoHistorico('60101', primeira.id)).toEqual({
-      id: primeira.id,
-      data: primeira.data,
-      rotulo: 'Análise Físico-Química',
-    });
-  });
-
-  it('não inventa análise para a visão geral nem para identificador desconhecido', () => {
-    expect(analiseSelecionadaDoHistorico('60101', undefined)).toBeNull();
-    expect(analiseSelecionadaDoHistorico('60101', '60101-999')).toBeNull();
+    expect(isKnownTab('gases')).toBeTrue();
+    expect(isKnownTab('gazes')).toBeFalse();
+    expect(isKnownTab(undefined)).toBeFalse();
   });
 });

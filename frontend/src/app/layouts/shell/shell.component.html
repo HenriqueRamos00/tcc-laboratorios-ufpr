@@ -5,7 +5,7 @@
 <mat-sidenav-container class="h-svh bg-lactec-surface" [autosize]="true">
   <mat-sidenav
     #drawer
-    class="surface-dark border-0 overflow-x-hidden transition-all duration-200 ease-in-out"
+    class="surface-dark"
     [style.width.px]="handset ? 288 : isCollapsed ? 80 : 256"
     [mode]="handset ? 'over' : 'side'"
     [opened]="!handset"
@@ -14,10 +14,12 @@
   >
     <div class="h-full w-full flex flex-col bg-lactec-nav text-lactec-on-nav">
       <div
-        class="flex items-center gap-3 px-4 py-4 border-b border-white/10 shrink-0"
+        class="flex items-center gap-3 py-4 border-b border-white/10 shrink-0"
         [class.justify-center]="isCollapsed"
+        [class.px-2]="isCollapsed"
+        [class.px-4]="!isCollapsed"
       >
-        <app-logo [size]="24" [iconSize]="48" [showWordmark]="showLabels" />
+        <app-logo [size]="24" [iconSize]="isCollapsed ? 40 : 48" [showWordmark]="showLabels" />
       </div>
 
       <nav

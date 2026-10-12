@@ -47,7 +47,7 @@ export function areaAssinada(anel: readonly XY[]): number {
   return soma / 2;
 }
 
-const chave = (p: XY): string => `${Math.round(p[0] * 1e6)}:${Math.round(p[1] * 1e6)}`;
+const key = (p: XY): string => `${Math.round(p[0] * 1e6)}:${Math.round(p[1] * 1e6)}`;
 
 /** Cola peças adjacentes cancelando as arestas que aparecem nos dois sentidos. */
 function colar(pecas: readonly (readonly XY[])[]): XY[][] {
@@ -57,17 +57,17 @@ function colar(pecas: readonly (readonly XY[])[]): XY[][] {
     for (let i = 0; i < anel.length; i++) {
       const p = anel[i];
       const q = anel[(i + 1) % anel.length];
-      const inversa = `${chave(q)}|${chave(p)}`;
+      const inversa = `${key(q)}|${key(p)}`;
       if (arestas.has(inversa)) arestas.delete(inversa);
-      else arestas.set(`${chave(p)}|${chave(q)}`, [p, q]);
+      else arestas.set(`${key(p)}|${key(q)}`, [p, q]);
     }
   }
   const seguinte = new Map<string, XY[]>();
   const pontoDe = new Map<string, XY>();
   for (const [, [p, q]] of arestas) {
-    seguinte.set(chave(p), [...(seguinte.get(chave(p)) ?? []), q]);
-    pontoDe.set(chave(p), p);
-    pontoDe.set(chave(q), q);
+    seguinte.set(key(p), [...(seguinte.get(key(p)) ?? []), q]);
+    pontoDe.set(key(p), p);
+    pontoDe.set(key(q), q);
   }
   const aneis: XY[][] = [];
   while (seguinte.size) {
@@ -79,9 +79,9 @@ function colar(pecas: readonly (readonly XY[])[]): XY[][] {
       if (!destinos?.length) throw new Error('anel aberto ao colar as peças');
       const q = destinos.shift()!;
       if (!destinos.length) seguinte.delete(atual);
-      if (chave(q) === inicio) break;
+      if (key(q) === inicio) break;
       anel.push(q);
-      atual = chave(q);
+      atual = key(q);
     }
     aneis.push(anel);
   }
@@ -100,7 +100,7 @@ function semColineares(anel: readonly XY[]): XY[] {
 /** Mesma forma, independente de por onde o anel começa e do sentido. */
 export function normalizar(anel: readonly XY[]): string {
   const orientado = areaAssinada(anel) < 0 ? [...anel].reverse() : [...anel];
-  const chaves = orientado.map(chave);
+  const chaves = orientado.map(key);
   const inicio = chaves.indexOf([...chaves].sort()[0]);
   return [...chaves.slice(inicio), ...chaves.slice(0, inicio)].join(' ');
 }
@@ -110,7 +110,7 @@ export interface Particao<Codigo extends string> {
   readonly cortesC: readonly number[];
   /** Valores de b + c onde há fronteira, isto é, retas de `a` constante. */
   readonly diagonais: readonly number[];
-  readonly classificar: (ponto: { a: number; b: number; c: number }) => Codigo;
+  readonly classificar: (point: { a: number; b: number; c: number }) => Codigo;
 }
 
 /**
@@ -145,19 +145,19 @@ export function gerarZonas<Codigo extends string>(particao: Particao<Codigo>): M
         if (peca.length < 3 || Math.abs(areaAssinada(peca)) < 1e-9) continue;
         const cx = peca.reduce((s, p) => s + p[0], 0) / peca.length;
         const cy = peca.reduce((s, p) => s + p[1], 0) / peca.length;
-        const codigo = classificar({ a: 100 - cx - cy, b: cx, c: cy });
-        pecas.set(codigo, [...(pecas.get(codigo) ?? []), peca]);
+        const code = classificar({ a: 100 - cx - cy, b: cx, c: cy });
+        pecas.set(code, [...(pecas.get(code) ?? []), peca]);
       }
     }
   }
-  const zonas = new Map<Codigo, XY[][]>();
-  for (const [codigo, lista] of pecas) zonas.set(codigo, colar(lista).map(semColineares));
-  return zonas;
+  const zones = new Map<Codigo, XY[][]>();
+  for (const [code, lista] of pecas) zones.set(code, colar(lista).map(semColineares));
+  return zones;
 }
 
 /** Área total das zonas geradas. O simplex em (b, c) tem área 5000. */
-export function areaTotal(zonas: Map<string, XY[][]>): number {
+export function areaTotal(zones: Map<string, XY[][]>): number {
   let total = 0;
-  for (const aneis of zonas.values()) for (const anel of aneis) total += Math.abs(areaAssinada(anel));
+  for (const aneis of zones.values()) for (const anel of aneis) total += Math.abs(areaAssinada(anel));
   return total;
 }

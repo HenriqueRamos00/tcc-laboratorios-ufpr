@@ -1,0 +1,21 @@
+@if (codes().length) {
+  <table class="mt-3 w-full border-collapse text-xs">
+    <caption class="sr-only">
+      Códigos de falha possíveis e a descrição de cada um.
+    </caption>
+    <thead>
+      <tr class="bg-lactec-primary text-left text-lactec-on-primary">
+        <th scope="col" class="px-2 py-2 font-semibold">Código de falha</th>
+        <th scope="col" class="px-2 py-2 font-semibold">Descrição</th>
+      </tr>
+    </thead>
+    <tbody>
+      @for (code of codes(); track code.code) {
+        <tr class="border-t border-lactec-line-soft">
+          <td class="px-2 py-2 font-medium text-lactec-ink">{{ code.code }}</td>
+          <td class="px-2 py-2 text-lactec-ink">{{ code.description }}</td>
+        </tr>
+      }
+    </tbody>
+  </table>
+}

@@ -1,0 +1,127 @@
+@let controls = form.controls;
+@let nameInvalid = controls.name.touched && controls.name.invalid;
+@let emailInvalid = controls.email.touched && controls.email.invalid;
+@let unitInvalid = controls.unit.touched && controls.unit.invalid;
+@let specialtyInvalid = controls.specialty.touched && controls.specialty.invalid;
+@let passwordInvalid = controls.password.touched && controls.password.invalid;
+
+<form class="flex h-full min-h-0 flex-col" [formGroup]="form" (ngSubmit)="save()" novalidate>
+  <app-dialog-shell
+    [title]="isEditing ? 'Editar Técnico' : 'Novo Técnico'"
+    subtitle="Preencha os dados de acesso e atuação no laboratório."
+    [lateral]="true"
+    [closeDisabled]="saving()"
+    closeLabel="Fechar formulário de técnico"
+  >
+    @if (serverError()) {
+      <p class="m-0 rounded-lg border border-lactec-danger-border bg-lactec-danger-bg px-4 py-3 text-sm text-lactec-danger-ink" role="alert">
+        {{ serverError() }}
+      </p>
+    }
+
+    <div class="flex flex-col gap-2">
+      <label for="tecnico-name" class="text-xs font-medium tracking-wide text-lactec-ink-soft">
+        Nome <span class="text-lactec-danger">*</span>
+      </label>
+      <div class="input-field" [class.input-field--error]="nameInvalid">
+        <input id="tecnico-name" formControlName="name" maxlength="150" autocomplete="name"
+          class="input-field__input" [attr.aria-invalid]="nameInvalid"
+          [attr.aria-describedby]="nameInvalid ? 'tecnico-name-error' : null" />
+      </div>
+      @if (nameInvalid) {
+        <p id="tecnico-name-error" class="m-0 text-xs text-lactec-danger" role="alert">Informe o nome, com até 150 caracteres.</p>
+      }
+    </div>
+
+    <div class="flex flex-col gap-2">
+      <label for="tecnico-email" class="text-xs font-medium tracking-wide text-lactec-ink-soft">
+        E-mail <span class="text-lactec-danger">*</span>
+      </label>
+      <div class="input-field" [class.input-field--error]="emailInvalid">
+        <input id="tecnico-email" formControlName="email" maxlength="254" type="email" autocomplete="email"
+          class="input-field__input" [attr.aria-invalid]="emailInvalid"
+          [attr.aria-describedby]="emailInvalid ? 'tecnico-email-error' : null" />
+      </div>
+      @if (emailInvalid) {
+        <p id="tecnico-email-error" class="m-0 text-xs text-lactec-danger" role="alert">Informe um e-mail válido.</p>
+      }
+    </div>
+
+    <div class="flex flex-col gap-2">
+      <label for="tecnico-unit" class="text-xs font-medium tracking-wide text-lactec-ink-soft">
+        Unidade Técnica <span class="text-lactec-danger">*</span>
+      </label>
+      <div class="input-field" [class.input-field--error]="unitInvalid">
+        <input id="tecnico-unit" formControlName="unit" maxlength="120" autocomplete="organization"
+          class="input-field__input" [attr.aria-invalid]="unitInvalid"
+          [attr.aria-describedby]="unitInvalid ? 'tecnico-unit-error' : null" />
+      </div>
+      @if (unitInvalid) {
+        <p id="tecnico-unit-error" class="m-0 text-xs text-lactec-danger" role="alert">Informe a unidade técnica, com até 120 caracteres.</p>
+      }
+    </div>
+
+    <div class="flex flex-col gap-2">
+      <label for="tecnico-specialty" class="text-xs font-medium tracking-wide text-lactec-ink-soft">
+        Especialidade <span class="text-lactec-danger">*</span>
+      </label>
+      <div class="input-field" [class.input-field--error]="specialtyInvalid">
+        <input id="tecnico-specialty" formControlName="specialty" maxlength="160"
+          class="input-field__input" [attr.aria-invalid]="specialtyInvalid"
+          [attr.aria-describedby]="specialtyInvalid ? 'tecnico-specialty-error' : null" />
+      </div>
+      @if (specialtyInvalid) {
+        <p id="tecnico-specialty-error" class="m-0 text-xs text-lactec-danger" role="alert">Informe a especialidade, com até 160 caracteres.</p>
+      }
+    </div>
+
+    <div class="flex flex-col gap-2">
+      <label for="tecnico-status" class="text-xs font-medium tracking-wide text-lactec-ink-soft">
+        Status <span class="text-lactec-danger">*</span>
+      </label>
+      <div class="input-field">
+        <select id="tecnico-status" formControlName="status" class="input-field__input disabled:opacity-60"
+          [attr.aria-describedby]="isEditing && data.tecnico?.status === 'ACTIVE' ? 'tecnico-status-hint' : null">
+          <option value="ACTIVE">Ativo</option>
+          @if (!isEditing || data.tecnico?.status === 'INACTIVE') {
+            <option value="INACTIVE">Inativo</option>
+          }
+        </select>
+      </div>
+      @if (isEditing && data.tecnico?.status === 'ACTIVE') {
+        <p id="tecnico-status-hint" class="m-0 text-xs text-lactec-muted">Para desativar, use a ação confirmada na lista.</p>
+      }
+    </div>
+
+    <div class="flex flex-col gap-2">
+      <label for="tecnico-password" class="text-xs font-medium tracking-wide text-lactec-ink-soft">
+        Senha
+        @if (isEditing) {
+          (opcional)
+        } @else {
+          <span class="text-lactec-danger">*</span>
+        }
+      </label>
+      <div class="input-field" [class.input-field--error]="passwordInvalid">
+        <input id="tecnico-password" formControlName="password" maxlength="72" type="password"
+          autocomplete="new-password" class="input-field__input" [attr.aria-invalid]="passwordInvalid"
+          [attr.aria-describedby]="passwordInvalid ? 'tecnico-password-hint tecnico-password-error' : 'tecnico-password-hint'" />
+      </div>
+      <p id="tecnico-password-hint" class="m-0 text-xs text-lactec-muted">
+        {{ isEditing ? 'Deixe em branco para manter a senha atual.' : 'A senha será armazenada com proteção criptográfica.' }}
+      </p>
+      @if (passwordInvalid) {
+        <p id="tecnico-password-error" class="m-0 text-xs text-lactec-danger" role="alert">
+          {{ isEditing ? 'A senha deve ter até 72 caracteres.' : 'Informe uma senha com até 72 caracteres.' }}
+        </p>
+      }
+    </div>
+
+    <div dialog-footer class="flex w-full flex-wrap justify-end gap-3">
+      <button mat-stroked-button type="button" [disabled]="saving()" (click)="close()">Cancelar</button>
+      <button mat-flat-button type="submit" [disabled]="saving()">
+        {{ saving() ? 'Salvando…' : 'Salvar' }}
+      </button>
+    </div>
+  </app-dialog-shell>
+</form>
