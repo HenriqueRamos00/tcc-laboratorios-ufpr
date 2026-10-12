@@ -2,7 +2,7 @@ package br.ufpr.tcc.backend_lab.application.usecase;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
-import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import br.ufpr.tcc.backend_lab.application.dto.request.LoginRequest;
 import br.ufpr.tcc.backend_lab.application.dto.response.LoginResponse;
@@ -52,8 +52,8 @@ class LoginUseCaseTests {
 		assertEquals("TECNICO", response.user().role());
 		assertEquals(3600L, response.expiresIn());
 		var claims = jwtService.parseToken(response.accessToken()).getPayload();
-		assertNull(claims.getIssuer());
-		assertNull(claims.getAudience());
+		assertEquals("tcc-backend-lab", claims.getIssuer());
+		assertTrue(claims.getAudience().contains("tcc-backend-lab-internal"));
 		assertEquals(usuario.getId(), ((Number) claims.get("userId")).longValue());
 		assertEquals("TECNICO", claims.get("role", String.class));
 		assertEquals("HS256", jwtService.parseToken(response.accessToken()).getHeader().getAlgorithm());

@@ -70,13 +70,3 @@ O administrador inicial é configurado pelo backend usando `AUTH_SEED_ADMIN_*`.
 `AUTH_SEED_TECHNICIAN_*` pode preparar um técnico de desenvolvimento. Depois de entrar no
 Portal Interno, a gestão de técnicos está disponível em **Técnicos** no menu
 administrativo.
-
-## Empresas e clientes
-
-As páginas **Empresas** (`/admin/empresas`) e **Clientes** (`/admin/clientes`) permitem pesquisar, cadastrar, editar e alterar a situação dos registros. São exclusivas ADMIN e consomem diretamente a API Spring. Os dados de listagem também preenchem a edição, sem endpoint extra de detalhe.
-
-O cadastro de cliente exige senha inicial e pelo menos uma empresa ativa; a edição pode omitir a senha para preservá-la e substituir os vínculos. Vínculos anteriores com empresas inativas são mostrados para preservar o histórico, mas não autorizam acesso. Desativar um cliente bloqueia seu login e os tokens já emitidos na próxima requisição.
-
-Os formulários e painéis seguem os protótipos HU17-20 e reutilizam os componentes de diálogo/confirmador e o tema do Portal Interno. A seleção plural por checkboxes substitui as linhas com botão de adicionar do protótipo HU20. Cargo permanece na tabela/formulário conforme os critérios textuais. As adaptações e os contratos foram incorporados à especificação técnica.
-
-CNPJ suporta formato numérico de 14 dígitos ou máscara, com validação dos dígitos verificadores. E-mail/CNPJ duplicados geram mensagem de conflito. Cancelar ou fechar o painel sem salvar conserva os dados. Carregamento, erro da API e ausência de resultados têm estados separados.

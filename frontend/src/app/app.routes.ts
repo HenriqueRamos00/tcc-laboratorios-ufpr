@@ -3,12 +3,6 @@ import { Routes } from '@angular/router';
 import { authGuard } from '@core/guards/auth.guard';
 
 import { CLIENT_ROLE } from '@/app/model/roles';
-import { DEMO_DATA_ENABLED } from '@/app/environment/env';
-
-const funcionalidadeIndisponivel = () =>
-  import('@/app/shared/components/unavailable-feature/unavailable-feature.component').then(
-    (modulo) => modulo.UnavailableFeatureComponent,
-  );
 
 export const routes: Routes = [
   { path: '', pathMatch: 'full', redirectTo: 'login' },
@@ -56,79 +50,52 @@ export const routes: Routes = [
       {
         path: 'orcamentos/:id/aceite',
         loadComponent: () =>
-          import('@/app/shared/components/unavailable-feature/unavailable-feature.component').then(
-            (modulo) => modulo.UnavailableFeatureComponent,
+          import('@/app/pages/cliente/orcamentos/aceite/termo-de-aceite.component').then(
+            (modulo) => modulo.TermoDeAceiteComponent,
           ),
-        data: {
-          titulo: 'Aceite do orçamento',
-          descricao: 'O aceite e a recusa ainda não estão disponíveis.',
-        },
         title: 'Termo de aceite - Portal Lactec',
       },
       {
         path: 'relatorios',
-        loadComponent: DEMO_DATA_ENABLED
-          ? () => import('@/app/pages/cliente/relatorios/relatorios.component').then(
-              (modulo) => modulo.ClientRelatoriosComponent,
-            )
-          : funcionalidadeIndisponivel,
-        data: {
-          titulo: 'Relatórios',
-          descricao: 'Os relatórios e resultados ainda não estão disponíveis.',
-        },
+        loadComponent: () =>
+          import('@/app/pages/cliente/relatorios/relatorios.component').then(
+            (modulo) => modulo.ClientRelatoriosComponent,
+          ),
         title: 'Relatórios - Portal Lactec',
       },
       {
         path: 'equipamentos',
-        loadComponent: DEMO_DATA_ENABLED
-          ? () => import('@/app/pages/cliente/equipamentos/equipamentos.component').then(
-              (modulo) => modulo.ClientEquipamentosComponent,
-            )
-          : funcionalidadeIndisponivel,
-        data: {
-          titulo: 'Equipamentos',
-          descricao: 'Esta funcionalidade ainda não está disponível.',
-        },
+        loadComponent: () =>
+          import('@/app/pages/cliente/equipamentos/equipamentos.component').then(
+            (modulo) => modulo.ClientEquipamentosComponent,
+          ),
         title: 'Equipamentos - Portal Lactec',
       },
       {
         path: 'equipamentos/:id',
-        loadComponent: DEMO_DATA_ENABLED
-          ? () => import('@/app/pages/cliente/equipamentos/detalhe/equipamento-detalhe.component').then(
-              (modulo) => modulo.EquipamentoDetalheComponent,
-            )
-          : funcionalidadeIndisponivel,
-        data: {
-          titulo: 'Detalhes do equipamento',
-          descricao: 'Esta funcionalidade ainda não está disponível.',
-        },
+        loadComponent: () =>
+          import('@/app/pages/cliente/equipamentos/detalhe/equipamento-detalhe.component').then(
+            (modulo) => modulo.EquipamentoDetalheComponent,
+          ),
         title: 'Detalhes do equipamento - Portal Lactec',
       },
       {
         path: 'equipamentos/:id/indicadores',
-        loadComponent: DEMO_DATA_ENABLED
-          ? () => import('@/app/pages/cliente/equipamentos/indicadores/indicadores.component').then(
-              (modulo) => modulo.IndicadoresComponent,
-            )
-          : funcionalidadeIndisponivel,
-        data: {
-          titulo: 'Indicadores de saúde',
-          descricao: 'Esta funcionalidade ainda não está disponível.',
-        },
+        loadComponent: () =>
+          import('@/app/pages/cliente/equipamentos/indicadores/indicadores.component').then(
+            (modulo) => modulo.IndicadoresComponent,
+          ),
         title: 'Indicadores de saúde - Portal Lactec',
       },
+      // Uma análise do histórico, identificada por segmento: o identificador diz
+      // qual dado está na tela, então sobrevive ao recarregar e vai no link.
       {
         path: 'equipamentos/:id/indicadores/:relatorioId',
-        loadComponent: DEMO_DATA_ENABLED
-          ? () => import('@/app/pages/cliente/equipamentos/indicadores/indicadores.component').then(
-              (modulo) => modulo.IndicadoresComponent,
-            )
-          : funcionalidadeIndisponivel,
-        data: {
-          titulo: 'Indicadores de saúde',
-          descricao: 'Esta funcionalidade ainda não está disponível.',
-        },
-        title: 'Indicadores da análise - Portal Lactec',
+        loadComponent: () =>
+          import('@/app/pages/cliente/equipamentos/indicadores/indicadores.component').then(
+            (modulo) => modulo.IndicadoresComponent,
+          ),
+        title: 'Indicadores de saúde - Portal Lactec',
       },
     ],
   },
