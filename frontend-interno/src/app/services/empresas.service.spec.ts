@@ -19,9 +19,9 @@ describe('Serviço de empresas', () => {
 
   it('normaliza a busca e omite o parâmetro de status para Todos', () => {
     let resposta: Empresa[] | undefined;
-    service.list('  Copel  ', null).subscribe((empresas) => resposta = empresas);
+    service.list('  Energia  ', null).subscribe((empresas) => resposta = empresas);
 
-    const request = http.expectOne('/api/companies?search=Copel');
+    const request = http.expectOne('/api/companies?search=Energia');
     expect(request.request.method).toBe('GET');
     expect(request.request.params.has('status')).toBeFalse();
     request.flush([]);

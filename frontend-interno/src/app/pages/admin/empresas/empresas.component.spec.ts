@@ -40,12 +40,12 @@ describe('Página de empresas', () => {
     const fixture = TestBed.createComponent(EmpresasComponent);
     fixture.detectChanges();
     tick(300);
-    fixture.componentInstance.searchControl.setValue('Copel');
+    fixture.componentInstance.searchControl.setValue('Energia');
     fixture.componentInstance.statusControl.setValue('ACTIVE');
     tick(300);
     fixture.detectChanges();
 
-    expect(service.list).toHaveBeenCalledWith('Copel', 'ACTIVE');
+    expect(service.list).toHaveBeenCalledWith('Energia', 'ACTIVE');
     expect(fixture.nativeElement.textContent).toContain('Empresa Local');
     expect(fixture.nativeElement.textContent).toContain('04.368.898/0001-06');
     fixture.destroy();

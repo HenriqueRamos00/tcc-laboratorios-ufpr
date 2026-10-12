@@ -56,7 +56,7 @@
             </LinearLayout>
             <LinearLayout android:layout_width="0dp" android:layout_height="wrap_content" android:layout_columnWeight="1" android:orientation="vertical">
                 <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="@string/quote_company" android:textColor="@color/lactec_muted" android:textSize="11sp" />
-                <TextView android:id="@+id/company" android:layout_width="match_parent" android:layout_height="wrap_content" android:gravity="end" android:textColor="@color/lactec_ink" android:textSize="13sp" android:textStyle="bold" tools:text="Petrobras" />
+                <TextView android:id="@+id/company" android:layout_width="match_parent" android:layout_height="wrap_content" android:gravity="end" android:textColor="@color/lactec_ink" android:textSize="13sp" android:textStyle="bold" tools:text="Empresa de Energia" />
             </LinearLayout>
             <LinearLayout android:layout_width="0dp" android:layout_height="wrap_content" android:layout_columnWeight="1" android:layout_marginTop="8dp" android:orientation="vertical" android:paddingEnd="8dp">
                 <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="@string/quote_estimated_value" android:textColor="@color/lactec_muted" android:textSize="11sp" />

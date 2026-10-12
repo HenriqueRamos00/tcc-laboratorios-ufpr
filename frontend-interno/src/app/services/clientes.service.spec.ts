@@ -18,9 +18,9 @@ describe('Serviço de clientes', () => {
   afterEach(() => http.verify());
 
   it('envia busca e status combinados para a API Spring', () => {
-    service.list('  Copel  ', 'INACTIVE').subscribe();
+    service.list('  Energia  ', 'INACTIVE').subscribe();
     const request = http.expectOne((req) =>
-      req.url === '/api/clients' && req.params.get('search') === 'Copel' && req.params.get('status') === 'INACTIVE',
+      req.url === '/api/clients' && req.params.get('search') === 'Energia' && req.params.get('status') === 'INACTIVE',
     );
     expect(request.request.method).toBe('GET');
     request.flush([]);
