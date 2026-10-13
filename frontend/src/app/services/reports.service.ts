@@ -1,7 +1,7 @@
 import { Injectable } from '@angular/core';
 import { delay, Observable, of } from 'rxjs';
 
-import type { ConclusaoDaAnalise } from '@/app/model/report';
+import type { AnalysisConclusion, PublishedReport } from '@/app/model/report';
 
 const LATENCIA_SIMULADA = 300;
 
@@ -16,54 +16,170 @@ const PDF_DE_EXEMPLO = [
   '%%EOF',
 ].join('\n');
 
-const CONCLUSAO: ConclusaoDaAnalise = {
-  protocolo: '#LCT-2024-9981-B',
-  tipoDeEnsaio: 'Ensaio Químico de Materiais',
-  resumo:
-    'O processo de análise foi concluído com sucesso. Todos os parâmetros técnicos foram validados ' +
-    'pela curadoria laboratorial e o laudo final está disponível para visualização.',
-  relatorios: [
-    {
-      id: '1',
-      codigo: 'LACTEC-00307/2026',
-      protocolo: '00307/2026',
-      amostra: 'Areia',
-      laboratorio: 'Lab. de Óleos',
-      publicadoEm: '07/03/2026',
-    },
-    {
-      id: '2',
-      codigo: 'LACTEC-00307/2026',
-      protocolo: '00307/2026',
-      amostra: 'Brita',
-      laboratorio: 'Lab. de Óleos',
-      publicadoEm: '07/03/2026',
-    },
-    {
-      id: '3',
-      codigo: '60101',
-      protocolo: '00307/2026',
-      amostra: 'Transformador',
-      laboratorio: 'Lab. de Óleos',
-      publicadoEm: '07/03/2026',
-    },
-    {
-      id: '4',
-      codigo: '61550',
-      protocolo: '00307/2026',
-      amostra: 'Transformador',
-      laboratorio: 'Lab. de Óleos',
-      publicadoEm: '07/03/2026',
-    },
-  ],
-};
+// Massa de demonstração enquanto o AutoLAB não publica o laudo pelo portal. Os
+// identificadores de orçamento são os mesmos que o repositório de orçamentos
+// entrega na etapa "Relatório publicado": é esse vínculo que faz a tela de um
+// orçamento mostrar os laudos dele, e não os de todo mundo.
+const ANALYSIS_CONCLUSIONS: readonly AnalysisConclusion[] = [
+  {
+    quoteId: 'quote-15',
+    quoteCode: 'EAQ_2026_45496_V_1',
+    protocol: '00307/2026',
+    testType: 'Ensaios Físico-Químicos em Óleo Isolante',
+    summary:
+      'O processo de análise foi concluído com sucesso. Todos os parâmetros técnicos foram ' +
+      'validados pela curadoria laboratorial e o laudo final está disponível para visualização.',
+    reports: [
+      {
+        id: 'relatorio-00307-1',
+        code: 'LACTEC-00307/2026',
+        protocol: '00307/2026',
+        sample: 'Transformador TR-01',
+        laboratory: 'Lab. de Óleos',
+        publishedOn: '07/03/2026',
+      },
+      {
+        id: 'relatorio-00307-2',
+        code: 'LACTEC-00308/2026',
+        protocol: '00307/2026',
+        sample: 'Transformador TR-02',
+        laboratory: 'Lab. de Óleos',
+        publishedOn: '07/03/2026',
+      },
+      {
+        id: 'relatorio-00307-3',
+        code: 'LACTEC-00309/2026',
+        protocol: '00307/2026',
+        sample: 'Transformador TR-03',
+        laboratory: 'Lab. de Óleos',
+        publishedOn: '09/03/2026',
+      },
+    ],
+  },
+  {
+    quoteId: 'quote-18',
+    quoteCode: 'EAQ_2026_45499_V_1',
+    protocol: '00412/2026',
+    testType: 'Cromatografia de Gases Dissolvidos',
+    summary:
+      'A cromatografia dos quatro transformadores foi concluída e validada pela curadoria ' +
+      'laboratorial. Os laudos estão disponíveis para visualização e download.',
+    reports: [
+      {
+        id: 'relatorio-00412-1',
+        code: 'LACTEC-00412/2026',
+        protocol: '00412/2026',
+        sample: 'Transformador TR-11',
+        laboratory: 'Lab. de Óleos',
+        publishedOn: '22/08/2026',
+      },
+      {
+        id: 'relatorio-00412-2',
+        code: 'LACTEC-00413/2026',
+        protocol: '00412/2026',
+        sample: 'Transformador TR-12',
+        laboratory: 'Lab. de Óleos',
+        publishedOn: '22/08/2026',
+      },
+      {
+        id: 'relatorio-00412-3',
+        code: 'LACTEC-00414/2026',
+        protocol: '00412/2026',
+        sample: 'Transformador TR-13',
+        laboratory: 'Lab. de Óleos',
+        publishedOn: '24/08/2026',
+      },
+      {
+        id: 'relatorio-00412-4',
+        code: 'LACTEC-00415/2026',
+        protocol: '00412/2026',
+        sample: 'Transformador TR-14',
+        laboratory: 'Lab. de Óleos',
+        publishedOn: '24/08/2026',
+      },
+    ],
+  },
+  {
+    quoteId: 'quote-19',
+    quoteCode: 'EAQ_2026_45500_V_1',
+    protocol: '00388/2026',
+    testType: 'Ensaio de Rigidez Dielétrica',
+    summary:
+      'A rigidez dielétrica das amostras foi medida e validada pela curadoria laboratorial. ' +
+      'Os laudos estão disponíveis para visualização e download.',
+    reports: [
+      {
+        id: 'relatorio-00388-1',
+        code: 'LACTEC-00388/2026',
+        protocol: '00388/2026',
+        sample: 'Óleo mineral isolante, tanque 1',
+        laboratory: 'Lab. de Óleos',
+        publishedOn: '06/08/2026',
+      },
+      {
+        id: 'relatorio-00388-2',
+        code: 'LACTEC-00389/2026',
+        protocol: '00388/2026',
+        sample: 'Óleo mineral isolante, tanque 2',
+        laboratory: 'Lab. de Óleos',
+        publishedOn: '06/08/2026',
+      },
+    ],
+  },
+  // Orçamento da massa de demonstração do portal, usada quando a API não responde.
+  {
+    quoteId: 'EAQ_2026_45490_V_3',
+    quoteCode: 'EAQ_2026_45490_V_3',
+    protocol: '00501/2026',
+    testType: 'Análise Físico-Química e Microbiológica de Água',
+    summary:
+      'A análise da água dos dois pontos de coleta foi concluída e validada pela curadoria ' +
+      'laboratorial. Os laudos estão disponíveis para visualização e download.',
+    reports: [
+      {
+        id: 'relatorio-00501-1',
+        code: 'LACTEC-00501/2026',
+        protocol: '00501/2026',
+        sample: 'Água, ponto de coleta 1',
+        laboratory: 'Lab. de Águas',
+        publishedOn: '21/10/2026',
+      },
+      {
+        id: 'relatorio-00501-2',
+        code: 'LACTEC-00502/2026',
+        protocol: '00501/2026',
+        sample: 'Água, ponto de coleta 2',
+        laboratory: 'Lab. de Águas',
+        publishedOn: '21/10/2026',
+      },
+    ],
+  },
+];
+
+const CONCLUSION_BY_QUOTE = new Map<string, AnalysisConclusion>(
+  ANALYSIS_CONCLUSIONS.map((conclusion) => [conclusion.quoteId, conclusion]),
+);
+
+const EVERY_PUBLISHED_REPORT: readonly PublishedReport[] = ANALYSIS_CONCLUSIONS.flatMap(
+  (conclusion) => conclusion.reports,
+);
 
 @Injectable({ providedIn: 'root' })
 export class ReportsService {
-  /** GET /api/quotes/{id}/reports */
-  conclusaoDaAnalise(propostaId?: string): Observable<ConclusaoDaAnalise> {
-    void propostaId;
-    return of(CONCLUSAO).pipe(delay(LATENCIA_SIMULADA));
+  /**
+   * GET /api/quotes/{id}/reports
+   *
+   * Devolve nulo quando o orçamento não tem laudo publicado: a tela precisa
+   * distinguir "ainda não há laudo" de "a consulta falhou", e as duas coisas
+   * dizem frases diferentes ao cliente.
+   */
+  analysisConclusion(quoteId: string): Observable<AnalysisConclusion | null> {
+    return of(CONCLUSION_BY_QUOTE.get(quoteId) ?? null).pipe(delay(LATENCIA_SIMULADA));
+  }
+
+  /** GET /api/reports: todos os laudos publicados do cliente, de qualquer orçamento. */
+  publishedReports(): Observable<readonly PublishedReport[]> {
+    return of(EVERY_PUBLISHED_REPORT).pipe(delay(LATENCIA_SIMULADA));
   }
 
   /**
@@ -73,8 +189,8 @@ export class ReportsService {
    * token do portal, então quem baixa é o cliente HTTP, não a barra de
    * endereços do navegador.
    */
-  baixarRelatorio(relatorioId: string): Observable<Blob> {
-    void relatorioId;
+  downloadReport(reportId: string): Observable<Blob> {
+    void reportId;
     return of(new Blob([PDF_DE_EXEMPLO], { type: 'application/pdf' })).pipe(
       delay(LATENCIA_SIMULADA),
     );

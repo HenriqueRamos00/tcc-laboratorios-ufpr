@@ -15,6 +15,7 @@ import { Router } from '@angular/router';
 
 import { TextFieldComponent } from '@shared/components/text-field/text-field.component';
 import { PageHeaderComponent } from '@shared/components/page-header/page-header.component';
+import { SampleShippingNoticeComponent } from '@shared/components/sample-shipping-notice/sample-shipping-notice.component';
 
 import type { TermoDeAceite } from '@/app/model/acceptance';
 import { QuoteDecisionService } from '@/app/services/quote-decision.service';
@@ -42,7 +43,12 @@ function grupoDeEndereco(fb: FormBuilder, obrigatorio: boolean) {
 @Component({
   selector: 'app-termo-de-aceite',
   standalone: true,
-  imports: [ReactiveFormsModule, PageHeaderComponent, TextFieldComponent],
+  imports: [
+    ReactiveFormsModule,
+    PageHeaderComponent,
+    TextFieldComponent,
+    SampleShippingNoticeComponent,
+  ],
   templateUrl: './acceptance-terms.component.html',
   changeDetection: ChangeDetectionStrategy.OnPush,
 })

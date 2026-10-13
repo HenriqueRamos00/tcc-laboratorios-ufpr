@@ -63,6 +63,17 @@ export const routes: Routes = [
           ),
         title: 'Relatórios - Portal Lactec',
       },
+      // Os laudos de um orçamento só. O nome do segmento tem que ser igual ao
+      // nome do input do componente: `withComponentInputBinding` casa os dois
+      // pela chave, e nome diferente não é erro, é um input que nunca recebe nada.
+      {
+        path: 'relatorios/:quoteId',
+        loadComponent: () =>
+          import('@/app/pages/client/reports/quote-reports/quote-reports.component').then(
+            (modulo) => modulo.QuoteReportsComponent,
+          ),
+        title: 'Relatórios do orçamento - Portal Lactec',
+      },
       {
         path: 'equipamentos',
         loadComponent: () =>

@@ -13,6 +13,7 @@ import { MatIconModule } from '@angular/material/icon';
 import { RouterLink } from '@angular/router';
 
 import { readableDate } from '@shared/brazilian-date';
+import { handFileToTheBrowser } from '@shared/file-download';
 import { EmptyStateComponent } from '@shared/components/empty-state/empty-state.component';
 import { PageHeaderComponent } from '@shared/components/page-header/page-header.component';
 
@@ -164,27 +165,15 @@ export class EquipmentDetailComponent {
     this.downloading.set(row.id);
     this.downloadFailure.set('');
     this.reports
-      .baixarRelatorio(row.id)
+      .downloadReport(row.id)
       .pipe(
         finalize(() => this.downloading.set(null)),
         takeUntilDestroyed(this.destroyRef),
       )
       .subscribe({
-        next: (file) => this.handToTheBrowser(file, row.fileName),
+        next: (file) => handFileToTheBrowser(file, row.fileName),
         error: () => this.downloadFailure.set(DOWNLOAD_FAILURE),
       });
   }
 
-  // O navegador ainda resolve o href depois do clique, então a revogação espera
-  // a próxima volta do laço de eventos: revogar na mesma volta cancela o
-  // download antes de ele começar. Sem revogar, o Blob fica preso em memória
-  // até a aba fechar.
-  private handToTheBrowser(file: Blob, name: string): void {
-    const address = URL.createObjectURL(file);
-    const anchor = document.createElement('a');
-    anchor.href = address;
-    anchor.download = name;
-    anchor.click();
-    setTimeout(() => URL.revokeObjectURL(address));
-  }
 }

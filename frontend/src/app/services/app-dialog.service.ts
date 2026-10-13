@@ -38,8 +38,11 @@ export class AppDialogService {
       exitAnimationDuration: '0ms',
     };
 
+    // O modal de status leva, lado a lado, o botão de baixar a proposta e a
+    // caixa de contato com o endereço inteiro à vista; em 560px os dois não
+    // cabiam na mesma linha e a caixa descia sozinha para o rodapé.
     const desktop: MatDialogConfig<D> = {
-      width: '560px',
+      width: '700px',
       maxWidth: '92vw',
       panelClass: 'lactec-dialog-desktop',
     };

@@ -36,6 +36,11 @@ export class QuoteDecisionService {
     return this.registrar(propostaId, 'aprovado-pelo-cliente');
   }
 
+  /** POST /api/quotes/{id}/sample-shipment */
+  confirmarEnvioDaAmostra(propostaId: string): Observable<DecisaoRegistrada> {
+    return this.registrar(propostaId, 'aguardando-amostra');
+  }
+
   /** POST /api/quotes/{id}/rejection */
   recusar(recusa: RecusaDeOrcamento): Observable<DecisaoRegistrada> {
     return this.registrar(recusa.propostaId, 'recusado');

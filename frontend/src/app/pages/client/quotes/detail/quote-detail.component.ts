@@ -7,9 +7,16 @@ import { Router } from '@angular/router';
 
 import { EmptyStateComponent } from '@shared/components/empty-state/empty-state.component';
 import { PageHeaderComponent } from '@shared/components/page-header/page-header.component';
+import { SampleShippingNoticeComponent } from '@shared/components/sample-shipping-notice/sample-shipping-notice.component';
 
 import type { FormaDeAprovacao } from '@/app/model/acceptance';
+import {
+  ehTerminal,
+  indiceDaEtapa,
+  type SituacaoDaSolicitacao,
+} from '@/app/model/analysis-pipeline';
 import type { Quote } from '@/app/model/quote';
+import { recognizeStage } from '@/app/model/quote-presentation';
 import { AppDialogService } from '@/app/services/app-dialog.service';
 import { LoginService } from '@/app/services/login.service';
 import { QuoteDecisionService } from '@/app/services/quote-decision.service';
@@ -24,6 +31,20 @@ import {
 
 const BRL = new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' });
 
+/**
+ * A tela oferece uma ação só, e quem a escolhe é a etapa: em negociação o
+ * cliente aprova ou recusa; depois de aprovado o que falta dele é despachar a
+ * amostra e dizer que despachou; do recebimento em diante não há nada a fazer
+ * aqui, só acompanhar.
+ */
+type PendingAction = 'decide' | 'confirm-shipment' | 'follow';
+
+const SUBTITLE: Record<PendingAction, string> = {
+  decide: 'Aprove ou recuse as propostas de orçamento.',
+  'confirm-shipment': 'Confirme o envio da amostra para o laboratório.',
+  follow: 'Acompanhe a situação desta proposta.',
+};
+
 function saudacaoDoDia(agora = new Date()): string {
   const hora = agora.getHours();
   if (hora < 12) return 'Bom dia';
@@ -34,7 +55,12 @@ function saudacaoDoDia(agora = new Date()): string {
 @Component({
   selector: 'app-orcamento-detalhe',
   standalone: true,
-  imports: [MatIconModule, PageHeaderComponent, EmptyStateComponent],
+  imports: [
+    MatIconModule,
+    PageHeaderComponent,
+    EmptyStateComponent,
+    SampleShippingNoticeComponent,
+  ],
   templateUrl: './quote-detail.component.html',
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
@@ -65,8 +91,31 @@ export class QuoteDetailComponent {
     return typeof valor === 'number' ? BRL.format(valor) : '—';
   });
 
-  /** Já decidido nesta sessão: some com os botões de ação (HU-09, critério 6). */
-  protected readonly jaDecidido = computed(() => !!this.decisao.decisoes().get(this.id()));
+  // A decisão tomada nesta sessão vale mais que a etapa que veio na carga da
+  // tela: o Salesforce ainda não sabe do aceite que acabou de acontecer aqui.
+  protected readonly stage = computed<SituacaoDaSolicitacao | null>(() => {
+    const decidido = this.decisao.decisoes().get(this.id());
+    if (decidido) return decidido.situacao;
+
+    const quote = this.orcamento();
+    return quote ? recognizeStage(quote.stage) : null;
+  });
+
+  protected readonly pendingAction = computed<PendingAction>(() => {
+    const stage = this.stage();
+    if (!stage || ehTerminal(stage)) return 'follow';
+    if (stage === 'aprovado-pelo-cliente') return 'confirm-shipment';
+    return indiceDaEtapa(stage) < indiceDaEtapa('aprovado-pelo-cliente') ? 'decide' : 'follow';
+  });
+
+  protected readonly subtitle = computed(() => SUBTITLE[this.pendingAction()]);
+
+  protected readonly followMessage = computed(() => {
+    const stage = this.stage();
+    return stage && ehTerminal(stage)
+      ? 'Esta proposta foi encerrada e não avança mais na linha de etapas.'
+      : 'Não há nada pendente de sua parte neste orçamento.';
+  });
 
   constructor() {
     // O router reaproveita a instância quando só o id muda, e ngOnInit não roda
@@ -105,6 +154,24 @@ export class QuoteDetailComponent {
         } else if (forma === 'ordem-de-compra') {
           this.anexarOrdemDeCompra();
         }
+      });
+  }
+
+  protected confirmarEnvioDaAmostra(): void {
+    this.enviando.set(true);
+    this.decisao
+      .confirmarEnvioDaAmostra(this.id())
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: () => {
+          this.enviando.set(false);
+          this.avisar('Envio da amostra confirmado');
+          void this.router.navigate(['/cliente/orcamentos']);
+        },
+        error: () => {
+          this.enviando.set(false);
+          this.avisar('Não foi possível confirmar o envio da amostra no momento');
+        },
       });
   }
 

@@ -116,7 +116,13 @@
     </div>
   </fieldset>
 
-  <div class="mt-8 flex justify-end">
+  <!-- O aceite é o momento em que o cliente decide despachar a amostra, então
+       o lembrete da etiqueta fica onde ele ainda pode agir sobre a caixa. -->
+  <div class="mt-8">
+    <app-sample-shipping-notice [proposalCode]="id()" />
+  </div>
+
+  <div class="mt-6 flex justify-end">
     <button
       type="submit"
       class="rounded-lg bg-lactec-success px-6 py-3 text-sm font-semibold text-white
