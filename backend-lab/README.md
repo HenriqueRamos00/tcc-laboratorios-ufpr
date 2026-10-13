@@ -2,7 +2,7 @@
 
 Backend monolítico com os casos de uso e a persistência das operações internas do TCC - Laboratórios UFPR. Utiliza Java 21, Spring Boot, Spring Web, Spring Data JPA e PostgreSQL.
 
-O Portal Interno acessa diretamente esta API para autenticação e gestão de técnicos: `Portal Interno -> Spring -> Use Case -> Repository -> PostgreSQL`. O Spring valida a sessão e o perfil atual do usuário, aplica as regras internas e persiste os dados. O proxy Angular em desenvolvimento e o Nginx em produção encaminham `/api` ao Spring.
+O Portal Interno acessa diretamente esta API para autenticação e gestão de técnicos, empresas e clientes: `Portal Interno -> Spring -> Use Case -> Repository -> PostgreSQL`. O Spring valida a sessão e o perfil atual do usuário, aplica as regras internas e persiste os dados. O proxy Angular em desenvolvimento e o Nginx em produção encaminham `/api` ao Spring.
 
 Os comandos deste documento devem ser executados a partir da pasta `backend-lab`.
 
@@ -31,25 +31,28 @@ src/main/java/br/ufpr/tcc/backend_lab/
 ├── application/
 │   ├── dto/request/
 │   ├── dto/response/
-│   └── usecase/
+│   ├── usecase/
+│   ├── service/
+│   └── validation/
 ├── domain/
 │   ├── exception/
 │   ├── model/entity/
 │   └── repository/
 ├── infrastructure/
 │   ├── config/
+│   ├── persistence/
 │   └── security/
 └── presentation/
     ├── advice/
     └── rest/
 ```
 
-- `application`: DTOs e casos de uso. Cada operação relevante deve ter seu próprio Use Case;
+- `application`: DTOs, casos de uso, validações cadastrais e componentes de autorização e vínculos. Cada operação relevante deve ter seu próprio Use Case;
 - `domain`: entidades JPA, exceções e interfaces de repository;
-- `infrastructure`: configurações técnicas e integrações externas;
+- `infrastructure`: configurações técnicas, detalhes de persistência e integrações externas;
 - `presentation`: controllers REST e tratamento global de erros.
 
-Controllers devem permanecer pequenos e regras de negócio devem ficar nos Use Cases. Entidades JPA não devem ser retornadas diretamente pela API.
+Controllers devem permanecer pequenos. Casos de uso coordenam as regras de negócio e a persistência; componentes auxiliares concentram validações e regras compartilhadas com responsabilidade definida. Entidades JPA não devem ser retornadas diretamente pela API. Exceções de negócio expressam o motivo da falha, e a apresentação define o código HTTP.
 
 ## Execução com Docker
 
@@ -180,17 +183,14 @@ As principais variáveis da aplicação são:
 | `JPA_DDL_AUTO` | `update` | Estratégia de schema do Hibernate |
 | `JWT_SECRET` | valor de desenvolvimento | Chave de assinatura do JWT; altere em ambientes reais |
 | `JWT_EXPIRATION_SECONDS` | `3600` | Validade do JWT em segundos |
-| `JWT_ISSUER` | `tcc-backend-lab` | Emissor obrigatório do JWT interno |
-| `JWT_AUDIENCE` | `tcc-backend-lab-internal` | Audiência obrigatória do JWT interno |
-| `JWT_CLOCK_SKEW_SECONDS` | `30` | Tolerância de relógio, entre 0 e 60 segundos |
 
 As configurações de JWT pertencem ao Spring e são fornecidas pelo `.env` da raiz
-no Compose integrado ou pelas variáveis de ambiente na execução isolada. Não há
-compartilhamento da chave com o C#. A audiência padrão identifica a API
-Spring interna; ambientes com `JWT_AUDIENCE` explícita conservam seu valor.
-Depois de alterar a audiência ou o segredo, entre novamente para obter um token
-compatível. A API confere HS256, emissor, audiência, expiração, data de emissão,
-identificador imutável e situação/perfil atual no banco.
+no Compose integrado ou pelas variáveis de ambiente na execução isolada. Os tokens
+contêm identidade, perfil, emissão e expiração. A API
+confere a assinatura HS256, a expiração, a data de emissão e o identificador
+imutável, e consulta a situação e o perfil atuais do usuário no banco. As rotas
+separam o acesso de clientes e usuários internos pelo perfil. Alterar o segredo
+exige novo login.
 
 O Java normaliza nome, e-mail, unidade e especialidade antes de validar os
 limites, garante a unicidade do e-mail e valida a senha inicial. A senha não é
@@ -222,3 +222,21 @@ O artefato será criado em `target/backend-lab-<versão>.jar` e pode ser iniciad
 ```bash
 java -jar target/backend-lab-<versão>.jar
 ```
+
+## Empresas, clientes e orçamentos
+
+O Portal Interno consome diretamente `/api/companies` e `/api/clients` no Spring. Cada entidade possui listagem, criação, edição e PATCH de situação, exclusivos ADMIN. Clientes reutilizam `Usuario` com perfil CLIENTE e têm vários vínculos com empresas; senha inicial é obrigatória e a edição pode omiti-la. E-mail é único entre todos os perfis. Desativar preserva histórico.
+
+`POST /api/auth/login` autentica somente CLIENTE ativo. O login interno continua exclusivo ADMIN/TECNICO. Ambos emitem tokens com o mesmo formato; cada família de rotas verifica o perfil permitido e a situação atual do usuário. A resposta pública usa IDs string em login e gestão; as entidades Java mantêm chaves numéricas internamente, e os endpoints de técnicos preservam IDs numéricos.
+
+O Portal do Cliente mantém suas chamadas à API C#. Os adapters C# para autenticar clientes e consultar orçamentos e documentos no Spring ainda não estão implementados. A conta de demonstração e os cadastros desta API não substituem o login de desenvolvimento do portal.
+
+As consultas privadas `/api/client/quotes`, `/{id}` e `/{id}/document` conferem usuário, vínculos e situação das empresas atuais. O PDF está em tabela separada e seus bytes são consultados somente após a autorização. Empresa sem vínculo ativo retorna 403; orçamento/arquivo inexistente retorna 404. Cliente ativo sem empresas ativas pode autenticar e recebe lista vazia. Remover vínculo ou desativar usuário/empresa afeta o token anterior na próxima requisição.
+
+`Orcamento` e `DocumentoOrcamento` representam os recursos nas tabelas `orcamentos` e `documentos_orcamentos`. A fonte de conexão pertence à configuração da aplicação; os nomes dos recursos não dependem do ambiente ou backend escolhido. O campo público `origin` das empresas conserva o contrato existente e não concede acesso a dados externos.
+
+Nas respostas de orçamento, `id` identifica o orçamento persistido no Spring. O campo `opportunityId` pertence ao contrato Salesforce da API C# e não é retornado pelo Spring.
+
+Limites: empresa - razão social 200, endereço 255, cidade 120, UF brasileira com 2 caracteres, nome do contato 150, telefone 30, e-mail 254. CNPJ numérico com 14 dígitos e dígitos verificadores, aceitando máscara, é normalizado e único. Cliente - nome 150, e-mail 254, telefone 30, cargo 120; senha com até 72 caracteres e 72 bytes UTF-8, sem trim. CNPJ alfanumérico não é suportado neste incremento.
+
+Para carregar os dados de demonstração, configure `DEMO_SEED_ENABLED=true` e reinicie o Backend Lab. O seed SQL cria a conta local `lactec@lactec.com`, com senha `lactec`, uma empresa, um orçamento e o PDF estático do repositório. A flag fica desativada por padrão; habilite-a somente em ambiente local e não a use com banco de produção. Não há sincronização, associação automática com Lactec ou fallback para fontes externas.

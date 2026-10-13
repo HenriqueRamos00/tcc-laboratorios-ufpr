@@ -31,7 +31,7 @@ Na execução local, a API Spring é publicada em `127.0.0.1:8080` por padrão. 
 
 O `.env` da raiz configura o PostgreSQL, o seed e o JWT do Spring. `backend-portal-web/.env` continua disponível para configurações próprias do C#, como Salesforce. Os Compose das subpastas permitem execução isolada.
 
-Configure `JWT_SECRET` (mínimo de 32 bytes UTF-8), `JWT_EXPIRATION_SECONDS` (padrão de 3600 segundos), `JWT_ISSUER` (padrão `tcc-backend-lab`), `JWT_AUDIENCE` (padrão `tcc-backend-lab-internal`) e `JWT_CLOCK_SKEW_SECONDS` (padrão de 30 segundos, máximo de 60). Esses valores são usados somente pelo Spring. Uma audiência explícita existente continua válida; alterar audiência ou segredo exige novo login.
+Configure `JWT_SECRET` (mínimo de 32 bytes UTF-8) e `JWT_EXPIRATION_SECONDS` (padrão de 3600 segundos). O Spring valida a assinatura e a validade do token e consulta a situação e o perfil atuais do usuário para autorizar as rotas protegidas. Alterar o segredo exige novo login.
 
 Antes de iniciar o Compose da raiz, encerre os serviços das subpastas que estiverem usando as mesmas portas.
 
@@ -76,3 +76,11 @@ Após mudar as dependências dos frontends, recrie seus volumes anônimos:
 ```bash
 docker compose up -d --build --renew-anon-volumes frontend frontend-interno
 ```
+
+## Empresas e clientes
+
+O ADMIN mantém empresas e clientes em `/admin/empresas` e `/admin/clientes` no Portal Interno, que acessa diretamente a API Spring. O cadastro de cliente define a senha inicial e os vínculos com uma ou mais empresas ativas. O Spring armazena hashes BCrypt, aplica as regras de cadastro e preserva o histórico ao desativar registros.
+
+O Backend Lab também oferece autenticação de clientes em `POST /api/auth/login`, consulta de orçamentos em `/api/client/quotes` e download dos respectivos documentos. Essas operações verificam a situação atual do cliente e suas empresas vinculadas. O Portal do Cliente mantém o contrato com a API C#; os adapters C# para consumir essas operações do Spring ainda não estão implementados. O login de desenvolvimento do portal é independente das contas cadastradas no Spring. O contrato de autenticação Lactec permanece pendente de definição.
+
+Para carregar os dados de demonstração do Backend Lab, configure `DEMO_SEED_ENABLED=true` no `.env` local e reinicie a API. O seed SQL cria uma empresa, a conta Spring `lactec@lactec.com` (senha `lactec`), um orçamento e seu PDF estático versionado. A flag fica desativada por padrão e deve ser habilitada somente em ambiente local.
