@@ -1,13 +1,13 @@
 @if (conclusion(); as conclusao) {
   <app-page-header
-    titulo="Conclusão da Análise"
-    [subtitulo]="'Orçamento ' + conclusao.quoteCode + ' · ID do Protocolo: ' + conclusao.protocol"
-    [migalhas]="breadcrumbs()"
+    title="Conclusão da Análise"
+    [subtitle]="'Orçamento ' + conclusao.quoteCode + ' · ID do Protocolo: ' + conclusao.protocol"
+    [breadcrumbs]="breadcrumbs()"
   />
 
   <section class="mt-6 rounded-2xl border border-lactec-line bg-lactec-paper p-6">
     <h2 class="sr-only">Progresso da solicitação</h2>
-    <app-status-stepper [steps]="etapas" [currentIndex]="etapaAtual" />
+    <app-status-stepper [steps]="stages" [currentIndex]="etapaAtual" />
   </section>
 
   <section class="mt-4 flex items-start gap-3 rounded-2xl bg-lactec-line-soft px-5 py-4">
@@ -21,7 +21,7 @@
   <app-search-field
     class="mt-4"
     placeholder="Buscar por ID do relatório"
-    rotulo="Buscar por ID do relatório"
+    label="Buscar por ID do relatório"
     [(termo)]="searchTerm"
   />
 
@@ -71,27 +71,27 @@
   } @else {
     <app-empty-state
       class="mt-4"
-      icone="search_off"
-      titulo="Nenhum relatório encontrado"
+      icon="search_off"
+      title="Nenhum relatório encontrado"
       descricao="Revise o ID informado na busca."
     />
   }
 } @else if (failed()) {
   <app-empty-state
     tom="erro"
-    icone="cloud_off"
-    titulo="Não foi possível carregar os relatórios no momento"
-    descricao="A consulta ao AutoLAB falhou. Tente novamente em instantes."
+    icon="cloud_off"
+    title="Não foi possível carregar os relatórios no momento"
+    descricao="A consulta ao AutoLAB loadFailed. Tente novamente em instantes."
   />
 } @else if (loading()) {
   <p class="text-sm text-lactec-muted" role="status">Carregando relatórios…</p>
 } @else {
-  <app-page-header titulo="Conclusão da Análise" [migalhas]="breadcrumbs()" />
+  <app-page-header title="Conclusão da Análise" [breadcrumbs]="breadcrumbs()" />
 
   <app-empty-state
     class="mt-6"
-    icone="pending_actions"
-    titulo="Este orçamento ainda não tem relatório publicado"
+    icon="pending_actions"
+    title="Este orçamento ainda não tem relatório publicado"
     descricao="Assim que o laudo for publicado pelo laboratório, ele aparece aqui."
   />
 }

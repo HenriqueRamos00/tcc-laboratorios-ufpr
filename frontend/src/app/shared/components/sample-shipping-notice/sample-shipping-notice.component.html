@@ -1,8 +1,8 @@
-<section class="sample-shipping-notice">
+<div class="sample-shipping-notice">
   <mat-icon class="sample-shipping-notice__icon" aria-hidden="true">inventory_2</mat-icon>
 
   <div>
-    <p class="sample-shipping-notice__title">Identifique a caixa antes de despachar a amostra</p>
+    <h3 class="sample-shipping-notice__title">Identifique a caixa antes de despachar a amostra</h3>
     <p class="sample-shipping-notice__text">
       Cole do lado de fora da embalagem uma etiqueta com o código desta proposta,
       {{ proposalCode() }}, o nome da sua empresa e o contato responsável pelo envio. Amostra
@@ -11,12 +11,12 @@
     </p>
 
     @if (showsAddress()) {
-      <p class="sample-shipping-notice__address-title">Endereço para envio das amostras</p>
-      <address class="sample-shipping-notice__address">
-        @for (linha of address; track linha) {
-          <span>{{ linha }}</span>
+      <h4 class="sample-shipping-notice__address-title">Endereço para envio das amostras</h4>
+      <p class="sample-shipping-notice__address">
+        @for (linha of address; track $index) {
+          {{ linha }}@if (!$last) {<br />}
         }
-      </address>
+      </p>
     }
   </div>
-</section>
+</div>

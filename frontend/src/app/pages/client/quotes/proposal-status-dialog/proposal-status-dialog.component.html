@@ -1,5 +1,5 @@
 <app-dialog-shell
-  [title]="data.titulo"
+  [title]="data.title"
   [subtitle]="(data.protocolo ? 'PROTOCOLO: ' + data.protocolo + ' · ' : '') + 'ID: ' + data.proposalId"
 >
   <div dialog-brand class="status-dialog-brand">
@@ -63,7 +63,7 @@
       @if (data.contato) {
         <div class="status-dialog-actions__group status-dialog-actions__group--fim">
           <div class="status-dialog-contact">
-            <span class="status-dialog-contact__label" id="rotulo-do-contato">
+            <span class="status-dialog-contact__label" id="label-do-contato">
               Entrar em contato:
             </span>
             <!-- Somente leitura, e não desabilitado: desabilitado não deixa
@@ -73,7 +73,7 @@
               class="status-dialog-contact__value"
               type="text"
               readonly
-              aria-labelledby="rotulo-do-contato"
+              aria-labelledby="label-do-contato"
               [value]="data.contato"
             />
             <button
@@ -88,15 +88,9 @@
             </button>
           </div>
 
-          @if (copyState() !== 'idle') {
-            <p class="status-dialog-feedback" role="status">
-              {{
-                copyState() === 'copied'
-                  ? 'Endereço copiado.'
-                  : 'Não foi possível copiar. Selecione o endereço na caixa e copie.'
-              }}
-            </p>
-          }
+          <!-- Sempre no DOM, e vazio enquanto não há o que dizer: região viva
+               que nasce junto com o texto não é anunciada pelo leitor de tela. -->
+          <p class="status-dialog-feedback" role="status">{{ copyFeedback() }}</p>
         </div>
       }
     </div>

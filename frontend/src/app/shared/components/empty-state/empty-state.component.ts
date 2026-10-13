@@ -18,9 +18,9 @@ import { MatIconModule } from '@angular/material/icon';
         [class.text-lactec-faint]="tom() !== 'erro'"
         aria-hidden="true"
       >
-        {{ icone() }}
+        {{ icon() }}
       </mat-icon>
-      <p class="m-0 text-sm font-medium text-lactec-ink">{{ titulo() }}</p>
+      <p class="m-0 text-sm font-medium text-lactec-ink">{{ title() }}</p>
       @if (descricao()) {
         <p class="m-0 max-w-prose text-sm text-lactec-muted">{{ descricao() }}</p>
       }
@@ -30,8 +30,8 @@ import { MatIconModule } from '@angular/material/icon';
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class EmptyStateComponent {
-  readonly titulo = input.required<string>();
+  readonly title = input.required<string>();
   readonly descricao = input<string>();
-  readonly icone = input('inbox');
+  readonly icon = input('inbox');
   readonly tom = input<'neutro' | 'erro'>('neutro');
 }

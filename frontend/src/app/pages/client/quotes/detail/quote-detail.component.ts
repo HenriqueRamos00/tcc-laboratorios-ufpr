@@ -9,14 +9,14 @@ import { EmptyStateComponent } from '@shared/components/empty-state/empty-state.
 import { PageHeaderComponent } from '@shared/components/page-header/page-header.component';
 import { SampleShippingNoticeComponent } from '@shared/components/sample-shipping-notice/sample-shipping-notice.component';
 
-import type { FormaDeAprovacao } from '@/app/model/acceptance';
+import type { ApprovalMethod } from '@/app/model/acceptance';
 import {
-  ehTerminal,
-  indiceDaEtapa,
-  type SituacaoDaSolicitacao,
+  isClosed,
+  stageIndex,
+  type RequestStatus,
 } from '@/app/model/analysis-pipeline';
 import type { Quote } from '@/app/model/quote';
-import { recognizeStage } from '@/app/model/quote-presentation';
+import { hasProposal, recognizeStage } from '@/app/model/quote-presentation';
 import { AppDialogService } from '@/app/services/app-dialog.service';
 import { LoginService } from '@/app/services/login.service';
 import { QuoteDecisionService } from '@/app/services/quote-decision.service';
@@ -45,7 +45,7 @@ const SUBTITLE: Record<PendingAction, string> = {
   follow: 'Acompanhe a situação desta proposta.',
 };
 
-function saudacaoDoDia(agora = new Date()): string {
+function greetingForNow(agora = new Date()): string {
   const hora = agora.getHours();
   if (hora < 12) return 'Bom dia';
   if (hora < 18) return 'Boa tarde';
@@ -53,7 +53,7 @@ function saudacaoDoDia(agora = new Date()): string {
 }
 
 @Component({
-  selector: 'app-orcamento-detalhe',
+  selector: 'app-quote-detalhe',
   standalone: true,
   imports: [
     MatIconModule,
@@ -68,53 +68,64 @@ export class QuoteDetailComponent {
   readonly id = input.required<string>();
 
   private readonly quotes = inject(QuotesService);
-  private readonly decisao = inject(QuoteDecisionService);
+  private readonly decisions = inject(QuoteDecisionService);
   private readonly dialogs = inject(AppDialogService);
   private readonly loginService = inject(LoginService);
   private readonly snackBar = inject(MatSnackBar);
   private readonly router = inject(Router);
   private readonly destroyRef = inject(DestroyRef);
 
-  protected readonly orcamento = signal<Quote | null>(null);
-  protected readonly falhou = signal(false);
-  protected readonly enviando = signal(false);
+  protected readonly quote = signal<Quote | null>(null);
+  protected readonly loadFailed = signal(false);
+  protected readonly sending = signal(false);
 
   // Um computed aqui ficaria cacheado: a hora não é signal.
-  protected readonly saudacao = saudacaoDoDia();
+  protected readonly greeting = greetingForNow();
 
-  protected readonly primeiroNome = computed(
+  protected readonly firstName = computed(
     () => this.loginService.currentUser()?.split(/\s+/)[0] ?? 'Cliente',
   );
 
   protected readonly total = computed(() => {
-    const valor = this.orcamento()?.totalPrice;
+    const valor = this.quote()?.totalPrice;
     return typeof valor === 'number' ? BRL.format(valor) : '—';
   });
 
   // A decisão tomada nesta sessão vale mais que a etapa que veio na carga da
   // tela: o Salesforce ainda não sabe do aceite que acabou de acontecer aqui.
-  protected readonly stage = computed<SituacaoDaSolicitacao | null>(() => {
-    const decidido = this.decisao.decisoes().get(this.id());
-    if (decidido) return decidido.situacao;
+  protected readonly stage = computed<RequestStatus | null>(() => {
+    const decidido = this.decisions.decisions().get(this.id());
+    if (decidido) return decidido.status;
 
-    const quote = this.orcamento();
+    const quote = this.quote();
     return quote ? recognizeStage(quote.stage) : null;
   });
 
   protected readonly pendingAction = computed<PendingAction>(() => {
     const stage = this.stage();
-    if (!stage || ehTerminal(stage)) return 'follow';
+    if (!stage || isClosed(stage) || !hasProposal(stage)) return 'follow';
     if (stage === 'aprovado-pelo-cliente') return 'confirm-shipment';
-    return indiceDaEtapa(stage) < indiceDaEtapa('aprovado-pelo-cliente') ? 'decide' : 'follow';
+    return stageIndex(stage) < stageIndex('aprovado-pelo-cliente') ? 'decide' : 'follow';
   });
 
   protected readonly subtitle = computed(() => SUBTITLE[this.pendingAction()]);
 
+  // Array literal no template cria identidade nova a cada ciclo e suja o
+  // PageHeader, que é OnPush, sem nada ter mudado.
+  protected readonly breadcrumbs = computed(() => [
+    { label: 'Orçamentos', route: '/cliente/quotes' },
+    { label: this.quote()?.code ?? this.id() },
+  ]);
+
   protected readonly followMessage = computed(() => {
     const stage = this.stage();
-    return stage && ehTerminal(stage)
-      ? 'Esta proposta foi encerrada e não avança mais na linha de etapas.'
-      : 'Não há nada pendente de sua parte neste orçamento.';
+    if (stage && isClosed(stage)) {
+      return 'Esta proposta foi encerrada e não avança mais na linha de etapas.';
+    }
+    if (stage && !hasProposal(stage)) {
+      return 'Esta proposta ainda está sendo escrita pela área responsável.';
+    }
+    return 'Não há nada pendente de sua parte neste orçamento.';
   });
 
   constructor() {
@@ -123,25 +134,25 @@ export class QuoteDetailComponent {
     toObservable(this.id)
       .pipe(
         tap(() => {
-          this.orcamento.set(null);
-          this.falhou.set(false);
+          this.quote.set(null);
+          this.loadFailed.set(false);
         }),
         switchMap((id) =>
           this.quotes.getQuoteById(id).pipe(
             catchError(() => {
-              this.falhou.set(true);
+              this.loadFailed.set(true);
               return EMPTY;
             }),
           ),
         ),
         takeUntilDestroyed(),
       )
-      .subscribe((quote) => this.orcamento.set(quote));
+      .subscribe((quote) => this.quote.set(quote));
   }
 
   protected aceitar(): void {
     this.dialogs
-      .open<ApproveQuoteDialogComponent, undefined, FormaDeAprovacao>(
+      .open<ApproveQuoteDialogComponent, undefined, ApprovalMethod>(
         ApproveQuoteDialogComponent,
         undefined,
         'Como deseja aprovar o orçamento',
@@ -150,67 +161,67 @@ export class QuoteDetailComponent {
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe((forma) => {
         if (forma === 'termo-de-aceite') {
-          void this.router.navigate(['/cliente/orcamentos', this.id(), 'aceite']);
+          void this.router.navigate(['/cliente/quotes', this.id(), 'aceite']);
         } else if (forma === 'ordem-de-compra') {
-          this.anexarOrdemDeCompra();
+          this.attachPurchaseOrder();
         }
       });
   }
 
-  protected confirmarEnvioDaAmostra(): void {
-    this.enviando.set(true);
-    this.decisao
-      .confirmarEnvioDaAmostra(this.id())
+  protected confirmSampleShipment(): void {
+    this.sending.set(true);
+    this.decisions
+      .confirmSampleShipment(this.id())
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe({
         next: () => {
-          this.enviando.set(false);
-          this.avisar('Envio da amostra confirmado');
-          void this.router.navigate(['/cliente/orcamentos']);
+          this.sending.set(false);
+          this.notify('Envio da amostra confirmado');
+          void this.router.navigate(['/cliente/quotes']);
         },
         error: () => {
-          this.enviando.set(false);
-          this.avisar('Não foi possível confirmar o envio da amostra no momento');
+          this.sending.set(false);
+          this.notify('Não foi possível confirmar o envio da amostra no momento');
         },
       });
   }
 
   protected recusar(): void {
-    const dados: RejectQuoteDialogData = {
-      nomeDaProposta: this.orcamento()?.name ?? this.id(),
+    const data: RejectQuoteDialogData = {
+      proposalName: this.quote()?.name ?? this.id(),
     };
     // O nome acessível é a mesma frase que a tela mostra; um rótulo paralelo
     // faz o leitor de tela anunciar coisa diferente do que está escrito.
-    const rotulo = `Deseja realmente recusar o orçamento "${dados.nomeDaProposta}"?`;
+    const label = `Deseja realmente recusar o orçamento "${data.proposalName}"?`;
     this.dialogs
-      .open<RejectQuoteDialogComponent, RejectQuoteDialogData, { justificativa: string }>(
+      .open<RejectQuoteDialogComponent, RejectQuoteDialogData, { justification: string }>(
         RejectQuoteDialogComponent,
-        dados,
-        rotulo,
+        data,
+        label,
       )
       .afterClosed()
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe((resposta) => {
         if (!resposta) return;
-        this.enviando.set(true);
-        this.decisao
-          .recusar({ propostaId: this.id(), justificativa: resposta.justificativa })
+        this.sending.set(true);
+        this.decisions
+          .recusar({ proposalId: this.id(), justification: resposta.justification })
           .pipe(takeUntilDestroyed(this.destroyRef))
           .subscribe({
             next: () => {
-              this.enviando.set(false);
-              this.avisar('Orçamento recusado com sucesso');
-              void this.router.navigate(['/cliente/orcamentos']);
+              this.sending.set(false);
+              this.notify('Orçamento recusado com sucesso');
+              void this.router.navigate(['/cliente/quotes']);
             },
             error: () => {
-              this.enviando.set(false);
-              this.avisar('Não foi possível recusar o orçamento no momento');
+              this.sending.set(false);
+              this.notify('Não foi possível recusar o orçamento no momento');
             },
           });
       });
   }
 
-  private anexarOrdemDeCompra(): void {
+  private attachPurchaseOrder(): void {
     this.dialogs
       .open<PurchaseOrderDialogComponent, undefined, File>(
         PurchaseOrderDialogComponent,
@@ -221,25 +232,25 @@ export class QuoteDetailComponent {
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe((arquivo) => {
         if (!arquivo) return;
-        this.enviando.set(true);
-        this.decisao
+        this.sending.set(true);
+        this.decisions
           .aceitarComOrdemDeCompra(this.id(), arquivo)
           .pipe(takeUntilDestroyed(this.destroyRef))
           .subscribe({
             next: () => {
-              this.enviando.set(false);
-              this.avisar('Aceite enviado com sucesso');
-              void this.router.navigate(['/cliente/orcamentos']);
+              this.sending.set(false);
+              this.notify('Aceite enviado com sucesso');
+              void this.router.navigate(['/cliente/quotes']);
             },
             error: () => {
-              this.enviando.set(false);
-              this.avisar('Não foi possível enviar o aceite no momento');
+              this.sending.set(false);
+              this.notify('Não foi possível enviar o aceite no momento');
             },
           });
       });
   }
 
-  private avisar(mensagem: string): void {
+  private notify(mensagem: string): void {
     this.snackBar.open(mensagem, 'Fechar', { duration: 5000 });
   }
 }

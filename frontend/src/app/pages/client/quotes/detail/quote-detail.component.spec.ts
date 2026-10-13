@@ -61,9 +61,9 @@ function montarDetalhe(nomeDaEtapa: string) {
   return { fixture, tela: fixture.nativeElement as HTMLElement, destinos };
 }
 
-function botaoCom(tela: HTMLElement, rotulo: string): HTMLButtonElement | undefined {
+function botaoCom(tela: HTMLElement, label: string): HTMLButtonElement | undefined {
   return Array.from(tela.querySelectorAll('button')).find((botao) =>
-    botao.textContent?.includes(rotulo),
+    botao.textContent?.includes(label),
   );
 }
 
@@ -87,6 +87,17 @@ describe('QuoteDetailComponent, a ação que a etapa pede', () => {
     expect(tela.textContent).toContain(LEMBRETE_DA_ETIQUETA);
   });
 
+  // Limite de baixo: nas etapas sem proposta escrita não há o que aprovar, e
+  // oferecer "Aceitar" ali contradiz a listagem, que nem mostra o orçamento.
+  it('proposta ainda não escrita não oferece decisão nenhuma', () => {
+    const { tela } = montarDetalhe('Elaborando proposta');
+
+    expect(botaoCom(tela, ACEITAR)).toBeUndefined();
+    expect(botaoCom(tela, RECUSAR)).toBeUndefined();
+    expect(botaoCom(tela, CONFIRMAR_ENVIO)).toBeUndefined();
+    expect(tela.textContent).toContain('ainda está sendo escrita');
+  });
+
   it('com a amostra já a caminho não sobra ação nenhuma na tela', () => {
     const { tela } = montarDetalhe('Aguardando entrega da amostra');
 
@@ -104,10 +115,10 @@ describe('QuoteDetailComponent, a ação que a etapa pede', () => {
     tick(500);
     fixture.detectChanges();
 
-    expect(TestBed.inject(QuoteDecisionService).decisaoDe('quote-1')?.situacao).toBe(
+    expect(TestBed.inject(QuoteDecisionService).decisionFor('quote-1')?.status).toBe(
       'aguardando-amostra',
     );
-    expect(destinos).toEqual([['/cliente/orcamentos']]);
+    expect(destinos).toEqual([['/cliente/quotes']]);
     expect(botaoCom(tela, CONFIRMAR_ENVIO)).toBeUndefined();
   }));
 });

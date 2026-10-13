@@ -281,7 +281,7 @@ export class DuvalTriangleComponent {
         classes: CLASSES_DA_ZONA[zona.code] ?? CLASSES_PADRAO,
         description: ROTULO_DA_ZONA[zona.code] ?? 'Zona sem descrição catalogada',
         label: centro,
-        caminho: vertices.map((vertice, indice) => `${indice === 0 ? 'M' : 'L'} ${vertice.x} ${vertice.y}`).join(' ') + ' Z',
+        caminho: vertices.map((vertice, index) => `${index === 0 ? 'M' : 'L'} ${vertice.x} ${vertice.y}`).join(' ') + ' Z',
       };
     }),
   );

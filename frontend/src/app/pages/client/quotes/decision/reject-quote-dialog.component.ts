@@ -5,22 +5,22 @@ import { MAT_DIALOG_DATA, MatDialogRef } from '@angular/material/dialog';
 import { DialogShellComponent } from '@shared/components/dialog-shell/dialog-shell.component';
 
 export interface RejectQuoteDialogData {
-  readonly nomeDaProposta: string;
+  readonly proposalName: string;
 }
 
-// HU-10: a justificativa é opcional e a recusa não pode ser desfeita, por isso
+// HU-10: a justification é opcional e a recusa não pode ser desfeita, por isso
 // a confirmação nomeia a proposta em vez de perguntar de forma genérica.
 @Component({
-  selector: 'app-recusar-orcamento-dialog',
+  selector: 'app-recusar-quote-dialog',
   standalone: true,
   imports: [FormsModule, DialogShellComponent],
   template: `
     <app-dialog-shell
-      [title]="'Deseja realmente recusar o orçamento &quot;' + data.nomeDaProposta + '&quot;?'"
+      [title]="'Deseja realmente recusar o orçamento &quot;' + data.proposalName + '&quot;?'"
     >
       <label class="block">
         <span class="text-sm text-lactec-ink-soft">
-          Por favor, forneça uma justificativa (opcional):
+          Por favor, forneça uma justification (opcional):
         </span>
         <textarea
           rows="4"
@@ -28,8 +28,8 @@ export interface RejectQuoteDialogData {
                  text-sm text-lactec-ink placeholder:text-lactec-muted
                  focus:border-lactec-primary focus:outline-none"
           placeholder="Justificativa..."
-          [ngModel]="justificativa()"
-          (ngModelChange)="justificativa.set($event)"
+          [ngModel]="justification()"
+          (ngModelChange)="justification.set($event)"
         ></textarea>
       </label>
 
@@ -59,10 +59,10 @@ export class RejectQuoteDialogComponent {
   protected readonly data = inject<RejectQuoteDialogData>(MAT_DIALOG_DATA);
   private readonly dialogRef = inject(MatDialogRef<RejectQuoteDialogComponent>);
 
-  protected readonly justificativa = signal('');
+  protected readonly justification = signal('');
 
   protected rejeitar(): void {
-    this.dialogRef.close({ justificativa: this.justificativa().trim() });
+    this.dialogRef.close({ justification: this.justification().trim() });
   }
 
   protected cancelar(): void {

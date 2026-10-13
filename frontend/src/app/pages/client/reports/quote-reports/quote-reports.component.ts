@@ -13,7 +13,7 @@ import { catchError, EMPTY, switchMap, tap } from 'rxjs';
 import { EmptyStateComponent } from '@shared/components/empty-state/empty-state.component';
 import {
   PageHeaderComponent,
-  type MigalhaDePao,
+  type Breadcrumb,
 } from '@shared/components/page-header/page-header.component';
 import { SearchFieldComponent } from '@shared/components/search-field/search-field.component';
 import {
@@ -21,20 +21,20 @@ import {
   type StatusStepperStep,
 } from '@shared/components/status-stepper/status-stepper.component';
 
-import { indiceDaEtapa, LINHA_DE_ETAPAS } from '@/app/model/analysis-pipeline';
+import { stageIndex, PIPELINE_STAGES } from '@/app/model/analysis-pipeline';
 import type { AnalysisConclusion } from '@/app/model/report';
 import { ReportsService } from '@/app/services/reports.service';
 
 // Esta tela é o fim da linha de um orçamento: mostra o trecho final do
 // progresso já concluído e os laudos que aquele orçamento gerou (HU-04).
-const ETAPAS: readonly StatusStepperStep[] = LINHA_DE_ETAPAS.map((etapa) => ({
-  key: etapa.chave,
-  label: etapa.rotulo,
-  icon: etapa.icone,
+const ETAPAS: readonly StatusStepperStep[] = PIPELINE_STAGES.map((stage) => ({
+  key: stage.key,
+  label: stage.label,
+  icon: stage.icon,
 }));
 
 @Component({
-  selector: 'app-client-relatorios-do-orcamento',
+  selector: 'app-client-relatorios-do-quote',
   standalone: true,
   imports: [
     MatIconModule,
@@ -52,17 +52,17 @@ export class QuoteReportsComponent {
 
   private readonly reports = inject(ReportsService);
 
-  protected readonly etapas = ETAPAS;
-  protected readonly etapaAtual = indiceDaEtapa('relatorio-publicado');
+  protected readonly stages = ETAPAS;
+  protected readonly etapaAtual = stageIndex('relatorio-publicado');
 
   protected readonly searchTerm = signal('');
   protected readonly conclusion = signal<AnalysisConclusion | null>(null);
   protected readonly loading = signal(true);
   protected readonly failed = signal(false);
 
-  protected readonly breadcrumbs = computed<readonly MigalhaDePao[]>(() => [
-    { rotulo: 'Relatórios', rota: '/cliente/relatorios' },
-    { rotulo: this.conclusion()?.quoteCode ?? 'Orçamento' },
+  protected readonly breadcrumbs = computed<readonly Breadcrumb[]>(() => [
+    { label: 'Relatórios', route: '/cliente/relatorios' },
+    { label: this.conclusion()?.quoteCode ?? 'Orçamento' },
   ]);
 
   protected readonly visibleReports = computed(() => {

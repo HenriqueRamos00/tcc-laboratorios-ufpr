@@ -3,12 +3,12 @@ import { MatDialogRef } from '@angular/material/dialog';
 
 import { DialogShellComponent } from '@shared/components/dialog-shell/dialog-shell.component';
 
-import type { FormaDeAprovacao } from '@/app/model/acceptance';
+import type { ApprovalMethod } from '@/app/model/acceptance';
 
 // Bifurcação do aceite (HU-09): o cliente pode anexar a ordem de compra que já
 // possui ou preencher o Termo de Aceite (Anexo II) pelo portal.
 @Component({
-  selector: 'app-aprovar-orcamento-dialog',
+  selector: 'app-aprovar-quote-dialog',
   standalone: true,
   imports: [DialogShellComponent],
   template: `
@@ -38,7 +38,7 @@ import type { FormaDeAprovacao } from '@/app/model/acceptance';
 export class ApproveQuoteDialogComponent {
   private readonly dialogRef = inject(MatDialogRef<ApproveQuoteDialogComponent>);
 
-  protected escolher(forma: FormaDeAprovacao): void {
+  protected escolher(forma: ApprovalMethod): void {
     this.dialogRef.close(forma);
   }
 }

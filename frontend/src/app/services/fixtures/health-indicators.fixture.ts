@@ -125,9 +125,9 @@ const COLETAS_FISICO_QUIMICO: readonly AnalysisReading[] = [
 // histórico. A tabela e o gráfico leem as mesmas coletas, senão os dois
 // divergem sem ninguém notar.
 const COLUNAS_FISICO_QUIMICO: readonly AnalysisColumn[] = COLETAS_FISICO_QUIMICO.map(
-  (coleta, indice) => ({
+  (coleta, index) => ({
     date: coleta.date,
-    isCurrentResult: indice === COLETAS_FISICO_QUIMICO.length - 1,
+    isCurrentResult: index === COLETAS_FISICO_QUIMICO.length - 1,
   }),
 );
 
@@ -141,8 +141,8 @@ const AUSENCIAS_POR_ENSAIO: Readonly<Record<string, readonly (MeasuredValue | un
 
 function valoresPorColetaDoEnsaio(key: string): readonly MeasuredValue[] {
   const ausencias = AUSENCIAS_POR_ENSAIO[key] ?? [];
-  return COLETAS_FISICO_QUIMICO.map((coleta, indice) => {
-    const ausencia = ausencias[indice];
+  return COLETAS_FISICO_QUIMICO.map((coleta, index) => {
+    const ausencia = ausencias[index];
     return ausencia !== undefined ? ausencia : (coleta.values[key] ?? null);
   });
 }

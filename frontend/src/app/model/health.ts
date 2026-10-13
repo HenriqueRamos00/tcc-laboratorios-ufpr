@@ -316,7 +316,7 @@ export interface DiagnosisBlock {
 
 /**
  * Qual análise do histórico está na tela. Vem junto dos indicadores para a
- * migalha de pão poder nomeá-la sem uma segunda requisição ao histórico.
+ * trilha de navegação poder nomeá-la sem uma segunda requisição ao histórico.
  */
 export interface SelectedAnalysis {
   readonly id: string;

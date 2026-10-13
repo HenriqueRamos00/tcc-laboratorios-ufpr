@@ -50,7 +50,11 @@ export class AppDialogService {
     return this.dialog.open<T, D, R>(component, {
       data,
       ariaLabel,
-      autoFocus: 'dialog',
+      // O foco entra pelo título do diálogo, e não no contêiner: parado no
+      // contêiner, o leitor de tela anuncia o rótulo e nada do conteúdo. Todo
+      // diálogo daqui passa pelo `app-dialog-shell`, que transforma o título em
+      // `<h2>`; shell sem título deixa o CDK sem heading para focar.
+      autoFocus: 'first-heading',
       ...(handset ? mobile : desktop),
       ...extra,
     });

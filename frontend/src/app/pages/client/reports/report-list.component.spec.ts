@@ -28,7 +28,7 @@ const TODOS_OS_LAUDOS: readonly PublishedReport[] = [
   laudo('LACTEC-00412/2026', '00412/2026'),
 ];
 
-function orcamento(id: string, code: string, stage: string): Quote {
+function quote(id: string, code: string, stage: string): Quote {
   return {
     id,
     code,
@@ -45,10 +45,10 @@ function orcamento(id: string, code: string, stage: string): Quote {
 }
 
 const ORCAMENTOS: ReadonlyArray<Quote> = [
-  orcamento('quote-15', 'EAQ_2026_45496_V_1', 'Relatório publicado'),
-  orcamento('quote-18', 'EAQ_2026_45499_V_1', 'Relatório publicado'),
-  orcamento('quote-10', 'EAQ_2026_45491_V_1', 'Em execução'),
-  orcamento('quote-16', 'EAQ_2026_45497_V_1', 'Fechado perdido'),
+  quote('quote-15', 'EAQ_2026_45496_V_1', 'Relatório publicado'),
+  quote('quote-18', 'EAQ_2026_45499_V_1', 'Relatório publicado'),
+  quote('quote-10', 'EAQ_2026_45491_V_1', 'Em execução'),
+  quote('quote-16', 'EAQ_2026_45497_V_1', 'Fechado perdido'),
 ];
 
 function montarTela() {
@@ -88,7 +88,7 @@ describe('ReportListComponent, as duas portas de entrada dos laudos', () => {
 
     abrirAba('tab-quotes');
     const exibidos = Array.from(
-      tela.querySelectorAll('#panel-quotes article .orcamento-card-field__value'),
+      tela.querySelectorAll('#panel-quotes article .quote-card-field__value'),
     )
       .map((campo) => campo.textContent?.trim())
       .filter((texto) => texto?.startsWith('EAQ_'));

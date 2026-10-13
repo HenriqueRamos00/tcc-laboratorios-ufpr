@@ -67,7 +67,7 @@ export class BarChartComponent {
     this.eixo().marcas.map((valor) => ({
       value: valor,
       y: this.posicaoY(valor),
-      rotulo: rotuloDoEixo(valor),
+      label: rotuloDoEixo(valor),
     })),
   );
 
@@ -95,9 +95,9 @@ export class BarChartComponent {
   });
 
   protected readonly leituraEmFoco = computed(() => {
-    const indice = this.indiceEmFoco();
+    const index = this.indiceEmFoco();
 
-    return indice === null ? null : (this.barras()[indice] ?? null);
+    return index === null ? null : (this.barras()[index] ?? null);
   });
 
   protected aoMoverPonteiro(evento: MouseEvent): void {
@@ -112,9 +112,9 @@ export class BarChartComponent {
 
     const dentro = ((evento.clientX - caixa.left) / caixa.width) * LARGURA;
     const passo = (LARGURA - MARGEM.esquerda - MARGEM.direita) / total;
-    const indice = Math.floor((dentro - MARGEM.esquerda) / passo);
+    const index = Math.floor((dentro - MARGEM.esquerda) / passo);
 
-    this.indiceEmFoco.set(indice >= 0 && indice < total ? indice : null);
+    this.indiceEmFoco.set(index >= 0 && index < total ? index : null);
   }
 
   protected aoSairDoGrafico(): void {

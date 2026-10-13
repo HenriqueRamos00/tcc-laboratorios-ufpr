@@ -3,7 +3,7 @@
 // listagem de orçamentos e a tela de relatórios leem a mesma situação, então
 // etapa reconhecida de um jeito numa e de outro jeito na outra seria defeito.
 
-import { ehTerminal, indiceDaEtapa, type SituacaoDaSolicitacao } from './analysis-pipeline';
+import { isClosed, stageIndex, type RequestStatus } from './analysis-pipeline';
 import type { Quote } from './quote';
 
 /** Um orçamento já resolvido para a tela: rótulo pronto, valor e data legíveis. */
@@ -15,7 +15,7 @@ export interface DisplayedQuote {
   readonly externalContact: string;
   readonly createdAt: string;
   readonly estimatedValue?: string;
-  readonly status: SituacaoDaSolicitacao;
+  readonly status: RequestStatus;
   /** Falso enquanto ninguém escreveu a proposta: não há orçamento a abrir nem a baixar. */
   readonly hasProposal: boolean;
 }
@@ -25,42 +25,42 @@ export interface StatusBadge {
   readonly badgeClass: string;
 }
 
-export const STATUS_BADGE: Record<SituacaoDaSolicitacao, StatusBadge> = {
-  qualificacao: { label: 'Qualificação', badgeClass: 'orcamento-status-pill--qualification' },
+export const STATUS_BADGE: Record<RequestStatus, StatusBadge> = {
+  qualificacao: { label: 'Qualificação', badgeClass: 'quote-status-pill--qualification' },
   'analise-da-area': {
     label: 'Em Análise pela Área',
-    badgeClass: 'orcamento-status-pill--analysis',
+    badgeClass: 'quote-status-pill--analysis',
   },
   'elaborando-proposta': {
     label: 'Elaborando Proposta',
-    badgeClass: 'orcamento-status-pill--drafting',
+    badgeClass: 'quote-status-pill--drafting',
   },
-  negociacao: { label: 'Em Negociação', badgeClass: 'orcamento-status-pill--negotiation' },
+  negociacao: { label: 'Em Negociação', badgeClass: 'quote-status-pill--negotiation' },
   'aprovado-pelo-cliente': {
     label: 'Aprovado pelo Cliente',
-    badgeClass: 'orcamento-status-pill--accepted',
+    badgeClass: 'quote-status-pill--accepted',
   },
   'aguardando-amostra': {
     label: 'Aguardando Entrega da Amostra',
-    badgeClass: 'orcamento-status-pill--awaiting-sample',
+    badgeClass: 'quote-status-pill--awaiting-sample',
   },
-  recebido: { label: 'Recebido', badgeClass: 'orcamento-status-pill--received' },
-  protocolado: { label: 'Protocolado', badgeClass: 'orcamento-status-pill--protocoled' },
-  'em-execucao': { label: 'Em Execução', badgeClass: 'orcamento-status-pill--running' },
-  incompleto: { label: 'Incompleto', badgeClass: 'orcamento-status-pill--incomplete' },
-  completo: { label: 'Completo', badgeClass: 'orcamento-status-pill--complete' },
-  validado: { label: 'Validado', badgeClass: 'orcamento-status-pill--validated' },
-  finalizado: { label: 'Finalizado', badgeClass: 'orcamento-status-pill--finalized' },
+  recebido: { label: 'Recebido', badgeClass: 'quote-status-pill--received' },
+  protocolado: { label: 'Protocolado', badgeClass: 'quote-status-pill--protocoled' },
+  'em-execucao': { label: 'Em Execução', badgeClass: 'quote-status-pill--running' },
+  incompleto: { label: 'Incompleto', badgeClass: 'quote-status-pill--incomplete' },
+  completo: { label: 'Completo', badgeClass: 'quote-status-pill--complete' },
+  validado: { label: 'Validado', badgeClass: 'quote-status-pill--validated' },
+  finalizado: { label: 'Finalizado', badgeClass: 'quote-status-pill--finalized' },
   'elaborando-relatorio': {
     label: 'Elaborando Relatório',
-    badgeClass: 'orcamento-status-pill--drafting-report',
+    badgeClass: 'quote-status-pill--drafting-report',
   },
   'relatorio-publicado': {
     label: 'Relatório Publicado',
-    badgeClass: 'orcamento-status-pill--report-published',
+    badgeClass: 'quote-status-pill--report-published',
   },
-  cancelado: { label: 'Cancelado', badgeClass: 'orcamento-status-pill--cancelled' },
-  recusado: { label: 'Recusado', badgeClass: 'orcamento-status-pill--cancelled' },
+  cancelado: { label: 'Cancelado', badgeClass: 'quote-status-pill--cancelled' },
+  recusado: { label: 'Recusado', badgeClass: 'quote-status-pill--cancelled' },
 };
 
 const FIELD_PLACEHOLDER = '—';
@@ -78,7 +78,7 @@ const DATE_FORMATTER = new Intl.DateTimeFormat('pt-BR', {
 
 // O match exato cobre os valores conhecidos do Salesforce; o regex do
 // `recognizeStage` existe para variações futuras não derrubarem a tela.
-const STAGE_BY_NAME: Record<string, SituacaoDaSolicitacao> = {
+const STAGE_BY_NAME: Record<string, RequestStatus> = {
   'qualificação': 'qualificacao',
   'em análise pela área': 'analise-da-area',
   'em revisão': 'analise-da-area',
@@ -101,7 +101,7 @@ const STAGE_BY_NAME: Record<string, SituacaoDaSolicitacao> = {
   'cancelado': 'cancelado',
 };
 
-export function recognizeStage(rawStage: string): SituacaoDaSolicitacao {
+export function recognizeStage(rawStage: string): RequestStatus {
   const stage = rawStage.trim().toLowerCase();
   const exact = STAGE_BY_NAME[stage];
   if (exact) return exact;
@@ -154,11 +154,22 @@ export function toDisplayedQuote(quote: Quote): DisplayedQuote {
 // mantém o orçamento, porque ela só fecha depois que houve proposta.
 const FIRST_STAGE_WITH_A_PROPOSAL = 'negociacao';
 
-export function hasProposal(status: SituacaoDaSolicitacao): boolean {
-  if (ehTerminal(status)) return true;
-  return indiceDaEtapa(status) >= indiceDaEtapa(FIRST_STAGE_WITH_A_PROPOSAL);
+export function hasProposal(status: RequestStatus): boolean {
+  if (isClosed(status)) return true;
+  return stageIndex(status) >= stageIndex(FIRST_STAGE_WITH_A_PROPOSAL);
 }
 
-export function badgeFor(status: SituacaoDaSolicitacao): StatusBadge {
+// A decisão tomada nesta sessão vale mais que a etapa que veio na carga: o
+// Salesforce ainda não soube do aceite nem do envio que acabaram de acontecer
+// aqui. Sem isso a listagem manda confirmar outra vez o que o cliente já fez.
+export function withSessionDecision(
+  quote: DisplayedQuote,
+  decided: RequestStatus | undefined,
+): DisplayedQuote {
+  if (!decided || decided === quote.status) return quote;
+  return { ...quote, status: decided, hasProposal: hasProposal(decided) };
+}
+
+export function badgeFor(status: RequestStatus): StatusBadge {
   return STATUS_BADGE[status];
 }

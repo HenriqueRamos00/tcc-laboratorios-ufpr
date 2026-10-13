@@ -18,7 +18,7 @@ let proximoId = 0;
   host: { class: 'block' },
   template: `
     <label class="block">
-      <span class="text-sm text-lactec-ink-soft">{{ rotulo() }}</span>
+      <span class="text-sm text-lactec-ink-soft">{{ label() }}</span>
       <input
         [type]="tipo()"
         [formControl]="controle()"
@@ -69,7 +69,7 @@ let proximoId = 0;
 })
 export class TextFieldComponent {
   readonly controle = input.required<FormControl<string>>();
-  readonly rotulo = input.required<string>();
+  readonly label = input.required<string>();
   readonly tipo = input<'text' | 'tel' | 'email' | 'date'>('text');
   readonly inputmode = input<string>();
   readonly maxlength = input<number>();

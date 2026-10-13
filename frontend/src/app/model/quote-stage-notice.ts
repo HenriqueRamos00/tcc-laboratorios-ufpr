@@ -3,10 +3,12 @@
 // significa a mesma coisa em qualquer lugar que a explique, e etapa que muda
 // de redação muda em um arquivo só.
 //
-// Etapa sem aviso aqui é etapa que a linha do stepper já explica sozinha: o
-// cliente não tem nada a fazer e nada a esperar além do andamento.
+// Etapa sem aviso é etapa que a linha do stepper já explica sozinha: o cliente
+// não tem nada a fazer e nada a esperar além do andamento. O mapa é completo
+// por construção, e `null` é a decisão explícita de não ter aviso: etapa nova
+// sem linha aqui vira erro de compilação, em vez de chegar muda à tela.
 
-import type { EtapaDaLinha } from './analysis-pipeline';
+import type { PipelineStage } from './analysis-pipeline';
 import type { ShippingGuidance } from './sample-shipping';
 
 export interface StageNotice {
@@ -20,7 +22,7 @@ export interface StageNotice {
 
 const VIEW_THE_QUOTE = 'Ver o orçamento';
 
-const NOTICE_BY_STAGE: Partial<Record<EtapaDaLinha, StageNotice>> = {
+const NOTICE_BY_STAGE: Record<PipelineStage, StageNotice | null> = {
   qualificacao: {
     title: 'Estamos procurando a área que vai analisar seu pedido',
     text:
@@ -62,7 +64,7 @@ const NOTICE_BY_STAGE: Partial<Record<EtapaDaLinha, StageNotice>> = {
     title: 'Seus ensaios foram concluídos e os dados estão em análise',
     text:
       'As análises laboratoriais da sua amostra já foram executadas e os resultados, ' +
-      'validados. Agora um de nossos pesquisadores interpreta esses dados e redige o laudo ' +
+      'validados. Agora um de nossos pesquisadores interpreta esses data e redige o laudo ' +
       'técnico. Publicado o relatório, ele fica disponível para você nesta plataforma.',
   },
   'aguardando-amostra': {
@@ -72,8 +74,16 @@ const NOTICE_BY_STAGE: Partial<Record<EtapaDaLinha, StageNotice>> = {
       'saiu identificada: a etiqueta acelera o protocolo e adianta a entrega dos seus resultados.',
     shipping: 'labeling',
   },
+  recebido: null,
+  protocolado: null,
+  'em-execucao': null,
+  incompleto: null,
+  completo: null,
+  validado: null,
+  finalizado: null,
+  'relatorio-publicado': null,
 };
 
-export function noticeFor(stage: EtapaDaLinha): StageNotice | undefined {
+export function noticeFor(stage: PipelineStage): StageNotice | null {
   return NOTICE_BY_STAGE[stage];
 }

@@ -1,5 +1,12 @@
 import { Clipboard } from '@angular/cdk/clipboard';
-import { ChangeDetectionStrategy, Component, DestroyRef, inject, signal } from '@angular/core';
+import {
+  ChangeDetectionStrategy,
+  Component,
+  computed,
+  DestroyRef,
+  inject,
+  signal,
+} from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { MatButtonModule } from '@angular/material/button';
 import { MAT_DIALOG_DATA, MatDialogRef } from '@angular/material/dialog';
@@ -23,7 +30,7 @@ export interface ProposalStatusDialogData {
   /** Identificador do orçamento no Salesforce, o que a API entende. */
   quoteId: string;
   /** Título do recorte: proposta, análise técnica das amostras ou laboratório. */
-  titulo: string;
+  title: string;
   steps: readonly StatusStepperStep[];
   currentIndex: number;
   messageTitle?: string;
@@ -42,6 +49,12 @@ export interface ProposalStatusDialogData {
 type CopyState = 'idle' | 'copied' | 'failed';
 
 const COPY_FEEDBACK_MILLISECONDS = 2000;
+
+const COPY_FEEDBACK: Record<CopyState, string> = {
+  idle: '',
+  copied: 'Endereço copiado.',
+  failed: 'Não foi possível copiar. Selecione o endereço na caixa e copie.',
+};
 
 const DOWNLOAD_FAILURE = 'O PDF desta proposta ainda não está disponível.';
 
@@ -66,22 +79,34 @@ export class ProposalStatusDialogComponent {
   private readonly destroyRef = inject(DestroyRef);
 
   protected readonly copyState = signal<CopyState>('idle');
+  protected readonly copyFeedback = computed(() => COPY_FEEDBACK[this.copyState()]);
   protected readonly downloading = signal(false);
   protected readonly downloadFailure = signal('');
+
+  private feedbackTimer?: ReturnType<typeof setTimeout>;
+
+  constructor() {
+    this.destroyRef.onDestroy(() => clearTimeout(this.feedbackTimer));
+  }
 
   confirm(): void {
     this.dialogRef.close('confirmed');
   }
 
-  // A área de transferência não existe em contexto inseguro nem em todo
-  // navegador, então o endereço continua visível e selecionável na caixa: o
-  // botão é atalho, e não o único caminho para copiar.
+  // A cópia depende do navegador aceitar o comando, e ele pode recusar, então o
+  // endereço continua visível e selecionável na caixa: o botão é atalho, e não
+  // o único caminho para copiar. O temporizador anterior é cancelado a cada
+  // clique, senão o primeiro apaga o aviso que o segundo acabou de escrever.
   protected copyContact(): void {
     const contato = this.data.contato;
     if (!contato) return;
 
     this.copyState.set(this.clipboard.copy(contato) ? 'copied' : 'failed');
-    setTimeout(() => this.copyState.set('idle'), COPY_FEEDBACK_MILLISECONDS);
+    clearTimeout(this.feedbackTimer);
+    this.feedbackTimer = setTimeout(
+      () => this.copyState.set('idle'),
+      COPY_FEEDBACK_MILLISECONDS,
+    );
   }
 
   protected downloadQuote(): void {
@@ -95,7 +120,7 @@ export class ProposalStatusDialogComponent {
         takeUntilDestroyed(this.destroyRef),
       )
       .subscribe({
-        next: (file) => handFileToTheBrowser(file, `orcamento-${this.data.proposalId}.pdf`),
+        next: (file) => handFileToTheBrowser(file, `quote-${this.data.proposalId}.pdf`),
         error: () => this.downloadFailure.set(DOWNLOAD_FAILURE),
       });
   }

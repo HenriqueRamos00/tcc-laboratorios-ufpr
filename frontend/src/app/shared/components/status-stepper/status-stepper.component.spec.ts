@@ -2,14 +2,14 @@ import { BreakpointObserver } from '@angular/cdk/layout';
 import { TestBed } from '@angular/core/testing';
 import { of } from 'rxjs';
 
-import { LINHA_DE_ETAPAS } from '@/app/model/analysis-pipeline';
+import { PIPELINE_STAGES } from '@/app/model/analysis-pipeline';
 
 import { StatusStepperComponent } from './status-stepper.component';
 
-const ETAPAS = LINHA_DE_ETAPAS.map((etapa) => ({
-  key: etapa.chave,
-  label: etapa.rotulo,
-  icon: etapa.icone,
+const ETAPAS = PIPELINE_STAGES.map((stage) => ({
+  key: stage.key,
+  label: stage.label,
+  icon: stage.icon,
 }));
 
 const VISIVEIS_NO_DESKTOP = 5;
@@ -40,23 +40,23 @@ function montarStepper(indiceAtual: number) {
 // e relatório publicado), porque aí não há cinco etapas em volta.
 describe('StatusStepperComponent, onde a etapa atual aparece', () => {
   it('mantém a etapa atual no meio da janela, menos nas duas pontas da linha', () => {
-    const posicoes = ETAPAS.map((_, indice) =>
-      montarStepper(indice).findIndex((etapa) => etapa.state === 'active'),
+    const posicoes = ETAPAS.map((_, index) =>
+      montarStepper(index).findIndex((stage) => stage.state === 'active'),
     );
 
     expect(posicoes).toEqual([0, 1, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 3, 4]);
   });
 
   it('sempre mostra cinco etapas, inclusive nas pontas', () => {
-    const quantidades = ETAPAS.map((_, indice) => montarStepper(indice).length);
+    const quantidades = ETAPAS.map((_, index) => montarStepper(index).length);
 
     expect(quantidades).toEqual(ETAPAS.map(() => VISIVEIS_NO_DESKTOP));
   });
 
   it('mostra as duas etapas anteriores e as duas seguintes ao redor da atual', () => {
-    const protocolado = ETAPAS.findIndex((etapa) => etapa.key === 'protocolado');
+    const protocolado = ETAPAS.findIndex((stage) => stage.key === 'protocolado');
 
-    const rotulos = montarStepper(protocolado).map((etapa) => etapa.label);
+    const rotulos = montarStepper(protocolado).map((stage) => stage.label);
 
     expect(rotulos).toEqual([
       'Aguardando entrega da amostra',

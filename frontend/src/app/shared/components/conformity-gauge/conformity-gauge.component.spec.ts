@@ -146,23 +146,23 @@ describe('ConformityGaugeComponent', () => {
 
   it('segura o ponteiro enquanto a largada ainda nao foi para a tela', () => {
     const raiz = montar('nao-conforme', true);
-    const grupo = grupoDoPonteiro(raiz);
+    const group = grupoDoPonteiro(raiz);
 
     TestBed.inject(ApplicationRef).tick();
     fixture.detectChanges();
 
-    expect(grupo.hasAttribute('data-entrando')).toBeTrue();
+    expect(group.hasAttribute('data-entrando')).toBeTrue();
   });
 
   it('solta o ponteiro para a faixa depois que a largada foi pintada', async () => {
     const raiz = montar('nao-conforme', true);
-    const grupo = grupoDoPonteiro(raiz);
+    const group = grupoDoPonteiro(raiz);
 
     TestBed.inject(ApplicationRef).tick();
     await doisQuadrosDeAnimacao();
     fixture.detectChanges();
 
-    expect(grupo.hasAttribute('data-entrando')).toBeFalse();
+    expect(group.hasAttribute('data-entrando')).toBeFalse();
   });
 
   it('não deixa nenhum atributo aria acompanhar a animação', async () => {

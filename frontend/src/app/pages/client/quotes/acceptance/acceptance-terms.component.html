@@ -1,12 +1,12 @@
 <app-page-header
-  titulo="Termo de Aceite"
-  subtitulo="Preencha o termo de aceite a seguir para dar andamento aos ensaios referentes a este orçamento."
-  [migalhas]="migalhas()"
+  title="Termo de Aceite"
+  subtitle="Preencha o termo de aceite a seguir para dar andamento aos ensaios referentes a este orçamento."
+  [breadcrumbs]="breadcrumbs()"
 />
 
 <form
   class="mt-6 rounded-2xl border border-lactec-line bg-lactec-paper p-6"
-  [formGroup]="formulario"
+  [formGroup]="form"
   (ngSubmit)="enviar()"
   novalidate
 >
@@ -14,9 +14,9 @@
     ANEXO II - Proposta: {{ id() }} - TERMO DE ACEITE
   </h2>
 
-  @let cobranca = formulario.controls.cobranca.controls;
-  @let envio = formulario.controls.envioDoRelatorio.controls;
-  @let aprovacao = formulario.controls.aprovacao.controls;
+  @let cobranca = form.controls.cobranca.controls;
+  @let envio = form.controls.envioDoRelatorio.controls;
+  @let aprovacao = form.controls.aprovacao.controls;
 
   <fieldset class="mt-6 border-0 p-0">
     <legend class="display mb-4 p-0 text-base font-semibold text-lactec-nav">
@@ -24,30 +24,30 @@
     </legend>
 
     <div class="grid grid-cols-1 gap-4 md:grid-cols-3">
-      <app-text-field [controle]="cobranca.empresa" rotulo="Empresa" />
-      <app-text-field [controle]="cobranca.cnpj" rotulo="CNPJ" inputmode="numeric" />
-      <app-text-field [controle]="cobranca.inscricaoEstadual" rotulo="I.E." />
+      <app-text-field [controle]="cobranca.empresa" label="Empresa" />
+      <app-text-field [controle]="cobranca.cnpj" label="CNPJ" inputmode="numeric" />
+      <app-text-field [controle]="cobranca.inscricaoEstadual" label="I.E." />
     </div>
 
-    <app-text-field class="mt-4" [controle]="cobranca.endereco" rotulo="Endereço" />
+    <app-text-field class="mt-4" [controle]="cobranca.endereco" label="Endereço" />
 
     <div class="mt-4 grid grid-cols-1 gap-4 md:grid-cols-4">
-      <app-text-field [controle]="cobranca.cidade" rotulo="Cidade" />
-      <app-text-field [controle]="cobranca.uf" rotulo="UF" [maxlength]="2" [caixaAlta]="true" />
-      <app-text-field [controle]="cobranca.bairro" rotulo="Bairro" />
-      <app-text-field [controle]="cobranca.cep" rotulo="CEP" inputmode="numeric" />
+      <app-text-field [controle]="cobranca.cidade" label="Cidade" />
+      <app-text-field [controle]="cobranca.uf" label="UF" [maxlength]="2" [caixaAlta]="true" />
+      <app-text-field [controle]="cobranca.bairro" label="Bairro" />
+      <app-text-field [controle]="cobranca.cep" label="CEP" inputmode="numeric" />
     </div>
 
     <div class="mt-4 grid grid-cols-1 gap-4 md:grid-cols-3">
-      <app-text-field [controle]="cobranca.contato" rotulo="Contato" />
-      <app-text-field [controle]="cobranca.telefone" rotulo="Telefone" tipo="tel" />
-      <app-text-field [controle]="cobranca.fax" rotulo="Fax" tipo="tel" />
+      <app-text-field [controle]="cobranca.contato" label="Contato" />
+      <app-text-field [controle]="cobranca.telefone" label="Telefone" tipo="tel" />
+      <app-text-field [controle]="cobranca.fax" label="Fax" tipo="tel" />
     </div>
 
     <app-text-field
       class="mt-4"
       [controle]="cobranca.emailsParaNotaFiscal"
-      rotulo="Endereço eletrônico para envio de NFS-e (preencher pelo menos dois endereços de e-mail):"
+      label="Endereço eletrônico para envio de NFS-e (preencher pelo menos dois endereços de e-mail):"
     />
   </fieldset>
 
@@ -62,11 +62,11 @@
     </label>
 
     <div class="grid grid-cols-1 gap-4 md:grid-cols-3">
-      <app-text-field [controle]="envio.empresa" rotulo="Empresa" />
-      <app-text-field class="md:col-span-2" [controle]="envio.endereco" rotulo="Endereço" />
-      <app-text-field [controle]="envio.cidade" rotulo="Cidade" />
-      <app-text-field [controle]="envio.uf" rotulo="UF" [maxlength]="2" [caixaAlta]="true" />
-      <app-text-field [controle]="envio.cep" rotulo="CEP" inputmode="numeric" />
+      <app-text-field [controle]="envio.empresa" label="Empresa" />
+      <app-text-field class="md:col-span-2" [controle]="envio.endereco" label="Endereço" />
+      <app-text-field [controle]="envio.cidade" label="Cidade" />
+      <app-text-field [controle]="envio.uf" label="UF" [maxlength]="2" [caixaAlta]="true" />
+      <app-text-field [controle]="envio.cep" label="CEP" inputmode="numeric" />
     </div>
   </fieldset>
 
@@ -74,14 +74,14 @@
     <legend class="display mb-4 p-0 text-base font-semibold text-lactec-nav">3. Aprovação</legend>
 
     <div class="grid grid-cols-1 gap-4 md:grid-cols-2">
-      <app-text-field [controle]="aprovacao.nomeDoSolicitante" rotulo="Nome do Solicitante" />
-      <app-text-field [controle]="aprovacao.nomeDoResponsavel" rotulo="Nome do Responsável" />
+      <app-text-field [controle]="aprovacao.nomeDoSolicitante" label="Nome do Solicitante" />
+      <app-text-field [controle]="aprovacao.nomeDoResponsavel" label="Nome do Responsável" />
     </div>
 
     <div class="mt-4 grid grid-cols-1 gap-4 md:grid-cols-3">
-      <app-text-field [controle]="aprovacao.cargo" rotulo="Cargo" />
-      <app-text-field [controle]="aprovacao.setor" rotulo="Setor" />
-      <app-text-field [controle]="aprovacao.data" rotulo="Data" tipo="date" />
+      <app-text-field [controle]="aprovacao.cargo" label="Cargo" />
+      <app-text-field [controle]="aprovacao.setor" label="Setor" />
+      <app-text-field [controle]="aprovacao.data" label="Data" tipo="date" />
     </div>
 
     <p class="mt-6 mb-0 text-sm text-lactec-ink-soft">
@@ -110,7 +110,7 @@
       <app-text-field
         class="md:w-80"
         [controle]="aprovacao.emailParaResultados"
-        rotulo="Endereço de e-mail:"
+        label="Endereço de e-mail:"
         tipo="email"
       />
     </div>
@@ -119,7 +119,7 @@
   <!-- O aceite é o momento em que o cliente decide despachar a amostra, então
        o lembrete da etiqueta fica onde ele ainda pode agir sobre a caixa. -->
   <div class="mt-8">
-    <app-sample-shipping-notice [proposalCode]="id()" />
+    <app-sample-shipping-notice [proposalCode]="id()" guidance="address-and-labeling" />
   </div>
 
   <div class="mt-6 flex justify-end">
@@ -127,7 +127,7 @@
       type="submit"
       class="rounded-lg bg-lactec-success px-6 py-3 text-sm font-semibold text-white
              hover:opacity-90 disabled:opacity-40"
-      [disabled]="enviando()"
+      [disabled]="sending()"
     >
       Enviar Aceite
     </button>

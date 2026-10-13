@@ -30,9 +30,9 @@ export const routes: Routes = [
     canActivate: [authGuard],
     data: { role: CLIENT_ROLE },
     children: [
-      { path: '', pathMatch: 'full', redirectTo: 'orcamentos' },
+      { path: '', pathMatch: 'full', redirectTo: 'quotes' },
       {
-        path: 'orcamentos',
+        path: 'quotes',
         loadComponent: () =>
           import('@/app/pages/client/quotes/quote-list.component').then(
             (modulo) => modulo.QuoteListComponent,
@@ -40,7 +40,7 @@ export const routes: Routes = [
         title: 'Orçamentos - Portal Lactec',
       },
       {
-        path: 'orcamentos/:id',
+        path: 'quotes/:id',
         loadComponent: () =>
           import('@/app/pages/client/quotes/detail/quote-detail.component').then(
             (modulo) => modulo.QuoteDetailComponent,
@@ -48,7 +48,7 @@ export const routes: Routes = [
         title: 'Detalhes do orçamento - Portal Lactec',
       },
       {
-        path: 'orcamentos/:id/aceite',
+        path: 'quotes/:id/aceite',
         loadComponent: () =>
           import('@/app/pages/client/quotes/acceptance/acceptance-terms.component').then(
             (modulo) => modulo.AcceptanceTermsComponent,

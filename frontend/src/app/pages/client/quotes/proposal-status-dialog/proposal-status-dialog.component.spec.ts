@@ -5,7 +5,8 @@ import { fakeAsync, TestBed, tick } from '@angular/core/testing';
 import { MAT_DIALOG_DATA, MatDialogRef } from '@angular/material/dialog';
 
 import { API_URL } from '@/app/environment/env';
-import { indiceDaEtapa, LINHA_DE_ETAPAS } from '@/app/model/analysis-pipeline';
+import { stageIndex, PIPELINE_STAGES } from '@/app/model/analysis-pipeline';
+import { LABORATORY_ADDRESS } from '@/app/model/sample-shipping';
 
 import {
   ProposalStatusDialogComponent,
@@ -13,32 +14,31 @@ import {
 } from './proposal-status-dialog.component';
 
 const CONTATO = 'atendimento@exemplo.com.br';
-const ENDERECO_TEMPORARIO = 'blob:orcamento-de-teste';
+const ENDERECO_TEMPORARIO = 'blob:quote-de-teste';
 
 const DADOS: ProposalStatusDialogData = {
   proposalId: 'EAQ_2026_45496_V_1',
   quoteId: 'quote-15',
-  titulo: 'Etapas da Análise Técnica das amostras',
-  steps: LINHA_DE_ETAPAS.map((etapa) => ({
-    key: etapa.chave,
-    label: etapa.rotulo,
-    icon: etapa.icone,
+  title: 'Etapas da Análise Técnica das amostras',
+  steps: PIPELINE_STAGES.map((stage) => ({
+    key: stage.key,
+    label: stage.label,
+    icon: stage.icon,
   })),
-  currentIndex: indiceDaEtapa('protocolado'),
+  currentIndex: stageIndex('protocolado'),
   hasProposal: true,
   protocolo: 'L-EAQ_2026_45496_V_1-X',
   contato: CONTATO,
 };
 
-function montarModal(dados: ProposalStatusDialogData = DADOS, copiaFunciona = true) {
+function montarModal(data: ProposalStatusDialogData = DADOS, copiaFunciona = true) {
   const copiados: string[] = [];
 
-  TestBed.resetTestingModule();
   TestBed.configureTestingModule({
     providers: [
       provideHttpClient(),
       provideHttpClientTesting(),
-      { provide: MAT_DIALOG_DATA, useValue: dados },
+      { provide: MAT_DIALOG_DATA, useValue: data },
       { provide: MatDialogRef, useValue: { close: () => {} } },
       {
         provide: Clipboard,
@@ -109,14 +109,39 @@ describe('ProposalStatusDialogComponent, contato e download', () => {
   });
 
   // O cliente lê a etapa no stepper e descobre que precisa despachar a amostra
-  // na mesma janela: a orientação de envio não pode ficar só na listagem.
-  it('mostra a orientação de envio na etapa que pede o despacho da amostra', () => {
-    const comEnvio = montarModal({ ...DADOS, shipping: 'address-and-labeling' });
-    const semEnvio = montarModal({ ...DADOS, shipping: undefined });
+  // na mesma janela: a orientação de envio não pode ficar só na listagem, e
+  // quem ainda não despachou precisa do endereço junto.
+  it('mostra o endereço de envio na etapa que pede o despacho da amostra', () => {
+    const { tela } = montarModal({ ...DADOS, shipping: 'address-and-labeling' });
 
-    expect(comEnvio.tela.querySelector('app-sample-shipping-notice')).not.toBeNull();
-    expect(semEnvio.tela.querySelector('app-sample-shipping-notice')).toBeNull();
+    for (const linha of LABORATORY_ADDRESS) {
+      expect(tela.textContent).toContain(linha);
+    }
   });
+
+  it('não mostra orientação de envio na etapa que não pede despacho', () => {
+    const { tela } = montarModal({ ...DADOS, shipping: undefined });
+
+    expect(tela.querySelector('app-sample-shipping-notice')).toBeNull();
+  });
+
+  // O temporizador do primeiro clique apagava o aviso que o segundo acabou de
+  // escrever, e o cliente via o retorno sumir em instantes.
+  it('o aviso do segundo clique não some com o temporizador do primeiro', fakeAsync(() => {
+    const { fixture, tela } = montarModal();
+    const copiar = tela.querySelector('.status-dialog-contact__copy') as HTMLButtonElement;
+
+    copiar.click();
+    tick(1900);
+    copiar.click();
+    tick(1900);
+    fixture.detectChanges();
+    expect(tela.textContent).toContain('Endereço copiado');
+
+    tick(100);
+    fixture.detectChanges();
+    expect(tela.textContent).not.toContain('Endereço copiado');
+  }));
 
   it('baixa o orçamento do modal pelo identificador do próprio orçamento', fakeAsync(() => {
     const criar = spyOn(URL, 'createObjectURL').and.returnValue(ENDERECO_TEMPORARIO);
@@ -137,7 +162,7 @@ describe('ProposalStatusDialogComponent, contato e download', () => {
     expect(criar.calls.mostRecent().args[0] instanceof Blob).toBeTrue();
     expect(clicar).toHaveBeenCalled();
     expect((clicar.calls.mostRecent().object as HTMLAnchorElement).download).toBe(
-      'orcamento-EAQ_2026_45496_V_1.pdf',
+      'quote-EAQ_2026_45496_V_1.pdf',
     );
 
     tick();

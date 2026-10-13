@@ -22,8 +22,8 @@
         type="button"
         [attr.aria-pressed]="activeFilter() === tab.value"
         (click)="setFilter(tab.value)"
-        class="orcamento-filter-tab"
-        [class.orcamento-filter-tab--active]="activeFilter() === tab.value"
+        class="quote-filter-tab"
+        [class.quote-filter-tab--active]="activeFilter() === tab.value"
       >
         {{ tab.label }}
       </button>
@@ -38,7 +38,7 @@
     <div class="md:hidden">
       <button
         type="button"
-        class="orcamento-filter-dropdown"
+        class="quote-filter-dropdown"
         [matMenuTriggerFor]="filterMenu"
         aria-haspopup="menu"
       >
@@ -71,50 +71,50 @@
     @for (quote of visible; track quote.id) {
       @let badge = badgeFor(quote.status);
 
-      <article class="orcamento-card">
-        <div class="orcamento-card-body">
-          <div class="orcamento-card-body__header">
-            <div class="orcamento-card-field">
-              <span class="orcamento-card-field__label">ID da Proposta</span>
-              <span class="orcamento-card-field__value">{{ quote.code }}</span>
+      <article class="quote-card">
+        <div class="quote-card-body">
+          <div class="quote-card-body__header">
+            <div class="quote-card-field">
+              <span class="quote-card-field__label">ID da Proposta</span>
+              <span class="quote-card-field__value">{{ quote.code }}</span>
             </div>
-            <span class="orcamento-status-pill" [ngClass]="badge.badgeClass">
+            <span class="quote-status-pill" [ngClass]="badge.badgeClass">
               {{ badge.label }}
             </span>
           </div>
 
-          <div class="orcamento-card-body__content">
-            <div class="orcamento-card-field">
-              <span class="orcamento-card-field__label">Empresa</span>
-              <span class="orcamento-card-field__value">{{ quote.company }}</span>
+          <div class="quote-card-body__content">
+            <div class="quote-card-field">
+              <span class="quote-card-field__label">Empresa</span>
+              <span class="quote-card-field__value">{{ quote.company }}</span>
             </div>
 
-            <div class="orcamento-card-field">
-              <span class="orcamento-card-field__label">Nome da Proposta</span>
-              <span class="orcamento-card-field__value">{{ quote.proposalName }}</span>
+            <div class="quote-card-field">
+              <span class="quote-card-field__label">Nome da Proposta</span>
+              <span class="quote-card-field__value">{{ quote.proposalName }}</span>
             </div>
-            <div class="orcamento-card-field">
-              <span class="orcamento-card-field__label">Contato Externo</span>
-              <span class="orcamento-card-field__value">{{ quote.externalContact }}</span>
+            <div class="quote-card-field">
+              <span class="quote-card-field__label">Contato Externo</span>
+              <span class="quote-card-field__value">{{ quote.externalContact }}</span>
             </div>
 
-            <div class="orcamento-card-field">
-              <span class="orcamento-card-field__label">Data de Criação</span>
-              <span class="orcamento-card-field__value">{{ quote.createdAt }}</span>
+            <div class="quote-card-field">
+              <span class="quote-card-field__label">Data de Criação</span>
+              <span class="quote-card-field__value">{{ quote.createdAt }}</span>
             </div>
             @if (quote.estimatedValue) {
-              <div class="orcamento-card-field">
-                <span class="orcamento-card-field__label">Valor Estimado</span>
-                <span class="orcamento-card-field__value">{{ quote.estimatedValue }}</span>
+              <div class="quote-card-field">
+                <span class="quote-card-field__label">Valor Estimado</span>
+                <span class="quote-card-field__value">{{ quote.estimatedValue }}</span>
               </div>
             }
           </div>
 
-          <div class="orcamento-card-body__footer">
+          <div class="quote-card-body__footer">
             <button
               mat-flat-button
               type="button"
-              class="orcamento-card-action"
+              class="quote-card-action"
               (click)="checkStatus(quote)"
             >
               Verificar Status
@@ -125,8 +125,8 @@
             @if (quote.hasProposal) {
               <a
                 mat-flat-button
-                class="orcamento-card-action"
-                [routerLink]="['/cliente/orcamentos', quote.id]"
+                class="quote-card-action"
+                [routerLink]="['/cliente/quotes', quote.id]"
               >
                 Visualizar Orçamento
               </a>

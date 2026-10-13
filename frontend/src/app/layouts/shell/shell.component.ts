@@ -64,7 +64,7 @@ export class ShellComponent {
   readonly collapsed = signal(loadCollapsed());
 
   readonly nav: readonly NavItem[] = [
-    { label: 'Orçamentos', path: '/cliente/orcamentos', icon: 'description', exact: false },
+    { label: 'Orçamentos', path: '/cliente/quotes', icon: 'description', exact: false },
     { label: 'Relatórios', path: '/cliente/relatorios', icon: 'science', exact: false },
     { label: 'Equipamentos', path: '/cliente/equipamentos', icon: 'settings', exact: false },
   ];
