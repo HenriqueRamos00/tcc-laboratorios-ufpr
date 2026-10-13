@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="utf-8"?>
+<com.google.android.material.card.MaterialCardView xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:layout_marginBottom="12dp"
+    app:cardBackgroundColor="@color/lactec_paper"
+    app:cardCornerRadius="6dp"
+    app:cardElevation="0dp"
+    app:strokeColor="@color/lactec_line"
+    app:strokeWidth="1dp">
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:padding="14dp">
+        <TextView android:layout_width="match_parent" android:layout_height="wrap_content" android:text="@string/equipment_serial_number" android:textColor="@color/lactec_muted" android:textSize="13sp" />
+        <TextView android:id="@+id/serialNumber" android:layout_width="match_parent" android:layout_height="wrap_content" android:textColor="@color/lactec_ink" android:textSize="13sp" android:textStyle="bold" />
+        <TextView android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="8dp" android:text="@string/equipment_tag" android:textColor="@color/lactec_muted" android:textSize="13sp" />
+        <TextView android:id="@+id/tag" android:layout_width="match_parent" android:layout_height="wrap_content" android:textColor="@color/lactec_ink" android:textSize="13sp" android:textStyle="bold" />
+        <TextView android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="8dp" android:text="@string/equipment_type" android:textColor="@color/lactec_muted" android:textSize="13sp" />
+        <TextView android:id="@+id/equipmentType" android:layout_width="match_parent" android:layout_height="wrap_content" android:textColor="@color/lactec_ink" android:textSize="13sp" android:textStyle="bold" />
+        <TextView android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="8dp" android:text="@string/equipment_location" android:textColor="@color/lactec_muted" android:textSize="13sp" />
+        <TextView android:id="@+id/location" android:layout_width="match_parent" android:layout_height="wrap_content" android:textColor="@color/lactec_ink" android:textSize="13sp" android:textStyle="bold" />
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/viewEquipment"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_gravity="end"
+            android:layout_marginTop="8dp"
+            android:minWidth="48dp"
+            android:minHeight="48dp"
+            android:text="@string/equipment_view"
+            android:textAllCaps="false"
+            android:textColor="@color/white"
+            app:backgroundTint="@color/lactec_primary"
+            app:cornerRadius="6dp" />
+    </LinearLayout>
+</com.google.android.material.card.MaterialCardView>
