@@ -1,87 +1,194 @@
-@if (conclusao(); as dados) {
-  <app-page-header
-    titulo="Conclusão da Análise"
-    [subtitulo]="'ID do Protocolo: ' + dados.protocolo"
-  />
+<app-page-header
+  title="Relatórios"
+  subtitle="Busque entre todos os laudos publicados ou entre pelo orçamento que os gerou."
+/>
 
-  <section class="mt-6 rounded-2xl border border-lactec-line bg-lactec-paper p-6">
-    <h2 class="sr-only">Progresso da solicitação</h2>
-    <app-status-stepper [steps]="etapas" [currentIndex]="etapaAtual" />
-  </section>
+<!-- Todas as abas ficam alcançáveis pelo Tab: o índice móvel do padrão ARIA
+     exige navegação por setas, e sem ela a aba inativa some do teclado. -->
+<div class="mt-4 border-b border-lactec-line" role="tablist" aria-label="Como encontrar o laudo">
+  <button
+    type="button"
+    role="tab"
+    id="tab-reports"
+    aria-controls="panel-reports"
+    [attr.aria-selected]="activeTab() === 'reports'"
+    class="px-4 py-3 text-sm"
+    [class.font-semibold]="activeTab() === 'reports'"
+    [class.text-lactec-ink]="activeTab() === 'reports'"
+    [class.text-lactec-muted]="activeTab() !== 'reports'"
+    (click)="selectTab('reports')"
+  >
+    Todos os Relatórios
+  </button>
+  <button
+    type="button"
+    role="tab"
+    id="tab-quotes"
+    aria-controls="panel-quotes"
+    [attr.aria-selected]="activeTab() === 'quotes'"
+    class="px-4 py-3 text-sm"
+    [class.font-semibold]="activeTab() === 'quotes'"
+    [class.text-lactec-ink]="activeTab() === 'quotes'"
+    [class.text-lactec-muted]="activeTab() !== 'quotes'"
+    (click)="selectTab('quotes')"
+  >
+    Orçamentos com Relatório
+  </button>
+</div>
 
-  <section class="mt-4 flex items-start gap-3 rounded-2xl bg-lactec-line-soft px-5 py-4">
-    <mat-icon class="shrink-0 text-lactec-nav" aria-hidden="true">description</mat-icon>
-    <div class="min-w-0">
-      <h2 class="m-0 text-sm font-semibold text-lactec-ink">{{ dados.tipoDeEnsaio }}</h2>
-      <p class="mt-1 mb-0 text-sm text-lactec-ink-soft">{{ dados.resumo }}</p>
-    </div>
-  </section>
+@if (activeTab() === 'reports') {
+  <section id="panel-reports" role="tabpanel" aria-labelledby="tab-reports" tabindex="0">
+    <h2 class="sr-only">Todos os laudos publicados</h2>
 
-  <app-search-field
-    class="mt-4"
-    placeholder="Buscar por ID do relatório"
-    rotulo="Buscar por ID do relatório"
-    [(termo)]="termoDeBusca"
-  />
-
-  @if (visiveis().length) {
-    <div class="mt-4 overflow-hidden rounded-2xl border border-lactec-line bg-lactec-paper">
-      <div class="overflow-x-auto">
-        <table class="w-full border-collapse text-sm">
-          <caption class="sr-only">
-            Relatórios publicados desta solicitação, com protocolo, amostra, laboratório e data.
-          </caption>
-          <thead>
-            <tr class="bg-lactec-line-soft text-left">
-              <th scope="col" class="px-4 py-3 font-semibold text-lactec-ink">Relatório</th>
-              <th scope="col" class="px-4 py-3 font-semibold text-lactec-ink">Protocolo</th>
-              <th scope="col" class="px-4 py-3 font-semibold text-lactec-ink">Amostra</th>
-              <th scope="col" class="px-4 py-3 font-semibold text-lactec-ink">Laboratório</th>
-              <th scope="col" class="px-4 py-3 font-semibold text-lactec-ink">Publicação</th>
-              <th scope="col" class="px-4 py-3 text-right font-semibold text-lactec-ink">
-                Download
-              </th>
-            </tr>
-          </thead>
-          <tbody>
-            @for (relatorio of visiveis(); track relatorio.id) {
-              <tr class="border-t border-lactec-line-soft">
-                <td class="px-4 py-3 text-lactec-ink">{{ relatorio.codigo }}</td>
-                <td class="px-4 py-3 text-lactec-ink">{{ relatorio.protocolo }}</td>
-                <td class="px-4 py-3 text-lactec-ink">{{ relatorio.amostra }}</td>
-                <td class="px-4 py-3 text-lactec-ink">{{ relatorio.laboratorio }}</td>
-                <td class="px-4 py-3 text-lactec-ink">{{ relatorio.publicadoEm }}</td>
-                <td class="px-4 py-3 text-right">
-                  <button
-                    type="button"
-                    class="inline-flex h-10 w-10 items-center justify-center rounded-lg
-                           bg-lactec-nav text-lactec-on-primary hover:bg-lactec-nav-dark"
-                    [attr.aria-label]="'Baixar o relatório ' + relatorio.codigo"
-                  >
-                    <mat-icon aria-hidden="true">download</mat-icon>
-                  </button>
-                </td>
-              </tr>
-            }
-          </tbody>
-        </table>
-      </div>
-    </div>
-  } @else {
-    <app-empty-state
+    <app-search-field
       class="mt-4"
-      icone="search_off"
-      titulo="Nenhum relatório encontrado"
-      descricao="Revise o ID informado na busca."
+      placeholder="Buscar por ID do relatório"
+      label="Buscar por ID do relatório"
+      [(termo)]="reportSearch"
     />
-  }
-} @else if (falhou()) {
-  <app-empty-state
-    tom="erro"
-    icone="cloud_off"
-    titulo="Não foi possível carregar os relatórios no momento"
-    descricao="A consulta ao AutoLAB falhou. Tente novamente em instantes."
-  />
+
+    @if (reportsFailed()) {
+      <app-empty-state
+        class="mt-4"
+        tom="erro"
+        icon="cloud_off"
+        title="Não foi possível carregar os relatórios no momento"
+        descricao="A consulta ao AutoLAB loadFailed. Tente novamente em instantes."
+      />
+    } @else if (reports() === null) {
+      <p class="mt-4 text-sm text-lactec-muted" role="status">Carregando relatórios…</p>
+    } @else if (visibleReports().length) {
+      <div class="mt-4 overflow-hidden rounded-2xl border border-lactec-line bg-lactec-paper">
+        <div class="overflow-x-auto">
+          <table class="w-full border-collapse text-sm">
+            <caption class="sr-only">
+              Laudos publicados, com protocolo, amostra, laboratório e data de publicação.
+            </caption>
+            <thead>
+              <tr class="bg-lactec-line-soft text-left">
+                <th scope="col" class="px-4 py-3 font-semibold text-lactec-ink">Relatório</th>
+                <th scope="col" class="px-4 py-3 font-semibold text-lactec-ink">Protocolo</th>
+                <th scope="col" class="px-4 py-3 font-semibold text-lactec-ink">Amostra</th>
+                <th scope="col" class="px-4 py-3 font-semibold text-lactec-ink">Laboratório</th>
+                <th scope="col" class="px-4 py-3 font-semibold text-lactec-ink">Publicação</th>
+                <th scope="col" class="px-4 py-3 text-right font-semibold text-lactec-ink">
+                  Download
+                </th>
+              </tr>
+            </thead>
+            <tbody>
+              @for (report of visibleReports(); track report.id) {
+                <tr class="border-t border-lactec-line-soft">
+                  <td class="px-4 py-3 text-lactec-ink">{{ report.code }}</td>
+                  <td class="px-4 py-3 text-lactec-ink">{{ report.protocol }}</td>
+                  <td class="px-4 py-3 text-lactec-ink">{{ report.sample }}</td>
+                  <td class="px-4 py-3 text-lactec-ink">{{ report.laboratory }}</td>
+                  <td class="px-4 py-3 text-lactec-ink">{{ report.publishedOn }}</td>
+                  <td class="px-4 py-3 text-right">
+                    <button
+                      type="button"
+                      class="inline-flex h-10 w-10 items-center justify-center rounded-lg
+                             bg-lactec-nav text-lactec-on-primary hover:bg-lactec-nav-dark"
+                      [attr.aria-label]="'Baixar o relatório ' + report.code"
+                    >
+                      <mat-icon aria-hidden="true">download</mat-icon>
+                    </button>
+                  </td>
+                </tr>
+              }
+            </tbody>
+          </table>
+        </div>
+      </div>
+    } @else {
+      <app-empty-state
+        class="mt-4"
+        icon="search_off"
+        title="Nenhum relatório encontrado"
+        descricao="Revise o ID informado na busca."
+      />
+    }
+  </section>
 } @else {
-  <p class="text-sm text-lactec-muted" role="status">Carregando relatórios…</p>
+  <section id="panel-quotes" role="tabpanel" aria-labelledby="tab-quotes" tabindex="0">
+    <h2 class="sr-only">Orçamentos com relatório publicado</h2>
+
+    <app-search-field
+      class="mt-4"
+      placeholder="Buscar por ID da proposta, nome ou empresa"
+      label="Buscar por ID da proposta, nome ou empresa"
+      [(termo)]="quoteSearch"
+    />
+
+    @if (quotesFailed()) {
+      <app-empty-state
+        class="mt-4"
+        tom="erro"
+        icon="cloud_off"
+        title="Não foi possível carregar os orçamentos no momento"
+        descricao="A consulta ao Salesforce loadFailed. Tente novamente em instantes."
+      />
+    } @else if (quotesWithReport() === null) {
+      <p class="mt-4 text-sm text-lactec-muted" role="status">Carregando orçamentos…</p>
+    } @else if (visibleQuotes().length) {
+      <div class="mt-4 flex flex-col gap-4 md:gap-5">
+        @for (quote of visibleQuotes(); track quote.id) {
+          @let badge = badgeFor(quote.status);
+
+          <article class="quote-card">
+            <div class="quote-card-body">
+              <div class="quote-card-body__header">
+                <div class="quote-card-field">
+                  <span class="quote-card-field__label">ID da Proposta</span>
+                  <span class="quote-card-field__value">{{ quote.code }}</span>
+                </div>
+                <span class="quote-status-pill" [ngClass]="badge.badgeClass">
+                  {{ badge.label }}
+                </span>
+              </div>
+
+              <div class="quote-card-body__content">
+                <div class="quote-card-field">
+                  <span class="quote-card-field__label">Empresa</span>
+                  <span class="quote-card-field__value">{{ quote.company }}</span>
+                </div>
+                <div class="quote-card-field">
+                  <span class="quote-card-field__label">Nome da Proposta</span>
+                  <span class="quote-card-field__value">{{ quote.proposalName }}</span>
+                </div>
+                <div class="quote-card-field">
+                  <span class="quote-card-field__label">Contato Externo</span>
+                  <span class="quote-card-field__value">{{ quote.externalContact }}</span>
+                </div>
+                <div class="quote-card-field">
+                  <span class="quote-card-field__label">Data de Criação</span>
+                  <span class="quote-card-field__value">{{ quote.createdAt }}</span>
+                </div>
+              </div>
+
+              <div class="quote-card-body__footer">
+                <a
+                  class="inline-flex items-center justify-center gap-2 rounded-lg
+                         bg-lactec-primary px-4 py-2 text-sm font-semibold
+                         text-lactec-on-primary hover:bg-lactec-primary-dark"
+                  [routerLink]="['/cliente/relatorios', quote.id]"
+                  [attr.aria-label]="'Ver relatórios do orçamento ' + quote.code"
+                >
+                  Ver Relatórios
+                  <mat-icon class="icone-16" aria-hidden="true">arrow_forward</mat-icon>
+                </a>
+              </div>
+            </div>
+          </article>
+        }
+      </div>
+    } @else {
+      <app-empty-state
+        class="mt-4"
+        icon="search_off"
+        title="Nenhum orçamento com relatório publicado"
+        descricao="Quando um laudo for publicado, o orçamento dele aparece aqui."
+      />
+    }
+  </section>
 }

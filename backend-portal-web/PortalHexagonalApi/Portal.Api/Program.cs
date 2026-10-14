@@ -44,7 +44,12 @@ builder.Services.AddScoped<IQuoteUseCase, QuoteService>();
 builder.Services.AddScoped<IForConsultingLabResults, LabResultsConsultation>();
 
 builder.Services.AddScoped<IQuoteRepository, FakeSalesforceQuoteRepository>();
-builder.Services.AddScoped<IQuoteDocumentRepository, LocalQuoteDocumentRepository>();
+// A proposta escrita a mao continua valendo; o orcamento sem arquivo recebe a pagina
+// gerada a partir dele mesmo, para o botao de baixar nunca cair no vazio na demonstracao.
+builder.Services.AddScoped<IQuoteDocumentRepository>(services =>
+    new GeneratedQuoteDocumentRepository(
+        services.GetRequiredService<IQuoteRepository>(),
+        new LocalQuoteDocumentRepository()));
 builder.Services.AddLabTestRepository(builder.Configuration);
 builder.Services.AddSingleton(
     builder.Configuration.GetSection(SalesforceOptions.SectionName).Get<SalesforceOptions>() ?? new SalesforceOptions());

@@ -29,10 +29,25 @@ export class QuotesService {
     );
   }
 
+  /**
+   * GET /api/quotes/{id}/document
+   *
+   * Devolve os bytes da proposta, e não o endereço dela: o arquivo fica atrás
+   * do token do portal, então quem baixa é o cliente HTTP, não a barra de
+   * endereços do navegador. Aqui não há massa de demonstração: proposta sem
+   * PDF publicado tem que falhar, para a tela dizer isso ao cliente em vez de
+   * salvar um arquivo que não é o orçamento dele.
+   */
+  quoteDocument(id: string): Observable<Blob> {
+    return this.http.get(`${this.baseUrl}/${encodeURIComponent(id)}/document`, {
+      responseType: 'blob',
+    });
+  }
+
   getQuoteById(id: string): Observable<Quote> {
     return this.http.get<Quote>(`${this.baseUrl}/${encodeURIComponent(id)}`).pipe(
       catchError((erro) => {
-        const daDemonstracao = DEMONSTRATION_QUOTES.find((orcamento) => orcamento.id === id);
+        const daDemonstracao = DEMONSTRATION_QUOTES.find((quote) => quote.id === id);
         if (!CAI_PARA_DEMONSTRACAO_SEM_API || !daDemonstracao) return throwError(() => erro);
         console.warn('[portal] API indisponível; exibindo a massa de demonstração.', erro);
         return of(daDemonstracao);

@@ -167,12 +167,12 @@ export class LineChartComponent {
       const quantidade = Number.isFinite(decadas) ? Math.min(Math.max(decadas, 1), 9) + 1 : 2;
       return Array.from({ length: quantidade }, (_, passo) => {
         const value = Math.pow(10, de + passo);
-        return { value, y: this.posicaoY(value), rotulo: this.rotuloLog(de + passo) };
+        return { value, y: this.posicaoY(value), label: this.rotuloLog(de + passo) };
       });
     }
     const marcas = this.limites().marcas ?? [];
 
-    return marcas.map((value) => ({ value, y: this.posicaoY(value), rotulo: rotuloDoEixo(value) }));
+    return marcas.map((value) => ({ value, y: this.posicaoY(value), label: rotuloDoEixo(value) }));
   });
 
   /**
@@ -185,15 +185,15 @@ export class LineChartComponent {
   protected readonly marcasDoEixoX = computed(() => {
     const rotulos = this.xAxisLabels();
 
-    return rotulos.map((rotulo, indice) => ({
-      rotulo,
-      x: this.posicaoX(indice),
-      ancora: indice === 0 ? 'start' : indice === rotulos.length - 1 ? 'end' : 'middle',
+    return rotulos.map((label, index) => ({
+      label,
+      x: this.posicaoX(index),
+      ancora: index === 0 ? 'start' : index === rotulos.length - 1 ? 'end' : 'middle',
     }));
   });
 
   protected readonly seriesDesenhadas = computed<readonly SerieDesenhada[]>(() =>
-    this.series().map((serie, indice) => {
+    this.series().map((serie, index) => {
       const pontos: PontoDesenhado[] = [];
       const trechos: string[] = [];
       let abrindoTrecho = true;
@@ -213,10 +213,10 @@ export class LineChartComponent {
         key: serie.key,
         name: serie.name,
         classes: PALETA[serie.palettePosition % PALETA.length],
-        forma: FORMAS[Math.floor(indice / PALETA.length) % FORMAS.length],
+        forma: FORMAS[Math.floor(index / PALETA.length) % FORMAS.length],
         // A partir da nona série a cor se repete; o traço passa a tracejado
         // para que a identidade continue distinguível sem inventar matiz nova.
-        tracejada: indice >= PALETA.length,
+        tracejada: index >= PALETA.length,
         caminho: trechos.join(' '),
         pontos,
       };
@@ -224,16 +224,16 @@ export class LineChartComponent {
   );
 
   protected readonly leituraEmFoco = computed(() => {
-    const indice = this.indiceEmFoco();
-    if (indice === null) return null;
+    const index = this.indiceEmFoco();
+    if (index === null) return null;
     return {
-      x: this.posicaoX(indice),
-      rotulo: this.xAxisLabels()[indice],
+      x: this.posicaoX(index),
+      label: this.xAxisLabels()[index],
       values: this.series().map((serie, ordem) => ({
         name: serie.name,
         classes: PALETA[serie.palettePosition % PALETA.length],
         forma: FORMAS[Math.floor(ordem / PALETA.length) % FORMAS.length],
-        value: serie.values[indice],
+        value: serie.values[index],
       })),
     };
   });
@@ -250,8 +250,8 @@ export class LineChartComponent {
       return;
     }
     const passo = (this.LARGURA() - MARGEM.esquerda - MARGEM.direita) / (total - 1);
-    const indice = Math.round((dentro - MARGEM.esquerda) / passo);
-    this.indiceEmFoco.set(Math.min(Math.max(indice, 0), total - 1));
+    const index = Math.round((dentro - MARGEM.esquerda) / passo);
+    this.indiceEmFoco.set(Math.min(Math.max(index, 0), total - 1));
   }
 
   protected aoSairDoGrafico(): void {
@@ -278,11 +278,11 @@ export class LineChartComponent {
     return Number.isInteger(value) ? String(value) : value.toLocaleString('pt-BR');
   }
 
-  private posicaoX(indice: number): number {
+  private posicaoX(index: number): number {
     const total = this.xAxisLabels().length;
     const util = this.LARGURA() - MARGEM.esquerda - MARGEM.direita;
     if (total < 2) return MARGEM.esquerda + util / 2;
-    return MARGEM.esquerda + (util * indice) / (total - 1);
+    return MARGEM.esquerda + (util * index) / (total - 1);
   }
 
   private posicaoY(value: number): number {

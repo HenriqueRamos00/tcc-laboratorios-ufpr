@@ -100,10 +100,10 @@ describe('HealthIndicatorsComponent, tabela físico-química', () => {
 
   it('cobre com o grupo Histórico exatamente as coletas anteriores à atual', () => {
     const raiz = raizDe(indicadoresCom(['2021-04-20', '2022-05-20', '2025-10-26'], [25, 32, 38]));
-    const grupo = raiz.querySelector('thead th[colspan]') as HTMLElement;
+    const group = raiz.querySelector('thead th[colspan]') as HTMLElement;
 
-    expect(grupo.textContent?.trim()).toBe('Histórico de resultados');
-    expect(grupo.getAttribute('colspan')).toBe('2');
+    expect(group.textContent?.trim()).toBe('Histórico de resultados');
+    expect(group.getAttribute('colspan')).toBe('2');
     expect(celulasDaPrimeiraLinha(raiz)).toContain('25');
     expect(celulasDaPrimeiraLinha(raiz)).toContain('32');
   });

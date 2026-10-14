@@ -1,11 +1,11 @@
 <app-dialog-shell
-  [title]="data.titulo"
-  [subtitle]="(data.protocolo ? 'PROTOCOL: ' + data.protocolo + ' · ' : '') + 'ID: ' + data.proposalId"
+  [title]="data.title"
+  [subtitle]="(data.protocolo ? 'PROTOCOLO: ' + data.protocolo + ' · ' : '') + 'ID: ' + data.proposalId"
 >
   <div dialog-brand class="status-dialog-brand">
     <span class="status-dialog-brand__lactec">LACTEC</span>
     <span class="status-dialog-brand__sep">|</span>
-    <span class="status-dialog-brand__lab">CONTROL LAB</span>
+    <span class="status-dialog-brand__lab">LABORATÓRIOS</span>
   </div>
 
   <app-status-stepper [steps]="data.steps" [currentIndex]="data.currentIndex" />
@@ -22,6 +22,10 @@
     </div>
   }
 
+  @if (data.shipping) {
+    <app-sample-shipping-notice [proposalCode]="data.proposalId" [guidance]="data.shipping" />
+  }
+
   @if (data.callToAction) {
     <button
       mat-flat-button
@@ -34,11 +38,62 @@
     </button>
   }
 
-  @if (data.contato) {
-    <p class="status-dialog-contact">
-      Entrar em contato:
-      <a [href]="'mailto:' + data.contato">{{ data.contato }}</a>
-    </p>
+  @if (data.hasProposal || data.contato) {
+    <div class="status-dialog-actions">
+      @if (data.hasProposal) {
+        <div class="status-dialog-actions__group">
+          <button
+            type="button"
+            class="status-dialog-download"
+            [disabled]="downloading()"
+            (click)="downloadQuote()"
+          >
+            <mat-icon class="icone-20" aria-hidden="true">download</mat-icon>
+            <span>{{ downloading() ? 'Baixando…' : 'Baixar Orçamento (PDF)' }}</span>
+          </button>
+
+          @if (downloadFailure()) {
+            <p class="status-dialog-feedback status-dialog-feedback--erro" role="alert">
+              {{ downloadFailure() }}
+            </p>
+          }
+        </div>
+      }
+
+      @if (data.contato) {
+        <div class="status-dialog-actions__group status-dialog-actions__group--fim">
+          <div class="status-dialog-contact">
+            <span class="status-dialog-contact__label" id="label-do-contato">
+              Entrar em contato:
+            </span>
+            <!-- Somente leitura, e não desabilitado: desabilitado não deixa
+                 selecionar o texto, que é justamente o que o cliente precisa
+                 fazer quando a cópia automática não está disponível. -->
+            <input
+              class="status-dialog-contact__value"
+              type="text"
+              readonly
+              aria-labelledby="label-do-contato"
+              [value]="data.contato"
+            />
+            <button
+              type="button"
+              class="status-dialog-contact__copy"
+              [attr.aria-label]="'Copiar o endereço ' + data.contato"
+              (click)="copyContact()"
+            >
+              <mat-icon class="icone-20" aria-hidden="true">
+                {{ copyState() === 'copied' ? 'check' : 'content_copy' }}
+              </mat-icon>
+            </button>
+          </div>
+
+          <!-- Sempre no DOM, e vazio enquanto não há o que dizer: região viva
+               que nasce junto com o texto não é anunciada pelo leitor de tela. -->
+          <p class="status-dialog-feedback" role="status">{{ copyFeedback() }}</p>
+        </div>
+      }
+    </div>
   }
 
   <small dialog-footer class="status-dialog-protocol">PROTOCOLO SEGURO LACTEC 2026</small>

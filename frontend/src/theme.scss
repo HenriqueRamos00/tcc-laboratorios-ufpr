@@ -126,7 +126,7 @@ html {
 }
 
 // Botão compacto dos cards de orçamento.
-.orcamento-card-action {
+.quote-card-action {
   @include mat.button-overrides(
     (
       filled-container-height: 32px,

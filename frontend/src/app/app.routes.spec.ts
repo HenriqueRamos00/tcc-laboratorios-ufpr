@@ -11,6 +11,7 @@ import { CLIENT_ROLE } from '@/app/model/roles';
 import { HEALTH_INDICATORS } from '@/app/services/fixtures/health-indicators.fixture';
 import { LS_TOKEN } from '@/app/services/login.service';
 import { HealthService } from '@/app/services/health.service';
+import { ReportsService } from '@/app/services/reports.service';
 
 import { routes } from './app.routes';
 
@@ -22,9 +23,11 @@ import { routes } from './app.routes';
 // de string: só a navegação de verdade prova.
 describe('Rotas da área do cliente, ligação dos parâmetros', () => {
   const pedidos: Array<{ equipmentId: string; reportId?: string }> = [];
+  const orcamentosPedidos: string[] = [];
 
   beforeEach(() => {
     pedidos.length = 0;
+    orcamentosPedidos.length = 0;
     // A área do cliente é guardada: sem sessão o roteador desvia para o login e
     // a navegação nunca chega ao componente que está sendo medido. O papel entra
     // por substituição e não por localStorage, porque o estado inicial do store é
@@ -38,6 +41,15 @@ describe('Rotas da área do cliente, ligação dos parâmetros', () => {
         {
           provide: UserRole,
           useValue: { role: () => CLIENT_ROLE, dashboardPath: () => '/cliente', clear: () => {} },
+        },
+        {
+          provide: ReportsService,
+          useValue: {
+            analysisConclusion: (quoteId: string) => {
+              orcamentosPedidos.push(quoteId);
+              return of(null);
+            },
+          },
         },
         {
           provide: HealthService,
@@ -69,5 +81,12 @@ describe('Rotas da área do cliente, ligação dos parâmetros', () => {
     await harness.navigateByUrl('/cliente/equipamentos/MTExLjU5NC8x/indicadores');
 
     expect(pedidos.at(-1)).toEqual({ equipmentId: 'MTExLjU5NC8x', reportId: undefined });
+  });
+
+  it('entrega à tela de relatórios o orçamento que o endereço nomeia', async () => {
+    const harness = await RouterTestingHarness.create();
+    await harness.navigateByUrl('/cliente/relatorios/quote-15');
+
+    expect(orcamentosPedidos.at(-1)).toBe('quote-15');
   });
 });

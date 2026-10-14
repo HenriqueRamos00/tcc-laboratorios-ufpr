@@ -1,9 +1,9 @@
 @if (equipment(); as data) {
   <app-page-header
-    titulo="Detalhes do Equipamento"
-    [migalhas]="[
-      { rotulo: 'Listagem de Equipamentos', rota: '/cliente/equipamentos' },
-      { rotulo: data.tag },
+    title="Detalhes do Equipamento"
+    [breadcrumbs]="[
+      { label: 'Listagem de Equipamentos', route: '/cliente/equipamentos' },
+      { label: data.tag },
     ]"
   >
     <a
@@ -123,17 +123,17 @@
     } @else {
       <app-empty-state
         class="mt-4"
-        icone="science"
-        titulo="Não há histórico de análises disponível para este equipamento"
+        icon="science"
+        title="Não há histórico de análises disponível para este equipamento"
       />
     }
   </section>
 } @else if (failed()) {
   <app-empty-state
     tom="erro"
-    icone="cloud_off"
-    titulo="Não foi possível carregar o equipamento no momento"
-    descricao="A consulta ao AutoLAB falhou. Tente novamente em instantes."
+    icon="cloud_off"
+    title="Não foi possível carregar o equipamento no momento"
+    descricao="A consulta ao AutoLAB loadFailed. Tente novamente em instantes."
   />
 } @else {
   <p class="text-sm text-lactec-muted" role="status">Carregando equipamento…</p>

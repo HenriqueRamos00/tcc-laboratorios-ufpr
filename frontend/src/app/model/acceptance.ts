@@ -25,8 +25,8 @@ export interface AprovacaoDoAceite {
   emailParaResultados: string;
 }
 
-export interface TermoDeAceite {
-  readonly propostaId: string;
+export interface AcceptanceTerms {
+  readonly proposalId: string;
   readonly cobranca: EnderecoDoAceite;
   readonly envioDoRelatorio: EnderecoDoAceite;
   readonly mesmoEnderecoDaCobranca: boolean;
@@ -34,11 +34,11 @@ export interface TermoDeAceite {
 }
 
 /** Como o cliente autoriza a execução: ordem de compra ou termo preenchido. */
-export type FormaDeAprovacao = 'ordem-de-compra' | 'termo-de-aceite';
+export type ApprovalMethod = 'ordem-de-compra' | 'termo-de-aceite';
 
-export interface RecusaDeOrcamento {
-  readonly propostaId: string;
-  readonly justificativa: string;
+export interface QuoteRejection {
+  readonly proposalId: string;
+  readonly justification: string;
 }
 
 export function enderecoVazio(): EnderecoDoAceite {

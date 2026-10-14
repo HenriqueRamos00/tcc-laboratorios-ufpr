@@ -30,9 +30,9 @@ export const routes: Routes = [
     canActivate: [authGuard],
     data: { role: CLIENT_ROLE },
     children: [
-      { path: '', pathMatch: 'full', redirectTo: 'orcamentos' },
+      { path: '', pathMatch: 'full', redirectTo: 'quotes' },
       {
-        path: 'orcamentos',
+        path: 'quotes',
         loadComponent: () =>
           import('@/app/pages/client/quotes/quote-list.component').then(
             (modulo) => modulo.QuoteListComponent,
@@ -40,7 +40,7 @@ export const routes: Routes = [
         title: 'Orçamentos - Portal Lactec',
       },
       {
-        path: 'orcamentos/:id',
+        path: 'quotes/:id',
         loadComponent: () =>
           import('@/app/pages/client/quotes/detail/quote-detail.component').then(
             (modulo) => modulo.QuoteDetailComponent,
@@ -48,7 +48,7 @@ export const routes: Routes = [
         title: 'Detalhes do orçamento - Portal Lactec',
       },
       {
-        path: 'orcamentos/:id/aceite',
+        path: 'quotes/:id/aceite',
         loadComponent: () =>
           import('@/app/pages/client/quotes/acceptance/acceptance-terms.component').then(
             (modulo) => modulo.AcceptanceTermsComponent,
@@ -62,6 +62,17 @@ export const routes: Routes = [
             (modulo) => modulo.ReportListComponent,
           ),
         title: 'Relatórios - Portal Lactec',
+      },
+      // Os laudos de um orçamento só. O nome do segmento tem que ser igual ao
+      // nome do input do componente: `withComponentInputBinding` casa os dois
+      // pela chave, e nome diferente não é erro, é um input que nunca recebe nada.
+      {
+        path: 'relatorios/:quoteId',
+        loadComponent: () =>
+          import('@/app/pages/client/reports/quote-reports/quote-reports.component').then(
+            (modulo) => modulo.QuoteReportsComponent,
+          ),
+        title: 'Relatórios do orçamento - Portal Lactec',
       },
       {
         path: 'equipamentos',

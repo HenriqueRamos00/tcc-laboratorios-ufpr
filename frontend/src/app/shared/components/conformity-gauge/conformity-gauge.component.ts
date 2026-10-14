@@ -221,10 +221,10 @@ export class ConformityGaugeComponent {
   private readonly chegouAoDestino = signal(false);
 
   protected readonly arcos = computed<readonly Arco[]>(() =>
-    CONFORMITY_RANGES.map((faixa, indice) => ({
+    CONFORMITY_RANGES.map((faixa, index) => ({
       key: faixa.key,
       classeDePreenchimento: CLASSE_DE_PREENCHIMENTO_DA_FAIXA[faixa.key],
-      caminho: caminhoDoArcoDaFaixa(indice),
+      caminho: caminhoDoArcoDaFaixa(index),
     })),
   );
 

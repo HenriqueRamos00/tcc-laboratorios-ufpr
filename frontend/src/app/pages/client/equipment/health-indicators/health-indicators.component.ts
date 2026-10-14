@@ -14,7 +14,7 @@ import {
 } from '@shared/components/line-chart/line-chart.component';
 import {
   PageHeaderComponent,
-  type MigalhaDePao,
+  type Breadcrumb,
 } from '@shared/components/page-header/page-header.component';
 import { ConformityBannerComponent } from '@shared/components/conformity-banner/conformity-banner.component';
 
@@ -124,7 +124,7 @@ export class HealthIndicatorsComponent {
               ? ok(data)
               : empty,
           ),
-          catchError(() => of(failure('A consulta ao AutoLAB falhou. Tente novamente em instantes.'))),
+          catchError(() => of(failure('A consulta ao AutoLAB loadFailed. Tente novamente em instantes.'))),
           startWith(loading),
         ),
       ),
@@ -139,18 +139,18 @@ export class HealthIndicatorsComponent {
     return state.kind === 'ok' ? state.data : null;
   });
 
-  protected readonly breadcrumbs = computed<readonly MigalhaDePao[]>(() => {
+  protected readonly breadcrumbs = computed<readonly Breadcrumb[]>(() => {
     const data = this.data();
     if (!data) return [];
     const detail = `/cliente/equipamentos/${data.equipmentId}`;
-    const trail: MigalhaDePao[] = [
-      { rotulo: 'Listagem de Equipamentos', rota: '/cliente/equipamentos' },
-      { rotulo: data.tag, rota: detail },
-      { rotulo: 'Indicadores de Saúde', rota: `${detail}/indicadores` },
+    const trail: Breadcrumb[] = [
+      { label: 'Listagem de Equipamentos', route: '/cliente/equipamentos' },
+      { label: data.tag, route: detail },
+      { label: 'Indicadores de Saúde', route: `${detail}/indicadores` },
     ];
     const analysis = data.selectedAnalysis;
     if (!analysis) return trail;
-    return [...trail, { rotulo: `${analysis.label} ${readableDate(analysis.date)}` }];
+    return [...trail, { label: `${analysis.label} ${readableDate(analysis.date)}` }];
   });
 
   protected readonly errorReason = computed(() => {

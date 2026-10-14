@@ -27,7 +27,7 @@
           class="fill-lactec-muted"
           font-size="11"
         >
-          {{ marca.rotulo }}
+          {{ marca.label }}
         </text>
       }
 
@@ -39,7 +39,7 @@
           class="fill-lactec-muted"
           font-size="11"
         >
-          {{ marca.rotulo }}
+          {{ marca.label }}
         </text>
       }
 
@@ -116,7 +116,7 @@
         [style.left.%]="(foco.x / LARGURA()) * 100 > 60 ? null : (foco.x / LARGURA()) * 100 + 2"
         [style.right.%]="(foco.x / LARGURA()) * 100 > 60 ? 100 - (foco.x / LARGURA()) * 100 + 2 : null"
       >
-        <p class="m-0 mb-1 text-xs font-semibold text-lactec-ink">{{ foco.rotulo }}</p>
+        <p class="m-0 mb-1 text-xs font-semibold text-lactec-ink">{{ foco.label }}</p>
         <!-- Duas colunas só quando há entrada suficiente para preencher as duas. Com uma
              série, `sm:grid-cols-2` fixo criava uma segunda coluna vazia e a caixa saía com
              o dobro da largura necessária, com um vão branco do lado do valor. -->

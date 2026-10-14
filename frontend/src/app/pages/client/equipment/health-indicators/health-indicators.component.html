@@ -2,8 +2,8 @@
 @case ('ok') {
 @if (data(); as data) {
   <app-page-header
-    [titulo]="'Indicadores de Saúde do Transformador - ' + data.tag"
-    [migalhas]="breadcrumbs()"
+    [title]="'Indicadores de Saúde do Transformador - ' + data.tag"
+    [breadcrumbs]="breadcrumbs()"
   >
     <div acoes class="flex flex-col items-end gap-1">
       <span class="text-xs text-lactec-muted">Baixar relatório</span>
@@ -330,15 +330,15 @@
 @case ('failure') {
   <app-empty-state
     tom="erro"
-    icone="cloud_off"
-    titulo="Não foi possível carregar os indicadores no momento"
+    icon="cloud_off"
+    title="Não foi possível carregar os indicadores no momento"
     [descricao]="errorReason()"
   />
 }
 @case ('empty') {
   <app-empty-state
-    icone="science"
-    titulo="Nenhum ensaio registrado para este equipamento"
+    icon="science"
+    title="Nenhum ensaio registrado para este equipamento"
     descricao="Assim que o laboratório lançar a primeira análise, ela aparece aqui."
   />
 }

@@ -1,4 +1,4 @@
-@let visible = visibleOrcamentos();
+@let visible = visibleQuotes();
 
 <section class="flex flex-col gap-6 md:gap-8">
   <header class="flex flex-col gap-1">
@@ -22,8 +22,8 @@
         type="button"
         [attr.aria-pressed]="activeFilter() === tab.value"
         (click)="setFilter(tab.value)"
-        class="orcamento-filter-tab"
-        [class.orcamento-filter-tab--active]="activeFilter() === tab.value"
+        class="quote-filter-tab"
+        [class.quote-filter-tab--active]="activeFilter() === tab.value"
       >
         {{ tab.label }}
       </button>
@@ -38,7 +38,7 @@
     <div class="md:hidden">
       <button
         type="button"
-        class="orcamento-filter-dropdown"
+        class="quote-filter-dropdown"
         [matMenuTriggerFor]="filterMenu"
         aria-haspopup="menu"
       >
@@ -68,86 +68,71 @@
   </div>
 
   <div class="flex flex-col gap-4 md:gap-5">
-    @for (orcamento of visible; track orcamento.id) {
-      @let badge = badgeFor(orcamento.status);
+    @for (quote of visible; track quote.id) {
+      @let badge = badgeFor(quote.status);
 
-      <article class="orcamento-card">
-        <div class="orcamento-card-body">
-          <div class="orcamento-card-body__header">
-            <div class="orcamento-card-field">
-              <span class="orcamento-card-field__label">ID da Proposta</span>
-              <span class="orcamento-card-field__value">{{ orcamento.code }}</span>
+      <article class="quote-card">
+        <div class="quote-card-body">
+          <div class="quote-card-body__header">
+            <div class="quote-card-field">
+              <span class="quote-card-field__label">ID da Proposta</span>
+              <span class="quote-card-field__value">{{ quote.code }}</span>
             </div>
-            <span class="orcamento-status-pill" [ngClass]="badge.badgeClass">
+            <span class="quote-status-pill" [ngClass]="badge.badgeClass">
               {{ badge.label }}
             </span>
           </div>
 
-          <div class="orcamento-card-body__content">
-            <div class="orcamento-card-field">
-              <span class="orcamento-card-field__label">Empresa</span>
-              <span class="orcamento-card-field__value">{{ orcamento.company }}</span>
+          <div class="quote-card-body__content">
+            <div class="quote-card-field">
+              <span class="quote-card-field__label">Empresa</span>
+              <span class="quote-card-field__value">{{ quote.company }}</span>
             </div>
 
-            <div class="orcamento-card-field">
-              <span class="orcamento-card-field__label">Nome da Proposta</span>
-              <span class="orcamento-card-field__value">{{ orcamento.proposalName }}</span>
+            <div class="quote-card-field">
+              <span class="quote-card-field__label">Nome da Proposta</span>
+              <span class="quote-card-field__value">{{ quote.proposalName }}</span>
             </div>
-            <div class="orcamento-card-field">
-              <span class="orcamento-card-field__label">Contato Externo</span>
-              <span class="orcamento-card-field__value">{{ orcamento.externalContact }}</span>
+            <div class="quote-card-field">
+              <span class="quote-card-field__label">Contato Externo</span>
+              <span class="quote-card-field__value">{{ quote.externalContact }}</span>
             </div>
 
-            <div class="orcamento-card-field">
-              <span class="orcamento-card-field__label">Data de Criação</span>
-              <span class="orcamento-card-field__value">{{ orcamento.createdAt }}</span>
+            <div class="quote-card-field">
+              <span class="quote-card-field__label">Data de Criação</span>
+              <span class="quote-card-field__value">{{ quote.createdAt }}</span>
             </div>
-            @if (orcamento.estimatedValue) {
-              <div class="orcamento-card-field">
-                <span class="orcamento-card-field__label">Valor Estimado</span>
-                <span class="orcamento-card-field__value">{{ orcamento.estimatedValue }}</span>
+            @if (quote.estimatedValue) {
+              <div class="quote-card-field">
+                <span class="quote-card-field__label">Valor Estimado</span>
+                <span class="quote-card-field__value">{{ quote.estimatedValue }}</span>
               </div>
             }
           </div>
 
-          <div class="orcamento-card-body__footer">
+          <div class="quote-card-body__footer">
             <button
               mat-flat-button
               type="button"
-              class="orcamento-card-action"
-              (click)="openStatusDialog(orcamento)"
+              class="quote-card-action"
+              (click)="checkStatus(quote)"
             >
               Verificar Status
             </button>
-            @if (orcamento.estimatedValue) {
+            <!-- Nas três primeiras etapas ainda não existe proposta escrita: o
+                 que há para mostrar é a situação, e um link para o orçamento
+                 levaria a uma tela sem orçamento nenhum. -->
+            @if (quote.hasProposal) {
               <a
                 mat-flat-button
-                class="orcamento-card-action"
-                [routerLink]="['/cliente/orcamentos', orcamento.id]"
+                class="quote-card-action"
+                [routerLink]="['/cliente/quotes', quote.id]"
               >
                 Visualizar Orçamento
               </a>
             }
           </div>
         </div>
-
-        @if (orcamento.pendingReview; as review) {
-          <div class="orcamento-card-review">
-            <mat-icon class="orcamento-card-review__icon" aria-hidden="true">info</mat-icon>
-            <div class="flex flex-col gap-2 flex-1">
-              <div
-                class="flex flex-col gap-1 md:flex-row md:items-center md:justify-between md:gap-6"
-              >
-                <span class="orcamento-card-review__title">Aguardando sua revisão</span>
-                <span class="orcamento-card-review__deadline">Prazo: {{ review.deadline }}</span>
-              </div>
-              <p class="orcamento-card-review__message">{{ review.message }}</p>
-              @if (review.reminder) {
-                <p class="orcamento-card-review__message">{{ review.reminder }}</p>
-              }
-            </div>
-          </div>
-        }
       </article>
     } @empty {
       @if (loadError()) {

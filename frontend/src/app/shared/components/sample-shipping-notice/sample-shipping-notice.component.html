@@ -1,0 +1,22 @@
+<div class="sample-shipping-notice">
+  <mat-icon class="sample-shipping-notice__icon" aria-hidden="true">inventory_2</mat-icon>
+
+  <div>
+    <h3 class="sample-shipping-notice__title">Identifique a caixa antes de despachar a amostra</h3>
+    <p class="sample-shipping-notice__text">
+      Cole do lado de fora da embalagem uma etiqueta com o código desta proposta,
+      {{ proposalCode() }}, o nome da sua empresa e o contato responsável pelo envio. Amostra
+      identificada é reconhecida assim que chega: o protocolo sai mais rápido, a análise começa
+      antes e seus resultados chegam a você mais cedo.
+    </p>
+
+    @if (showsAddress()) {
+      <h4 class="sample-shipping-notice__address-title">Endereço para envio das amostras</h4>
+      <p class="sample-shipping-notice__address">
+        @for (linha of address; track $index) {
+          {{ linha }}@if (!$last) {<br />}
+        }
+      </p>
+    }
+  </div>
+</div>

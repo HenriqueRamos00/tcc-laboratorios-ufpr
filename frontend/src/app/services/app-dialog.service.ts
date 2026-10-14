@@ -38,8 +38,11 @@ export class AppDialogService {
       exitAnimationDuration: '0ms',
     };
 
+    // O modal de status leva, lado a lado, o botão de baixar a proposta e a
+    // caixa de contato com o endereço inteiro à vista; em 560px os dois não
+    // cabiam na mesma linha e a caixa descia sozinha para o rodapé.
     const desktop: MatDialogConfig<D> = {
-      width: '560px',
+      width: '700px',
       maxWidth: '92vw',
       panelClass: 'lactec-dialog-desktop',
     };
@@ -47,7 +50,11 @@ export class AppDialogService {
     return this.dialog.open<T, D, R>(component, {
       data,
       ariaLabel,
-      autoFocus: 'dialog',
+      // O foco entra pelo título do diálogo, e não no contêiner: parado no
+      // contêiner, o leitor de tela anuncia o rótulo e nada do conteúdo. Todo
+      // diálogo daqui passa pelo `app-dialog-shell`, que transforma o título em
+      // `<h2>`; shell sem título deixa o CDK sem heading para focar.
+      autoFocus: 'first-heading',
       ...(handset ? mobile : desktop),
       ...extra,
     });

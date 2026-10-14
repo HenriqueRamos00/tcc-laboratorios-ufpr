@@ -32,8 +32,8 @@ export interface PentagonGasReading {
   readonly text: string;
 }
 
-function vertice(indice: number, raio: number): { x: number; y: number } {
-  const angulo = (Math.PI * 2 * indice) / 5 - Math.PI / 2;
+function vertice(index: number, raio: number): { x: number; y: number } {
+  const angulo = (Math.PI * 2 * index) / 5 - Math.PI / 2;
 
   return { x: CENTRO + raio * Math.cos(angulo), y: CENTRO + raio * Math.sin(angulo) };
 }
@@ -76,8 +76,8 @@ function vertice(indice: number, raio: number): { x: number; y: number } {
           <path [attr.d]="setor.divisoria" class="fill-none stroke-lactec-divider" stroke-width="1" />
           <!-- pointer-events="none": sem isto, o rótulo cancela o hover do setor. -->
           <text
-            [attr.x]="setor.rotulo.x"
-            [attr.y]="setor.rotulo.y"
+            [attr.x]="setor.label.x"
+            [attr.y]="setor.label.y"
             text-anchor="middle"
             dominant-baseline="middle"
             font-size="15"
@@ -160,31 +160,31 @@ export class DuvalPentagonComponent {
 
   protected readonly contorno = computed(
     () =>
-      ZONAS.map((_, indice) => {
-        const ponta = vertice(indice, RAIO);
+      ZONAS.map((_, index) => {
+        const ponta = vertice(index, RAIO);
 
-        return `${indice === 0 ? 'M' : 'L'} ${ponta.x} ${ponta.y}`;
+        return `${index === 0 ? 'M' : 'L'} ${ponta.x} ${ponta.y}`;
       }).join(' ') + ' Z',
   );
 
   protected readonly setores = computed(() =>
-    ZONAS.map((codigo, indice) => {
-      const ponta = vertice(indice, RAIO);
-      const seguinte = vertice(indice + 1, RAIO);
+    ZONAS.map((codigo, index) => {
+      const ponta = vertice(index, RAIO);
+      const seguinte = vertice(index + 1, RAIO);
 
       return {
         codigo,
         descricao: DESCRICAO_DA_ZONA[codigo],
         fatia: `M ${CENTRO} ${CENTRO} L ${ponta.x} ${ponta.y} L ${seguinte.x} ${seguinte.y} Z`,
         divisoria: `M ${CENTRO} ${CENTRO} L ${ponta.x} ${ponta.y}`,
-        rotulo: vertice(indice + 0.5, RAIO * 0.62),
+        label: vertice(index + 0.5, RAIO * 0.62),
       };
     }),
   );
 
   /** Um eixo por gás, na ordem em que os percentuais chegam, acendido pela legenda. */
   protected readonly eixos = computed(() =>
-    this.percentages().map((item, indice) => ({ gas: item.gas, ...vertice(indice, RAIO) })),
+    this.percentages().map((item, index) => ({ gas: item.gas, ...vertice(index, RAIO) })),
   );
 
   protected readonly leitura = computed(() => ({

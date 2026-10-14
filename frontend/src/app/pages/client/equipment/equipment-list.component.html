@@ -1,9 +1,9 @@
-<app-page-header titulo="Listagem de Equipamentos" />
+<app-page-header title="Listagem de Equipamentos" />
 
 <app-search-field
   class="mt-6"
   placeholder="Buscar por Número de Série ou TAG"
-  rotulo="Buscar por número de série ou TAG"
+  label="Buscar por número de série ou TAG"
   [(termo)]="searchTerm"
 />
 
@@ -11,17 +11,17 @@
   <app-empty-state
     class="mt-6"
     tom="erro"
-    icone="cloud_off"
-    titulo="Não foi possível carregar os equipamentos no momento"
-    descricao="A consulta ao AutoLAB falhou. Tente novamente em instantes."
+    icon="cloud_off"
+    title="Não foi possível carregar os equipamentos no momento"
+    descricao="A consulta ao AutoLAB loadFailed. Tente novamente em instantes."
   />
 } @else if (loading()) {
   <p class="mt-6 text-sm text-lactec-muted" role="status">Carregando equipamentos…</p>
 } @else if (!visible().length) {
   <app-empty-state
     class="mt-6"
-    icone="search_off"
-    titulo="Nenhum equipamento encontrado"
+    icon="search_off"
+    title="Nenhum equipamento encontrado"
     descricao="Revise o número de série ou a TAG informada."
   />
 } @else {

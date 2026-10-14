@@ -20,7 +20,7 @@ import { MatIconModule } from '@angular/material/icon';
         class="h-12 w-full rounded-lg border border-lactec-line bg-lactec-paper pl-11 pr-3 text-sm
                text-lactec-ink placeholder:text-lactec-muted
                focus:border-lactec-primary focus:outline-none"
-        [attr.aria-label]="rotulo()"
+        [attr.aria-label]="label()"
         [placeholder]="placeholder()"
         [ngModel]="termo()"
         (ngModelChange)="termo.set($event)"
@@ -32,5 +32,5 @@ import { MatIconModule } from '@angular/material/icon';
 export class SearchFieldComponent {
   readonly termo = model('');
   readonly placeholder = input('Pesquisar...');
-  readonly rotulo = input('Pesquisar');
+  readonly label = input('Pesquisar');
 }
