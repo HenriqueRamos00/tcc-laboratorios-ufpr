@@ -5,6 +5,17 @@ Accept: application/json
 
 ###
 
+POST {{Portal.Api_HostAddress}}/auth/login
+Content-Type: application/json
+Accept: application/json
+
+{
+  "email": "cliente@exemplo.com",
+  "password": "senha"
+}
+
+###
+
 POST {{Portal.Api_HostAddress}}/api/salesforce/token
 Accept: application/json
 

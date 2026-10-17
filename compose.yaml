@@ -56,6 +56,8 @@ services:
     environment:
       ASPNETCORE_ENVIRONMENT: Development
       ASPNETCORE_URLS: http://+:8080
+      Portal__DataSource: ${Portal__DataSource}
+      BackendLab__BaseUrl: ${BACKEND_LAB_BASE_URL-}
     ports:
       - "${PORTAL_API_PORT:-5125}:8080"
 
