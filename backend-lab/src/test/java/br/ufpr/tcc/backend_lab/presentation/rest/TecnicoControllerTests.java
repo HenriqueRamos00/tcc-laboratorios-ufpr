@@ -42,8 +42,8 @@ class TecnicoControllerTests {
 
 	@Test
 	void exigeAdministradorNosEndpointsDeTecnicos() throws Exception {
-		Usuario admin = usuarioRepository.saveAndFlush(usuario(PerfilUsuario.ADMIN, "admin@lab.com", true));
-		Usuario tecnico = usuarioRepository.saveAndFlush(usuario(PerfilUsuario.TECNICO, "tecnico@lab.com", true));
+		Usuario admin = usuarioRepository.saveAndFlush(usuario(PerfilUsuario.ADMIN, "admin@example.test", true));
+		Usuario tecnico = usuarioRepository.saveAndFlush(usuario(PerfilUsuario.TECNICO, "tecnico@example.test", true));
 
 		mockMvc.perform(get("/api/technicians"))
 				.andExpect(status().isUnauthorized());
@@ -55,7 +55,7 @@ class TecnicoControllerTests {
 
 	@Test
 	void rejeitaTokenExpirado() throws Exception {
-		Usuario admin = usuarioRepository.saveAndFlush(usuario(PerfilUsuario.ADMIN, "admin@lab.com", true));
+		Usuario admin = usuarioRepository.saveAndFlush(usuario(PerfilUsuario.ADMIN, "admin@example.test", true));
 		String token = tokenPara(admin)
 				.expiration(Date.from(Instant.now().minusSeconds(120)))
 				.signWith(Keys.hmacShaKeyFor(jwtSecret.getBytes(StandardCharsets.UTF_8)), Jwts.SIG.HS256)
@@ -67,7 +67,7 @@ class TecnicoControllerTests {
 
 	@Test
 	void rejeitaTokenAssinadoComOutraChave() throws Exception {
-		Usuario admin = usuarioRepository.saveAndFlush(usuario(PerfilUsuario.ADMIN, "admin@lab.com", true));
+		Usuario admin = usuarioRepository.saveAndFlush(usuario(PerfilUsuario.ADMIN, "admin@example.test", true));
 		String outraChave = "outra-chave-com-pelo-menos-32-caracteres-para-testes";
 		String token = tokenPara(admin)
 				.signWith(Keys.hmacShaKeyFor(outraChave.getBytes(StandardCharsets.UTF_8)), Jwts.SIG.HS256)
@@ -79,7 +79,7 @@ class TecnicoControllerTests {
 
 	@Test
 	void rejeitaTokenComAlgoritmoDiferenteDeHs256() throws Exception {
-		Usuario admin = usuarioRepository.saveAndFlush(usuario(PerfilUsuario.ADMIN, "admin@lab.com", true));
+		Usuario admin = usuarioRepository.saveAndFlush(usuario(PerfilUsuario.ADMIN, "admin@example.test", true));
 		String token = tokenPara(admin)
 				.signWith(Keys.hmacShaKeyFor(jwtSecret.getBytes(StandardCharsets.UTF_8)), Jwts.SIG.HS384)
 				.compact();
@@ -91,8 +91,8 @@ class TecnicoControllerTests {
 	@ParameterizedTest
 	@ValueSource(strings = {"0", "\"OUTRO\""})
 	void rejeitaStatusForaDoContratoSemAlterarTecnico(String valorJson) throws Exception {
-		Usuario admin = usuarioRepository.saveAndFlush(usuario(PerfilUsuario.ADMIN, "admin@lab.com", true));
-		Usuario tecnico = usuarioRepository.saveAndFlush(usuario(PerfilUsuario.TECNICO, "tecnico@lab.com", false));
+		Usuario admin = usuarioRepository.saveAndFlush(usuario(PerfilUsuario.ADMIN, "admin@example.test", true));
+		Usuario tecnico = usuarioRepository.saveAndFlush(usuario(PerfilUsuario.TECNICO, "tecnico@example.test", false));
 		String token = bearer(jwtService.generateToken(admin));
 
 		mockMvc.perform(patch("/api/technicians/{id}/status", tecnico.getId())
@@ -108,22 +108,22 @@ class TecnicoControllerTests {
 
 	@Test
 	void validaCadastroERejeitaEmailDuplicadoSemDiferenciarMaiusculas() throws Exception {
-		Usuario admin = usuarioRepository.saveAndFlush(usuario(PerfilUsuario.ADMIN, "admin@lab.com", true));
+		Usuario admin = usuarioRepository.saveAndFlush(usuario(PerfilUsuario.ADMIN, "admin@example.test", true));
 		String token = bearer(jwtService.generateToken(admin));
 		String request = """
-				{"name":"  Maria Santos ","email":" Maria@Example.com ","unit":" DOLEO ","specialty":" Óleos ","status":"ACTIVE","password":"senha"}
+				{"name":"  Técnico C ","email":" Tecnico-c@Example.test ","unit":" UNIDADE_A ","specialty":" Óleos ","status":"ACTIVE","password":"senha"}
 				""";
 
 		mockMvc.perform(post("/api/technicians").header("Authorization", token)
 					.contentType(MediaType.APPLICATION_JSON).content(request))
 				.andExpect(status().isCreated())
-				.andExpect(jsonPath("$.name").value("Maria Santos"))
-				.andExpect(jsonPath("$.email").value("maria@example.com"))
+				.andExpect(jsonPath("$.name").value("Técnico C"))
+				.andExpect(jsonPath("$.email").value("tecnico-c@example.test"))
 				.andExpect(jsonPath("$.senhaHash").doesNotExist());
 
 		mockMvc.perform(post("/api/technicians").header("Authorization", token)
 					.contentType(MediaType.APPLICATION_JSON)
-					.content(request.replace("Maria@Example.com", "MARIA@example.com")))
+					.content(request.replace("Tecnico-c@Example.test", "TECNICO-C@example.test")))
 				.andExpect(status().isConflict())
 				.andExpect(jsonPath("$.message").exists());
 
@@ -134,7 +134,7 @@ class TecnicoControllerTests {
 
 	@Test
 	void bloqueiaTokenDeContaDesativada() throws Exception {
-		Usuario tecnico = usuarioRepository.saveAndFlush(usuario(PerfilUsuario.TECNICO, "tecnico@lab.com", true));
+		Usuario tecnico = usuarioRepository.saveAndFlush(usuario(PerfilUsuario.TECNICO, "tecnico@example.test", true));
 		String token = bearer(jwtService.generateToken(tecnico));
 
 		tecnico.setAtivo(false);
@@ -147,14 +147,14 @@ class TecnicoControllerTests {
 	@Test
 	void naoAssociaTokenAntigoAOutraContaComMesmoEmail() throws Exception {
 		Usuario administradorAnterior = usuarioRepository.saveAndFlush(
-				usuario(PerfilUsuario.ADMIN, "admin@lab.com", true)
+				usuario(PerfilUsuario.ADMIN, "admin@example.test", true)
 		);
 		String tokenAnterior = bearer(jwtService.generateToken(administradorAnterior));
 
-		administradorAnterior.setEmail("admin-renomeado@lab.com");
+		administradorAnterior.setEmail("admin-renomeado@example.test");
 		administradorAnterior.setAtivo(false);
 		usuarioRepository.saveAndFlush(administradorAnterior);
-		usuarioRepository.saveAndFlush(usuario(PerfilUsuario.ADMIN, "admin@lab.com", true));
+		usuarioRepository.saveAndFlush(usuario(PerfilUsuario.ADMIN, "admin@example.test", true));
 
 		mockMvc.perform(get("/api/technicians").header("Authorization", tokenAnterior))
 				.andExpect(status().isUnauthorized());

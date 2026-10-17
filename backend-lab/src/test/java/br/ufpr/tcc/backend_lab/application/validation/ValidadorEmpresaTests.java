@@ -40,22 +40,22 @@ class ValidadorEmpresaTests {
     @Test
     @DisplayName("normaliza CNPJ numérico sem máscara e com máscara exata")
     void normalizaFormatosCnpjAceitos() {
-        assertEquals("11222333000181", validador.normalizarCnpj("11222333000181"));
-        assertEquals("11222333000181", validador.normalizarCnpj("11.222.333/0001-81"));
+        assertEquals("00000001000136", validador.normalizarCnpj("00000001000136"));
+        assertEquals("00000001000136", validador.normalizarCnpj("00.000.001/0001-36"));
     }
 
     @Test
     @DisplayName("recusa formatos CNPJ alfanuméricos e máscaras parciais")
     void recusaFormatosCnpjNaoSuportados() {
-        assertFormatoInvalido("AB222333000181");
-        assertFormatoInvalido("11.222333/0001-81");
-        assertFormatoInvalido("11.222.333/0001/81");
+        assertFormatoInvalido("AB000001000136");
+        assertFormatoInvalido("00.000001/0001-36");
+        assertFormatoInvalido("00.000.001/0001/36");
     }
 
     @Test
     @DisplayName("recusa dígitos verificadores inválidos e sequências repetidas")
     void recusaCnpjComDigitosInvalidosOuRepetidos() {
-        assertCnpjInvalido("11222333000182");
+        assertCnpjInvalido("00000001000137");
         assertCnpjInvalido("00000000000000");
         assertCnpjInvalido("11111111111111");
     }

@@ -44,7 +44,7 @@ class LoginUseCaseTests {
 		usuarioRepository.save(usuario);
 
 		LoginResponse response = loginUseCase.execute(
-				new LoginRequest("tecnico@lab.com", "senha")
+				new LoginRequest("tecnico@example.test", "senha")
 		);
 
 		assertEquals("Bearer", response.tokenType());
@@ -66,7 +66,7 @@ class LoginUseCaseTests {
 		usuarioRepository.save(usuario);
 
 		assertThrows(CredenciaisInvalidasException.class, () -> loginUseCase.execute(
-				new LoginRequest("admin@lab.com", "senha")
+				new LoginRequest("admin@example.test", "senha")
 		));
 	}
 
@@ -77,14 +77,14 @@ class LoginUseCaseTests {
 		usuarioRepository.save(usuario);
 
 		assertThrows(CredenciaisInvalidasException.class, () -> loginUseCase.execute(
-				new LoginRequest("admin@lab.com", "errada")
+				new LoginRequest("admin@example.test", "errada")
 		));
 	}
 
 	private Usuario usuario(PerfilUsuario perfil, boolean ativo) {
 		Usuario usuario = new Usuario();
 		usuario.setNome("Usuário de Teste");
-		usuario.setEmail(perfil.name().toLowerCase() + "@lab.com");
+		usuario.setEmail(perfil.name().toLowerCase() + "@example.test");
 		usuario.setSenhaHash("hash");
 		usuario.setPerfil(perfil);
 		usuario.setAtivo(ativo);

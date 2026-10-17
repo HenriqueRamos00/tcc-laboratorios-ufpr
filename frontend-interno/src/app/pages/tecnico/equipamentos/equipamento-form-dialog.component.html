@@ -1,0 +1,126 @@
+@let controls = form.controls;
+@let serialInvalid = controls.serialNumber.touched && controls.serialNumber.invalid;
+@let tagInvalid = controls.tag.touched && controls.tag.invalid;
+@let typeInvalid = controls.type.touched && controls.type.invalid;
+@let substationInvalid = controls.substation.touched && controls.substation.invalid;
+@let voltageInvalid = controls.primaryVoltage.touched && controls.primaryVoltage.invalid;
+@let ownerInvalid = controls.companyId.touched && controls.companyId.invalid;
+@let riskInvalid = controls.riskLevel.touched && controls.riskLevel.invalid;
+
+<form class="flex h-full min-h-0 flex-col" [formGroup]="form" (ngSubmit)="save()" novalidate>
+  <app-dialog-shell [title]="isEditing ? 'Editar Equipamento' : 'Novo Equipamento'"
+    subtitle="Preencha os dados do equipamento." [lateral]="true" [closeDisabled]="saving()"
+    closeLabel="Fechar formulário de equipamento">
+    @if (serverError()) {
+      <p class="m-0 rounded-lg border border-lactec-danger-border bg-lactec-danger-bg px-4 py-3 text-sm text-lactec-danger-ink" role="alert">{{ serverError() }}</p>
+    }
+
+    <fieldset [disabled]="saving()" class="m-0 flex min-w-0 flex-col gap-5 border-0 p-0">
+      <legend class="sr-only">Dados do equipamento; todos os campos são obrigatórios</legend>
+      <div class="flex flex-col gap-2">
+        <label for="equipamento-serial" class="text-xs font-medium tracking-wide text-lactec-ink-soft">Número de Série <span class="text-lactec-danger">*</span></label>
+        <div class="input-field" [class.input-field--error]="serialInvalid">
+          <input id="equipamento-serial" formControlName="serialNumber" required class="input-field__input"
+            [attr.aria-invalid]="serialInvalid" [attr.aria-describedby]="serialInvalid ? 'equipamento-serial-error' : null" />
+        </div>
+        @if (serialInvalid) {
+          <p id="equipamento-serial-error" class="m-0 text-xs text-lactec-danger" role="alert">Informe o número de série, com até 100 caracteres.</p>
+        }
+      </div>
+
+      <div class="flex flex-col gap-2">
+        <label for="equipamento-tag" class="text-xs font-medium tracking-wide text-lactec-ink-soft">TAG <span class="text-lactec-danger">*</span></label>
+        <div class="input-field" [class.input-field--error]="tagInvalid">
+          <input id="equipamento-tag" formControlName="tag" required class="input-field__input"
+            [attr.aria-invalid]="tagInvalid" [attr.aria-describedby]="tagInvalid ? 'equipamento-tag-error' : null" />
+        </div>
+        @if (tagInvalid) {
+          <p id="equipamento-tag-error" class="m-0 text-xs text-lactec-danger" role="alert">Informe a TAG, com até 100 caracteres.</p>
+        }
+      </div>
+
+      <div class="flex flex-col gap-2">
+        <label for="equipamento-type" class="text-xs font-medium tracking-wide text-lactec-ink-soft">Tipo de Equipamento <span class="text-lactec-danger">*</span></label>
+        <div class="input-field" [class.input-field--error]="typeInvalid">
+          <select id="equipamento-type" formControlName="type" required class="input-field__input"
+            [attr.aria-invalid]="typeInvalid" [attr.aria-describedby]="typeInvalid ? 'equipamento-type-error' : null">
+            <option value="" disabled>Selecione o tipo</option>
+            @for (tipo of tipos; track tipo.value) {
+              <option [value]="tipo.value">{{ tipo.label }}</option>
+            }
+          </select>
+        </div>
+        @if (typeInvalid) {
+          <p id="equipamento-type-error" class="m-0 text-xs text-lactec-danger" role="alert">Selecione o tipo de equipamento.</p>
+        }
+      </div>
+
+      <div class="flex flex-col gap-2">
+        <label for="equipamento-substation" class="text-xs font-medium tracking-wide text-lactec-ink-soft">Subestação <span class="text-lactec-danger">*</span></label>
+        <div class="input-field" [class.input-field--error]="substationInvalid">
+          <input id="equipamento-substation" formControlName="substation" required class="input-field__input"
+            [attr.aria-invalid]="substationInvalid" [attr.aria-describedby]="substationInvalid ? 'equipamento-substation-error' : null" />
+        </div>
+        @if (substationInvalid) {
+          <p id="equipamento-substation-error" class="m-0 text-xs text-lactec-danger" role="alert">Informe a subestação, com até 150 caracteres.</p>
+        }
+      </div>
+
+      <div class="flex flex-col gap-2">
+        <label for="equipamento-voltage" class="text-xs font-medium tracking-wide text-lactec-ink-soft">Tensão Primária (kV) <span class="text-lactec-danger">*</span></label>
+        <div class="input-field" [class.input-field--error]="voltageInvalid">
+          <input id="equipamento-voltage" formControlName="primaryVoltage" inputmode="decimal" required placeholder="Ex.: 13,8"
+            class="input-field__input" [attr.aria-invalid]="voltageInvalid" [attr.aria-describedby]="voltageInvalid ? 'equipamento-voltage-error' : null" />
+        </div>
+        @if (voltageInvalid) {
+          <p id="equipamento-voltage-error" class="m-0 text-xs text-lactec-danger" role="alert">Informe uma tensão positiva, com até seis dígitos inteiros e três decimais.</p>
+        }
+      </div>
+
+      <div class="flex flex-col gap-2">
+        <label for="equipamento-owner" class="text-xs font-medium tracking-wide text-lactec-ink-soft">Proprietário <span class="text-lactec-danger">*</span></label>
+        <div class="input-field" [class.input-field--error]="ownerInvalid">
+          <select id="equipamento-owner" formControlName="companyId" required class="input-field__input"
+            [attr.aria-invalid]="ownerInvalid" [attr.aria-describedby]="ownerInvalid ? 'equipamento-owner-error' : null">
+            <option value="" disabled>Selecione a empresa</option>
+            @for (empresa of companyOptions(); track empresa.id) {
+              <option [value]="empresa.id">{{ empresa.legalName }} — {{ empresa.cnpj }}{{ empresa.status === 'INACTIVE' ? ' (inativa)' : '' }}</option>
+            }
+          </select>
+        </div>
+        @if (loadingCompanies()) {
+          <p class="m-0 text-xs text-lactec-ink-soft" role="status">Carregando empresas…</p>
+        } @else if (companiesError()) {
+          <p class="m-0 text-xs text-lactec-danger" role="alert">Não foi possível carregar as empresas.</p>
+          <button mat-stroked-button type="button" (click)="loadCompanies()">Tentar novamente</button>
+        } @else if (!companyOptions().length) {
+          <p class="m-0 text-xs text-lactec-ink-soft" role="status">Nenhuma empresa ativa disponível. Solicite o cadastro ao administrador.</p>
+        }
+        @if (ownerInvalid) {
+          <p id="equipamento-owner-error" class="m-0 text-xs text-lactec-danger" role="alert">Selecione uma empresa disponível.</p>
+        }
+      </div>
+
+      <div class="flex flex-col gap-2">
+        <label for="equipamento-risk" class="text-xs font-medium tracking-wide text-lactec-ink-soft">Nível de Risco <span class="text-lactec-danger">*</span></label>
+        <div class="input-field" [class.input-field--error]="riskInvalid">
+          <select id="equipamento-risk" formControlName="riskLevel" required class="input-field__input"
+            [attr.aria-invalid]="riskInvalid" [attr.aria-describedby]="riskInvalid ? 'equipamento-risk-error' : null">
+            <option value="" disabled>Selecione o nível de risco</option>
+            @for (risco of riscos; track risco.value) {
+              <option [value]="risco.value">{{ risco.label }}</option>
+            }
+          </select>
+        </div>
+        @if (riskInvalid) {
+          <p id="equipamento-risk-error" class="m-0 text-xs text-lactec-danger" role="alert">Selecione o nível de risco.</p>
+        }
+      </div>
+    </fieldset>
+
+    <div dialog-footer class="flex w-full flex-wrap justify-end gap-3">
+      <button mat-stroked-button type="button" [disabled]="saving()" (click)="close()">Cancelar</button>
+      <button mat-flat-button type="submit" [disabled]="saving() || loadingCompanies() || companiesError() || !companyOptions().length">{{ saving() ? 'Salvando…' : 'Salvar' }}</button>
+    </div>
+  </app-dialog-shell>
+</form>
