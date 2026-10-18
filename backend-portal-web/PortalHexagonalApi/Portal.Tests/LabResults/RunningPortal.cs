@@ -24,5 +24,7 @@ public sealed class RunningPortal : WebApplicationFactory<Program>
     {
         builder.UseSetting("LabResults:Source", "embedded-sample");
         builder.UseSetting("LabResults:DevelopmentTenant", SampleTenant);
+        builder.UseSetting("Portal:DataSource", "backend-lab");
+        builder.UseSetting("BackendLab:BaseUrl", "https://backend-lab.test/");
     }
 }

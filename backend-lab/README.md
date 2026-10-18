@@ -229,7 +229,7 @@ O Portal Interno consome diretamente `/api/companies` e `/api/clients` no Spring
 
 `POST /api/auth/login` autentica somente CLIENTE ativo. O login interno continua exclusivo ADMIN/TECNICO. Ambos emitem tokens com o mesmo formato; cada família de rotas verifica o perfil permitido e a situação atual do usuário. A resposta pública usa IDs string em login e gestão; as entidades Java mantêm chaves numéricas internamente, e os endpoints de técnicos preservam IDs numéricos.
 
-O Portal do Cliente mantém suas chamadas à API C#. Os adapters C# para autenticar clientes e consultar orçamentos e documentos no Spring ainda não estão implementados. A conta de demonstração e os cadastros desta API não substituem o login de desenvolvimento do portal.
+O Portal do Cliente mantém suas chamadas à API C#. Na fonte `backend-lab`, a API C# adapta o login para esta API Spring; os adapters de orçamentos e documentos ainda estão pendentes. A conta de demonstração e os cadastros desta API não substituem o login de desenvolvimento do portal.
 
 As consultas privadas `/api/client/quotes`, `/{id}` e `/{id}/document` conferem usuário, vínculos e situação das empresas atuais. O PDF está em tabela separada e seus bytes são consultados somente após a autorização. Empresa sem vínculo ativo retorna 403; orçamento/arquivo inexistente retorna 404. Cliente ativo sem empresas ativas pode autenticar e recebe lista vazia. Remover vínculo ou desativar usuário/empresa afeta o token anterior na próxima requisição.
 
@@ -237,6 +237,6 @@ As consultas privadas `/api/client/quotes`, `/{id}` e `/{id}/document` conferem 
 
 Nas respostas de orçamento, `id` identifica o orçamento persistido no Spring. O campo `opportunityId` pertence ao contrato Salesforce da API C# e não é retornado pelo Spring.
 
-Limites: empresa - razão social 200, endereço 255, cidade 120, UF brasileira com 2 caracteres, nome do contato 150, telefone 30, e-mail 254. CNPJ numérico com 14 dígitos e dígitos verificadores, aceitando máscara, é normalizado e único. Cliente - nome 150, e-mail 254, telefone 30, cargo 120; senha com até 72 caracteres e 72 bytes UTF-8, sem trim. CNPJ alfanumérico não é suportado neste incremento.
+Limites: empresa - razão social 200, endereço 255, cidade 120, UF brasileira com 2 caracteres, nome do contato 150, telefone 30, e-mail 254. CNPJ numérico com 14 dígitos e dígitos verificadores, aceitando máscara, é normalizado e único. Cliente - nome 150, e-mail 254, telefone 30, cargo 120; senha com até 72 caracteres e 72 bytes UTF-8, sem trim. CNPJ alfanumérico não é suportado.
 
 Para carregar os dados de demonstração, configure `DEMO_SEED_ENABLED=true` e reinicie o Backend Lab. O seed SQL cria a conta local `lactec@lactec.com`, com senha `lactec`, uma empresa, um orçamento e o PDF estático do repositório. A flag fica desativada por padrão; habilite-a somente em ambiente local e não a use com banco de produção. Não há sincronização, associação automática com Lactec ou fallback para fontes externas.

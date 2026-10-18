@@ -77,6 +77,6 @@ As páginas **Empresas** (`/admin/empresas`) e **Clientes** (`/admin/clientes`) 
 
 O cadastro de cliente exige senha inicial e pelo menos uma empresa ativa; a edição pode omitir a senha para preservá-la e substituir os vínculos. Vínculos anteriores com empresas inativas são mostrados para preservar o histórico, mas não autorizam acesso. Desativar um cliente bloqueia seu login e os tokens já emitidos na próxima requisição.
 
-Os formulários e painéis seguem os protótipos HU17-20 e reutilizam os componentes de diálogo/confirmador e o tema do Portal Interno. A seleção plural por checkboxes substitui as linhas com botão de adicionar do protótipo HU20. Cargo permanece na tabela/formulário conforme os critérios textuais. As adaptações e os contratos foram incorporados à especificação técnica.
+Os formulários e painéis seguem os protótipos HU17-20 e reutilizam os componentes de diálogo/confirmador e o tema do Portal Interno. A seleção plural por checkboxes substitui as linhas com botão de adicionar do protótipo HU20. Cargo permanece na tabela/formulário conforme os critérios textuais.
 
 CNPJ suporta formato numérico de 14 dígitos ou máscara, com validação dos dígitos verificadores. E-mail/CNPJ duplicados geram mensagem de conflito. Cancelar ou fechar o painel sem salvar conserva os dados. Carregamento, erro da API e ausência de resultados têm estados separados.
