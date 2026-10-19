@@ -25,57 +25,66 @@ export type AxisScale = 'linear' | 'log';
 // do tom: o traço da linha pinta `stroke` e o marcador pinta `fill`, e o
 // Tailwind só emite a utilitária que encontra escrita por extenso no fonte.
 // Nome montado em tempo de execução não chega ao CSS gerado.
-interface ClassesDaSerie {
-  readonly traco: string;
-  readonly marcador: string;
+interface SeriesClasses {
+  readonly stroke: string;
+  readonly marker: string;
 }
 
-const PALETA: readonly ClassesDaSerie[] = [
-  { traco: 'stroke-lactec-serie-primeira', marcador: 'fill-lactec-serie-primeira' },
-  { traco: 'stroke-lactec-serie-segunda', marcador: 'fill-lactec-serie-segunda' },
-  { traco: 'stroke-lactec-serie-terceira', marcador: 'fill-lactec-serie-terceira' },
-  { traco: 'stroke-lactec-serie-quarta', marcador: 'fill-lactec-serie-quarta' },
-  { traco: 'stroke-lactec-serie-quinta', marcador: 'fill-lactec-serie-quinta' },
-  { traco: 'stroke-lactec-serie-sexta', marcador: 'fill-lactec-serie-sexta' },
-  { traco: 'stroke-lactec-serie-setima', marcador: 'fill-lactec-serie-setima' },
-  { traco: 'stroke-lactec-serie-oitava', marcador: 'fill-lactec-serie-oitava' },
+const PALETTE: readonly SeriesClasses[] = [
+  { stroke: 'stroke-lactec-serie-primeira', marker: 'fill-lactec-serie-primeira' },
+  { stroke: 'stroke-lactec-serie-segunda', marker: 'fill-lactec-serie-segunda' },
+  { stroke: 'stroke-lactec-serie-terceira', marker: 'fill-lactec-serie-terceira' },
+  { stroke: 'stroke-lactec-serie-quarta', marker: 'fill-lactec-serie-quarta' },
+  { stroke: 'stroke-lactec-serie-quinta', marker: 'fill-lactec-serie-quinta' },
+  { stroke: 'stroke-lactec-serie-sexta', marker: 'fill-lactec-serie-sexta' },
+  { stroke: 'stroke-lactec-serie-setima', marker: 'fill-lactec-serie-setima' },
+  { stroke: 'stroke-lactec-serie-oitava', marker: 'fill-lactec-serie-oitava' },
 ];
 
-const FORMAS = ['circulo', 'quadrado', 'triangulo', 'losango'] as const;
-type Forma = (typeof FORMAS)[number];
+const MARKER_SHAPES = ['circle', 'square', 'triangle', 'diamond'] as const;
+type MarkerShape = (typeof MARKER_SHAPES)[number];
 
-const MARCAS_DO_EIXO_LINEAR = 5;
+const LINEAR_AXIS_TICKS = 5;
+
+// Duas colunas na leitura existem para a fórmula do gás ("C₂H₂"): nove séries
+// empilhadas numa coluna só fazem uma caixa mais alta do que o próprio gráfico.
+// O ensaio físico-químico chega com a unidade dentro do nome ("Índice de
+// Neutralização (mg KOH/g óleo)") e, repartido em duas colunas, o nome da
+// esquerda era desenhado por cima do nome da direita. Dezesseis caracteres é o
+// que cabe em meia caixa com folga para o marcador e para o valor.
+const LONGEST_NAME_IN_TWO_COLUMNS = 16;
+const SERIES_THAT_FILL_TWO_COLUMNS = 4;
 
 // Duas proporções, e a escolha é de quem usa, não do componente. A faixa larga é
 // para o gráfico que ocupa a linha inteira da tela; a compacta é para o cartão de uma
 // grade de três colunas, onde a proporção larga deixa o desenho achatado, o texto
 // miúdo e sobra branco em volta.
-const FORMATOS = {
-  wide: { largura: 720, altura: 320 },
-  compact: { largura: 480, altura: 360 },
+const SIZES = {
+  wide: { width: 720, height: 320 },
+  compact: { width: 480, height: 360 },
 } as const;
 
-export type ChartShape = keyof typeof FORMATOS;
-const MARGEM = { topo: 16, direita: 16, base: 46, esquerda: 56 };
+export type ChartShape = keyof typeof SIZES;
+const MARGIN = { top: 16, right: 16, bottom: 46, left: 56 };
 
-interface PontoDesenhado {
+interface PlottedPoint {
   readonly x: number;
   readonly y: number;
 }
 
-interface SerieDesenhada {
+interface PlottedSeries {
   readonly key: string;
   readonly name: string;
-  readonly classes: ClassesDaSerie;
-  readonly forma: Forma;
-  readonly tracejada: boolean;
-  readonly caminho: string;
-  readonly pontos: readonly PontoDesenhado[];
+  readonly classes: SeriesClasses;
+  readonly shape: MarkerShape;
+  readonly dashed: boolean;
+  readonly path: string;
+  readonly points: readonly PlottedPoint[];
 }
 
 // Lacuna de coleta nao e "nao detectado": o ensaio nao foi feito naquela data.
 // A tabela de indicadores marca a mesma ausencia do mesmo jeito.
-const MARCA_DE_COLETA_NAO_REALIZADA = '-';
+const MARK_FOR_COLLECTION_NOT_PERFORMED = '-';
 
 @Component({
   selector: 'app-line-chart',
@@ -99,26 +108,36 @@ export class LineChartComponent {
 
   readonly shape = input<ChartShape>('wide');
 
-  protected readonly LARGURA = computed(() => FORMATOS[this.shape()].largura);
-  protected readonly ALTURA = computed(() => FORMATOS[this.shape()].altura);
-  protected readonly MARGEM = MARGEM;
+  protected readonly chartWidth = computed(() => SIZES[this.shape()].width);
+  protected readonly chartHeight = computed(() => SIZES[this.shape()].height);
+  protected readonly MARGIN = MARGIN;
 
-  protected readonly indiceEmFoco = signal<number | null>(null);
+  protected readonly pointedIndex = signal<number | null>(null);
 
   /**
    * Qual série a legenda está destacando. Com oito gases no mesmo quadro, seguir uma
    * linha só com o olho é difícil; apontar o nome dela na legenda apaga as outras e
    * resolve sem exigir clique nem filtro.
    */
-  protected readonly serieEmFoco = signal<string | null>(null);
+  protected readonly highlightedSeries = signal<string | null>(null);
 
-  protected opacidadeDaSerie(key: string): number {
-    const emFoco = this.serieEmFoco();
+  protected seriesOpacity(key: string): number {
+    const highlighted = this.highlightedSeries();
 
-    return emFoco === null || emFoco === key ? 1 : 0.15;
+    return highlighted === null || highlighted === key ? 1 : 0.15;
   }
 
-  private readonly limites = computed(() => {
+  /** A leitura só se divide em duas colunas quando todo nome cabe em meia caixa. */
+  protected readonly readingInTwoColumns = computed(() => {
+    const names = this.series().map((serie) => serie.name);
+
+    return (
+      names.length >= SERIES_THAT_FILL_TWO_COLUMNS &&
+      names.every((name) => name.length <= LONGEST_NAME_IN_TWO_COLUMNS)
+    );
+  });
+
+  private readonly bounds = computed(() => {
     const values = this.series()
       .flatMap((serie) => serie.values)
       .filter(
@@ -136,14 +155,14 @@ export class LineChartComponent {
     // container do menu deixava de rodar e a barra lateral parava de recalcular a margem do
     // conteúdo. Medido com um laudo sem nenhum gás dissolvido, na aba de gases.
     if (!values.length) {
-      return this.scale() === 'log' ? { minimo: 1, maximo: 10 } : { minimo: 0, maximo: 1 };
+      return this.scale() === 'log' ? { minimum: 1, maximum: 10 } : { minimum: 0, maximum: 1 };
     }
 
-    const bruto = { minimo: Math.min(...values), maximo: Math.max(...values) };
+    const measured = { minimum: Math.min(...values), maximum: Math.max(...values) };
     if (this.scale() === 'log') {
       return {
-        minimo: Math.pow(10, Math.floor(Math.log10(bruto.minimo))),
-        maximo: Math.pow(10, Math.ceil(Math.log10(bruto.maximo))),
+        minimum: Math.pow(10, Math.floor(Math.log10(measured.minimum))),
+        maximum: Math.pow(10, Math.ceil(Math.log10(measured.maximum))),
       };
     }
     // Escala linear fecha em passo redondo, como uma biblioteca de gráfico faz. Fatiar
@@ -151,28 +170,28 @@ export class LineChartComponent {
     // demais para o eixo e, em português, confundidas com decimal por causa do ponto de
     // milhar. A base não é forçada a zero porque aqui a figura é evolução, e uma
     // variação pequena colada no topo esconde justamente o que se quer ver.
-    const eixo = eixoDeValores(bruto.minimo, bruto.maximo, MARCAS_DO_EIXO_LINEAR);
+    const axis = eixoDeValores(measured.minimum, measured.maximum, LINEAR_AXIS_TICKS);
 
-    return { minimo: eixo.minimo, maximo: eixo.maximo, marcas: eixo.marcas };
+    return { minimum: axis.minimo, maximum: axis.maximo, ticks: axis.marcas };
   });
 
-  protected readonly marcasDoEixoY = computed(() => {
-    const { minimo, maximo } = this.limites();
+  protected readonly yAxisTicks = computed(() => {
+    const { minimum, maximum } = this.bounds();
     if (this.scale() === 'log') {
-      const de = Math.log10(minimo);
-      const ate = Math.log10(maximo);
+      const from = Math.log10(minimum);
+      const to = Math.log10(maximum);
       // Cinto além da trava acima: nenhuma faixa de entrada pode virar um número de marcas
       // que `Array.from` recuse. Uma década por marca, no mínimo duas e no máximo dez.
-      const decadas = Math.round(ate - de);
-      const quantidade = Number.isFinite(decadas) ? Math.min(Math.max(decadas, 1), 9) + 1 : 2;
-      return Array.from({ length: quantidade }, (_, passo) => {
-        const value = Math.pow(10, de + passo);
-        return { value, y: this.posicaoY(value), label: this.rotuloLog(de + passo) };
+      const decades = Math.round(to - from);
+      const howMany = Number.isFinite(decades) ? Math.min(Math.max(decades, 1), 9) + 1 : 2;
+      return Array.from({ length: howMany }, (_, step) => {
+        const value = Math.pow(10, from + step);
+        return { value, y: this.positionY(value), label: this.logTickLabel(from + step) };
       });
     }
-    const marcas = this.limites().marcas ?? [];
+    const ticks = this.bounds().ticks ?? [];
 
-    return marcas.map((value) => ({ value, y: this.posicaoY(value), label: rotuloDoEixo(value) }));
+    return ticks.map((value) => ({ value, y: this.positionY(value), label: rotuloDoEixo(value) }));
   });
 
   /**
@@ -182,123 +201,123 @@ export class LineChartComponent {
    * corta: a última data da série aparecia como "07/06/20". Alargar a margem resolveria
    * também, mas rouba largura do desenho nas duas pontas por causa de dois rótulos.
    */
-  protected readonly marcasDoEixoX = computed(() => {
-    const rotulos = this.xAxisLabels();
+  protected readonly xAxisTicks = computed(() => {
+    const labels = this.xAxisLabels();
 
-    return rotulos.map((label, index) => ({
+    return labels.map((label, index) => ({
       label,
-      x: this.posicaoX(index),
-      ancora: index === 0 ? 'start' : index === rotulos.length - 1 ? 'end' : 'middle',
+      x: this.positionX(index),
+      anchor: index === 0 ? 'start' : index === labels.length - 1 ? 'end' : 'middle',
     }));
   });
 
-  protected readonly seriesDesenhadas = computed<readonly SerieDesenhada[]>(() =>
+  protected readonly plottedSeries = computed<readonly PlottedSeries[]>(() =>
     this.series().map((serie, index) => {
-      const pontos: PontoDesenhado[] = [];
-      const trechos: string[] = [];
-      let abrindoTrecho = true;
+      const points: PlottedPoint[] = [];
+      const commands: string[] = [];
+      let startingStretch = true;
 
-      serie.values.forEach((value, posicao) => {
+      serie.values.forEach((value, position) => {
         if (value === null || (this.scale() === 'log' && value <= 0)) {
-          abrindoTrecho = true;
+          startingStretch = true;
           return;
         }
-        const ponto = { x: this.posicaoX(posicao), y: this.posicaoY(value) };
-        pontos.push(ponto);
-        trechos.push(`${abrindoTrecho ? 'M' : 'L'} ${ponto.x} ${ponto.y}`);
-        abrindoTrecho = false;
+        const point = { x: this.positionX(position), y: this.positionY(value) };
+        points.push(point);
+        commands.push(`${startingStretch ? 'M' : 'L'} ${point.x} ${point.y}`);
+        startingStretch = false;
       });
 
       return {
         key: serie.key,
         name: serie.name,
-        classes: PALETA[serie.palettePosition % PALETA.length],
-        forma: FORMAS[Math.floor(index / PALETA.length) % FORMAS.length],
+        classes: PALETTE[serie.palettePosition % PALETTE.length],
+        shape: MARKER_SHAPES[Math.floor(index / PALETTE.length) % MARKER_SHAPES.length],
         // A partir da nona série a cor se repete; o traço passa a tracejado
         // para que a identidade continue distinguível sem inventar matiz nova.
-        tracejada: index >= PALETA.length,
-        caminho: trechos.join(' '),
-        pontos,
+        dashed: index >= PALETTE.length,
+        path: commands.join(' '),
+        points,
       };
     }),
   );
 
-  protected readonly leituraEmFoco = computed(() => {
-    const index = this.indiceEmFoco();
+  protected readonly pointedReading = computed(() => {
+    const index = this.pointedIndex();
     if (index === null) return null;
     return {
-      x: this.posicaoX(index),
+      x: this.positionX(index),
       label: this.xAxisLabels()[index],
-      values: this.series().map((serie, ordem) => ({
+      values: this.series().map((serie, order) => ({
         name: serie.name,
-        classes: PALETA[serie.palettePosition % PALETA.length],
-        forma: FORMAS[Math.floor(ordem / PALETA.length) % FORMAS.length],
+        classes: PALETTE[serie.palettePosition % PALETTE.length],
+        shape: MARKER_SHAPES[Math.floor(order / PALETTE.length) % MARKER_SHAPES.length],
         value: serie.values[index],
       })),
     };
   });
 
-  protected aoMoverPonteiro(evento: MouseEvent): void {
-    const alvo = evento.currentTarget as SVGGraphicsElement;
-    const caixa = alvo.getBoundingClientRect();
-    if (!caixa.width) return;
-    const proporcao = (evento.clientX - caixa.left) / caixa.width;
-    const dentro = proporcao * this.LARGURA();
+  protected onPointerMove(event: MouseEvent): void {
+    const chart = event.currentTarget as SVGGraphicsElement;
+    const area = chart.getBoundingClientRect();
+    if (!area.width) return;
+    const proportion = (event.clientX - area.left) / area.width;
+    const inside = proportion * this.chartWidth();
     const total = this.xAxisLabels().length;
     if (total < 2) {
-      this.indiceEmFoco.set(total === 1 ? 0 : null);
+      this.pointedIndex.set(total === 1 ? 0 : null);
       return;
     }
-    const passo = (this.LARGURA() - MARGEM.esquerda - MARGEM.direita) / (total - 1);
-    const index = Math.round((dentro - MARGEM.esquerda) / passo);
-    this.indiceEmFoco.set(Math.min(Math.max(index, 0), total - 1));
+    const step = (this.chartWidth() - MARGIN.left - MARGIN.right) / (total - 1);
+    const index = Math.round((inside - MARGIN.left) / step);
+    this.pointedIndex.set(Math.min(Math.max(index, 0), total - 1));
   }
 
-  protected aoSairDoGrafico(): void {
-    this.indiceEmFoco.set(null);
+  protected onPointerLeave(): void {
+    this.pointedIndex.set(null);
   }
 
-  protected marcador(forma: Forma, x: number, y: number): string {
-    const raio = 4.5;
-    switch (forma) {
-      case 'quadrado':
-        return `M ${x - raio} ${y - raio} H ${x + raio} V ${y + raio} H ${x - raio} Z`;
-      case 'triangulo':
-        return `M ${x} ${y - raio - 1} L ${x + raio + 1} ${y + raio} L ${x - raio - 1} ${y + raio} Z`;
-      case 'losango':
-        return `M ${x} ${y - raio - 1} L ${x + raio + 1} ${y} L ${x} ${y + raio + 1} L ${x - raio - 1} ${y} Z`;
+  protected markerPath(shape: MarkerShape, x: number, y: number): string {
+    const radius = 4.5;
+    switch (shape) {
+      case 'square':
+        return `M ${x - radius} ${y - radius} H ${x + radius} V ${y + radius} H ${x - radius} Z`;
+      case 'triangle':
+        return `M ${x} ${y - radius - 1} L ${x + radius + 1} ${y + radius} L ${x - radius - 1} ${y + radius} Z`;
+      case 'diamond':
+        return `M ${x} ${y - radius - 1} L ${x + radius + 1} ${y} L ${x} ${y + radius + 1} L ${x - radius - 1} ${y} Z`;
       default:
-        return `M ${x - raio} ${y} a ${raio} ${raio} 0 1 0 ${raio * 2} 0 a ${raio} ${raio} 0 1 0 ${-raio * 2} 0`;
+        return `M ${x - radius} ${y} a ${radius} ${radius} 0 1 0 ${radius * 2} 0 a ${radius} ${radius} 0 1 0 ${-radius * 2} 0`;
     }
   }
 
-  protected formatarNumero(value: number | null): string {
-    if (value === null) return MARCA_DE_COLETA_NAO_REALIZADA;
+  protected formatNumber(value: number | null): string {
+    if (value === null) return MARK_FOR_COLLECTION_NOT_PERFORMED;
     if (Math.abs(value) >= 1000) return value.toLocaleString('pt-BR');
     return Number.isInteger(value) ? String(value) : value.toLocaleString('pt-BR');
   }
 
-  private posicaoX(index: number): number {
+  private positionX(index: number): number {
     const total = this.xAxisLabels().length;
-    const util = this.LARGURA() - MARGEM.esquerda - MARGEM.direita;
-    if (total < 2) return MARGEM.esquerda + util / 2;
-    return MARGEM.esquerda + (util * index) / (total - 1);
+    const usable = this.chartWidth() - MARGIN.left - MARGIN.right;
+    if (total < 2) return MARGIN.left + usable / 2;
+    return MARGIN.left + (usable * index) / (total - 1);
   }
 
-  private posicaoY(value: number): number {
-    const { minimo, maximo } = this.limites();
-    const util = this.ALTURA() - MARGEM.topo - MARGEM.base;
+  private positionY(value: number): number {
+    const { minimum, maximum } = this.bounds();
+    const usable = this.chartHeight() - MARGIN.top - MARGIN.bottom;
     if (this.scale() === 'log') {
-      const de = Math.log10(minimo);
-      const ate = Math.log10(maximo);
-      const proporcao = (Math.log10(Math.max(value, minimo)) - de) / (ate - de || 1);
-      return this.ALTURA() - MARGEM.base - util * proporcao;
+      const from = Math.log10(minimum);
+      const to = Math.log10(maximum);
+      const proportion = (Math.log10(Math.max(value, minimum)) - from) / (to - from || 1);
+      return this.chartHeight() - MARGIN.bottom - usable * proportion;
     }
-    const proporcao = (value - minimo) / (maximo - minimo || 1);
-    return this.ALTURA() - MARGEM.base - util * proporcao;
+    const proportion = (value - minimum) / (maximum - minimum || 1);
+    return this.chartHeight() - MARGIN.bottom - usable * proportion;
   }
 
-  private rotuloLog(expoente: number): string {
-    return `10^${Math.round(expoente)}`;
+  private logTickLabel(exponent: number): string {
+    return `10^${Math.round(exponent)}`;
   }
 }

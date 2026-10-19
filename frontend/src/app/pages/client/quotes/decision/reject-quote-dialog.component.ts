@@ -20,7 +20,7 @@ export interface RejectQuoteDialogData {
     >
       <label class="block">
         <span class="text-sm text-lactec-ink-soft">
-          Por favor, forneça uma justification (opcional):
+          Por favor, forneça uma justificativa (opcional):
         </span>
         <textarea
           rows="4"

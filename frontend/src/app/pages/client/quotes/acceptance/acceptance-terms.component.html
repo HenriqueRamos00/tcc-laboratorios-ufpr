@@ -7,16 +7,15 @@
 <form
   class="mt-6 rounded-2xl border border-lactec-line bg-lactec-paper p-6"
   [formGroup]="form"
-  (ngSubmit)="enviar()"
+  (ngSubmit)="submit()"
   novalidate
 >
   <h2 class="display m-0 text-lg font-semibold text-lactec-ink">
     ANEXO II - Proposta: {{ id() }} - TERMO DE ACEITE
   </h2>
 
-  @let cobranca = form.controls.cobranca.controls;
-  @let envio = form.controls.envioDoRelatorio.controls;
-  @let aprovacao = form.controls.aprovacao.controls;
+  @let billing = form.controls.billing.controls;
+  @let approval = form.controls.approval.controls;
 
   <fieldset class="mt-6 border-0 p-0">
     <legend class="display mb-4 p-0 text-base font-semibold text-lactec-nav">
@@ -24,64 +23,45 @@
     </legend>
 
     <div class="grid grid-cols-1 gap-4 md:grid-cols-3">
-      <app-text-field [controle]="cobranca.empresa" label="Empresa" />
-      <app-text-field [controle]="cobranca.cnpj" label="CNPJ" inputmode="numeric" />
-      <app-text-field [controle]="cobranca.inscricaoEstadual" label="I.E." />
+      <app-text-field [controle]="billing.company" label="Empresa" />
+      <app-text-field [controle]="billing.cnpj" label="CNPJ" inputmode="numeric" />
+      <app-text-field [controle]="billing.stateRegistration" label="I.E." />
     </div>
 
-    <app-text-field class="mt-4" [controle]="cobranca.endereco" label="Endereço" />
+    <app-text-field class="mt-4" [controle]="billing.street" label="Endereço" />
 
     <div class="mt-4 grid grid-cols-1 gap-4 md:grid-cols-4">
-      <app-text-field [controle]="cobranca.cidade" label="Cidade" />
-      <app-text-field [controle]="cobranca.uf" label="UF" [maxlength]="2" [caixaAlta]="true" />
-      <app-text-field [controle]="cobranca.bairro" label="Bairro" />
-      <app-text-field [controle]="cobranca.cep" label="CEP" inputmode="numeric" />
+      <app-text-field [controle]="billing.city" label="Cidade" />
+      <app-text-field [controle]="billing.state" label="UF" [maxlength]="2" [caixaAlta]="true" />
+      <app-text-field [controle]="billing.district" label="Bairro" />
+      <app-text-field [controle]="billing.postalCode" label="CEP" inputmode="numeric" />
     </div>
 
     <div class="mt-4 grid grid-cols-1 gap-4 md:grid-cols-3">
-      <app-text-field [controle]="cobranca.contato" label="Contato" />
-      <app-text-field [controle]="cobranca.telefone" label="Telefone" tipo="tel" />
-      <app-text-field [controle]="cobranca.fax" label="Fax" tipo="tel" />
+      <app-text-field [controle]="billing.contact" label="Contato" />
+      <app-text-field [controle]="billing.phone" label="Telefone" tipo="tel" />
+      <app-text-field [controle]="billing.fax" label="Fax" tipo="tel" />
     </div>
 
     <app-text-field
       class="mt-4"
-      [controle]="cobranca.emailsParaNotaFiscal"
+      [controle]="billing.invoiceEmails"
       label="Endereço eletrônico para envio de NFS-e (preencher pelo menos dois endereços de e-mail):"
     />
   </fieldset>
 
   <fieldset class="mt-8 border-0 p-0">
-    <legend class="display mb-2 p-0 text-base font-semibold text-lactec-nav">
-      2. Endereço para envio do relatório
-    </legend>
-
-    <label class="mb-4 flex items-center gap-2 text-sm text-lactec-ink">
-      <input type="checkbox" formControlName="mesmoEnderecoDaCobranca" class="h-4 w-4" />
-      Mesmo endereço da cobrança
-    </label>
-
-    <div class="grid grid-cols-1 gap-4 md:grid-cols-3">
-      <app-text-field [controle]="envio.empresa" label="Empresa" />
-      <app-text-field class="md:col-span-2" [controle]="envio.endereco" label="Endereço" />
-      <app-text-field [controle]="envio.cidade" label="Cidade" />
-      <app-text-field [controle]="envio.uf" label="UF" [maxlength]="2" [caixaAlta]="true" />
-      <app-text-field [controle]="envio.cep" label="CEP" inputmode="numeric" />
-    </div>
-  </fieldset>
-
-  <fieldset class="mt-8 border-0 p-0">
-    <legend class="display mb-4 p-0 text-base font-semibold text-lactec-nav">3. Aprovação</legend>
+    <legend class="display mb-4 p-0 text-base font-semibold text-lactec-nav">2. Aprovação</legend>
 
     <div class="grid grid-cols-1 gap-4 md:grid-cols-2">
-      <app-text-field [controle]="aprovacao.nomeDoSolicitante" label="Nome do Solicitante" />
-      <app-text-field [controle]="aprovacao.nomeDoResponsavel" label="Nome do Responsável" />
+      <app-text-field [controle]="approval.requesterName" label="Nome do Solicitante" />
+      <app-text-field [controle]="approval.responsibleName" label="Nome do Responsável" />
     </div>
 
     <div class="mt-4 grid grid-cols-1 gap-4 md:grid-cols-3">
-      <app-text-field [controle]="aprovacao.cargo" label="Cargo" />
-      <app-text-field [controle]="aprovacao.setor" label="Setor" />
-      <app-text-field [controle]="aprovacao.data" label="Data" tipo="date" />
+      <app-text-field [controle]="approval.jobTitle" label="Cargo" />
+      <app-text-field [controle]="approval.department" label="Setor" />
+      <app-text-field [controle]="approval.date" label="Data" tipo="date" />
     </div>
 
     <p class="mt-6 mb-0 text-sm text-lactec-ink-soft">
@@ -91,17 +71,17 @@
     <p class="mt-1 mb-0 text-right text-xs text-lactec-muted">Nome do responsável<br />Cargo</p>
 
     <div class="mt-6 flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
-      <fieldset class="border-0 p-0" formGroupName="aprovacao">
+      <fieldset class="border-0 p-0" formGroupName="approval">
         <legend class="p-0 text-sm text-lactec-ink-soft">
           Autoriza o envio de resultados por e-mail?
         </legend>
         <div class="mt-2 flex gap-4">
           <label class="flex items-center gap-2 text-sm text-lactec-ink">
-            <input type="radio" formControlName="autorizaEnvioPorEmail" [value]="true" />
+            <input type="radio" formControlName="allowsResultsByEmail" [value]="true" />
             Sim
           </label>
           <label class="flex items-center gap-2 text-sm text-lactec-ink">
-            <input type="radio" formControlName="autorizaEnvioPorEmail" [value]="false" />
+            <input type="radio" formControlName="allowsResultsByEmail" [value]="false" />
             Não
           </label>
         </div>
@@ -109,7 +89,7 @@
 
       <app-text-field
         class="md:w-80"
-        [controle]="aprovacao.emailParaResultados"
+        [controle]="approval.resultsEmail"
         label="Endereço de e-mail:"
         tipo="email"
       />

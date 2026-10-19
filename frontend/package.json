@@ -26,6 +26,7 @@
     "@auth0/angular-jwt": "^5.2.0",
     "@ngrx/signals": "^19.2.1",
     "angular-cli-ghpages": "^3.0.3",
+    "ngx-extended-pdf-viewer": "^31.0.1",
     "rxjs": "~7.8.0",
     "tslib": "^2.3.0",
     "zone.js": "~0.15.0"

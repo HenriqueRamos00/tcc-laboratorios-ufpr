@@ -124,7 +124,7 @@ export class HealthIndicatorsComponent {
               ? ok(data)
               : empty,
           ),
-          catchError(() => of(failure('A consulta ao AutoLAB loadFailed. Tente novamente em instantes.'))),
+          catchError(() => of(failure('A consulta ao AutoLAB falhou. Tente novamente em instantes.'))),
           startWith(loading),
         ),
       ),

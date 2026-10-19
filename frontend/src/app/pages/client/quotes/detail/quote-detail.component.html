@@ -26,11 +26,15 @@
     </p>
 
     <div class="mt-4">
-      <app-empty-state
-        icon="picture_as_pdf"
-        title="Pré-visualização indisponível"
-        descricao="O PDF da proposta é servido pelo Salesforce e ainda não está integrado. Use o botão Baixar PDF quando a integração estiver publicada."
-      />
+      @if (proposalAvailable()) {
+        <app-proposal-viewer [quoteId]="id()" [fileName]="proposalFileName()" />
+      } @else {
+        <app-empty-state
+          icon="hourglass_empty"
+          title="Proposta em elaboração"
+          descricao="A equipe do laboratório ainda está montando os itens e o valor desta proposta. Assim que ela estiver pronta, o documento aparece aqui para leitura e para download, e a tela passa a pedir a sua aprovação."
+        />
+      }
     </div>
 
     @switch (pendingAction()) {
@@ -39,10 +43,13 @@
           <button
             type="button"
             class="inline-flex items-center justify-center gap-2 rounded-lg border border-lactec-line
-                   px-5 py-3 text-sm font-semibold text-lactec-ink hover:bg-lactec-surface"
+                   px-5 py-3 text-sm font-semibold text-lactec-ink hover:bg-lactec-surface
+                   disabled:opacity-40"
+            [disabled]="downloading()"
+            (click)="downloadProposal()"
           >
             <mat-icon class="icone-20" aria-hidden="true">picture_as_pdf</mat-icon>
-            Baixar PDF
+            {{ downloading() ? 'Baixando…' : 'Baixar PDF' }}
           </button>
           <button
             type="button"
@@ -100,7 +107,7 @@
     tom="erro"
     icon="cloud_off"
     title="Não foi possível carregar o orçamento no momento"
-    descricao="A consulta ao Salesforce loadFailed. Tente novamente em instantes."
+    descricao="A consulta ao Salesforce falhou. Tente novamente em instantes."
   />
 } @else {
   <p class="text-sm text-lactec-muted" role="status">Carregando orçamento…</p>

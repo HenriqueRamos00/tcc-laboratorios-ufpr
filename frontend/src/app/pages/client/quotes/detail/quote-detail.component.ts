@@ -1,6 +1,6 @@
 import { ChangeDetectionStrategy, Component, computed, DestroyRef, inject, input, signal } from '@angular/core';
 import { takeUntilDestroyed, toObservable } from '@angular/core/rxjs-interop';
-import { catchError, EMPTY, switchMap, tap } from 'rxjs';
+import { catchError, EMPTY, finalize, switchMap, tap } from 'rxjs';
 import { MatIconModule } from '@angular/material/icon';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { Router } from '@angular/router';
@@ -8,6 +8,7 @@ import { Router } from '@angular/router';
 import { EmptyStateComponent } from '@shared/components/empty-state/empty-state.component';
 import { PageHeaderComponent } from '@shared/components/page-header/page-header.component';
 import { SampleShippingNoticeComponent } from '@shared/components/sample-shipping-notice/sample-shipping-notice.component';
+import { handFileToTheBrowser } from '@shared/file-download';
 
 import type { ApprovalMethod } from '@/app/model/acceptance';
 import {
@@ -28,6 +29,8 @@ import {
   RejectQuoteDialogComponent,
   type RejectQuoteDialogData,
 } from '../decision/reject-quote-dialog.component';
+
+import { ProposalViewerComponent } from './proposal-viewer.component';
 
 const BRL = new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' });
 
@@ -59,6 +62,7 @@ function greetingForNow(agora = new Date()): string {
     MatIconModule,
     PageHeaderComponent,
     EmptyStateComponent,
+    ProposalViewerComponent,
     SampleShippingNoticeComponent,
   ],
   templateUrl: './quote-detail.component.html',
@@ -78,6 +82,7 @@ export class QuoteDetailComponent {
   protected readonly quote = signal<Quote | null>(null);
   protected readonly loadFailed = signal(false);
   protected readonly sending = signal(false);
+  protected readonly downloading = signal(false);
 
   // Um computed aqui ficaria cacheado: a hora não é signal.
   protected readonly greeting = greetingForNow();
@@ -110,6 +115,21 @@ export class QuoteDetailComponent {
 
   protected readonly subtitle = computed(() => SUBTITLE[this.pendingAction()]);
 
+  // Antes da negociação ninguém terminou de escrever a proposta: não existe
+  // documento para exibir, e um visualizador vazio afirmaria que existe.
+  protected readonly proposalAvailable = computed(() => {
+    const stage = this.stage();
+    return stage !== null && hasProposal(stage);
+  });
+
+  // O nome do arquivo sai de um lugar só: o botão desta página e o botão de
+  // download da barra do visualizador salvam o mesmo documento, e dois nomes
+  // diferentes para o mesmo PDF fazem o cliente achar que recebeu dois
+  // orçamentos.
+  protected readonly proposalFileName = computed(
+    () => `proposta-${this.quote()?.code ?? this.id()}.pdf`,
+  );
+
   // Array literal no template cria identidade nova a cada ciclo e suja o
   // PageHeader, que é OnPush, sem nada ter mudado.
   protected readonly breadcrumbs = computed(() => [
@@ -123,7 +143,7 @@ export class QuoteDetailComponent {
       return 'Esta proposta foi encerrada e não avança mais na linha de etapas.';
     }
     if (stage && !hasProposal(stage)) {
-      return 'Esta proposta ainda está sendo escrita pela área responsável.';
+      return 'Enquanto a proposta é preparada, não há nada pendente de sua parte.';
     }
     return 'Não há nada pendente de sua parte neste orçamento.';
   });
@@ -218,6 +238,20 @@ export class QuoteDetailComponent {
               this.notify('Não foi possível recusar o orçamento no momento');
             },
           });
+      });
+  }
+
+  protected downloadProposal(): void {
+    this.downloading.set(true);
+    this.quotes
+      .quoteDocument(this.id())
+      .pipe(
+        finalize(() => this.downloading.set(false)),
+        takeUntilDestroyed(this.destroyRef),
+      )
+      .subscribe({
+        next: (file) => handFileToTheBrowser(file, this.proposalFileName()),
+        error: () => this.notify('Não foi possível baixar o PDF da proposta no momento'),
       });
   }
 
