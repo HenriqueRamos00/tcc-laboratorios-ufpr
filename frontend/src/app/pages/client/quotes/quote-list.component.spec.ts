@@ -26,7 +26,6 @@ const ETAPA_ESPERADA_POR_NOME: ReadonlyArray<readonly [string, RequestStatus]> =
   ['Fechado ganho', 'recebido'],
   ['Protocolado', 'protocolado'],
   ['Em execução', 'em-execucao'],
-  ['Incompleto', 'incompleto'],
   ['Completo', 'completo'],
   ['Validado', 'validado'],
   ['Finalizado', 'finalizado'],
@@ -120,7 +119,7 @@ describe('QuoteListComponent, reconhecimento da etapa', () => {
     const etapasDoLaboratorio: ReadonlyArray<RequestStatus> = [
       'protocolado',
       'em-execucao',
-      'incompleto',
+      'completo',
     ];
 
     for (const status of etapasDoLaboratorio) {

@@ -17,13 +17,13 @@ Acesse `http://localhost:4300`. O login de desenvolvimento é `lactec@lactec` /
 
 ## A linha de etapas
 
-`src/app/model/analysis-pipeline.ts` é a fonte única do fluxo. São **15 etapas
+`src/app/model/analysis-pipeline.ts` é a fonte única do fluxo. São **14 etapas
 em uma linha só**, atravessando três sistemas:
 
 ```
 Qualificação → Em análise pela área → Elaborando proposta → Em negociação →
 Aprovado pelo cliente → Aguardando entrega da amostra → Recebido →
-Protocolado → Em execução → Incompleto → Completo →
+Protocolado → Em execução → Completo →
 Validado → Finalizado → Elaborando relatório → Relatório publicado
 ```
 

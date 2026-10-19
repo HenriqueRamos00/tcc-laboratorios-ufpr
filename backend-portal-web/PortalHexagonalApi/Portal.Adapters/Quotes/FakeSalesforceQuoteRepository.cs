@@ -47,7 +47,7 @@ public sealed class FakeSalesforceQuoteRepository : IQuoteRepository
                 code: "EAQ_2026_45483_V_1",
                 name: "Ensaios laboratoriais de materiais",
                 status: "Em Andamento",
-                stage: "Incompleto",
+                stage: "Em execução",
                 description: "Ensaios laboratoriais de materiais",
                 companyName: "Empresa Exemplo Beta S.A.",
                 externalContactName: "",

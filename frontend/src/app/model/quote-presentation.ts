@@ -47,7 +47,6 @@ export const STATUS_BADGE: Record<RequestStatus, StatusBadge> = {
   recebido: { label: 'Recebido', badgeClass: 'quote-status-pill--received' },
   protocolado: { label: 'Protocolado', badgeClass: 'quote-status-pill--protocoled' },
   'em-execucao': { label: 'Em Execução', badgeClass: 'quote-status-pill--running' },
-  incompleto: { label: 'Incompleto', badgeClass: 'quote-status-pill--incomplete' },
   completo: { label: 'Completo', badgeClass: 'quote-status-pill--complete' },
   validado: { label: 'Validado', badgeClass: 'quote-status-pill--validated' },
   finalizado: { label: 'Finalizado', badgeClass: 'quote-status-pill--finalized' },
@@ -90,7 +89,8 @@ const STAGE_BY_NAME: Record<string, RequestStatus> = {
   // Etapas que chegam do AutoLAB depois que a amostra entra no laboratório.
   'protocolado': 'protocolado',
   'em execução': 'em-execucao',
-  'incompleto': 'incompleto',
+  // "Incompleto" saiu da linha: se ainda chegar da fonte, a amostra segue em execução.
+  'incompleto': 'em-execucao',
   'completo': 'completo',
   'validado': 'validado',
   'finalizado': 'finalizado',

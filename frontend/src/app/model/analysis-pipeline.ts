@@ -16,7 +16,6 @@ export type PipelineStage =
   | 'recebido'
   | 'protocolado'
   | 'em-execucao'
-  | 'incompleto'
   | 'completo'
   | 'validado'
   | 'finalizado'
@@ -44,7 +43,6 @@ export const PIPELINE_STAGES: readonly StageDescription[] = [
   { key: 'recebido', label: 'Recebido', icon: 'inbox' },
   { key: 'protocolado', label: 'Protocolado', icon: 'assignment_turned_in' },
   { key: 'em-execucao', label: 'Em execução', icon: 'science' },
-  { key: 'incompleto', label: 'Incompleto', icon: 'warning_amber' },
   { key: 'completo', label: 'Completo', icon: 'done_all' },
   { key: 'validado', label: 'Validado', icon: 'autorenew' },
   { key: 'finalizado', label: 'Finalizado', icon: 'task_alt' },
@@ -82,14 +80,14 @@ export const PIPELINE_GROUPS: readonly PipelineGroup[] = [
     title: 'Etapas da Análise Técnica das amostras',
     icon: 'science',
     de: 6,
-    ate: 10,
+    ate: 9,
   },
   {
     key: 'laboratorio',
     title: 'Procedimento dos Laboratórios',
     icon: 'biotech',
-    de: 10,
-    ate: 14,
+    de: 9,
+    ate: 13,
   },
 ];
 
@@ -113,7 +111,6 @@ const TAB_BY_STAGE: Record<PipelineStage, Exclude<TabKey, 'todos'>> = {
   recebido: 'andamento',
   protocolado: 'andamento',
   'em-execucao': 'andamento',
-  incompleto: 'andamento',
   completo: 'andamento',
   validado: 'andamento',
   finalizado: 'andamento',
