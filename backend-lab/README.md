@@ -229,7 +229,7 @@ O Portal Interno consome diretamente `/api/companies` e `/api/clients` no Spring
 
 `POST /api/auth/login` autentica somente CLIENTE ativo. O login interno continua exclusivo ADMIN/TECNICO. Ambos emitem tokens com o mesmo formato; cada família de rotas verifica o perfil permitido e a situação atual do usuário. A resposta pública usa IDs string em login e gestão; as entidades Java mantêm chaves numéricas internamente, e os endpoints de técnicos preservam IDs numéricos.
 
-O Portal do Cliente mantém suas chamadas à API C#. Os adapters C# para autenticar clientes e consultar orçamentos e documentos no Spring ainda não estão implementados. A conta de demonstração e os cadastros desta API não substituem o login de desenvolvimento do portal.
+O Portal do Cliente mantém suas chamadas à API C#. Na fonte `backend-lab`, a API C# adapta o login para esta API Spring; os adapters de orçamentos e documentos ainda estão pendentes. A conta de demonstração e os cadastros desta API não substituem o login de desenvolvimento do portal.
 
 As consultas privadas `/api/client/quotes`, `/{id}` e `/{id}/document` conferem usuário, vínculos e situação das empresas atuais. O PDF está em tabela separada e seus bytes são consultados somente após a autorização. Empresa sem vínculo ativo retorna 403; orçamento/arquivo inexistente retorna 404. Cliente ativo sem empresas ativas pode autenticar e recebe lista vazia. Remover vínculo ou desativar usuário/empresa afeta o token anterior na próxima requisição.
 
