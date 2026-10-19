@@ -31,3 +31,8 @@ build/
 
 ### VS Code ###
 .vscode/
+
+# Local credentials and signing keys
+.env
+*.p12
+*.pem
