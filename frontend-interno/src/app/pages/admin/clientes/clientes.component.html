@@ -58,30 +58,30 @@
   </section>
 } @else {
   <div class="mt-6 overflow-hidden rounded-2xl border border-lactec-line bg-white">
-    <div class="overflow-x-auto">
-      <table class="w-full min-w-[1080px] border-collapse text-sm">
+    <div class="hidden xl:block">
+      <table class="w-full table-fixed border-collapse text-sm">
         <caption class="sr-only">Clientes cadastrados, com contato, empresas, cargo, status e ações.</caption>
         <thead>
           <tr class="bg-lactec-line-soft text-left">
-            <th scope="col" class="px-4 py-3 font-semibold text-lactec-ink">Nome</th>
-            <th scope="col" class="px-4 py-3 font-semibold text-lactec-ink">E-mail</th>
-            <th scope="col" class="px-4 py-3 font-semibold text-lactec-ink">Telefone</th>
-            <th scope="col" class="px-4 py-3 font-semibold text-lactec-ink">Empresa(s)</th>
-            <th scope="col" class="px-4 py-3 font-semibold text-lactec-ink">Cargo</th>
-            <th scope="col" class="px-4 py-3 font-semibold text-lactec-ink">Status</th>
-            <th scope="col" class="px-4 py-3 text-right font-semibold text-lactec-ink">Ações</th>
+            <th scope="col" class="w-[15%] px-3 py-3 font-semibold text-lactec-ink">Nome</th>
+            <th scope="col" class="w-[21%] px-3 py-3 font-semibold text-lactec-ink">E-mail</th>
+            <th scope="col" class="w-[10%] px-3 py-3 font-semibold text-lactec-ink">Telefone</th>
+            <th scope="col" class="w-[20%] px-3 py-3 font-semibold text-lactec-ink">Empresa(s)</th>
+            <th scope="col" class="w-[15%] px-3 py-3 font-semibold text-lactec-ink">Cargo</th>
+            <th scope="col" class="w-[8%] px-2 py-3 font-semibold text-lactec-ink">Status</th>
+            <th scope="col" class="w-[11%] px-2 py-3 text-right font-semibold text-lactec-ink">Ações</th>
           </tr>
         </thead>
         <tbody>
           @for (cliente of clientes(); track cliente.id) {
             <tr class="border-t border-lactec-line-soft hover:bg-slate-50/70">
-              <td class="px-4 py-3 font-medium text-lactec-ink">{{ cliente.name }}</td>
-              <td class="px-4 py-3 text-lactec-ink-soft">{{ cliente.email }}</td>
-              <td class="whitespace-nowrap px-4 py-3 text-lactec-ink-soft">{{ cliente.phone }}</td>
-              <td class="max-w-56 px-4 py-3 text-lactec-ink-soft">
+              <td class="break-words px-3 py-3 font-medium text-lactec-ink [overflow-wrap:anywhere]">{{ cliente.name }}</td>
+              <td class="break-words px-3 py-3 text-lactec-ink-soft [overflow-wrap:anywhere]">{{ cliente.email }}</td>
+              <td class="break-words px-3 py-3 text-lactec-ink-soft [overflow-wrap:anywhere]">{{ formatarTelefone(cliente.phone) }}</td>
+              <td class="break-words px-3 py-3 text-lactec-ink-soft [overflow-wrap:anywhere]">
                 <ul class="m-0 list-none space-y-1 p-0">
                   @for (empresa of cliente.companies; track empresa.id) {
-                    <li class="flex flex-wrap items-center gap-1">
+                    <li class="flex flex-wrap items-center gap-1 [overflow-wrap:anywhere]">
                       <span>{{ empresa.name }}</span>
                       @if (empresa.status === 'INACTIVE') {
                         <span class="rounded-full bg-slate-200 px-2 py-0.5 text-[0.68rem] font-medium text-slate-700">Inativa</span>
@@ -90,8 +90,8 @@
                   }
                 </ul>
               </td>
-              <td class="px-4 py-3 text-lactec-ink-soft">{{ cliente.position }}</td>
-              <td class="px-4 py-3">
+              <td class="break-words px-3 py-3 text-lactec-ink-soft [overflow-wrap:anywhere]">{{ cliente.position }}</td>
+              <td class="px-2 py-3">
                 <span class="inline-flex min-w-16 justify-center rounded-full px-2.5 py-1 text-xs font-semibold"
                   [class.bg-emerald-100]="cliente.status === 'ACTIVE'"
                   [class.text-emerald-900]="cliente.status === 'ACTIVE'"
@@ -100,7 +100,7 @@
                   {{ cliente.status === 'ACTIVE' ? 'Ativo' : 'Inativo' }}
                 </span>
               </td>
-              <td class="whitespace-nowrap px-3 py-2 text-right">
+              <td class="px-1 py-2 text-right">
                 <button mat-icon-button type="button" (click)="editarCliente(cliente)"
                   [attr.aria-label]="'Editar cliente ' + cliente.name" matTooltip="Editar cliente">
                   <mat-icon>edit</mat-icon>
@@ -117,5 +117,63 @@
         </tbody>
       </table>
     </div>
+
+    <ul class="divide-y divide-lactec-line-soft xl:hidden">
+      @for (cliente of clientes(); track cliente.id) {
+        <li class="min-w-0 p-4">
+          <div class="flex min-w-0 items-start justify-between gap-3">
+            <h2 class="m-0 min-w-0 break-words text-sm font-semibold text-lactec-ink [overflow-wrap:anywhere]">{{ cliente.name }}</h2>
+            <span class="inline-flex shrink-0 justify-center rounded-full px-2.5 py-1 text-xs font-semibold"
+              [class.bg-emerald-100]="cliente.status === 'ACTIVE'"
+              [class.text-emerald-900]="cliente.status === 'ACTIVE'"
+              [class.bg-slate-200]="cliente.status === 'INACTIVE'"
+              [class.text-slate-700]="cliente.status === 'INACTIVE'">
+              {{ cliente.status === 'ACTIVE' ? 'Ativo' : 'Inativo' }}
+            </span>
+          </div>
+          <dl class="mt-3 grid min-w-0 grid-cols-1 gap-3 text-sm sm:grid-cols-2">
+            <div class="min-w-0">
+              <dt class="text-xs font-medium text-lactec-muted">E-mail</dt>
+              <dd class="mt-1 mb-0 break-words text-lactec-ink-soft [overflow-wrap:anywhere]">{{ cliente.email }}</dd>
+            </div>
+            <div class="min-w-0">
+              <dt class="text-xs font-medium text-lactec-muted">Telefone</dt>
+              <dd class="mt-1 mb-0 break-words text-lactec-ink-soft [overflow-wrap:anywhere]">{{ formatarTelefone(cliente.phone) }}</dd>
+            </div>
+            <div class="min-w-0 sm:col-span-2">
+              <dt class="text-xs font-medium text-lactec-muted">Empresa(s)</dt>
+              <dd class="mt-1 mb-0 text-lactec-ink-soft">
+                <ul class="m-0 list-none space-y-1 p-0">
+                  @for (empresa of cliente.companies; track empresa.id) {
+                    <li class="flex flex-wrap items-center gap-1 [overflow-wrap:anywhere]">
+                      <span>{{ empresa.name }}</span>
+                      @if (empresa.status === 'INACTIVE') {
+                        <span class="rounded-full bg-slate-200 px-2 py-0.5 text-[0.68rem] font-medium text-slate-700">Inativa</span>
+                      }
+                    </li>
+                  }
+                </ul>
+              </dd>
+            </div>
+            <div class="min-w-0 sm:col-span-2">
+              <dt class="text-xs font-medium text-lactec-muted">Cargo</dt>
+              <dd class="mt-1 mb-0 break-words text-lactec-ink-soft [overflow-wrap:anywhere]">{{ cliente.position }}</dd>
+            </div>
+          </dl>
+          <div class="mt-2 flex justify-end">
+            <button mat-icon-button type="button" (click)="editarCliente(cliente)"
+              [attr.aria-label]="'Editar cliente ' + cliente.name" matTooltip="Editar cliente">
+              <mat-icon>edit</mat-icon>
+            </button>
+            <button mat-icon-button type="button" (click)="alternarStatus(cliente)"
+              [disabled]="alterandoStatus().has(cliente.id)"
+              [attr.aria-label]="(cliente.status === 'ACTIVE' ? 'Desativar cliente ' : 'Ativar cliente ') + cliente.name"
+              [matTooltip]="cliente.status === 'ACTIVE' ? 'Desativar cliente' : 'Ativar cliente'">
+              <mat-icon>{{ cliente.status === 'ACTIVE' ? 'person_off' : 'person' }}</mat-icon>
+            </button>
+          </div>
+        </li>
+      }
+    </ul>
   </div>
 }

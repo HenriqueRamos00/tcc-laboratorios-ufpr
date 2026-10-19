@@ -1,0 +1,137 @@
+<app-dialog-shell
+  title="Detalhes do orçamento"
+  [subtitle]="data.quoteCode"
+  [lateral]="true"
+  closeLabel="Fechar detalhes do orçamento"
+>
+  @if (carregando()) {
+    <div class="flex min-h-44 items-center justify-center gap-3" role="status">
+      <mat-spinner diameter="24" aria-label="Carregando detalhes do orçamento"></mat-spinner>
+      <span class="text-sm text-lactec-muted">Carregando detalhes...</span>
+    </div>
+  } @else if (erro()) {
+    <section class="flex min-h-44 flex-col items-center justify-center gap-3 px-6 text-center" role="alert">
+      <p class="m-0 text-sm font-semibold text-lactec-ink">
+        @if (erroPermissao()) {
+          Sua conta não tem permissão para consultar este orçamento.
+        } @else if (erroNaoEncontrado()) {
+          Este orçamento não está mais disponível.
+        } @else {
+          Não foi possível carregar os detalhes do orçamento.
+        }
+      </p>
+      @if (!erroPermissao() && !erroNaoEncontrado()) {
+        <button type="button" class="rounded-lg border border-lactec-line px-4 py-2 text-sm font-medium text-lactec-primary-dark hover:bg-lactec-line-soft" (click)="carregar()">
+          Tentar novamente
+        </button>
+      }
+    </section>
+  } @else {
+    @if (orcamento(); as detalhe) {
+      <div class="space-y-5">
+        <div class="flex flex-wrap items-center justify-between gap-3">
+          <div class="min-w-0">
+            <p class="m-0 text-xs font-semibold uppercase tracking-wide text-lactec-muted">Proposta</p>
+            <p class="mono mt-1 mb-0 break-all text-sm font-semibold text-lactec-primary-dark">{{ detalhe.code }}</p>
+          </div>
+          <span class="inline-block max-w-full break-words rounded-full px-3 py-1 text-xs font-semibold [overflow-wrap:anywhere]" [ngClass]="classeStatus(detalhe.status)">
+            {{ rotuloStatus(detalhe.status) }}
+          </span>
+        </div>
+
+        <dl class="grid grid-cols-1 gap-x-6 gap-y-4 border-y border-lactec-line-soft py-5 sm:grid-cols-2">
+          <div class="min-w-0">
+            <dt class="text-xs font-medium text-lactec-muted">Cliente / empresa</dt>
+            <dd class="mt-1 mb-0 break-words text-sm font-medium text-lactec-ink [overflow-wrap:anywhere]">{{ detalhe.companyName }}</dd>
+          </div>
+          <div class="min-w-0">
+            <dt class="text-xs font-medium text-lactec-muted">Nome</dt>
+            <dd class="mt-1 mb-0 break-words text-sm text-lactec-ink-soft [overflow-wrap:anywhere]">{{ detalhe.name || '-' }}</dd>
+          </div>
+          <div class="min-w-0">
+            <dt class="text-xs font-medium text-lactec-muted">Laboratório</dt>
+            <dd class="mt-1 mb-0 break-words text-sm text-lactec-ink-soft [overflow-wrap:anywhere]">{{ detalhe.laboratoryName || 'Não informado' }}</dd>
+          </div>
+          <div class="min-w-0 sm:col-span-2">
+            <dt class="text-xs font-medium text-lactec-muted">Descrição</dt>
+            <dd class="mt-1 mb-0 break-words whitespace-pre-line text-sm text-lactec-ink-soft [overflow-wrap:anywhere]">{{ detalhe.description }}</dd>
+          </div>
+          <div class="min-w-0 sm:col-span-2">
+            <dt class="text-xs font-medium text-lactec-muted">Escopo</dt>
+            <dd class="mt-1 mb-0 break-words whitespace-pre-line text-sm text-lactec-ink-soft [overflow-wrap:anywhere]">{{ detalhe.scope || 'Não informado' }}</dd>
+          </div>
+          <div>
+            <dt class="text-xs font-medium text-lactec-muted">Data</dt>
+            <dd class="mt-1 mb-0 text-sm text-lactec-ink-soft">
+              {{ detalhe.createdDate ? (detalhe.createdDate | date: 'dd/MM/yyyy') : '-' }}
+            </dd>
+          </div>
+          <div class="min-w-0">
+            <dt class="text-xs font-medium text-lactec-muted">Valor</dt>
+            <dd class="mt-1 mb-0 break-words text-sm font-semibold text-lactec-ink [overflow-wrap:anywhere]">
+              {{ detalhe.totalPrice | currency: 'BRL' : 'symbol' : '1.2-2' : 'pt' }}
+            </dd>
+          </div>
+          <div class="min-w-0">
+            <dt class="text-xs font-medium text-lactec-muted">Contato</dt>
+            <dd class="mt-1 mb-0 break-words text-sm text-lactec-ink-soft [overflow-wrap:anywhere]">{{ detalhe.externalContactName || 'Não informado' }}</dd>
+          </div>
+          <div class="min-w-0">
+            <dt class="text-xs font-medium text-lactec-muted">E-mail do contato</dt>
+            <dd class="mt-1 mb-0 break-words text-sm text-lactec-ink-soft [overflow-wrap:anywhere]">{{ detalhe.externalContactEmail || 'Não informado' }}</dd>
+          </div>
+          <div class="min-w-0">
+            <dt class="text-xs font-medium text-lactec-muted">Etapa</dt>
+            <dd class="mt-1 mb-0 break-words text-sm text-lactec-ink-soft [overflow-wrap:anywhere]">{{ detalhe.stage }}</dd>
+          </div>
+          <div class="min-w-0">
+            <dt class="text-xs font-medium text-lactec-muted">Documento PDF</dt>
+            <dd class="mt-1 mb-0 text-sm text-lactec-ink-soft">
+              {{ detalhe.hasDocument ? 'Disponível para baixar na listagem' : 'Não disponível' }}
+            </dd>
+          </div>
+        </dl>
+
+        <section class="space-y-3" aria-labelledby="quote-items-title">
+          <h3 id="quote-items-title" class="display m-0 min-w-0 break-words text-base font-semibold text-lactec-ink [overflow-wrap:anywhere]">Itens do orçamento</h3>
+          @if (detalhe.items.length) {
+            <div class="space-y-3">
+              @for (item of detalhe.items; track $index) {
+                <article class="min-w-0 rounded-xl border border-lactec-line bg-lactec-surface p-4">
+                  <h4 class="m-0 break-words text-sm font-semibold text-lactec-ink [overflow-wrap:anywhere]">{{ item.testType }}</h4>
+                  <dl class="mt-3 grid grid-cols-2 gap-x-4 gap-y-3 text-sm">
+                    <div class="min-w-0">
+                      <dt class="text-xs text-lactec-muted">Amostras</dt>
+                      <dd class="mt-1 mb-0 break-words text-lactec-ink-soft">{{ item.sampleCount }}</dd>
+                    </div>
+                    <div class="min-w-0">
+                      <dt class="text-xs text-lactec-muted">Norma</dt>
+                      <dd class="mt-1 mb-0 break-words text-lactec-ink-soft [overflow-wrap:anywhere]">{{ item.standard || 'Não informada' }}</dd>
+                    </div>
+                    <div class="min-w-0">
+                      <dt class="text-xs text-lactec-muted">Valor por amostra</dt>
+                      <dd class="mt-1 mb-0 break-words text-lactec-ink-soft [overflow-wrap:anywhere]">{{ item.unitPrice | currency: 'BRL' : 'symbol' : '1.2-2' : 'pt' }}</dd>
+                    </div>
+                    <div class="min-w-0">
+                      <dt class="text-xs text-lactec-muted">Subtotal</dt>
+                      @let subtotal = subtotalItem(item);
+                      <dd class="mt-1 mb-0 break-words font-semibold text-lactec-ink [overflow-wrap:anywhere]">
+                        {{ subtotal === null ? 'Valor fora do limite seguro' : (subtotal | currency: 'BRL' : 'symbol' : '1.2-2' : 'pt') }}
+                      </dd>
+                    </div>
+                  </dl>
+                </article>
+              }
+            </div>
+          } @else {
+            <p class="m-0 rounded-lg bg-lactec-line-soft px-4 py-3 text-sm text-lactec-muted">Itens não informados para este orçamento.</p>
+          }
+        </section>
+      </div>
+
+    }
+  }
+  <button dialog-footer type="button" mat-dialog-close class="w-full rounded-lg bg-lactec-primary px-5 py-2.5 text-sm font-semibold text-white hover:bg-lactec-primary-dark sm:w-auto">
+    Fechar
+  </button>
+</app-dialog-shell>

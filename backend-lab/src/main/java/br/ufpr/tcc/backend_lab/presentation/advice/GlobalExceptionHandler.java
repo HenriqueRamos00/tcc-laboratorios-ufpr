@@ -1,6 +1,7 @@
 package br.ufpr.tcc.backend_lab.presentation.advice;
 
 import br.ufpr.tcc.backend_lab.domain.exception.CredenciaisInvalidasException;
+import br.ufpr.tcc.backend_lab.domain.exception.DocumentoOrcamentoMuitoGrandeException;
 import br.ufpr.tcc.backend_lab.domain.exception.EmailJaCadastradoException;
 import br.ufpr.tcc.backend_lab.domain.exception.RegraNegocioException;
 import br.ufpr.tcc.backend_lab.domain.exception.RegraNegocioException.Motivo;
@@ -18,6 +19,9 @@ import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
+import org.springframework.web.multipart.MaxUploadSizeExceededException;
+import org.springframework.web.multipart.MultipartException;
+import org.springframework.web.multipart.support.MissingServletRequestPartException;
 
 @RestControllerAdvice
 public class GlobalExceptionHandler {
@@ -26,6 +30,32 @@ public class GlobalExceptionHandler {
     public ResponseEntity<ApiErrorResponse> handleRegraNegocio(RegraNegocioException exception) {
         return ResponseEntity.status(statusFor(exception.getMotivo()))
                 .body(new ApiErrorResponse(exception.getMessage()));
+    }
+
+    @ExceptionHandler(DocumentoOrcamentoMuitoGrandeException.class)
+    public ResponseEntity<ApiErrorResponse> handleDocumentoMuitoGrande(
+            DocumentoOrcamentoMuitoGrandeException exception) {
+        return ResponseEntity.status(HttpStatus.CONTENT_TOO_LARGE)
+                .body(new ApiErrorResponse(exception.getMessage()));
+    }
+
+    @ExceptionHandler(MaxUploadSizeExceededException.class)
+    public ResponseEntity<ApiErrorResponse> handleUploadMuitoGrande(
+            MaxUploadSizeExceededException exception) {
+        return ResponseEntity.status(HttpStatus.CONTENT_TOO_LARGE)
+                .body(new ApiErrorResponse("O PDF do orçamento deve ter no máximo 50 MiB"));
+    }
+
+    @ExceptionHandler(MultipartException.class)
+    public ResponseEntity<ApiErrorResponse> handleMultipartInvalido(MultipartException exception) {
+        for (Throwable cause = exception; cause != null; cause = cause.getCause()) {
+            if (cause instanceof MaxUploadSizeExceededException) {
+                return ResponseEntity.status(HttpStatus.CONTENT_TOO_LARGE)
+                        .body(new ApiErrorResponse("O PDF do orçamento deve ter no máximo 50 MiB"));
+            }
+        }
+        return ResponseEntity.badRequest()
+                .body(new ApiErrorResponse("Requisição multipart inválida"));
     }
 
     @ExceptionHandler(DataIntegrityViolationException.class)
@@ -81,7 +111,8 @@ public class GlobalExceptionHandler {
 
     @ExceptionHandler({
         HttpMessageNotReadableException.class,
-        MethodArgumentTypeMismatchException.class
+        MethodArgumentTypeMismatchException.class,
+        MissingServletRequestPartException.class
     })
     public ResponseEntity<ApiErrorResponse> handleRequestMalformado(Exception exception) {
         return ResponseEntity.badRequest().body(new ApiErrorResponse("Requisição inválida"));

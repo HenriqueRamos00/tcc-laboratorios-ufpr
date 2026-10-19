@@ -5,6 +5,7 @@ import { AbstractControl, FormBuilder, ReactiveFormsModule, ValidationErrors, Va
 import { MatButtonModule } from '@angular/material/button';
 import { MAT_DIALOG_DATA, MatDialogRef } from '@angular/material/dialog';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
+import { NgxMaskDirective, provideNgxMask } from 'ngx-mask';
 import { catchError, EMPTY, finalize } from 'rxjs';
 
 import { Cliente, ClienteEmpresa, ClienteStatus, ClienteUpdateRequest } from '@/app/model/cliente';
@@ -30,7 +31,8 @@ function fallbackOption(empresa: ClienteEmpresa): EmpresaOption {
 @Component({
   selector: 'app-cliente-form-dialog',
   standalone: true,
-  imports: [ReactiveFormsModule, MatButtonModule, MatProgressSpinnerModule, DialogShellComponent],
+  imports: [ReactiveFormsModule, MatButtonModule, MatProgressSpinnerModule, DialogShellComponent, NgxMaskDirective],
+  providers: [provideNgxMask()],
   templateUrl: './cliente-form-dialog.component.html',
   changeDetection: ChangeDetectionStrategy.OnPush,
 })

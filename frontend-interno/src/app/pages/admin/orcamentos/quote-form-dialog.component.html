@@ -1,0 +1,320 @@
+@let controls = form.controls;
+
+<form class="flex h-full min-h-0 flex-col" [formGroup]="form" (ngSubmit)="save()" novalidate>
+  <app-dialog-shell
+    [title]="isEditing ? 'Editar Orçamento' : 'Novo Orçamento'"
+    [subtitle]="isEditing ? (data.quoteCode ?? undefined) : 'Informe os dados da proposta e os serviços do laboratório.'"
+    [lateral]="true"
+    [closeDisabled]="saving()"
+    closeLabel="Fechar formulário de orçamento"
+  >
+    @if (serverError()) {
+      <p class="m-0 rounded-lg border border-lactec-danger-border bg-lactec-danger-bg px-4 py-3 text-sm text-lactec-danger-ink" role="alert">
+        {{ serverError() }}
+      </p>
+    }
+
+    @if (isEditing && carregandoDetalhe()) {
+      <div class="flex min-h-44 items-center justify-center gap-3" role="status">
+        <mat-spinner diameter="24" aria-label="Carregando dados do orçamento"></mat-spinner>
+        <span class="text-sm text-lactec-muted">Carregando dados do orçamento...</span>
+      </div>
+    } @else if (isEditing && erroDetalhe()) {
+      <section class="flex min-h-44 flex-col items-center justify-center gap-3 px-4 text-center" role="alert">
+        <p class="m-0 text-sm text-lactec-danger-ink">{{ erroDetalheMensagem() }}</p>
+        <button mat-stroked-button type="button" (click)="tentarNovamenteDetalhe()">Tentar novamente</button>
+      </section>
+    } @else {
+      <div class="flex min-w-0 flex-col gap-5">
+        <section class="flex flex-col gap-4" aria-labelledby="orcamento-proposal-heading">
+          <h3 id="orcamento-proposal-heading" class="display m-0 text-base font-semibold text-lactec-ink">Dados da proposta</h3>
+
+          <div class="flex flex-col gap-2">
+            <label for="orcamento-code" class="text-xs font-medium tracking-wide text-lactec-ink-soft">Código da proposta <span class="text-lactec-danger">*</span></label>
+            <div class="input-field" [class.input-field--error]="controls.code.touched && controls.code.invalid">
+              <input id="orcamento-code" formControlName="code" maxlength="80" autocomplete="off" class="input-field__input mono"
+                [attr.aria-invalid]="controls.code.touched && controls.code.invalid"
+                [attr.aria-describedby]="controls.code.touched && controls.code.invalid ? 'orcamento-code-error' : null" />
+            </div>
+            @if (controls.code.touched && controls.code.invalid) {
+              <p id="orcamento-code-error" class="m-0 text-xs text-lactec-danger" role="alert">Informe o código, sem espaços no início ou no fim, com até 80 caracteres.</p>
+            }
+          </div>
+
+          <div class="flex flex-col gap-2">
+            <label for="orcamento-company" class="text-xs font-medium tracking-wide text-lactec-ink-soft">Empresa <span class="text-lactec-danger">*</span></label>
+            @if (carregandoEmpresas()) {
+              <div class="flex items-center gap-3 rounded-lg border border-lactec-line bg-lactec-surface px-4 py-3" role="status">
+                <mat-spinner diameter="20" aria-label="Carregando empresas"></mat-spinner>
+                <span class="text-sm text-lactec-muted">Carregando empresas...</span>
+              </div>
+            } @else if (erroEmpresas()) {
+              <div class="flex flex-col items-start gap-2 rounded-lg border border-lactec-danger-border bg-lactec-danger-bg px-4 py-3" role="alert">
+                <span class="text-sm text-lactec-danger-ink">Não foi possível carregar as empresas.</span>
+                <button mat-stroked-button type="button" (click)="tentarNovamenteEmpresas()">Tentar novamente</button>
+              </div>
+            } @else {
+              <div class="input-field" [class.input-field--error]="controls.companyId.touched && controls.companyId.invalid">
+                <select id="orcamento-company" formControlName="companyId" class="input-field__input"
+                  [attr.aria-invalid]="controls.companyId.touched && controls.companyId.invalid"
+                  [attr.aria-describedby]="controls.companyId.touched && controls.companyId.invalid ? 'orcamento-company-error' : null">
+                  <option value="" disabled>Selecione uma empresa ativa</option>
+                  @for (empresa of empresasDisponiveis(); track empresa.id) {
+                    <option [value]="empresa.id">
+                      {{ empresa.legalName }}{{ empresa.status === 'ACTIVE' ? '' : ' - inativa, vínculo atual' }}
+                    </option>
+                  }
+                </select>
+              </div>
+              @if (!temEmpresaAtiva() && !isEditing) {
+                <p class="m-0 rounded-lg border border-lactec-danger-border bg-lactec-danger-bg px-3 py-2 text-xs text-lactec-danger-ink" role="alert">Cadastre ou ative uma empresa antes de criar um orçamento.</p>
+              }
+              @if (controls.companyId.touched && controls.companyId.invalid) {
+                <p id="orcamento-company-error" class="m-0 text-xs text-lactec-danger" role="alert">Selecione uma empresa ativa.</p>
+              }
+            }
+          </div>
+
+          <div class="flex flex-col gap-2">
+            <label for="orcamento-name" class="text-xs font-medium tracking-wide text-lactec-ink-soft">Nome do orçamento <span class="text-lactec-danger">*</span></label>
+            <div class="input-field" [class.input-field--error]="controls.name.touched && controls.name.invalid">
+              <input id="orcamento-name" formControlName="name" maxlength="200" class="input-field__input"
+                [attr.aria-invalid]="controls.name.touched && controls.name.invalid"
+                [attr.aria-describedby]="controls.name.touched && controls.name.invalid ? 'orcamento-name-error' : null" />
+            </div>
+            @if (controls.name.touched && controls.name.invalid) {
+              <p id="orcamento-name-error" class="m-0 text-xs text-lactec-danger" role="alert">Informe o nome do orçamento, com até 200 caracteres.</p>
+            }
+          </div>
+
+          <div class="flex flex-col gap-2">
+            <label for="orcamento-laboratory" class="text-xs font-medium tracking-wide text-lactec-ink-soft">Laboratório <span class="text-lactec-danger">*</span></label>
+            <div class="input-field" [class.input-field--error]="controls.laboratoryName.touched && controls.laboratoryName.invalid">
+              <input id="orcamento-laboratory" formControlName="laboratoryName" maxlength="120" class="input-field__input"
+                [attr.aria-invalid]="controls.laboratoryName.touched && controls.laboratoryName.invalid"
+                [attr.aria-describedby]="controls.laboratoryName.touched && controls.laboratoryName.invalid ? 'orcamento-laboratory-error' : null" />
+            </div>
+            @if (controls.laboratoryName.touched && controls.laboratoryName.invalid) {
+              <p id="orcamento-laboratory-error" class="m-0 text-xs text-lactec-danger" role="alert">Informe o laboratório, com até 120 caracteres.</p>
+            }
+          </div>
+
+          <div class="flex flex-col gap-2">
+            <label for="orcamento-description" class="text-xs font-medium tracking-wide text-lactec-ink-soft">Descrição <span class="text-lactec-danger">*</span></label>
+            <textarea id="orcamento-description" formControlName="description" maxlength="2000" rows="4"
+              class="min-h-24 w-full resize-y rounded-lg border border-lactec-line bg-lactec-paper px-3 py-2 text-sm text-lactec-ink focus:border-lactec-primary focus:outline-none focus:ring-2 focus:ring-lactec-primary/20"
+              [class.border-lactec-danger]="controls.description.touched && controls.description.invalid"
+              [attr.aria-invalid]="controls.description.touched && controls.description.invalid"
+              [attr.aria-describedby]="controls.description.touched && controls.description.invalid ? 'orcamento-description-error' : null"></textarea>
+            @if (controls.description.touched && controls.description.invalid) {
+              <p id="orcamento-description-error" class="m-0 text-xs text-lactec-danger" role="alert">Informe a descrição, com até 2000 caracteres.</p>
+            }
+          </div>
+
+          <div class="flex flex-col gap-2">
+            <label for="orcamento-scope" class="text-xs font-medium tracking-wide text-lactec-ink-soft">Escopo <span class="text-lactec-muted">(opcional)</span></label>
+            <textarea id="orcamento-scope" formControlName="scope" maxlength="2000" rows="3"
+              class="min-h-20 w-full resize-y rounded-lg border border-lactec-line bg-lactec-paper px-3 py-2 text-sm text-lactec-ink focus:border-lactec-primary focus:outline-none focus:ring-2 focus:ring-lactec-primary/20"
+              [class.border-lactec-danger]="controls.scope.touched && controls.scope.invalid"
+              [attr.aria-invalid]="controls.scope.touched && controls.scope.invalid"
+              [attr.aria-describedby]="controls.scope.touched && controls.scope.invalid ? 'orcamento-scope-error' : null"></textarea>
+            @if (controls.scope.touched && controls.scope.invalid) {
+              <p id="orcamento-scope-error" class="m-0 text-xs text-lactec-danger" role="alert">O escopo deve ter até 2000 caracteres.</p>
+            }
+          </div>
+
+          <div class="rounded-lg border border-lactec-line bg-lactec-surface px-4 py-3" aria-live="polite">
+            <p class="m-0 text-xs font-medium tracking-wide text-lactec-muted">Status comercial</p>
+            @if (isEditing) {
+              <div class="input-field mt-2">
+                <label for="orcamento-status" class="sr-only">Status comercial do orçamento</label>
+                <select id="orcamento-status" formControlName="status" class="input-field__input">
+                  @for (option of statusOptions(); track option.value) {
+                    <option [value]="option.value">{{ option.label }}</option>
+                  }
+                </select>
+              </div>
+              @if (controls.status.touched && controls.status.invalid) {
+                <p class="m-0 mt-2 text-xs text-lactec-danger" role="alert">Selecione um dos status comerciais disponíveis.</p>
+              }
+            } @else {
+              <p class="m-0 mt-1 text-sm font-semibold text-lactec-ink">Pendente de Aceite</p>
+              <p class="m-0 mt-1 text-xs text-lactec-muted">A etapa inicial será Negociação, definida pelo sistema.</p>
+            }
+          </div>
+        </section>
+
+        <section class="flex flex-col gap-4 border-t border-lactec-line-soft pt-5" aria-labelledby="orcamento-contact-heading">
+          <div>
+            <h3 id="orcamento-contact-heading" class="display m-0 text-base font-semibold text-lactec-ink">Contato do orçamento</h3>
+            <p class="m-0 mt-1 text-xs text-lactec-muted">O contato pode ser diferente do cadastro da empresa.</p>
+          </div>
+
+          <div class="flex flex-col gap-2">
+            <label for="orcamento-contact-name" class="text-xs font-medium tracking-wide text-lactec-ink-soft">Nome do contato <span class="text-lactec-danger">*</span></label>
+            <div class="input-field" [class.input-field--error]="controls.externalContactName.touched && controls.externalContactName.invalid">
+              <input id="orcamento-contact-name" formControlName="externalContactName" maxlength="150" autocomplete="name" class="input-field__input"
+                [attr.aria-invalid]="controls.externalContactName.touched && controls.externalContactName.invalid"
+                [attr.aria-describedby]="controls.externalContactName.touched && controls.externalContactName.invalid ? 'orcamento-contact-name-error' : null" />
+            </div>
+            @if (controls.externalContactName.touched && controls.externalContactName.invalid) {
+              <p id="orcamento-contact-name-error" class="m-0 text-xs text-lactec-danger" role="alert">Informe o nome do contato, com até 150 caracteres.</p>
+            }
+          </div>
+
+          <div class="flex flex-col gap-2">
+            <label for="orcamento-contact-email" class="text-xs font-medium tracking-wide text-lactec-ink-soft">E-mail do contato <span class="text-lactec-danger">*</span></label>
+            <div class="input-field" [class.input-field--error]="controls.externalContactEmail.touched && controls.externalContactEmail.invalid">
+              <input id="orcamento-contact-email" formControlName="externalContactEmail" maxlength="254" type="email" autocomplete="email" class="input-field__input"
+                [attr.aria-invalid]="controls.externalContactEmail.touched && controls.externalContactEmail.invalid"
+                [attr.aria-describedby]="controls.externalContactEmail.touched && controls.externalContactEmail.invalid ? 'orcamento-contact-email-error' : null" />
+            </div>
+            @if (controls.externalContactEmail.touched && controls.externalContactEmail.invalid) {
+              <p id="orcamento-contact-email-error" class="m-0 text-xs text-lactec-danger" role="alert">Informe um e-mail válido, com até 254 caracteres.</p>
+            }
+          </div>
+        </section>
+
+        <section class="flex min-w-0 flex-col gap-4 border-t border-lactec-line-soft pt-5" aria-labelledby="orcamento-items-heading">
+          <div class="flex min-w-0 flex-wrap items-start justify-between gap-3">
+            <div class="min-w-0">
+              <h3 id="orcamento-items-heading" class="display m-0 text-base font-semibold text-lactec-ink">Itens do orçamento</h3>
+              <p class="m-0 mt-1 text-xs text-lactec-muted">Informe a quantidade de amostras e o preço unitário.</p>
+            </div>
+            <button mat-stroked-button type="button" class="shrink-0" (click)="adicionarItem()" [disabled]="saving()">
+              <mat-icon aria-hidden="true">add</mat-icon>
+              Adicionar item
+            </button>
+          </div>
+
+          <div formArrayName="items" class="flex min-w-0 flex-col gap-3">
+            @for (item of controls.items.controls; track $index; let index = $index) {
+              <fieldset [formGroupName]="index" class="m-0 min-w-0 rounded-xl border border-lactec-line bg-lactec-surface p-4">
+                <legend class="sr-only">Item {{ index + 1 }}</legend>
+                <div class="mb-3 flex min-w-0 items-center justify-between gap-3">
+                  <h4 class="m-0 text-sm font-semibold text-lactec-ink">Item {{ index + 1 }}</h4>
+                  @if (controls.items.length > 1) {
+                    <button mat-icon-button type="button" class="shrink-0" (click)="removerItem(index)" [disabled]="saving()" [attr.aria-label]="'Remover item ' + (index + 1)" matTooltip="Remover item">
+                      <mat-icon aria-hidden="true">delete_outline</mat-icon>
+                    </button>
+                  }
+                </div>
+
+                <div class="flex flex-col gap-3">
+                  <div class="flex flex-col gap-2">
+                    <label [for]="'orcamento-item-type-' + index" class="text-xs font-medium tracking-wide text-lactec-ink-soft">Tipo de ensaio <span class="text-lactec-danger">*</span></label>
+                    <div class="input-field" [class.input-field--error]="item.controls.testType.touched && item.controls.testType.invalid">
+                      <input [id]="'orcamento-item-type-' + index" formControlName="testType" maxlength="200" class="input-field__input"
+                        [attr.aria-invalid]="item.controls.testType.touched && item.controls.testType.invalid"
+                        [attr.aria-describedby]="item.controls.testType.touched && item.controls.testType.invalid ? 'orcamento-item-type-error-' + index : null" />
+                    </div>
+                    @if (item.controls.testType.touched && item.controls.testType.invalid) {
+                      <p [id]="'orcamento-item-type-error-' + index" class="m-0 text-xs text-lactec-danger" role="alert">Informe o tipo de ensaio, com até 200 caracteres.</p>
+                    }
+                  </div>
+
+                  <div class="grid min-w-0 grid-cols-2 gap-3">
+                    <div class="flex min-w-0 flex-col gap-2">
+                      <label [for]="'orcamento-item-count-' + index" class="text-xs font-medium tracking-wide text-lactec-ink-soft">Amostras <span class="text-lactec-danger">*</span></label>
+                      <div class="input-field" [class.input-field--error]="item.controls.sampleCount.touched && item.controls.sampleCount.invalid">
+                        <input [id]="'orcamento-item-count-' + index" formControlName="sampleCount" type="number" min="1" max="2147483647" step="1" inputmode="numeric" class="input-field__input"
+                          [attr.aria-invalid]="item.controls.sampleCount.touched && item.controls.sampleCount.invalid"
+                          [attr.aria-describedby]="item.controls.sampleCount.touched && item.controls.sampleCount.invalid ? 'orcamento-item-count-error-' + index : null" />
+                      </div>
+                      @if (item.controls.sampleCount.touched && item.controls.sampleCount.invalid) {
+                        <p [id]="'orcamento-item-count-error-' + index" class="m-0 text-xs text-lactec-danger" role="alert">
+                          @if (item.controls.sampleCount.hasError('max')) {
+                            A quantidade máxima é 2147483647 amostras.
+                          } @else {
+                            Use um inteiro maior ou igual a 1.
+                          }
+                        </p>
+                      }
+                    </div>
+                    <div class="flex min-w-0 flex-col gap-2">
+                      <label [for]="'orcamento-item-price-' + index" class="text-xs font-medium tracking-wide text-lactec-ink-soft">Preço unitário <span class="text-lactec-danger">*</span></label>
+                      <div class="input-field" [class.input-field--error]="item.controls.unitPrice.touched && item.controls.unitPrice.invalid">
+                        <input [id]="'orcamento-item-price-' + index" formControlName="unitPrice" type="number" min="0" step="0.01" inputmode="decimal" class="input-field__input"
+                          [attr.aria-invalid]="item.controls.unitPrice.touched && item.controls.unitPrice.invalid"
+                          [attr.aria-describedby]="item.controls.unitPrice.touched && item.controls.unitPrice.invalid ? 'orcamento-item-price-error-' + index : null" />
+                      </div>
+                      @if (item.controls.unitPrice.touched && item.controls.unitPrice.invalid) {
+                        <p [id]="'orcamento-item-price-error-' + index" class="m-0 text-xs text-lactec-danger" role="alert">
+                          @if (item.controls.unitPrice.hasError('valorInseguro')) {
+                            O preço excede a precisão numérica segura; informe um valor menor.
+                          } @else {
+                            Use valor a partir de zero e até duas casas decimais.
+                          }
+                        </p>
+                      }
+                    </div>
+                  </div>
+
+                  <div class="flex flex-col gap-2">
+                    <label [for]="'orcamento-item-standard-' + index" class="text-xs font-medium tracking-wide text-lactec-ink-soft">Norma <span class="text-lactec-muted">(opcional)</span></label>
+                    <div class="input-field" [class.input-field--error]="item.controls.standard.touched && item.controls.standard.invalid">
+                      <input [id]="'orcamento-item-standard-' + index" formControlName="standard" maxlength="255" class="input-field__input" />
+                    </div>
+                    @if (item.controls.standard.touched && item.controls.standard.invalid) {
+                      <p class="m-0 text-xs text-lactec-danger" role="alert">A norma deve ter até 255 caracteres.</p>
+                    }
+                  </div>
+
+                  @let subtotal = subtotalItem(item);
+                  <div class="flex min-w-0 flex-wrap items-center justify-between gap-2 border-t border-lactec-line-soft pt-3">
+                    <span class="text-xs font-medium text-lactec-muted">Subtotal do item</span>
+                    <output class="max-w-full break-words text-sm font-semibold text-lactec-ink [overflow-wrap:anywhere]" [attr.aria-label]="'Subtotal do item ' + (index + 1)">
+                      {{ subtotal === null ? 'Subtotal indisponível com os valores atuais' : (subtotal | currency: 'BRL' : 'symbol' : '1.2-2' : 'pt') }}
+                    </output>
+                  </div>
+                </div>
+              </fieldset>
+            }
+          </div>
+
+          <div class="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-lactec-line bg-lactec-paper px-4 py-3" aria-live="polite">
+            <span class="text-sm font-medium text-lactec-ink-soft">Total</span>
+            <output class="max-w-full break-words text-right text-lg font-semibold text-lactec-ink [overflow-wrap:anywhere]" aria-label="Total calculado do orçamento">
+              @if (totalIndisponivel()) {
+                Confira as quantidades e os preços informados.
+              } @else if (totalExcedido()) {
+                Valor excede a precisão numérica segura.
+              } @else {
+                {{ totalPrice() | currency: 'BRL' : 'symbol' : '1.2-2' : 'pt' }}
+              }
+            </output>
+          </div>
+        </section>
+
+        <section class="flex min-w-0 flex-col gap-3 border-t border-lactec-line-soft pt-5" aria-labelledby="orcamento-pdf-heading">
+          <div>
+            <h3 id="orcamento-pdf-heading" class="display m-0 text-base font-semibold text-lactec-ink">Documento PDF <span class="text-sm font-normal text-lactec-muted">(opcional)</span></h3>
+            @if (isEditing && detalhe()?.hasDocument) {
+              <p class="m-0 mt-1 text-xs text-lactec-muted">O PDF atual será mantido se nenhum novo arquivo for enviado. Um arquivo selecionado substituirá o documento atual.</p>
+            } @else {
+              <p class="m-0 mt-1 text-xs text-lactec-muted">Você poderá anexar um PDF de até 50 MB.</p>
+            }
+          </div>
+          <app-file-dropzone
+            [formatos]="['PDF']"
+            [tamanhoMaximoMb]="50"
+            [disabled]="saving()"
+            (arquivoEscolhido)="selecionarArquivo($event)"
+            (erroAlterado)="atualizarErroArquivo($event)"
+          />
+        </section>
+      </div>
+    }
+
+    <div dialog-footer class="flex w-full flex-wrap justify-end gap-3">
+      <button mat-stroked-button type="button" [disabled]="saving()" (click)="close()">Cancelar</button>
+      <button mat-flat-button type="submit" [disabled]="!podeSalvar()">
+        @if (saving()) {
+          <mat-spinner diameter="18" aria-label="Salvando orçamento"></mat-spinner>
+        } @else {
+          {{ isEditing ? 'Salvar alterações' : 'Salvar orçamento' }}
+        }
+      </button>
+    </div>
+  </app-dialog-shell>
+</form>
