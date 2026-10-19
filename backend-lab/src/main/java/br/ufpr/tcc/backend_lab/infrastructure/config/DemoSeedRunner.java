@@ -1,5 +1,6 @@
 package br.ufpr.tcc.backend_lab.infrastructure.config;
 
+import java.util.List;
 import javax.sql.DataSource;
 
 import org.springframework.boot.ApplicationArguments;
@@ -15,6 +16,7 @@ import org.springframework.transaction.annotation.Transactional;
 @ConditionalOnProperty(name = "demo.seed.enabled", havingValue = "true")
 public class DemoSeedRunner implements ApplicationRunner {
     private static final String DEMO_QUOTE_CODE = "DEMO-LACTEC-001";
+    private static final String DEMO_SEED_VERSION = "development-catalog-v2";
 
     private final DataSource dataSource;
     private final JdbcTemplate jdbc;
@@ -25,25 +27,49 @@ public class DemoSeedRunner implements ApplicationRunner {
     }
 
     @Override
-    @Transactional
+    @Transactional(rollbackFor = Exception.class)
     public void run(ApplicationArguments args) throws Exception {
-        new ResourceDatabasePopulator(new ClassPathResource("database/demo-seed.sql"))
-                .execute(dataSource);
-
-        Long quoteId =
-                jdbc.queryForObject(
-                        "SELECT id FROM orcamentos WHERE code = ?", Long.class, DEMO_QUOTE_CODE);
-        byte[] pdf = new ClassPathResource("database/demo-quote-lactec.pdf").getContentAsByteArray();
-        int updated =
-                jdbc.update(
-                        "UPDATE documentos_orcamentos SET content = ? WHERE orcamento_id = ?",
-                        pdf,
-                        quoteId);
-        if (updated == 0) {
-            jdbc.update(
-                    "INSERT INTO documentos_orcamentos (orcamento_id, content) VALUES (?, ?)",
-                    quoteId,
-                    pdf);
+        jdbc.execute(
+                "CREATE TABLE IF NOT EXISTS demo_seed_runs (seed_key VARCHAR(100) PRIMARY KEY)");
+        if (!seedVersionExists()) {
+            new ResourceDatabasePopulator(new ClassPathResource("database/demo-seed.sql"))
+                    .execute(dataSource);
+            inserirPdfDeDemonstracaoSeAusente();
+            jdbc.update("INSERT INTO demo_seed_runs (seed_key) VALUES (?)", DEMO_SEED_VERSION);
         }
+    }
+
+    private void inserirPdfDeDemonstracaoSeAusente() throws Exception {
+        List<Long> quoteIds =
+                jdbc.query(
+                        "SELECT id FROM orcamentos WHERE code = ?",
+                        (resultSet, rowNum) -> resultSet.getLong("id"),
+                        DEMO_QUOTE_CODE);
+        if (!quoteIds.isEmpty()) {
+            Long quoteId = quoteIds.get(0);
+            Integer documentCount =
+                    jdbc.queryForObject(
+                            "SELECT COUNT(*) FROM documentos_orcamentos WHERE orcamento_id = ?",
+                            Integer.class,
+                            quoteId);
+            if (documentCount != null && documentCount == 0) {
+                byte[] pdf =
+                        new ClassPathResource("database/demo-quote-lactec.pdf")
+                                .getContentAsByteArray();
+                jdbc.update(
+                        "INSERT INTO documentos_orcamentos (orcamento_id, content) VALUES (?, ?)",
+                        quoteId,
+                        pdf);
+            }
+        }
+    }
+
+    private boolean seedVersionExists() {
+        Integer count =
+                jdbc.queryForObject(
+                        "SELECT COUNT(*) FROM demo_seed_runs WHERE seed_key = ?",
+                        Integer.class,
+                        DEMO_SEED_VERSION);
+        return count != null && count > 0;
     }
 }

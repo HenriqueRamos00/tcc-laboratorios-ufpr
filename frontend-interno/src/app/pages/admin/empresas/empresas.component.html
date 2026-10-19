@@ -58,30 +58,30 @@
   </section>
 } @else {
   <div class="mt-6 overflow-hidden rounded-2xl border border-lactec-line bg-white">
-    <div class="overflow-x-auto">
-      <table class="w-full min-w-[1060px] border-collapse text-sm">
+    <div class="hidden xl:block">
+      <table class="w-full table-fixed border-collapse text-sm">
         <caption class="sr-only">Empresas cadastradas, com CNPJ, endereço, localidade, contato, status e ações.</caption>
         <thead>
           <tr class="bg-lactec-line-soft text-left">
-            <th scope="col" class="px-4 py-3 font-semibold text-lactec-ink">Razão social</th>
-            <th scope="col" class="px-4 py-3 font-semibold text-lactec-ink">CNPJ</th>
-            <th scope="col" class="px-4 py-3 font-semibold text-lactec-ink">Endereço</th>
-            <th scope="col" class="px-4 py-3 font-semibold text-lactec-ink">Localidade</th>
-            <th scope="col" class="px-4 py-3 font-semibold text-lactec-ink">Contato</th>
-            <th scope="col" class="px-4 py-3 font-semibold text-lactec-ink">Status</th>
-            <th scope="col" class="px-4 py-3 text-right font-semibold text-lactec-ink">Ações</th>
+            <th scope="col" class="w-[18%] px-3 py-3 font-semibold text-lactec-ink">Razão social</th>
+            <th scope="col" class="w-[12%] px-3 py-3 font-semibold text-lactec-ink">CNPJ</th>
+            <th scope="col" class="w-[17%] px-3 py-3 font-semibold text-lactec-ink">Endereço</th>
+            <th scope="col" class="w-[12%] px-3 py-3 font-semibold text-lactec-ink">Localidade</th>
+            <th scope="col" class="w-[20%] px-3 py-3 font-semibold text-lactec-ink">Contato</th>
+            <th scope="col" class="w-[10%] px-3 py-3 font-semibold text-lactec-ink">Status</th>
+            <th scope="col" class="w-[11%] px-2 py-3 text-right font-semibold text-lactec-ink">Ações</th>
           </tr>
         </thead>
         <tbody>
           @for (empresa of empresas(); track empresa.id) {
             <tr class="border-t border-lactec-line-soft hover:bg-slate-50/70">
-              <td class="px-4 py-3 font-medium text-lactec-ink">{{ empresa.legalName }}</td>
-              <td class="whitespace-nowrap px-4 py-3 text-lactec-ink-soft">{{ formatarCnpj(empresa.cnpj) }}</td>
-              <td class="max-w-64 px-4 py-3 text-lactec-ink-soft">{{ empresa.address }}</td>
-              <td class="whitespace-nowrap px-4 py-3 text-lactec-ink-soft">{{ empresa.city }}/{{ empresa.state }}</td>
-              <td class="px-4 py-3 text-lactec-ink-soft">
-                <span class="block whitespace-nowrap">{{ empresa.contactPhone }}</span>
-                <span class="block text-xs text-lactec-muted">{{ empresa.contactEmail }}</span>
+              <td class="break-words px-3 py-3 font-medium text-lactec-ink [overflow-wrap:anywhere]">{{ empresa.legalName }}</td>
+              <td class="break-all px-3 py-3 text-lactec-ink-soft">{{ formatarCnpj(empresa.cnpj) }}</td>
+              <td class="break-words px-3 py-3 text-lactec-ink-soft [overflow-wrap:anywhere]">{{ empresa.address }}</td>
+              <td class="break-words px-3 py-3 text-lactec-ink-soft [overflow-wrap:anywhere]">{{ empresa.city }}/{{ empresa.state }}</td>
+              <td class="break-words px-3 py-3 text-lactec-ink-soft [overflow-wrap:anywhere]">
+                <span class="block">{{ formatarTelefone(empresa.contactPhone) }}</span>
+                <span class="block text-xs text-lactec-muted [overflow-wrap:anywhere]">{{ empresa.contactEmail }}</span>
               </td>
               <td class="px-4 py-3">
                 <span class="inline-flex min-w-16 justify-center rounded-full px-2.5 py-1 text-xs font-semibold"
@@ -92,7 +92,7 @@
                   {{ empresa.status === 'ACTIVE' ? 'Ativa' : 'Inativa' }}
                 </span>
               </td>
-              <td class="whitespace-nowrap px-3 py-2 text-right">
+              <td class="px-1 py-2 text-right">
                 <button mat-icon-button type="button" (click)="editarEmpresa(empresa)"
                   [attr.aria-label]="'Editar empresa ' + empresa.legalName" matTooltip="Editar empresa">
                   <mat-icon>edit</mat-icon>
@@ -109,5 +109,53 @@
         </tbody>
       </table>
     </div>
+
+    <ul class="divide-y divide-lactec-line-soft xl:hidden">
+      @for (empresa of empresas(); track empresa.id) {
+        <li class="min-w-0 p-4">
+          <div class="flex min-w-0 items-start justify-between gap-3">
+            <h2 class="m-0 min-w-0 break-words text-sm font-semibold text-lactec-ink [overflow-wrap:anywhere]">{{ empresa.legalName }}</h2>
+            <span class="inline-flex shrink-0 justify-center rounded-full px-2.5 py-1 text-xs font-semibold"
+              [class.bg-emerald-100]="empresa.status === 'ACTIVE'"
+              [class.text-emerald-900]="empresa.status === 'ACTIVE'"
+              [class.bg-slate-200]="empresa.status === 'INACTIVE'"
+              [class.text-slate-700]="empresa.status === 'INACTIVE'">
+              {{ empresa.status === 'ACTIVE' ? 'Ativa' : 'Inativa' }}
+            </span>
+          </div>
+          <dl class="mt-3 grid min-w-0 grid-cols-1 gap-3 text-sm sm:grid-cols-2">
+            <div class="min-w-0">
+              <dt class="text-xs font-medium text-lactec-muted">CNPJ</dt>
+              <dd class="mt-1 mb-0 break-all text-lactec-ink-soft">{{ formatarCnpj(empresa.cnpj) }}</dd>
+            </div>
+            <div class="min-w-0">
+              <dt class="text-xs font-medium text-lactec-muted">Localidade</dt>
+              <dd class="mt-1 mb-0 break-words text-lactec-ink-soft [overflow-wrap:anywhere]">{{ empresa.city }}/{{ empresa.state }}</dd>
+            </div>
+            <div class="min-w-0 sm:col-span-2">
+              <dt class="text-xs font-medium text-lactec-muted">Endereço</dt>
+              <dd class="mt-1 mb-0 break-words text-lactec-ink-soft [overflow-wrap:anywhere]">{{ empresa.address }}</dd>
+            </div>
+            <div class="min-w-0 sm:col-span-2">
+              <dt class="text-xs font-medium text-lactec-muted">Contato</dt>
+              <dd class="mt-1 mb-0 break-words text-lactec-ink-soft [overflow-wrap:anywhere]">{{ formatarTelefone(empresa.contactPhone) }}</dd>
+              <dd class="mt-1 mb-0 break-words text-xs text-lactec-muted [overflow-wrap:anywhere]">{{ empresa.contactEmail }}</dd>
+            </div>
+          </dl>
+          <div class="mt-2 flex justify-end">
+            <button mat-icon-button type="button" (click)="editarEmpresa(empresa)"
+              [attr.aria-label]="'Editar empresa ' + empresa.legalName" matTooltip="Editar empresa">
+              <mat-icon>edit</mat-icon>
+            </button>
+            <button mat-icon-button type="button" (click)="alternarStatus(empresa)"
+              [disabled]="alterandoStatus().has(empresa.id)"
+              [attr.aria-label]="(empresa.status === 'ACTIVE' ? 'Desativar empresa ' : 'Ativar empresa ') + empresa.legalName"
+              [matTooltip]="empresa.status === 'ACTIVE' ? 'Desativar empresa' : 'Ativar empresa'">
+              <mat-icon>{{ empresa.status === 'ACTIVE' ? 'business_center' : 'domain_add' }}</mat-icon>
+            </button>
+          </div>
+        </li>
+      }
+    </ul>
   </div>
 }

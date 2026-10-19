@@ -119,11 +119,12 @@ html {
   letter-spacing: -0.01em;
 }
 
-/* Um rolador só na área de conteúdo. O container do Material traz
-   `overflow: auto` no próprio elemento de conteúdo, e o `main` do shell também
-   rola: empilhados, o conteúdo rola primeiro e a página rola depois. Quem rola
-   é o `main`, que preserva o cabeçalho fixo; o container do Material não pode
-   competir. Elemento + classe sobe a especificidade sem `!important`. */
+/* Mantém o conteúdo da página imóvel enquanto um painel lateral está aberto.
+   O conteúdo do painel tem sua própria rolagem. */
+body.lactec-lateral-dialog-open app-root main {
+  overflow: hidden;
+}
+
 mat-sidenav-content.mat-drawer-content {
   overflow: hidden;
 }

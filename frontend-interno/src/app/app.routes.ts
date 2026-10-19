@@ -49,17 +49,14 @@ export const routes: Routes = [
         ),
         title: 'Dashboard - Portal Interno Lactec',
       },
-      ...([
-        ['orcamentos', 'Orçamentos', 'Gestão dos orçamentos do laboratório.', 'description'],
-      ] as const).map(([path, title, description, icon]) => ({
-        path,
+      {
+        path: 'orcamentos',
         loadComponent: () =>
-          import('@/app/pages/placeholder/placeholder.component').then(
-            (module) => module.PlaceholderComponent,
+          import('@/app/pages/admin/orcamentos/orcamentos.component').then(
+            (module) => module.OrcamentosComponent,
           ),
-        data: placeholder(title, description, icon),
-        title: title + ' - Portal Interno Lactec',
-      })),
+        title: 'Orçamentos - Portal Interno Lactec',
+      },
       {
         path: 'empresas',
         loadComponent: () =>
