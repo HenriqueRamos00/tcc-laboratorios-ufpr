@@ -116,24 +116,6 @@ public sealed class QuoteDocumentTests
             adapter.GetDocumentAsync("quote-3", cancellation.Token));
     }
 
-    [Fact]
-    public async Task ThirdListedQuoteHasMatchingPdfDocument()
-    {
-        var quotes = await new FakeSalesforceQuoteRepository().GetQuotesAsync(CancellationToken.None);
-        var thirdQuote = quotes[2];
-        Assert.Equal("quote-2", thirdQuote.Id);
-        var controller = CreateController(new LocalQuoteDocumentRepository());
-
-        var result = Assert.IsType<FileContentResult>(await controller.GetDocument(thirdQuote.Id!, CancellationToken.None));
-
-        Assert.Equal("application/pdf", result.ContentType);
-        var text = System.Text.Encoding.ASCII.GetString(result.FileContents);
-        Assert.StartsWith("%PDF-1.4", text);
-        Assert.Contains(thirdQuote.Code!, text);
-        Assert.Contains("Empresa Exemplo Beta S.A.", text);
-        Assert.Contains("R$ 12.500,00", text);
-    }
-
     private static QuotesController CreateController(IQuoteDocumentRepository documents) =>
         new(new QuoteService(new FakeSalesforceQuoteRepository(), documents));
 

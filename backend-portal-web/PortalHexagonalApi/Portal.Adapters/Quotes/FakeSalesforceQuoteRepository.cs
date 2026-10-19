@@ -40,22 +40,6 @@ public sealed class FakeSalesforceQuoteRepository : IQuoteRepository
                 createdDate: new DateTimeOffset(2026, 1, 15, 9, 30, 0, TimeSpan.Zero))
         ),
         new FakeQuote(
-            Id: "quote-2",
-            Quote: new Quote(
-                id: "quote-2",
-                opportunityId: "opportunity-2",
-                code: "EAQ_2026_45483_V_1",
-                name: "Ensaios laboratoriais de materiais",
-                status: "Em Andamento",
-                stage: "Em execução",
-                description: "Ensaios laboratoriais de materiais",
-                companyName: "Empresa Exemplo Beta S.A.",
-                externalContactName: "",
-                externalContactEmail: "ciclano@exemplo.com",
-                totalPrice: 12500.00m,
-                createdDate: new DateTimeOffset(2026, 2, 3, 14, 0, 0, TimeSpan.Zero))
-        ),
-        new FakeQuote(
             Id: "quote-4",
             Quote: new Quote(
                 id: "quote-4",

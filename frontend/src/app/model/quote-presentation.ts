@@ -89,8 +89,6 @@ const STAGE_BY_NAME: Record<string, RequestStatus> = {
   // Etapas que chegam do AutoLAB depois que a amostra entra no laboratório.
   'protocolado': 'protocolado',
   'em execução': 'em-execucao',
-  // "Incompleto" saiu da linha: se ainda chegar da fonte, a amostra segue em execução.
-  'incompleto': 'em-execucao',
   'completo': 'completo',
   'validado': 'validado',
   'finalizado': 'finalizado',
