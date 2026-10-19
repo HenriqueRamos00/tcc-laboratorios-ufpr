@@ -17,7 +17,7 @@ public sealed class LocalQuoteDocumentRepository : IQuoteDocumentRepository
 
     public async Task<byte[]?> GetDocumentAsync(string quoteId, CancellationToken cancellationToken)
     {
-        if (quoteId is not ("quote-2" or "quote-3")) return null;
+        if (quoteId != "quote-3") return null;
 
         try
         {

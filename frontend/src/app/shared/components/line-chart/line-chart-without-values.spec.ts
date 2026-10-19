@@ -17,36 +17,36 @@ import { ChartSeries, LineChartComponent } from './line-chart.component';
   template: `
     <app-line-chart
       title="Evolução"
-      [xAxisLabels]="rotulos()"
+      [xAxisLabels]="dates()"
       [series]="series()"
-      [scale]="escala()"
+      [scale]="scale()"
     />
   `,
 })
-class HospedeiroDoGrafico {
-  readonly rotulos = signal<readonly string[]>([]);
+class ChartHost {
+  readonly dates = signal<readonly string[]>([]);
   readonly series = signal<readonly ChartSeries[]>([]);
-  readonly escala = signal<'linear' | 'log'>('log');
+  readonly scale = signal<'linear' | 'log'>('log');
 }
 
 describe('LineChartComponent, série sem nenhum valor plotável', () => {
-  function montar(): HTMLElement {
-    TestBed.configureTestingModule({ imports: [HospedeiroDoGrafico] });
-    const fixture = TestBed.createComponent(HospedeiroDoGrafico);
+  function render(): HTMLElement {
+    TestBed.configureTestingModule({ imports: [ChartHost] });
+    const fixture = TestBed.createComponent(ChartHost);
     fixture.detectChanges();
     return fixture.nativeElement as HTMLElement;
   }
 
   it('desenha o eixo em escala logarítmica sem derrubar a detecção de mudanças', () => {
-    const raiz = montar();
+    const root = render();
 
-    expect(raiz.querySelector('svg')).not.toBeNull();
+    expect(root.querySelector('svg')).not.toBeNull();
 
-    const alturas = [...raiz.querySelectorAll('svg text')]
-      .map((marca) => Number(marca.getAttribute('y')))
-      .filter((altura) => !Number.isNaN(altura));
+    const heights = [...root.querySelectorAll('svg text')]
+      .map((tick) => Number(tick.getAttribute('y')))
+      .filter((height) => !Number.isNaN(height));
 
-    expect(alturas.length).toBeGreaterThan(0);
-    expect(alturas.every(Number.isFinite)).toBeTrue();
+    expect(heights.length).toBeGreaterThan(0);
+    expect(heights.every(Number.isFinite)).toBeTrue();
   });
 });

@@ -9,7 +9,6 @@ import {
 } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
-import { combineLatest, startWith } from 'rxjs';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { Router } from '@angular/router';
 
@@ -18,25 +17,33 @@ import { PageHeaderComponent } from '@shared/components/page-header/page-header.
 import { SampleShippingNoticeComponent } from '@shared/components/sample-shipping-notice/sample-shipping-notice.component';
 
 import type { AcceptanceTerms } from '@/app/model/acceptance';
+import { AppDialogService } from '@/app/services/app-dialog.service';
 import { QuoteDecisionService } from '@/app/services/quote-decision.service';
 
+import {
+  ConfirmAcceptanceDialogComponent,
+  type ConfirmAcceptanceDialogData,
+} from './confirm-acceptance-dialog.component';
+
 // Anexo II da proposta (HU-09). Os campos são os do formulário impresso, para
-// que o cliente reconheça o documento que já recebe por e-mail hoje.
-function addressGroup(fb: FormBuilder, obrigatorio: boolean) {
-  const exigido = obrigatorio ? [Validators.required] : [];
+// que o cliente reconheça o documento que já recebe por e-mail hoje. A seção do
+// endereço de envio do relatório saiu junto com a entrega em papel: o laudo é
+// publicado no portal, e endereço agora só existe para a cobrança.
+function billingGroup(fb: FormBuilder) {
+  const required = [Validators.required];
   return fb.nonNullable.group({
-    empresa: ['', exigido],
-    cnpj: ['', exigido],
-    inscricaoEstadual: [''],
-    endereco: ['', exigido],
-    cidade: ['', exigido],
-    uf: ['', exigido],
-    bairro: [''],
-    cep: ['', exigido],
-    contato: [''],
-    telefone: [''],
+    company: ['', required],
+    cnpj: ['', required],
+    stateRegistration: [''],
+    street: ['', required],
+    city: ['', required],
+    state: ['', required],
+    district: [''],
+    postalCode: ['', required],
+    contact: [''],
+    phone: [''],
     fax: [''],
-    emailsParaNotaFiscal: [''],
+    invoiceEmails: [''],
   });
 }
 
@@ -57,6 +64,7 @@ export class AcceptanceTermsComponent {
 
   private readonly fb = inject(FormBuilder);
   private readonly decisions = inject(QuoteDecisionService);
+  private readonly dialogs = inject(AppDialogService);
   private readonly snackBar = inject(MatSnackBar);
   private readonly router = inject(Router);
   private readonly destroyRef = inject(DestroyRef);
@@ -72,75 +80,62 @@ export class AcceptanceTermsComponent {
   ]);
 
   protected readonly form = this.fb.group({
-    cobranca: addressGroup(this.fb, true),
-    mesmoEnderecoDaCobranca: this.fb.nonNullable.control(true),
-    envioDoRelatorio: addressGroup(this.fb, false),
-    aprovacao: this.fb.nonNullable.group({
-      nomeDoSolicitante: ['', Validators.required],
-      nomeDoResponsavel: ['', Validators.required],
-      cargo: ['', Validators.required],
-      setor: [''],
-      data: ['', Validators.required],
-      autorizaEnvioPorEmail: [true],
-      emailParaResultados: ['', [Validators.required, Validators.email]],
+    billing: billingGroup(this.fb),
+    approval: this.fb.nonNullable.group({
+      requesterName: ['', Validators.required],
+      responsibleName: ['', Validators.required],
+      jobTitle: ['', Validators.required],
+      department: [''],
+      date: ['', Validators.required],
+      allowsResultsByEmail: [true],
+      resultsEmail: ['', [Validators.required, Validators.email]],
     }),
   });
 
   constructor() {
-    // FormControl não é signal: um effect lendo `.value` fica sem dependência
-    // reativa, roda uma vez e nunca mais reabilita a seção. O combineLatest
-    // mantém o espelho vivo enquanto a caixa está marcada.
-    const cobranca = this.form.controls.cobranca;
-    const mesmoEndereco = this.form.controls.mesmoEnderecoDaCobranca;
-    const envio = this.form.controls.envioDoRelatorio;
-
-    combineLatest([
-      mesmoEndereco.valueChanges.pipe(startWith(mesmoEndereco.value)),
-      cobranca.valueChanges.pipe(startWith(cobranca.getRawValue())),
-    ])
-      .pipe(takeUntilDestroyed(this.destroyRef))
-      .subscribe(([espelhar]) => {
-        if (espelhar) {
-          envio.patchValue(cobranca.getRawValue(), { emitEvent: false });
-          if (envio.enabled) envio.disable({ emitEvent: false });
-        } else if (envio.disabled) {
-          envio.enable({ emitEvent: false });
-        }
-      });
-
     // O e-mail só é obrigatório quando o cliente autoriza o envio de resultados
     // por e-mail (HU-09, critério 4).
-    this.form.controls.aprovacao.controls.autorizaEnvioPorEmail.valueChanges
+    this.form.controls.approval.controls.allowsResultsByEmail.valueChanges
       .pipe(takeUntilDestroyed(this.destroyRef))
-      .subscribe((autoriza) => {
-        const campo = this.form.controls.aprovacao.controls.emailParaResultados;
-        campo.setValidators(
-          autoriza ? [Validators.required, Validators.email] : [Validators.email],
-        );
-        campo.updateValueAndValidity();
+      .subscribe((allows) => {
+        const field = this.form.controls.approval.controls.resultsEmail;
+        field.setValidators(allows ? [Validators.required, Validators.email] : [Validators.email]);
+        field.updateValueAndValidity();
       });
   }
 
-  protected enviar(): void {
+  // O envio passa por uma confirmação porque o aceite põe o orçamento em
+  // execução: depois dele, corrigir um dado do termo depende da equipe.
+  protected submit(): void {
     if (this.form.invalid) {
       this.form.markAllAsTouched();
       return;
     }
 
-    const bruto = this.form.getRawValue();
-    const termo: AcceptanceTerms = {
+    this.dialogs
+      .open<ConfirmAcceptanceDialogComponent, ConfirmAcceptanceDialogData, boolean>(
+        ConfirmAcceptanceDialogComponent,
+        { proposalCode: this.id() },
+        'Confirmar envio do aceite',
+      )
+      .afterClosed()
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe((confirmed) => {
+        if (confirmed) this.send();
+      });
+  }
+
+  private send(): void {
+    const raw = this.form.getRawValue();
+    const terms: AcceptanceTerms = {
       proposalId: this.id(),
-      cobranca: bruto.cobranca,
-      // getRawValue() inclui o grupo desabilitado quando o cliente marcou
-      // "mesmo endereço da cobrança", então o espelho chega preenchido.
-      envioDoRelatorio: bruto.envioDoRelatorio,
-      mesmoEnderecoDaCobranca: bruto.mesmoEnderecoDaCobranca,
-      aprovacao: bruto.aprovacao,
+      billing: raw.billing,
+      approval: raw.approval,
     };
 
     this.sending.set(true);
     this.decisions
-      .aceitar(termo)
+      .aceitar(terms)
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe({
         next: () => {

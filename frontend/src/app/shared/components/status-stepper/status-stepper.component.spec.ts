@@ -44,7 +44,7 @@ describe('StatusStepperComponent, onde a etapa atual aparece', () => {
       montarStepper(index).findIndex((stage) => stage.state === 'active'),
     );
 
-    expect(posicoes).toEqual([0, 1, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 3, 4]);
+    expect(posicoes).toEqual([0, 1, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 3, 4]);
   });
 
   it('sempre mostra cinco etapas, inclusive nas pontas', () => {
@@ -63,7 +63,7 @@ describe('StatusStepperComponent, onde a etapa atual aparece', () => {
       'Recebido',
       'Protocolado',
       'Em execução',
-      'Incompleto',
+      'Completo',
     ]);
   });
 });

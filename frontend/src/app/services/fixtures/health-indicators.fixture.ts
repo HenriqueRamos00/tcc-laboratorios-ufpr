@@ -211,7 +211,7 @@ export const HEALTH_INDICATORS: HealthIndicators = {
     report: {
       title: 'Laudo das análises físico-químicas',
       paragraphs: [
-        'De acordo com a norma ABNT NBR 10576/17, os results obtidos nesta análise indicam que ' +
+        'De acordo com a norma ABNT NBR 10576/17, os resultados obtidos nesta análise indicam que ' +
           'o óleo mineral isolante encontra-se em boas condições físico-químicas.',
         'Sugere-se nova análise no prazo de 1 (um) ano.',
       ],

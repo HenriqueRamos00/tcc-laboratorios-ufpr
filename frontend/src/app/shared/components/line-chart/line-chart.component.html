@@ -3,49 +3,49 @@
 
   <div class="relative">
     <svg
-      [attr.viewBox]="'0 0 ' + LARGURA() + ' ' + ALTURA()"
+      [attr.viewBox]="'0 0 ' + chartWidth() + ' ' + chartHeight()"
       class="w-full h-auto"
       role="img"
       [attr.aria-label]="title() + '. Os valores estão na tabela abaixo do gráfico.'"
-      (mousemove)="aoMoverPonteiro($event)"
-      (mouseleave)="aoSairDoGrafico()"
+      (mousemove)="onPointerMove($event)"
+      (mouseleave)="onPointerLeave()"
     >
       <!-- Grade recessiva: orienta a leitura sem competir com as linhas. -->
-      @for (marca of marcasDoEixoY(); track marca.value) {
+      @for (tick of yAxisTicks(); track tick.value) {
         <line
-          [attr.x1]="MARGEM.esquerda"
-          [attr.x2]="LARGURA() - MARGEM.direita"
-          [attr.y1]="marca.y"
-          [attr.y2]="marca.y"
+          [attr.x1]="MARGIN.left"
+          [attr.x2]="chartWidth() - MARGIN.right"
+          [attr.y1]="tick.y"
+          [attr.y2]="tick.y"
           class="stroke-lactec-line"
           stroke-width="1"
         />
         <text
-          [attr.x]="MARGEM.esquerda - 8"
-          [attr.y]="marca.y + 4"
+          [attr.x]="MARGIN.left - 8"
+          [attr.y]="tick.y + 4"
           text-anchor="end"
           class="fill-lactec-muted"
           font-size="11"
         >
-          {{ marca.label }}
+          {{ tick.label }}
         </text>
       }
 
-      @for (marca of marcasDoEixoX(); track $index) {
+      @for (tick of xAxisTicks(); track $index) {
         <text
-          [attr.x]="marca.x"
-          [attr.y]="ALTURA() - MARGEM.base + 18"
-          [attr.text-anchor]="marca.ancora"
+          [attr.x]="tick.x"
+          [attr.y]="chartHeight() - MARGIN.bottom + 18"
+          [attr.text-anchor]="tick.anchor"
           class="fill-lactec-muted"
           font-size="11"
         >
-          {{ marca.label }}
+          {{ tick.label }}
         </text>
       }
 
       <text
-        [attr.x]="LARGURA() / 2"
-        [attr.y]="ALTURA() - 6"
+        [attr.x]="chartWidth() / 2"
+        [attr.y]="chartHeight() - 6"
         text-anchor="middle"
         class="fill-lactec-muted"
         font-size="11"
@@ -53,9 +53,9 @@
         {{ xAxisLabel() }}
       </text>
       <text
-        [attr.transform]="'rotate(-90 14 ' + ALTURA() / 2 + ')'"
+        [attr.transform]="'rotate(-90 14 ' + chartHeight() / 2 + ')'"
         [attr.x]="14"
-        [attr.y]="ALTURA() / 2"
+        [attr.y]="chartHeight() / 2"
         text-anchor="middle"
         class="fill-lactec-muted"
         font-size="11"
@@ -63,75 +63,86 @@
         {{ yAxisLabel() }}
       </text>
 
-      @if (leituraEmFoco(); as foco) {
+      @if (pointedReading(); as reading) {
         <line
-          [attr.x1]="foco.x"
-          [attr.x2]="foco.x"
-          [attr.y1]="MARGEM.topo"
-          [attr.y2]="ALTURA() - MARGEM.base"
+          [attr.x1]="reading.x"
+          [attr.x2]="reading.x"
+          [attr.y1]="MARGIN.top"
+          [attr.y2]="chartHeight() - MARGIN.bottom"
           class="stroke-lactec-faint"
           stroke-width="1"
           stroke-dasharray="4 3"
         />
       }
 
-      @for (serie of seriesDesenhadas(); track serie.key) {
+      @for (serie of plottedSeries(); track serie.key) {
         <path
-          [attr.d]="serie.caminho"
+          [attr.d]="serie.path"
           fill="none"
-          [class]="serie.classes.traco"
+          [class]="serie.classes.stroke"
           stroke-width="2"
           stroke-linejoin="round"
           stroke-linecap="round"
-          [attr.stroke-dasharray]="serie.tracejada ? '7 4' : null"
-          [style.opacity]="opacidadeDaSerie(serie.key)"
+          [attr.stroke-dasharray]="serie.dashed ? '7 4' : null"
+          [style.opacity]="seriesOpacity(serie.key)"
           class="transition-opacity duration-150"
         />
-        @for (ponto of serie.pontos; track $index) {
+        @for (point of serie.points; track $index) {
           <!-- Anel da superfície separa marcadores que se cruzam. -->
           <path
-            [attr.d]="marcador(serie.forma, ponto.x, ponto.y)"
+            [attr.d]="markerPath(serie.shape, point.x, point.y)"
             class="stroke-lactec-paper transition-opacity duration-150"
-            [class]="serie.classes.marcador"
+            [class]="serie.classes.marker"
             stroke-width="2"
-            [style.opacity]="opacidadeDaSerie(serie.key)"
+            [style.opacity]="seriesOpacity(serie.key)"
           />
         }
       }
 
       <line
-        [attr.x1]="MARGEM.esquerda"
-        [attr.x2]="LARGURA() - MARGEM.direita"
-        [attr.y1]="ALTURA() - MARGEM.base"
-        [attr.y2]="ALTURA() - MARGEM.base"
+        [attr.x1]="MARGIN.left"
+        [attr.x2]="chartWidth() - MARGIN.right"
+        [attr.y1]="chartHeight() - MARGIN.bottom"
+        [attr.y2]="chartHeight() - MARGIN.bottom"
         class="stroke-lactec-divider"
         stroke-width="1"
       />
     </svg>
 
-    @if (leituraEmFoco(); as foco) {
+    @if (pointedReading(); as reading) {
+      <!-- A caixa cresce com o conteúdo e só para de crescer na borda do gráfico: o
+           nome do ensaio físico-químico traz a unidade junto e não cabe numa largura
+           fixa. Onde nem a borda basta, o nome quebra em duas linhas em vez de
+           escapar da caixa. -->
       <div
-        class="pointer-events-none absolute top-2 w-fit max-w-[18rem] rounded-lg border
-               border-lactec-line bg-lactec-paper/95 px-3 py-2 shadow-lg"
-        [style.left.%]="(foco.x / LARGURA()) * 100 > 60 ? null : (foco.x / LARGURA()) * 100 + 2"
-        [style.right.%]="(foco.x / LARGURA()) * 100 > 60 ? 100 - (foco.x / LARGURA()) * 100 + 2 : null"
+        class="pointer-events-none absolute top-2 w-fit max-w-[min(28rem,100%)] rounded-lg
+               border border-lactec-line bg-lactec-paper/95 px-3 py-2 shadow-lg"
+        [style.left.%]="(reading.x / chartWidth()) * 100 > 60 ? null : (reading.x / chartWidth()) * 100 + 2"
+        [style.right.%]="(reading.x / chartWidth()) * 100 > 60 ? 100 - (reading.x / chartWidth()) * 100 + 2 : null"
       >
-        <p class="m-0 mb-1 text-xs font-semibold text-lactec-ink">{{ foco.label }}</p>
-        <!-- Duas colunas só quando há entrada suficiente para preencher as duas. Com uma
-             série, `sm:grid-cols-2` fixo criava uma segunda coluna vazia e a caixa saía com
-             o dobro da largura necessária, com um vão branco do lado do valor. -->
+        <p class="m-0 mb-1 text-xs font-semibold text-lactec-ink">{{ reading.label }}</p>
+        <!-- Duas colunas só quando o nome é curto o bastante para dividir a caixa com o
+             vizinho, que é o caso da fórmula do gás. Com nome longo, a coluna da direita
+             era desenhada por cima da esquerda. -->
         <ul
           class="m-0 grid list-none grid-cols-1 gap-x-4 gap-y-0.5 p-0"
-          [class]="foco.values.length > 3 ? 'sm:grid-cols-2' : ''"
+          [class]="readingInTwoColumns() ? 'sm:grid-cols-2' : ''"
+          aria-label="Valores da data apontada"
         >
-          @for (item of foco.values; track item.name) {
-            <li class="flex items-center gap-2 text-xs whitespace-nowrap">
-              <svg width="10" height="10" viewBox="0 0 10 10" aria-hidden="true">
-                <path [attr.d]="marcador(item.forma, 5, 5)" [class]="item.classes.marcador" />
+          @for (item of reading.values; track item.name) {
+            <li class="flex items-baseline gap-2 text-xs">
+              <svg
+                width="10"
+                height="10"
+                viewBox="0 0 10 10"
+                class="shrink-0 self-center"
+                aria-hidden="true"
+              >
+                <path [attr.d]="markerPath(item.shape, 5, 5)" [class]="item.classes.marker" />
               </svg>
               <span class="text-lactec-muted">{{ item.name }}</span>
-              <span class="ml-auto font-medium text-lactec-ink">
-                {{ formatarNumero(item.value) }}
+              <span class="ml-auto pl-1 font-medium whitespace-nowrap text-lactec-ink">
+                {{ formatNumber(item.value) }}
               </span>
             </li>
           }
@@ -145,16 +156,16 @@
     aria-label="Legenda do gráfico"
   >
     <li class="text-xs font-semibold text-lactec-muted">Legenda:</li>
-    @for (serie of seriesDesenhadas(); track serie.key) {
+    @for (serie of plottedSeries(); track serie.key) {
       <li
         class="flex cursor-default items-center gap-1.5 text-xs text-lactec-ink-soft
                transition-opacity duration-150"
-        [style.opacity]="opacidadeDaSerie(serie.key)"
-        (mouseenter)="serieEmFoco.set(serie.key)"
-        (mouseleave)="serieEmFoco.set(null)"
+        [style.opacity]="seriesOpacity(serie.key)"
+        (mouseenter)="highlightedSeries.set(serie.key)"
+        (mouseleave)="highlightedSeries.set(null)"
       >
         <svg width="12" height="12" viewBox="0 0 12 12" aria-hidden="true">
-          <path [attr.d]="marcador(serie.forma, 6, 6)" [class]="serie.classes.marcador" />
+          <path [attr.d]="markerPath(serie.shape, 6, 6)" [class]="serie.classes.marker" />
         </svg>
         {{ serie.name }}
       </li>

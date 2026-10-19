@@ -77,7 +77,6 @@ const NOTICE_BY_STAGE: Record<PipelineStage, StageNotice | null> = {
   recebido: null,
   protocolado: null,
   'em-execucao': null,
-  incompleto: null,
   completo: null,
   validado: null,
   finalizado: null,

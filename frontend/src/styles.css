@@ -50,8 +50,6 @@
   --color-lactec-pill-accepted-ink: #5E6B12;
   --color-lactec-pill-awaiting-bg: #F7E6D2;
   --color-lactec-pill-awaiting-ink: #9A5B1E;
-  --color-lactec-pill-incomplete-bg: #FFD9D6;
-  --color-lactec-pill-incomplete-ink: #8E2A24;
   --color-lactec-pill-complete-bg: #D6F0E0;
   --color-lactec-pill-complete-ink: #1F6B44;
   --color-lactec-pill-validated-bg: #C7E6EC;
@@ -515,10 +513,6 @@ mat-icon.icone-36 {
   background: var(--color-lactec-pill-done-bg);
   color: var(--color-lactec-pill-done-ink);
 }
-.quote-status-pill--incomplete {
-  background: var(--color-lactec-pill-incomplete-bg);
-  color: var(--color-lactec-pill-incomplete-ink);
-}
 .quote-status-pill--complete {
   background: var(--color-lactec-pill-complete-bg);
   color: var(--color-lactec-pill-complete-ink);
@@ -942,4 +936,66 @@ mat-icon.sample-shipping-notice__icon {
 }
 .lactec-dialog-desktop .dialog-shell {
   padding: 24px 40px 20px;
+}
+
+/* Visualizador da proposta (ngx-extended-pdf-viewer).
+
+   A biblioteca injeta o CSS dela com ViewEncapsulation.None e fora de camada,
+   então utilitária do Tailwind não a alcança, pelo mesmo motivo descrito para o
+   Angular Material: declaração fora de camada vence camada nomeada. O que vale
+   aqui é regra não encamadada, e é só o que este bloco faz.
+
+   Propriedade personalizada é herdada do ancestral declarante mais próximo, por
+   isso as variáveis que a lib declara fundo na árvore (`.sidebar`, `.treeView`,
+   `.popupMenu`) são redeclaradas no mesmo lugar, e não na raiz. */
+app-proposal-viewer ngx-extended-pdf-viewer {
+  --scrollbar-color: var(--color-lactec-divider);
+  --scrollbar-bg-color: var(--color-lactec-surface);
+  --main-color: var(--color-lactec-ink);
+  --toolbar-icon-bg-color: var(--color-lactec-ink-soft);
+}
+
+app-proposal-viewer ngx-extended-pdf-viewer .sidebar {
+  --sidebar-bg-color: var(--color-lactec-paper);
+  --sidebar-border-color: var(--color-lactec-line);
+}
+
+app-proposal-viewer ngx-extended-pdf-viewer .treeView {
+  --treeitem-color: var(--color-lactec-ink-soft);
+  --treeitem-hover-color: var(--color-lactec-ink);
+  --treeitem-selected-bg-color: var(--color-lactec-pill-proc-bg);
+  --treeitem-selected-color: var(--color-lactec-pill-proc-ink);
+}
+
+app-proposal-viewer ngx-extended-pdf-viewer .popupMenu {
+  --menu-bg: var(--color-lactec-paper);
+  --menu-text-color: var(--color-lactec-ink);
+}
+
+/* A barra de ferramentas, o traço embaixo dela e o fundo atrás das páginas são
+   escritos em cor fixa pela lib, sem variável para sobrescrever. Sem estas três
+   regras o visualizador fica com a moldura cinza do pdf.js dentro de um cartão
+   branco do portal. */
+app-proposal-viewer ngx-extended-pdf-viewer #toolbarContainer,
+app-proposal-viewer ngx-extended-pdf-viewer .findbar,
+app-proposal-viewer ngx-extended-pdf-viewer .secondaryToolbar {
+  background-color: var(--color-lactec-paper);
+}
+
+app-proposal-viewer ngx-extended-pdf-viewer .toolbar {
+  border-bottom-color: var(--color-lactec-line);
+}
+
+app-proposal-viewer ngx-extended-pdf-viewer .pdfViewer#viewer {
+  background-color: var(--color-lactec-surface);
+}
+
+/* Em tela cheia o painel da proposta é um `fixed` dentro do conteúdo do menu
+   lateral, e o conteúdo do Material vive num contexto de empilhamento próprio
+   (`mat-sidenav-content` tem z-index 1, a gaveta tem 2): sem esta regra a
+   gaveta é pintada por cima do painel e come a margem esquerda do documento.
+   O seletor acompanha o `data-fullscreen` que o componente escreve, e os dois
+   lados precisam mudar juntos. */
+mat-sidenav-content.mat-drawer-content:has(app-proposal-viewer [data-fullscreen]) {
+  z-index: 3;
 }
