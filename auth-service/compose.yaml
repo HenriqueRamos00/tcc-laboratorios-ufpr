@@ -1,0 +1,96 @@
+name: tcc-auth
+
+services:
+  auth-db:
+    image: mcr.microsoft.com/mssql/server:2022-latest
+    environment:
+      ACCEPT_EULA: "Y"
+      MSSQL_PID: Developer
+      MSSQL_SA_PASSWORD: ${AUTH_DB_PASSWORD:-ChangeMe_StrongPassword123!}
+    ports:
+      - "${AUTH_DB_PORT:-1433}:1433"
+    volumes:
+      - auth-sqlserver-data:/var/opt/mssql
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "/opt/mssql-tools18/bin/sqlcmd -S localhost -U sa -P \"$$MSSQL_SA_PASSWORD\" -C -Q 'SELECT 1' || /opt/mssql-tools/bin/sqlcmd -S localhost -U sa -P \"$$MSSQL_SA_PASSWORD\" -C -Q 'SELECT 1'",
+        ]
+      interval: 10s
+      timeout: 5s
+      retries: 20
+      start_period: 20s
+
+  auth-db-init:
+    image: mcr.microsoft.com/mssql/server:2022-latest
+    environment:
+      ACCEPT_EULA: "Y"
+      MSSQL_PID: Developer
+      MSSQL_SA_PASSWORD: ${AUTH_DB_PASSWORD:-ChangeMe_StrongPassword123!}
+      AUTH_DB_NAME: ${AUTH_DB_NAME:-auth}
+    volumes:
+      - ./database/init.sql:/init.sql:ro
+      - ./backend/auth/src/main/resources/schema.sql:/schema.sql:ro
+    command:
+      [
+        "/bin/bash",
+        "-c",
+        "SQLCMD=/opt/mssql-tools18/bin/sqlcmd; [ -x \"$$SQLCMD\" ] || SQLCMD=/opt/mssql-tools/bin/sqlcmd; \"$$SQLCMD\" -S auth-db -U sa -P \"$$MSSQL_SA_PASSWORD\" -C -v AUTH_DB_NAME=\"$$AUTH_DB_NAME\" -i /init.sql",
+      ]
+    depends_on:
+      auth-db:
+        condition: service_healthy
+    restart: "no"
+
+  auth-service:
+    build:
+      context: ./backend/auth
+    env_file:
+      - path: ./.env
+        required: false
+    environment:
+      AUTH_PORT: 9000
+      AUTH_DB_URL: "jdbc:sqlserver://auth-db:1433;databaseName=${AUTH_DB_NAME:-auth};encrypt=true;trustServerCertificate=true"
+      AUTH_DB_USERNAME: sa
+      AUTH_DB_PASSWORD: ${AUTH_DB_PASSWORD:-ChangeMe_StrongPassword123!}
+      AUTH_KEY_STORE: file:/secrets/auth-signing.p12
+      AUTH_COOKIE_SECURE: ${AUTH_COOKIE_SECURE:-false}
+    ports:
+      - "${AUTH_PORT:-9000}:9000"
+    volumes:
+      - ./secrets:/secrets:ro
+    depends_on:
+      auth-db-init:
+        condition: service_completed_successfully
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "wget -qO- http://localhost:9000/health | grep -q '\"status\":\"UP\"'",
+        ]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 20s
+
+  auth-frontend:
+    build:
+      context: ./frontend
+      target: dev
+    environment:
+      API_PROXY_TARGET: http://auth-service:9000
+    ports:
+      - "${AUTH_FRONTEND_PORT:-4202}:4202"
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules
+      - /app/.angular
+    depends_on:
+      auth-service:
+        condition: service_started
+    stdin_open: true
+    tty: true
+
+volumes:
+  auth-sqlserver-data:

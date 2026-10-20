@@ -1,0 +1,5 @@
+# Local credentials, signing keys, and generated dependencies
+.env
+secrets/
+*.p12
+*.pem

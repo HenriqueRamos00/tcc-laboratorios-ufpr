@@ -1,15 +1,44 @@
 -- Run once against a dedicated auth database. Auto-lab owns a different database/schema.
 CREATE TABLE auth_user (
     id varchar(36) NOT NULL PRIMARY KEY,
-    username nvarchar(100) NOT NULL UNIQUE,
+    name nvarchar(150) NOT NULL,
     email varchar(254) NOT NULL UNIQUE,
     password_hash varchar(255) NOT NULL,
-    service varchar(50) NOT NULL,
-    service_id nvarchar(200) NOT NULL,
+    role varchar(20) NOT NULL CHECK (role IN ('ADMIN', 'USER')),
     enabled bit NOT NULL DEFAULT 1,
     created_at datetime2 NOT NULL DEFAULT CURRENT_TIMESTAMP,
     failed_attempts int NOT NULL DEFAULT 0,
     locked_until datetime2 NULL
+);
+
+CREATE TABLE company (
+    id varchar(36) NOT NULL PRIMARY KEY,
+    name nvarchar(200) NOT NULL,
+    cnpj varchar(14) NOT NULL UNIQUE,
+    created_at datetime2 NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE auth_user_company (
+    user_id varchar(36) NOT NULL,
+    company_id varchar(36) NOT NULL,
+    CONSTRAINT pk_auth_user_company PRIMARY KEY (user_id, company_id),
+    CONSTRAINT fk_auth_user_company_user FOREIGN KEY (user_id)
+        REFERENCES auth_user (id) ON DELETE CASCADE,
+    CONSTRAINT fk_auth_user_company_company FOREIGN KEY (company_id)
+        REFERENCES company (id) ON DELETE CASCADE
+);
+
+CREATE INDEX ix_auth_user_company_company ON auth_user_company (company_id);
+
+CREATE TABLE api_key (
+    id varchar(36) NOT NULL PRIMARY KEY,
+    name nvarchar(100) NOT NULL,
+    key_prefix varchar(16) NOT NULL,
+    key_hash varchar(64) NOT NULL UNIQUE,
+    enabled bit NOT NULL DEFAULT 1,
+    created_at datetime2 NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    expires_at datetime2 NULL,
+    last_used_at datetime2 NULL
 );
 
 -- Spring Security's JDBC authorization schema, with SQL Server text/date types.

@@ -8,9 +8,10 @@ import java.security.interfaces.RSAPublicKey;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.Base64;
+import java.util.List;
+import java.util.Map;
+import java.util.UUID;
 
-import br.ufpr.tcc.auth.auth.bootstrap.BootstrapAccount;
-import br.ufpr.tcc.auth.auth.persistence.AccountRepository;
 import com.nimbusds.jose.jwk.JWKSet;
 import com.nimbusds.jose.jwk.RSAKey;
 import com.nimbusds.jose.jwk.source.ImmutableJWKSet;
@@ -22,7 +23,6 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.jdbc.core.JdbcTemplate;
-import org.springframework.mock.env.MockEnvironment;
 import org.springframework.mock.web.MockHttpSession;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.oauth2.core.OAuth2ErrorCodes;
@@ -32,6 +32,8 @@ import org.springframework.security.oauth2.server.authorization.JdbcOAuth2Author
 import org.springframework.security.oauth2.server.authorization.OAuth2TokenType;
 import org.springframework.security.oauth2.server.authorization.client.RegisteredClientRepository;
 import org.springframework.test.context.bean.override.convention.TestBean;
+import org.springframework.test.context.DynamicPropertyRegistry;
+import org.springframework.test.context.DynamicPropertySource;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.MvcResult;
 import org.springframework.web.util.UriComponentsBuilder;
@@ -39,7 +41,6 @@ import tools.jackson.databind.JsonNode;
 import tools.jackson.databind.json.JsonMapper;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestBuilders.formLogin;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.httpBasic;
@@ -55,7 +56,17 @@ class AuthApplicationTests {
     private static final String SECRET = "test-client-secret-with-at-least-32-characters";
     private static final String REDIRECT = "http://localhost:5125/signin-oidc";
     private static final String USER_ID = "778ee3ab-960b-4dbf-bad3-73db1cc1d75e";
+    private static final String COMPANY_ID = "8c98e73f-c71b-4d5f-bc4b-a9a50050036f";
+    private static final String COMPANY_NAME = "Empresa Exemplo";
+    private static final String COMPANY_CNPJ = "11222333000181";
     private static final String VERIFIER = "a-long-pkce-verifier-with-at-least-forty-three-characters";
+    private static final String DATABASE_URL = "jdbc:h2:mem:auth-" + UUID.randomUUID()
+            + ";MODE=MSSQLServer;DB_CLOSE_DELAY=-1";
+
+    @DynamicPropertySource
+    static void database(DynamicPropertyRegistry registry) {
+        registry.add("spring.datasource.url", () -> DATABASE_URL);
+    }
 
     @Autowired MockMvc mvc;
     @Autowired JdbcTemplate jdbc;
@@ -63,7 +74,6 @@ class AuthApplicationTests {
     @Autowired JwtDecoder decoder;
     @Autowired RegisteredClientRepository clients;
     @Autowired JsonMapper json;
-    @Autowired AccountRepository accounts;
 
     @TestBean(methodName = "testKeys")
     JWKSource<SecurityContext> signingKeys;
@@ -80,11 +90,18 @@ class AuthApplicationTests {
     @BeforeEach
     void createAccount() {
         jdbc.update("DELETE FROM oauth2_authorization");
+        jdbc.update("DELETE FROM auth_user_company");
+        jdbc.update("DELETE FROM api_key");
         jdbc.update("DELETE FROM auth_user");
+        jdbc.update("DELETE FROM company");
+        jdbc.update("INSERT INTO company (id, name, cnpj) VALUES (?, ?, ?)",
+                COMPANY_ID, COMPANY_NAME, COMPANY_CNPJ);
         jdbc.update("""
-                INSERT INTO auth_user (id, username, email, password_hash, service, service_id)
-                VALUES (?, ?, ?, ?, ?, ?)
-                """, USER_ID, "José", EMAIL, passwords.encode(PASSWORD), "auto-lab", "external-42");
+                INSERT INTO auth_user (id, name, email, password_hash, role)
+                VALUES (?, ?, ?, ?, ?)
+                """, USER_ID, "José", EMAIL, passwords.encode(PASSWORD), "USER");
+        jdbc.update("INSERT INTO auth_user_company (user_id, company_id) VALUES (?, ?)",
+                USER_ID, COMPANY_ID);
     }
 
     @Test
@@ -103,10 +120,10 @@ class AuthApplicationTests {
         Jwt access = decoder.decode(tokens.path("access_token").asString());
         assertThat(access.getSubject()).isEqualTo(USER_ID);
         assertThat(access.getAudience()).containsExactly("portal-api");
-        assertThat(access.getClaimAsString("service")).isEqualTo("auto-lab");
-        assertThat(access.getClaimAsString("service_id")).isEqualTo("external-42");
-        assertThat(access.getClaims()).doesNotContainKeys("companies", "password", "password_hash", "email");
+        assertThat(access.getClaims()).doesNotContainKeys(
+                "service", "service_id", "password", "password_hash", "email");
         assertThat(Duration.between(access.getIssuedAt(), access.getExpiresAt())).isEqualTo(Duration.ofMinutes(10));
+
         Jwt identity = decoder.decode(tokens.path("id_token").asString());
         assertThat(identity.getSubject()).isEqualTo(USER_ID);
         assertThat(identity.getAudience()).containsExactly("portal-web");
@@ -123,6 +140,37 @@ class AuthApplicationTests {
         assertThat(rotated.path("refresh_token").asString()).isNotEqualTo(refresh);
         refresh(refresh).andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.error").value(OAuth2ErrorCodes.INVALID_GRANT));
+    }
+
+    @Test
+    void accessAndIdTokensExposeAssignedCompanies() throws Exception {
+        JsonNode tokens = loginAndIssueTokens();
+        Jwt access = decoder.decode(tokens.path("access_token").asString());
+        @SuppressWarnings("unchecked")
+        List<Map<String, Object>> companies = (List<Map<String, Object>>) access.getClaim("companies");
+        assertThat(companies).hasSize(1);
+        assertThat(companies.getFirst()).containsEntry("id", COMPANY_ID)
+                .containsEntry("name", COMPANY_NAME).containsEntry("cnpj", COMPANY_CNPJ);
+
+        Jwt identity = decoder.decode(tokens.path("id_token").asString());
+        @SuppressWarnings("unchecked")
+        List<Map<String, Object>> identityCompanies =
+                (List<Map<String, Object>>) identity.getClaim("companies");
+        assertThat(identityCompanies).hasSize(1);
+        assertThat(identityCompanies.getFirst()).containsEntry("id", COMPANY_ID);
+    }
+
+    @Test
+    void refreshReloadsCompanyAssignments() throws Exception {
+        String refresh = loginAndIssueTokens().path("refresh_token").asString();
+        jdbc.update("DELETE FROM auth_user_company WHERE user_id = ?", USER_ID);
+
+        JsonNode rotated = json.readTree(refresh(refresh).andExpect(status().isOk())
+                .andReturn().getResponse().getContentAsString());
+        Jwt access = decoder.decode(rotated.path("access_token").asString());
+        @SuppressWarnings("unchecked")
+        List<Map<String, Object>> companies = (List<Map<String, Object>>) access.getClaim("companies");
+        assertThat(companies).isEmpty();
     }
 
     @Test
@@ -210,32 +258,6 @@ class AuthApplicationTests {
         assertThat(first).startsWith("{pbkdf2}").isNotEqualTo(second).doesNotContain(PASSWORD);
         assertThat(passwords.matches(PASSWORD, first)).isTrue();
         mvc.perform(formLogin().user(" CLIENT@EXAMPLE.TEST ").password(PASSWORD)).andExpect(redirectedUrl("/"));
-    }
-
-    @Test
-    void bootstrapCreatesNormalizedAccountWithoutOverwritingExistingIdentity() {
-        var environment = new MockEnvironment().withProperty("auth.bootstrap.email", " New@Example.test ")
-                .withProperty("auth.bootstrap.username", "New client")
-                .withProperty("auth.bootstrap.password", PASSWORD)
-                .withProperty("auth.bootstrap.service", "auto-lab")
-                .withProperty("auth.bootstrap.service-id", "external-99");
-        var bootstrap = new BootstrapAccount(environment, accounts, passwords);
-        bootstrap.run(null);
-        var account = accounts.findByEmail("new@example.test").orElseThrow();
-        assertThat(account.serviceId()).isEqualTo("external-99");
-        assertThat(passwords.matches(PASSWORD, account.passwordHash())).isTrue();
-        environment.withProperty("auth.bootstrap.service-id", "must-not-overwrite");
-        bootstrap.run(null);
-        assertThat(accounts.findByEmail("new@example.test").orElseThrow()).isEqualTo(account);
-    }
-
-    @Test
-    void bootstrapRejectsMissingMappingBeforeInsertingAccount() {
-        var environment = new MockEnvironment().withProperty("auth.bootstrap.email", "new@example.test")
-                .withProperty("auth.bootstrap.username", "New client");
-        var bootstrap = new BootstrapAccount(environment, accounts, passwords);
-        assertThatThrownBy(() -> bootstrap.run(null)).isInstanceOf(IllegalArgumentException.class);
-        assertThat(accounts.findByEmail("new@example.test")).isEmpty();
     }
 
     private MockHttpSession login() throws Exception {

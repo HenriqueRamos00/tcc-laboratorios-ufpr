@@ -1,0 +1,137 @@
+@let controls = form.controls;
+@let role = controls.role.value;
+@let nameInvalid = controls.name.touched && controls.name.invalid;
+@let emailInvalid = controls.email.touched && controls.email.invalid;
+@let passwordInvalid = controls.password.touched && controls.password.invalid;
+@let companiesInvalid = (companySelectionError() && role === 'USER') || (controls.companyIds.touched && role === 'USER' && controls.companyIds.value.length === 0);
+
+<form class="flex h-full min-h-0 flex-col" [formGroup]="form" (ngSubmit)="save()" novalidate>
+  <app-dialog-shell
+    [title]="isEditing ? 'Editar Usuário' : 'Novo Usuário'"
+    subtitle="Defina os dados de acesso, o perfil e as empresas vinculadas."
+    [lateral]="true"
+    [closeDisabled]="saving()"
+    closeLabel="Fechar formulário de usuário"
+  >
+    @if (serverError()) {
+      <p class="m-0 rounded-lg border border-lactec-danger-border bg-lactec-danger-bg px-4 py-3 text-sm text-lactec-danger-ink" role="alert">
+        {{ serverError() }}
+      </p>
+    }
+
+    <div class="flex flex-col gap-2">
+      <label for="user-name" class="text-xs font-medium tracking-wide text-lactec-ink-soft">
+        Nome <span class="text-lactec-danger">*</span>
+      </label>
+      <div class="input-field" [class.input-field--error]="nameInvalid">
+        <input id="user-name" formControlName="name" maxlength="150" autocomplete="name"
+          class="input-field__input" [attr.aria-invalid]="nameInvalid" />
+      </div>
+      @if (nameInvalid) {
+        <p class="m-0 text-xs text-lactec-danger" role="alert">Informe o nome, com até 150 caracteres.</p>
+      }
+    </div>
+
+    <div class="flex flex-col gap-2">
+      <label for="user-email" class="text-xs font-medium tracking-wide text-lactec-ink-soft">
+        E-mail <span class="text-lactec-danger">*</span>
+      </label>
+      <div class="input-field" [class.input-field--error]="emailInvalid">
+        <input id="user-email" type="email" formControlName="email" maxlength="254"
+          autocomplete="email" class="input-field__input" [attr.aria-invalid]="emailInvalid" />
+      </div>
+      @if (emailInvalid) {
+        <p class="m-0 text-xs text-lactec-danger" role="alert">Informe um e-mail válido.</p>
+      }
+    </div>
+
+    <div class="flex flex-col gap-2">
+      <label for="user-role" class="text-xs font-medium tracking-wide text-lactec-ink-soft">
+        Perfil <span class="text-lactec-danger">*</span>
+      </label>
+      <div class="input-field">
+        <select id="user-role" formControlName="role" class="input-field__input">
+          <option value="USER">Usuário do portal</option>
+          <option value="ADMIN">Administrador</option>
+        </select>
+      </div>
+      <p class="m-0 text-xs text-lactec-muted">
+        Administradores acessam este painel; usuários do portal acessam o portal-web.
+      </p>
+    </div>
+
+    <div class="flex flex-col gap-2">
+      <label for="user-password" class="text-xs font-medium tracking-wide text-lactec-ink-soft">
+        Senha @if (isEditing) { (opcional) } @else { <span class="text-lactec-danger">*</span> }
+      </label>
+      <div class="input-field" [class.input-field--error]="passwordInvalid">
+        <input id="user-password" formControlName="password" type="password" maxlength="1024"
+          autocomplete="new-password" class="input-field__input"
+          [attr.aria-invalid]="passwordInvalid" />
+      </div>
+      <p class="m-0 text-xs text-lactec-muted">
+        {{ isEditing ? 'Deixe em branco para manter a senha atual.' : 'Use pelo menos 15 caracteres.' }}
+      </p>
+      @if (passwordInvalid) {
+        <p class="m-0 text-xs text-lactec-danger" role="alert">
+          {{ isEditing ? 'A senha deve ter no mínimo 15 caracteres.' : 'Informe uma senha com pelo menos 15 caracteres.' }}
+        </p>
+      }
+    </div>
+
+    <fieldset class="m-0 flex flex-col gap-3 border-0 p-0"
+      [attr.aria-describedby]="companiesInvalid ? 'user-companies-error' : 'user-companies-hint'">
+      <legend class="text-xs font-medium tracking-wide text-lactec-ink-soft">
+        Empresas @if (role === 'USER') { <span class="text-lactec-danger">*</span> }
+      </legend>
+      <p id="user-companies-hint" class="m-0 text-xs text-lactec-muted">
+        @if (role === 'USER') {
+          Selecione pelo menos uma empresa para o usuário do portal.
+        } @else {
+          O vínculo com empresas é opcional para administradores.
+        }
+      </p>
+
+      @if (loadingCompanies()) {
+        <div class="flex items-center gap-3 rounded-lg border border-lactec-line bg-lactec-surface px-4 py-3" role="status">
+          <mat-spinner diameter="20" aria-label="Carregando empresas"></mat-spinner>
+          <span class="text-sm text-lactec-muted">Carregando empresas...</span>
+        </div>
+      } @else if (companiesError()) {
+        <div class="flex flex-col items-start gap-2 rounded-lg border border-lactec-danger-border bg-lactec-danger-bg px-4 py-3" role="alert">
+          <span class="text-sm text-lactec-danger-ink">Não foi possível carregar as empresas.</span>
+          <button mat-stroked-button type="button" (click)="loadCompanies()">Tentar novamente</button>
+        </div>
+      } @else if (!companyOptions().length) {
+        <p class="m-0 rounded-lg border border-lactec-line bg-lactec-surface px-4 py-3 text-sm text-lactec-muted">
+          Nenhuma empresa cadastrada. Cadastre uma empresa antes de criar um usuário do portal.
+        </p>
+      } @else {
+        <div class="max-h-56 overflow-y-auto rounded-lg border border-lactec-line bg-white">
+          @for (company of companyOptions(); track company.id) {
+            <label class="flex cursor-pointer items-center gap-3 border-b border-lactec-line-soft px-4 py-3 last:border-b-0"
+              [class.bg-lactec-surface]="empresaMarcada(company.id)">
+              <input type="checkbox" [checked]="empresaMarcada(company.id)"
+                (change)="alternarEmpresa(company, $event)"
+                [attr.aria-label]="company.name" class="h-4 w-4 accent-lactec-primary" />
+              <span class="min-w-0 flex-1 text-sm font-medium text-lactec-ink">{{ company.name }}</span>
+              <span class="mono text-xs text-lactec-muted">{{ company.cnpj }}</span>
+            </label>
+          }
+        </div>
+      }
+      @if (companiesInvalid && !loadingCompanies() && !companiesError()) {
+        <p id="user-companies-error" class="m-0 text-xs text-lactec-danger" role="alert">
+          Selecione pelo menos uma empresa para o usuário do portal.
+        </p>
+      }
+    </fieldset>
+
+    <div dialog-footer class="flex w-full flex-wrap justify-end gap-3">
+      <button mat-stroked-button type="button" [disabled]="saving()" (click)="close()">Cancelar</button>
+      <button mat-flat-button type="submit" [disabled]="saving() || loadingCompanies() || companiesError()">
+        {{ saving() ? 'Salvando...' : 'Salvar' }}
+      </button>
+    </div>
+  </app-dialog-shell>
+</form>

@@ -1,0 +1,99 @@
+@let controls = form.controls;
+@let createdKey = created();
+@let nameInvalid = controls.name.touched && controls.name.invalid;
+
+<form class="flex h-full min-h-0 flex-col" [formGroup]="form" (ngSubmit)="save()" novalidate>
+  <app-dialog-shell
+    [title]="createdKey ? 'Chave criada' : 'Nova Chave de Integração'"
+    [subtitle]="createdKey ? 'Copie a chave agora. Ela não será exibida novamente.' : 'Informe o nome do serviço que utilizará a chave.'"
+    [lateral]="true"
+    [closeDisabled]="saving()"
+    closeLabel="Fechar formulário de chave de integração"
+  >
+    @if (createdKey) {
+      <div class="flex flex-col gap-4">
+        <div class="flex items-start gap-3 rounded-xl border border-lactec-warning/40 bg-amber-50 px-4 py-4 text-sm text-amber-900" role="alert">
+          <mat-icon class="shrink-0">warning</mat-icon>
+          <span>
+            Guarde esta chave em um local seguro. Por segurança, o valor completo não pode ser
+            recuperado depois que este painel for fechado.
+          </span>
+        </div>
+
+        <div class="flex flex-col gap-2">
+          <label for="api-key-value" class="text-xs font-medium tracking-wide text-lactec-ink-soft">
+            Chave de API
+          </label>
+          <div class="flex items-stretch gap-2">
+            <input id="api-key-value" type="text" readonly [value]="createdKey.key"
+              class="mono h-11 min-w-0 flex-1 rounded-lg border border-lactec-line bg-lactec-surface px-3 text-sm text-lactec-ink" />
+            <button mat-flat-button type="button" (click)="copyKey()">
+              <mat-icon>content_copy</mat-icon>
+              Copiar
+            </button>
+          </div>
+          @if (copyFeedback()) {
+            <p class="m-0 text-xs text-lactec-muted">{{ copyFeedback() }}</p>
+          }
+        </div>
+
+        <dl class="m-0 grid grid-cols-[auto_1fr] gap-x-4 gap-y-2 rounded-lg border border-lactec-line bg-white px-4 py-4 text-sm">
+          <dt class="text-lactec-muted">Integração</dt>
+          <dd class="m-0 font-medium text-lactec-ink">{{ createdKey.apiKey.name }}</dd>
+          <dt class="text-lactec-muted">Prefixo</dt>
+          <dd class="mono m-0 text-lactec-ink-soft">{{ createdKey.apiKey.keyPrefix }}…</dd>
+          <dt class="text-lactec-muted">Expira em</dt>
+          <dd class="m-0 text-lactec-ink-soft">
+            {{ createdKey.apiKey.expiresAt ? (createdKey.apiKey.expiresAt | date: 'dd/MM/yyyy HH:mm') : 'Sem expiração' }}
+          </dd>
+        </dl>
+      </div>
+    } @else {
+      @if (serverError()) {
+        <p class="m-0 rounded-lg border border-lactec-danger-border bg-lactec-danger-bg px-4 py-3 text-sm text-lactec-danger-ink" role="alert">
+          {{ serverError() }}
+        </p>
+      }
+
+      <div class="flex flex-col gap-2">
+        <label for="api-key-name" class="text-xs font-medium tracking-wide text-lactec-ink-soft">
+          Nome da integração <span class="text-lactec-danger">*</span>
+        </label>
+        <div class="input-field" [class.input-field--error]="nameInvalid">
+          <input id="api-key-name" formControlName="name" maxlength="100"
+            placeholder="Ex.: Serviço de orçamentos" class="input-field__input"
+            [attr.aria-invalid]="nameInvalid" />
+        </div>
+        @if (nameInvalid) {
+          <p class="m-0 text-xs text-lactec-danger" role="alert">
+            Informe o nome da integração, com até 100 caracteres.
+          </p>
+        }
+      </div>
+
+      <div class="flex flex-col gap-2">
+        <label for="api-key-expires" class="text-xs font-medium tracking-wide text-lactec-ink-soft">
+          Expiração (opcional)
+        </label>
+        <div class="input-field">
+          <input id="api-key-expires" type="datetime-local" formControlName="expiresAt"
+            class="input-field__input" />
+        </div>
+        <p class="m-0 text-xs text-lactec-muted">
+          Deixe em branco para uma chave sem data de expiração.
+        </p>
+      </div>
+    }
+
+    <div dialog-footer class="flex w-full flex-wrap justify-end gap-3">
+      @if (createdKey) {
+        <button mat-flat-button type="button" (click)="close()">Fechar</button>
+      } @else {
+        <button mat-stroked-button type="button" [disabled]="saving()" (click)="close()">Cancelar</button>
+        <button mat-flat-button type="submit" [disabled]="saving()">
+          {{ saving() ? 'Criando...' : 'Criar chave' }}
+        </button>
+      }
+    </div>
+  </app-dialog-shell>
+</form>

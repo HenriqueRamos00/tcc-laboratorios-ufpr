@@ -84,3 +84,11 @@ O ADMIN mantém empresas e clientes em `/admin/empresas` e `/admin/clientes` no 
 O Backend Lab também oferece autenticação de clientes em `POST /api/auth/login`, consulta de orçamentos em `/api/client/quotes` e download dos respectivos documentos. A API C# adapta o login em `POST /auth/login`, encaminhando as credenciais ao Spring e preservando o token emitido por ele. O Portal do Cliente conserva o login de desenvolvimento; a compatibilidade entre os claims Spring (`role`, `userId` e `sub`) e o contrato usado pelo portal (`roles` e `nome`) permanece pendente. Os adapters C# para orçamentos e documentos do Spring também estão pendentes. A fonte `lactec` preserva as integrações atuais e permite iniciar a API C# sem Spring; nessa fonte, `POST /auth/login` retorna 501 enquanto o contrato de autenticação Lactec estiver pendente, sem fallback automático.
 
 Para carregar os dados de demonstração do Backend Lab, configure `DEMO_SEED_ENABLED=true` no `.env` local e reinicie a API. O seed SQL cria uma empresa, a conta Spring `lactec@lactec.com` (senha `lactec`), um orçamento e seu PDF estático versionado. A flag fica desativada por padrão e deve ser habilitada somente em ambiente local.
+
+## Auth Service
+
+O `auth-service` é o serviço de autenticação e autorização independente do projeto. Ele mantém contas do portal-web, empresas, vínculos de usuários com empresas e chaves de integração para serviços, além de emitir tokens OAuth2/OIDC para o cliente `portal-web`.
+
+Ele possui um Compose próprio em `auth-service/`, com SQL Server, a API e um painel administrativo Angular exclusivo para administradores. O Compose da raiz não foi alterado.
+
+Consulte o [README do Auth Service](auth-service/README.md) para configuração do banco, chave de assinatura, criação segura do primeiro administrador, execução local e uso das API keys.

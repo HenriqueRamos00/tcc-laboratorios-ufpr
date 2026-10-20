@@ -1,0 +1,249 @@
+@import 'tailwindcss';
+
+/* Paleta Lactec: fonte única das cores da aplicação.
+   `static` garante que todas as variáveis sejam emitidas em :root mesmo quando
+   nenhuma classe utilitária as usa, porque src/theme.scss (tema do Angular
+   Material) as referencia por var(). */
+@theme static {
+  /* Marca */
+  --color-lactec-primary: #18A5B8;
+  --color-lactec-primary-dark: #0E8A9C;
+  --color-lactec-on-primary: #FFFFFF;
+  --color-lactec-nav: #0F4C5C;
+  --color-lactec-nav-dark: #0B3D4A;
+  --color-lactec-nav-hover: #163F4A;
+  --color-lactec-on-nav: #C8DBDF;
+
+  /* Superfícies e texto */
+  --color-lactec-ink: #0B2230;
+  --color-lactec-ink-soft: #274251;
+  --color-lactec-muted: #5D7480;
+  --color-lactec-line: #E4E8EA;
+  --color-lactec-line-soft: #EEF1F2;
+  --color-lactec-surface: #F5F6F3;
+  --color-lactec-paper: #FFFFFF;
+
+  /* Feedback */
+  --color-lactec-success: #2E9E6A;
+  --color-lactec-success-soft: #3FAE6B;
+  --color-lactec-danger: #D9534F;
+  --color-lactec-warning: #E5A53B;
+  --color-lactec-warning-soft: #E5B23B;
+
+  /* Pills de status do orçamento */
+  --color-lactec-pill-qual-bg: #DCE0E2;
+  --color-lactec-pill-qual-ink: #46555E;
+  --color-lactec-pill-pend-bg: #F7D7D2;
+  --color-lactec-pill-pend-ink: #8E2A24;
+  --color-lactec-pill-proc-bg: #D6EEF3;
+  --color-lactec-pill-proc-ink: #0C6170;
+  --color-lactec-pill-done-bg: #D4ECDC;
+  --color-lactec-pill-done-ink: #1F6B44;
+  --color-lactec-pill-cancel-bg: #E6E8E9;
+  --color-lactec-pill-cancel-ink: #4B5A63;
+  /* Cores distintas por etapa do orçamento (StageName do Salesforce). */
+  --color-lactec-pill-analysis-bg: #FBE8CC;
+  --color-lactec-pill-analysis-ink: #8A5A12;
+  --color-lactec-pill-drafting-bg: #F0E0FF;
+  --color-lactec-pill-drafting-ink: #692DB1;
+  --color-lactec-pill-accepted-bg: #EAF0CC;
+  --color-lactec-pill-accepted-ink: #5E6B12;
+  --color-lactec-pill-awaiting-bg: #F7E6D2;
+  --color-lactec-pill-awaiting-ink: #9A5B1E;
+  --color-lactec-pill-incomplete-bg: #FFD9D6;
+  --color-lactec-pill-incomplete-ink: #8E2A24;
+  --color-lactec-pill-complete-bg: #D6F0E0;
+  --color-lactec-pill-complete-ink: #1F6B44;
+  --color-lactec-pill-validated-bg: #C7E6EC;
+  --color-lactec-pill-validated-ink: #0C6170;
+  --color-lactec-pill-finalized-bg: #BFE3C9;
+  --color-lactec-pill-finalized-ink: #155A36;
+  --color-lactec-pill-drafting-report-bg: #E4DAF7;
+  --color-lactec-pill-drafting-report-ink: #4F1F8E;
+  --color-lactec-pill-published-bg: #1F6B44;
+  --color-lactec-pill-published-ink: #FFFFFF;
+
+  --color-lactec-danger-bg: #FBE7E5;
+  --color-lactec-danger-ink: #8E2A24;
+  --color-lactec-danger-border: #F3C8C3;
+
+  /* Detalhes */
+  --color-lactec-divider: #B8C2C7;
+  --color-lactec-faint: #94A4AB;
+
+  --font-display: 'Instrument Sans', system-ui, sans-serif;
+  --font-sans: Inter, system-ui, sans-serif;
+  --font-mono: 'JetBrains Mono', ui-monospace, monospace;
+
+  --breakpoint-sm: 480px;
+  --breakpoint-md: 768px;
+  --breakpoint-lg: 1024px;
+  --breakpoint-xl: 1280px;
+  --breakpoint-2xl: 1440px;
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  height: 100%;
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  background: var(--color-lactec-surface);
+  color: var(--color-lactec-ink);
+  font-family: 'Inter', system-ui, sans-serif;
+  font-size: 14px;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+::selection {
+  background: rgba(24, 165, 184, 0.22);
+  color: var(--color-lactec-ink);
+}
+
+.display {
+  font-family: 'Instrument Sans', system-ui, sans-serif;
+  letter-spacing: -0.01em;
+}
+
+/* Um rolador só na área de conteúdo. O container do Material traz
+   `overflow: auto` no próprio elemento de conteúdo, e o `main` do shell também
+   rola: empilhados, o conteúdo rola primeiro e a página rola depois. Quem rola
+   é o `main`, que preserva o cabeçalho fixo; o container do Material não pode
+   competir. Elemento + classe sobe a especificidade sem `!important`. */
+mat-sidenav-content.mat-drawer-content {
+  overflow: hidden;
+}
+
+/* Tamanhos de ícone do Material. O componente fixa 24px em width, height e
+   font-size; para mudar isso sem `!important` basta subir a especificidade com
+   elemento + classe, que é o que .status-stepper__icon já faz. O line-height
+   entra junto porque a caixa tem overflow hidden: sem ele o glifo é empurrado
+   para fora. */
+mat-icon.icone-16 {
+  font-size: 16px;
+  line-height: 16px;
+  width: 16px;
+  height: 16px;
+}
+
+mat-icon.icone-20 {
+  font-size: 20px;
+  line-height: 20px;
+  width: 20px;
+  height: 20px;
+}
+
+mat-icon.icone-36 {
+  font-size: 36px;
+  line-height: 36px;
+  width: 36px;
+  height: 36px;
+}
+
+.mono {
+  font-family: 'JetBrains Mono', ui-monospace, monospace;
+}
+
+.input-field {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  height: 44px;
+  padding: 0 12px;
+  background: var(--color-lactec-paper);
+  border: 1px solid var(--color-lactec-line);
+  border-radius: 8px;
+  transition:
+    border-color 120ms ease,
+    box-shadow 120ms ease;
+}
+.input-field:hover {
+  border-color: #C9D1D5;
+}
+.input-field:focus-within {
+  border-color: var(--color-lactec-primary);
+  box-shadow: 0 0 0 4px rgba(24, 165, 184, 0.12);
+}
+.input-field--error,
+.input-field--error:hover {
+  border-color: var(--color-lactec-danger);
+}
+.input-field--error:focus-within {
+  border-color: var(--color-lactec-danger);
+  box-shadow: 0 0 0 4px rgba(217, 83, 79, 0.14);
+}
+.input-field__icon {
+  flex: none;
+  color: var(--color-lactec-muted);
+  font-size: 20px;
+  width: 20px;
+  height: 20px;
+  line-height: 20px;
+}
+.input-field:focus-within .input-field__icon {
+  color: var(--color-lactec-primary-dark);
+}
+.input-field--error .input-field__icon {
+  color: var(--color-lactec-danger);
+}
+.input-field__input {
+  flex: 1 1 auto;
+  min-width: 0;
+  height: 100%;
+  background: transparent;
+  border: 0;
+  outline: 0;
+  padding: 0 0 0 6px;
+  font: inherit;
+  font-size: 14px;
+  color: var(--color-lactec-ink);
+  caret-color: var(--color-lactec-primary);
+}
+.input-field__input::placeholder {
+  color: rgba(93, 116, 128, 0.55);
+}
+.input-field__suffix {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  margin-right: -6px;
+  background: transparent;
+  border: 0;
+  border-radius: 6px;
+  color: var(--color-lactec-muted);
+  cursor: pointer;
+  transition:
+    background-color 120ms ease,
+    color 120ms ease;
+}
+.input-field__suffix:hover {
+  background: var(--color-lactec-line-soft);
+  color: var(--color-lactec-ink-soft);
+}
+.input-field__suffix:focus-visible {
+  outline: 2px solid var(--color-lactec-primary);
+  outline-offset: 2px;
+}
+
+.bg-login-glow {
+  background-image:
+    radial-gradient(900px 600px at 20% 20%, rgba(255, 255, 255, 0.06), transparent 60%),
+    radial-gradient(600px 400px at 80% 90%, rgba(24, 165, 184, 0.12), transparent 60%);
+}

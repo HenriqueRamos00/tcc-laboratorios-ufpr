@@ -1,0 +1,12 @@
+IF DB_ID(N'$(AUTH_DB_NAME)') IS NULL
+BEGIN
+    EXEC('CREATE DATABASE [' + '$(AUTH_DB_NAME)' + ']');
+END
+GO
+USE [$(AUTH_DB_NAME)];
+GO
+IF OBJECT_ID(N'auth_user', N'U') IS NULL
+BEGIN
+    :r /schema.sql
+END
+GO

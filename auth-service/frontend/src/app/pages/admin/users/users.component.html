@@ -1,0 +1,135 @@
+<nav class="mb-2 flex items-center gap-1 text-sm" aria-label="Trilha de navegação">
+  <a routerLink="/admin" class="text-lactec-primary hover:underline">Administração</a>
+  <mat-icon class="icone-16 text-lactec-muted" aria-hidden="true">chevron_right</mat-icon>
+  <span class="text-lactec-ink-soft" aria-current="page">Usuários</span>
+</nav>
+
+<header class="flex flex-wrap items-start justify-between gap-4">
+  <div class="min-w-0">
+    <h1 class="m-0 text-2xl font-semibold text-lactec-ink md:text-3xl">Usuários</h1>
+    <p class="mt-1 mb-0 text-sm text-lactec-muted">
+      Contas do portal e suas empresas vinculadas.
+    </p>
+  </div>
+  <button mat-flat-button type="button" class="tecnicos-novo-botao" (click)="novoUsuario()">
+    <mat-icon aria-hidden="true">add</mat-icon>
+    Novo usuário
+  </button>
+</header>
+
+<section class="mt-6 flex flex-col gap-3 sm:flex-row" aria-label="Filtros de usuários">
+  <label class="relative flex min-w-0 flex-1 items-center">
+    <mat-icon class="icone-20 pointer-events-none absolute left-3 text-lactec-muted" aria-hidden="true">search</mat-icon>
+    <input type="search" [formControl]="searchControl"
+      class="h-11 w-full rounded-lg border border-lactec-line bg-white pl-11 pr-3 text-sm text-lactec-ink placeholder:text-lactec-muted focus:border-lactec-primary focus:outline-none focus:ring-2 focus:ring-lactec-primary/20"
+      placeholder="Buscar por nome ou e-mail..." aria-label="Buscar usuários por nome ou e-mail" />
+  </label>
+  <label class="sr-only" for="users-role-filter">Filtrar por perfil</label>
+  <select id="users-role-filter" [formControl]="roleControl"
+    class="h-11 w-full rounded-lg border border-lactec-line bg-white px-3 text-sm text-lactec-ink focus:border-lactec-primary focus:outline-none focus:ring-2 focus:ring-lactec-primary/20 sm:w-48">
+    <option value="ALL">Todos os perfis</option>
+    <option value="ADMIN">Administradores</option>
+    <option value="USER">Usuários do portal</option>
+  </select>
+  <label class="sr-only" for="users-status-filter">Filtrar por status</label>
+  <select id="users-status-filter" [formControl]="statusControl"
+    class="h-11 w-full rounded-lg border border-lactec-line bg-white px-3 text-sm text-lactec-ink focus:border-lactec-primary focus:outline-none focus:ring-2 focus:ring-lactec-primary/20 sm:w-40">
+    <option value="ALL">Todos os status</option>
+    <option value="ACTIVE">Ativos</option>
+    <option value="INACTIVE">Inativos</option>
+  </select>
+</section>
+
+@if (carregando()) {
+  <div class="mt-6 flex min-h-52 items-center justify-center gap-3 rounded-2xl border border-lactec-line bg-white" role="status">
+    <mat-spinner diameter="24" aria-label="Carregando usuários"></mat-spinner>
+    <span class="text-sm text-lactec-muted">Carregando usuários...</span>
+  </div>
+} @else if (erro()) {
+  <section class="mt-6 flex min-h-52 flex-col items-center justify-center gap-3 rounded-2xl border border-red-200 bg-white px-6 text-center" role="alert">
+    <mat-icon class="icone-36 text-red-700" aria-hidden="true">cloud_off</mat-icon>
+    <div>
+      <h2 class="m-0 text-base font-semibold text-lactec-ink">
+        {{ erroPermissao() ? 'Acesso não autorizado' : 'Não foi possível carregar os usuários' }}
+      </h2>
+      <p class="mt-1 mb-0 text-sm text-lactec-muted">
+        {{ erroPermissao() ? 'Sua conta não tem permissão para consultar usuários.' : 'Confira sua conexão e tente novamente.' }}
+      </p>
+    </div>
+    <button mat-stroked-button type="button" (click)="tentarNovamente()">Tentar novamente</button>
+  </section>
+} @else if (!usersList().length) {
+  <section class="mt-6 flex min-h-52 flex-col items-center justify-center gap-2 rounded-2xl border border-dashed border-lactec-line bg-white px-6 text-center" role="status">
+    <mat-icon class="icone-36 text-lactec-muted" aria-hidden="true">search_off</mat-icon>
+    <h2 class="m-0 text-base font-semibold text-lactec-ink">Nenhum usuário encontrado</h2>
+    <p class="m-0 text-sm text-lactec-muted">Altere a busca ou os filtros e tente novamente.</p>
+  </section>
+} @else {
+  <div class="mt-6 overflow-hidden rounded-2xl border border-lactec-line bg-white">
+    <div class="overflow-x-auto">
+      <table class="w-full min-w-[980px] border-collapse text-sm">
+        <caption class="sr-only">Usuários cadastrados, com perfil, empresas, status e ações.</caption>
+        <thead>
+          <tr class="bg-lactec-line-soft text-left">
+            <th scope="col" class="px-4 py-3 font-semibold text-lactec-ink">Nome</th>
+            <th scope="col" class="px-4 py-3 font-semibold text-lactec-ink">E-mail</th>
+            <th scope="col" class="px-4 py-3 font-semibold text-lactec-ink">Perfil</th>
+            <th scope="col" class="px-4 py-3 font-semibold text-lactec-ink">Empresas</th>
+            <th scope="col" class="px-4 py-3 font-semibold text-lactec-ink">Status</th>
+            <th scope="col" class="px-4 py-3 text-right font-semibold text-lactec-ink">Ações</th>
+          </tr>
+        </thead>
+        <tbody>
+          @for (user of usersList(); track user.id) {
+            <tr class="border-t border-lactec-line-soft hover:bg-slate-50/70">
+              <td class="px-4 py-3 font-medium text-lactec-ink">
+                {{ user.name }}
+                @if (user.id === currentUserId()) {
+                  <span class="ml-2 rounded-full bg-lactec-line-soft px-2 py-0.5 text-xs text-lactec-muted">você</span>
+                }
+              </td>
+              <td class="px-4 py-3 text-lactec-ink-soft">{{ user.email }}</td>
+              <td class="px-4 py-3">
+                <span class="inline-flex rounded-full px-2.5 py-1 text-xs font-semibold"
+                  [class.bg-lactec-pill-proc-bg]="user.role === 'ADMIN'"
+                  [class.text-lactec-pill-proc-ink]="user.role === 'ADMIN'"
+                  [class.bg-lactec-line-soft]="user.role === 'USER'"
+                  [class.text-lactec-ink-soft]="user.role === 'USER'">
+                  {{ roleLabel(user.role) }}
+                </span>
+              </td>
+              <td class="max-w-72 px-4 py-3 text-lactec-ink-soft">{{ empresasDoUsuario(user) }}</td>
+              <td class="px-4 py-3">
+                <span class="inline-flex min-w-16 justify-center rounded-full px-2.5 py-1 text-xs font-semibold"
+                  [class.bg-emerald-100]="user.enabled"
+                  [class.text-emerald-900]="user.enabled"
+                  [class.bg-slate-200]="!user.enabled"
+                  [class.text-slate-700]="!user.enabled">
+                  {{ user.enabled ? 'Ativo' : 'Inativo' }}
+                </span>
+              </td>
+              <td class="whitespace-nowrap px-3 py-2 text-right">
+                <button mat-icon-button type="button" (click)="editarUsuario(user)"
+                  [attr.aria-label]="'Editar usuário ' + user.name" matTooltip="Editar usuário">
+                  <mat-icon>edit</mat-icon>
+                </button>
+                <button mat-icon-button type="button" (click)="alternarStatus(user)"
+                  [disabled]="alterandoStatus().has(user.id) || user.id === currentUserId()"
+                  [attr.aria-label]="(user.enabled ? 'Desativar usuário ' : 'Ativar usuário ') + user.name"
+                  [matTooltip]="user.id === currentUserId() ? 'Você não pode desativar a própria conta' : (user.enabled ? 'Desativar usuário' : 'Ativar usuário')">
+                  <mat-icon>{{ user.enabled ? 'person_off' : 'person_add' }}</mat-icon>
+                </button>
+                <button mat-icon-button type="button" (click)="excluirUsuario(user)"
+                  [disabled]="user.id === currentUserId()"
+                  [attr.aria-label]="'Excluir usuário ' + user.name"
+                  [matTooltip]="user.id === currentUserId() ? 'Você não pode excluir a própria conta' : 'Excluir usuário'">
+                  <mat-icon>delete_outline</mat-icon>
+                </button>
+              </td>
+            </tr>
+          }
+        </tbody>
+      </table>
+    </div>
+  </div>
+}

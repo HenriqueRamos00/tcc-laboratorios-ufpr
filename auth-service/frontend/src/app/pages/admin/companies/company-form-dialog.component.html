@@ -1,0 +1,57 @@
+@let controls = form.controls;
+@let nameInvalid = controls.name.touched && controls.name.invalid;
+@let cnpjInvalid = controls.cnpj.touched && controls.cnpj.invalid;
+
+<form class="flex h-full min-h-0 flex-col" [formGroup]="form" (ngSubmit)="save()" novalidate>
+  <app-dialog-shell
+    [title]="isEditing ? 'Editar Empresa' : 'Nova Empresa'"
+    subtitle="Informe o nome e o CNPJ da empresa."
+    [lateral]="true"
+    [closeDisabled]="saving()"
+    closeLabel="Fechar formulário de empresa"
+  >
+    @if (serverError()) {
+      <p class="m-0 rounded-lg border border-lactec-danger-border bg-lactec-danger-bg px-4 py-3 text-sm text-lactec-danger-ink" role="alert">
+        {{ serverError() }}
+      </p>
+    }
+
+    <div class="flex flex-col gap-2">
+      <label for="company-name" class="text-xs font-medium tracking-wide text-lactec-ink-soft">
+        Nome <span class="text-lactec-danger">*</span>
+      </label>
+      <div class="input-field" [class.input-field--error]="nameInvalid">
+        <input id="company-name" formControlName="name" maxlength="200" autocomplete="organization"
+          class="input-field__input" [attr.aria-invalid]="nameInvalid" />
+      </div>
+      @if (nameInvalid) {
+        <p class="m-0 text-xs text-lactec-danger" role="alert">
+          Informe o nome da empresa, com até 200 caracteres.
+        </p>
+      }
+    </div>
+
+    <div class="flex flex-col gap-2">
+      <label for="company-cnpj" class="text-xs font-medium tracking-wide text-lactec-ink-soft">
+        CNPJ <span class="text-lactec-danger">*</span>
+      </label>
+      <div class="input-field" [class.input-field--error]="cnpjInvalid">
+        <input id="company-cnpj" formControlName="cnpj" mask="00.000.000/0000-00" maxlength="18"
+          inputmode="numeric" autocomplete="off" placeholder="00.000.000/0000-00"
+          class="input-field__input" [attr.aria-invalid]="cnpjInvalid" />
+      </div>
+      @if (cnpjInvalid) {
+        <p class="m-0 text-xs text-lactec-danger" role="alert">
+          Informe um CNPJ válido. Confira os 14 dígitos, incluindo os dígitos verificadores.
+        </p>
+      }
+    </div>
+
+    <div dialog-footer class="flex w-full flex-wrap justify-end gap-3">
+      <button mat-stroked-button type="button" [disabled]="saving()" (click)="close()">Cancelar</button>
+      <button mat-flat-button type="submit" [disabled]="saving()">
+        {{ saving() ? 'Salvando...' : 'Salvar' }}
+      </button>
+    </div>
+  </app-dialog-shell>
+</form>

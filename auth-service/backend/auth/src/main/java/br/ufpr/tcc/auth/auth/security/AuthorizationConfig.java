@@ -6,10 +6,13 @@ import java.security.interfaces.RSAPrivateKey;
 import java.security.interfaces.RSAPublicKey;
 import java.time.Duration;
 import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 
-import br.ufpr.tcc.auth.auth.model.Account;
-import br.ufpr.tcc.auth.auth.persistence.AccountRepository;
+import br.ufpr.tcc.auth.auth.model.AuthUser;
+import br.ufpr.tcc.auth.auth.model.Company;
+import br.ufpr.tcc.auth.auth.persistence.AuthUserRepository;
 import com.nimbusds.jose.jwk.JWKSet;
 import com.nimbusds.jose.jwk.RSAKey;
 import com.nimbusds.jose.jwk.source.ImmutableJWKSet;
@@ -89,20 +92,36 @@ class AuthorizationConfig {
     }
 
     @Bean
-    OAuth2TokenCustomizer<JwtEncodingContext> identityClaims(AccountRepository accounts) {
+    OAuth2TokenCustomizer<JwtEncodingContext> identityClaims(AuthUserRepository users) {
         return context -> {
             // Reload on refresh too: a disabled account must not receive another access token.
-            Account account = accounts.findById(context.getPrincipal().getName())
-                    .filter(Account::enabled)
+            AuthUser user = users.findWithCompaniesById(context.getPrincipal().getName())
+                    .filter(AuthUser::isEnabled)
                     .orElseThrow(() -> new OAuth2AuthenticationException(OAuth2ErrorCodes.INVALID_GRANT));
-            context.getClaims().subject(account.id());
+            context.getClaims().subject(user.getId());
+            List<Map<String, Object>> companies = companiesClaim(user.getCompanies());
             if (OAuth2TokenType.ACCESS_TOKEN.equals(context.getTokenType())) {
                 // Spring's JDBC JSON allowlist accepts ArrayList, not List.of's internal class.
                 context.getClaims().audience(new ArrayList<>(List.of("portal-api")))
-                        .claim("service", account.service()).claim("service_id", account.serviceId());
-            } else if (context.getAuthorizedScopes().contains(OidcScopes.PROFILE)) {
-                context.getClaims().claim("preferred_username", account.username());
+                        .claim("companies", companies);
+            } else if (context.getAuthorizedScopes() != null
+                    && context.getAuthorizedScopes().contains(OidcScopes.PROFILE)) {
+                context.getClaims()
+                        .claim("preferred_username", user.getName())
+                        .claim("companies", companies);
             }
         };
+    }
+
+    private static List<Map<String, Object>> companiesClaim(Iterable<Company> companies) {
+        List<Map<String, Object>> result = new ArrayList<>();
+        for (Company company : companies) {
+            Map<String, Object> item = new LinkedHashMap<>();
+            item.put("id", company.getId());
+            item.put("name", company.getName());
+            item.put("cnpj", company.getCnpj());
+            result.add(item);
+        }
+        return result;
     }
 }

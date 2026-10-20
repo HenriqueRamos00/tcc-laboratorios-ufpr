@@ -1,0 +1,154 @@
+@let controls = form.controls;
+@let tokenInvalid = controls.token.touched && controls.token.invalid;
+@let nameInvalid = controls.name.touched && controls.name.invalid;
+@let emailInvalid = controls.email.touched && controls.email.invalid;
+@let passwordInvalid = controls.password.touched && controls.password.invalid;
+@let confirmInvalid = controls.confirmPassword.touched && controls.confirmPassword.invalid;
+
+<div class="min-h-svh grid grid-rows-[auto_1fr] md:grid-rows-none md:grid-cols-2 bg-lactec-paper">
+  <section class="bg-lactec-nav bg-login-glow text-white grid place-items-center px-6 py-10 md:p-10">
+    <div class="text-center max-w-sm flex flex-col items-center gap-4 md:gap-6">
+      <app-logo [size]="36" />
+      <h2 class="display text-2xl md:text-3xl font-semibold tracking-tight leading-tight m-0">
+        Configuração inicial
+      </h2>
+      <p class="hidden md:block text-sm leading-relaxed text-white/70 max-w-xs m-0">
+        Crie a primeira conta administradora do serviço de autenticação
+      </p>
+    </div>
+  </section>
+
+  <section class="grid grid-rows-[1fr_auto] gap-6 p-6 md:p-10 bg-lactec-paper">
+    <form
+      [formGroup]="form"
+      (ngSubmit)="submit()"
+      novalidate
+      class="self-center justify-self-center w-full max-w-md flex flex-col gap-5"
+    >
+      <div>
+        <p class="m-0 text-xs font-semibold uppercase tracking-[0.16em] text-lactec-primary-dark">
+          Primeiro acesso
+        </p>
+        <h3 class="display text-2xl md:text-3xl font-semibold text-lactec-nav tracking-tight m-0 mt-2">
+          Criar administrador
+        </h3>
+        <p class="mt-2 mb-0 text-sm text-lactec-muted">
+          Informe o token de configuração fornecido pelo operador do sistema.
+        </p>
+      </div>
+
+      @if (setupUnavailable()) {
+        <div class="rounded-xl border border-lactec-danger-border bg-lactec-danger-bg px-4 py-4 text-sm text-lactec-danger-ink" role="alert">
+          A configuração inicial está desabilitada. Defina <span class="font-mono">AUTH_SETUP_TOKEN</span>
+          no servidor do auth-service e reinicie o serviço.
+        </div>
+      }
+
+      @if (errorMessage()) {
+        <div class="flex gap-3 items-start rounded-xl border border-lactec-danger-border bg-lactec-danger-bg px-4 py-4 text-sm text-lactec-danger-ink" role="alert">
+          <mat-icon class="shrink-0">error_outline</mat-icon>
+          <span>{{ errorMessage() }}</span>
+        </div>
+      }
+
+      <div class="flex flex-col gap-2">
+        <label for="setup-token" class="text-xs font-medium tracking-wide text-lactec-ink-soft">
+          Token de configuração <span class="text-lactec-danger">*</span>
+        </label>
+        <div class="input-field" [class.input-field--error]="tokenInvalid">
+          <mat-icon class="input-field__icon" aria-hidden="true">key</mat-icon>
+          <input id="setup-token" type="password" formControlName="token" autocomplete="off"
+            placeholder="Token fornecido pelo operador" class="input-field__input"
+            [attr.aria-invalid]="tokenInvalid" />
+        </div>
+        @if (tokenInvalid) {
+          <p class="m-0 text-xs text-lactec-danger" role="alert">Informe o token de configuração.</p>
+        }
+      </div>
+
+      <div class="flex flex-col gap-2">
+        <label for="setup-name" class="text-xs font-medium tracking-wide text-lactec-ink-soft">
+          Nome <span class="text-lactec-danger">*</span>
+        </label>
+        <div class="input-field" [class.input-field--error]="nameInvalid">
+          <input id="setup-name" formControlName="name" maxlength="150" autocomplete="name"
+            class="input-field__input" [attr.aria-invalid]="nameInvalid" />
+        </div>
+        @if (nameInvalid) {
+          <p class="m-0 text-xs text-lactec-danger" role="alert">Informe o nome do administrador.</p>
+        }
+      </div>
+
+      <div class="flex flex-col gap-2">
+        <label for="setup-email" class="text-xs font-medium tracking-wide text-lactec-ink-soft">
+          E-mail <span class="text-lactec-danger">*</span>
+        </label>
+        <div class="input-field" [class.input-field--error]="emailInvalid">
+          <mat-icon class="input-field__icon" aria-hidden="true">mail_outline</mat-icon>
+          <input id="setup-email" type="email" formControlName="email" maxlength="254"
+            autocomplete="email" class="input-field__input" [attr.aria-invalid]="emailInvalid" />
+        </div>
+        @if (emailInvalid) {
+          <p class="m-0 text-xs text-lactec-danger" role="alert">Informe um e-mail válido.</p>
+        }
+      </div>
+
+      <div class="flex flex-col gap-2">
+        <label for="setup-password" class="text-xs font-medium tracking-wide text-lactec-ink-soft">
+          Senha <span class="text-lactec-danger">*</span>
+        </label>
+        <div class="input-field" [class.input-field--error]="passwordInvalid">
+          <mat-icon class="input-field__icon" aria-hidden="true">lock_outline</mat-icon>
+          <input id="setup-password" [type]="showPassword() ? 'text' : 'password'"
+            formControlName="password" maxlength="1024" autocomplete="new-password"
+            class="input-field__input" [attr.aria-invalid]="passwordInvalid"
+            aria-describedby="setup-password-hint" />
+          <button type="button" (click)="togglePassword()" class="input-field__suffix"
+            [attr.aria-label]="showPassword() ? 'Ocultar senha' : 'Mostrar senha'">
+            <mat-icon>{{ showPassword() ? 'visibility' : 'visibility_off' }}</mat-icon>
+          </button>
+        </div>
+        <p id="setup-password-hint" class="m-0 text-xs text-lactec-muted">
+          Use pelo menos 15 caracteres. A senha será armazenada com proteção criptográfica.
+        </p>
+        @if (passwordInvalid) {
+          <p class="m-0 text-xs text-lactec-danger" role="alert">
+            A senha deve conter pelo menos 15 caracteres.
+          </p>
+        }
+      </div>
+
+      <div class="flex flex-col gap-2">
+        <label for="setup-confirm" class="text-xs font-medium tracking-wide text-lactec-ink-soft">
+          Confirmar senha <span class="text-lactec-danger">*</span>
+        </label>
+        <div class="input-field" [class.input-field--error]="confirmInvalid">
+          <mat-icon class="input-field__icon" aria-hidden="true">lock_outline</mat-icon>
+          <input id="setup-confirm" [type]="showPassword() ? 'text' : 'password'"
+            formControlName="confirmPassword" maxlength="1024" autocomplete="new-password"
+            class="input-field__input" [attr.aria-invalid]="confirmInvalid" />
+        </div>
+        @if (confirmInvalid) {
+          <p class="m-0 text-xs text-lactec-danger" role="alert">Confirme a senha informada.</p>
+        }
+      </div>
+
+      <button mat-flat-button type="submit" class="w-full h-11"
+        [disabled]="submitting() || setupUnavailable()">
+        {{ submitting() ? 'Criando administrador…' : 'Criar administrador' }}
+      </button>
+
+      <button type="button" (click)="router.navigateByUrl('/login')"
+        class="text-lactec-primary-dark font-medium text-sm hover:underline self-center">
+        Já existe um administrador? Acessar
+      </button>
+    </form>
+
+    <footer class="text-center text-lactec-muted text-xs flex flex-col items-center gap-2">
+      <span>O token de configuração é de uso único e deve ser removido após a criação da conta.</span>
+      <small class="text-xs tracking-widest text-lactec-faint uppercase">
+        © 2026 LACTEC LABORATORY FRAMEWORK. ALL RIGHTS RESERVED.
+      </small>
+    </footer>
+  </section>
+</div>

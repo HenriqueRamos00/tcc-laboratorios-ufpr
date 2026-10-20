@@ -1,0 +1,12 @@
+<app-dialog-shell [title]="data.titulo">
+  <p class="m-0 text-sm text-lactec-ink-soft">{{ data.mensagem }}</p>
+  <div dialog-footer class="flex w-full flex-wrap justify-end gap-3">
+    <button mat-stroked-button type="button" [mat-dialog-close]="false">
+      {{ data.textoCancelar ?? 'Cancelar' }}
+    </button>
+    <button mat-flat-button type="button" [mat-dialog-close]="true"
+      [class.confirmacao-dialog-perigo]="data.perigo">
+      {{ data.textoConfirmar ?? 'Confirmar' }}
+    </button>
+  </div>
+</app-dialog-shell>
