@@ -12,8 +12,8 @@ que ficou pendente.
 PORTAL_WEB_PORT=4300 docker compose up -d --build web
 ```
 
-Acesse `http://localhost:4300`. O login de desenvolvimento é `lactec@lactec` /
-`lactec` (`src/app/services/dev-login.ts`, que já existia).
+Acesse `http://localhost:4300`. Autentique um cliente cadastrado na fonte da API C#.
+O login de desenvolvimento foi removido; consulte a [integração de autenticação](../../backend-portal-web/README.md#autenticação-do-portal-do-cliente).
 
 ## A linha de etapas
 

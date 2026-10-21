@@ -22,7 +22,7 @@ export class QuotesService {
   getQuotes(): Observable<Quote[]> {
     return this.http.get<Quote[]>(this.baseUrl).pipe(
       catchError((erro) => {
-        if (!CAI_PARA_DEMONSTRACAO_SEM_API) return throwError(() => erro);
+        if (erro.status === 401 || erro.status === 403 || !CAI_PARA_DEMONSTRACAO_SEM_API) return throwError(() => erro);
         console.warn('[portal] API indisponível; exibindo a massa de demonstração.', erro);
         return of([...DEMONSTRATION_QUOTES]);
       }),
@@ -48,7 +48,7 @@ export class QuotesService {
     return this.http.get<Quote>(`${this.baseUrl}/${encodeURIComponent(id)}`).pipe(
       catchError((erro) => {
         const daDemonstracao = DEMONSTRATION_QUOTES.find((quote) => quote.id === id);
-        if (!CAI_PARA_DEMONSTRACAO_SEM_API || !daDemonstracao) return throwError(() => erro);
+        if (erro.status === 401 || erro.status === 403 || !CAI_PARA_DEMONSTRACAO_SEM_API || !daDemonstracao) return throwError(() => erro);
         console.warn('[portal] API indisponível; exibindo a massa de demonstração.', erro);
         return of(daDemonstracao);
       }),

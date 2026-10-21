@@ -1,7 +1,9 @@
-import { ChangeDetectionStrategy, Component, inject, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, DestroyRef, inject, signal } from '@angular/core';
+import { HttpErrorResponse } from '@angular/common/http';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
+import { timer, takeWhile } from 'rxjs';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
-import { MatCheckboxModule } from '@angular/material/checkbox';
 import { MatIconModule } from '@angular/material/icon';
 import { Router, RouterLink } from '@angular/router';
 
@@ -17,7 +19,6 @@ import { LoginService } from '@/app/services/login.service';
     ReactiveFormsModule,
     MatIconModule,
     MatButtonModule,
-    MatCheckboxModule,
     RouterLink,
     LogoComponent,
   ],
@@ -33,11 +34,14 @@ export class LoginComponent {
   readonly showPassword = signal(false);
   readonly errorMessage = signal<string | null>(null);
   readonly submitting = signal(false);
+  private readonly destroyRef = inject(DestroyRef);
+  private readonly cooldownUntil = signal(0);
+  private readonly now = signal(Date.now());
+  readonly cooldownRemaining = computed(() => Math.max(0, Math.ceil((this.cooldownUntil() - this.now()) / 1000)));
 
   readonly form = this.fb.nonNullable.group({
     email: ['', [Validators.required, Validators.email]],
-    password: ['', [Validators.required, Validators.minLength(4)]],
-    keepConnected: [true],
+    password: ['', [Validators.required, Validators.maxLength(72)]],
   });
 
   togglePassword(): void {
@@ -45,7 +49,7 @@ export class LoginComponent {
   }
 
   submit(): void {
-    if (this.form.invalid || this.submitting()) {
+    if (this.form.invalid || this.submitting() || this.cooldownRemaining() > 0) {
       this.form.markAllAsTouched();
       return;
     }
@@ -58,11 +62,26 @@ export class LoginComponent {
         this.submitting.set(false);
         this.router.navigateByUrl(this.userRole.dashboardPath());
       },
-      error: () => {
+      error: (error: HttpErrorResponse) => {
         this.submitting.set(false);
-        this.errorMessage.set(
-          'Credenciais inválidas. Por favor, cheque seu e-mail e senha e tente novamente.',
-        );
+        if (error.status === 429) {
+          const seconds = Number(error.headers.get('Retry-After'));
+          if (Number.isFinite(seconds) && seconds > 0) {
+            this.now.set(Date.now());
+            this.cooldownUntil.set(Date.now() + seconds * 1000);
+            timer(0, 1000).pipe(
+              takeUntilDestroyed(this.destroyRef),
+              takeWhile(() => this.cooldownRemaining() > 0),
+            ).subscribe(() => this.now.set(Date.now()));
+          }
+          this.errorMessage.set('Limite de tentativas atingido. Aguarde antes de tentar novamente.');
+        } else if (error.status === 401) {
+          this.errorMessage.set('Credenciais inválidas. Confira seu e-mail e senha.');
+        } else if (error.status === 400) {
+          this.errorMessage.set('Confira os dados informados e tente novamente.');
+        } else {
+          this.errorMessage.set('Não foi possível entrar no momento. Tente novamente em instantes.');
+        }
       },
     });
   }

@@ -13,7 +13,23 @@ docker compose up -d --build web            # http://localhost:4200
 PORTAL_WEB_PORT=4300 docker compose up -d web  # outra porta, se a 4200 estiver ocupada
 ```
 
-Login de desenvolvimento: `lactec@lactec` / `lactec`.
+O login usa `POST /auth/login` da API C#, configurada em `src/app/environment/env.ts`.
+Não há conta ou token de desenvolvimento no frontend. Cadastre o cliente na fonte
+selecionada pelo C# (`backend-lab` ou `lactec`, que usa Backend Auth).
+
+No modo `lactec`, o C# emite JWT de 15 minutos. Angular guarda a sessão em
+`localStorage` (`lactec.token`, `lactec.username`, `lactec.user`), envia Bearer
+somente a `/api/**` e `/auth/me` da API e restaura o perfil com `/auth/me` após
+recarregar. Nome e papel vêm da resposta de login; CNPJs ficam em
+`currentIdentity().authorizations.companyCnpjs`. Expiração e 401 de operações
+protegidas encerram a sessão; 403 é exibido sem logout. O login mostra a espera
+indicada por `Retry-After` em 429, sem repetir a chamada automaticamente.
+
+Para subir o portal com Backend Auth e sem Backend Lab, siga a
+[configuração da API C#](../backend-portal-web/README.md#configuração-e-execução-em-lactec).
+As regras de publicação HTTPS e armazenamento do JWT também estão documentadas lá.
+Para desenvolvimento e testes locais, use Node 24+; o alvo `dev` do Docker inclui
+Chromium para `npm test -- --watch=false`.
 
 This project was generated using [Angular CLI](https://github.com/angular/angular-cli) version 19.2.27.
 

@@ -1,0 +1,21 @@
+# Portal do Cliente usando o Backend Auth independente, sem iniciar o Backend Lab.
+# docker compose -f compose.yaml -f compose.auth.yaml up -d --build frontend
+services:
+  portal-api:
+    environment:
+      Portal__DataSource: lactec
+      BackendAuth__BaseUrl: ${BACKEND_AUTH_BASE_URL:-http://backend-auth:8080}
+      BackendAuth__ServiceToken: ${BACKEND_AUTH_SERVICE_TOKEN:?Configure BACKEND_AUTH_SERVICE_TOKEN}
+      BackendAuth__ServiceCode: ${BACKEND_AUTH_SERVICE_CODE:-portal-web}
+      PortalJwt__Issuer: ${PORTAL_JWT_ISSUER:-portal-api}
+      PortalJwt__Audience: ${PORTAL_JWT_AUDIENCE:-portal-web}
+      PortalJwt__SigningKey: ${PORTAL_JWT_SIGNING_KEY:?Configure PORTAL_JWT_SIGNING_KEY em Base64}
+      PortalJwt__ExpirationSeconds: ${PORTAL_JWT_EXPIRATION_SECONDS:-900}
+    networks:
+      - default
+      - backend-auth
+
+networks:
+  backend-auth:
+    external: true
+    name: ${BACKEND_AUTH_NETWORK:-backend-auth_default}

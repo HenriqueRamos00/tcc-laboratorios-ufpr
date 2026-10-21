@@ -2,7 +2,7 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Options;
 
-using Portal.Adapters.Authentication;
+using Portal.Adapters.BackendAuth;
 using Portal.Adapters.BackendLab;
 using Portal.Api.Configuration;
 using Portal.Application.Authentication;
@@ -22,11 +22,11 @@ public sealed class PortalSourceRegistrationTests
     }
 
     [Fact]
-    public void LactecRegistraAutenticacaoIndisponivelSemEnderecoDoSpring()
+    public void LactecRegistraBackendAuthSemEnderecoDoBackendLab()
     {
         using ServiceProvider provider = Register("lactec", null).BuildServiceProvider();
 
-        Assert.IsType<UnavailableClientAuthenticator>(provider.GetRequiredService<IClientAuthenticator>());
+        Assert.IsType<BackendAuthAdapter>(provider.GetRequiredService<IClientAuthenticator>());
     }
 
     [Fact]
@@ -65,6 +65,13 @@ public sealed class PortalSourceRegistrationTests
         Dictionary<string, string?> values = [];
         if (source is not null) values["Portal:DataSource"] = source;
         if (baseUrl is not null) values["BackendLab:BaseUrl"] = baseUrl;
+
+        if (source == "lactec")
+        {
+            values["BackendAuth:BaseUrl"] = "https://backend-auth.test/";
+            values["BackendAuth:ServiceToken"] = "svc_" + new string('a', 43);
+            values["BackendAuth:ServiceCode"] = "portal-web";
+        }
 
         IConfiguration configuration = new ConfigurationBuilder()
             .AddInMemoryCollection(values)
