@@ -2,6 +2,9 @@ using System.Text.RegularExpressions;
 using Microsoft.Extensions.Options;
 
 using Portal.Adapters.BackendAuth;
+using Portal.Adapters.Quotes;
+using Portal.Api.Quotes;
+using Portal.Application.Quotes;
 using Portal.Api.Authentication;
 using Portal.Adapters.BackendLab;
 using Portal.Application.Authentication;
@@ -24,6 +27,7 @@ public static class PortalSourceRegistration
         switch (portal.DataSource)
         {
             case PortalOptions.BackendLabSource:
+                services.AddScoped<IQuoteRepository, FakeSalesforceQuoteRepository>();
                 services.AddOptions<BackendLabOptions>()
                     .Bind(configuration.GetSection(BackendLabOptions.SectionName))
                     .Validate(options => Uri.TryCreate(options.BaseUrl, UriKind.Absolute, out Uri? uri)
@@ -43,6 +47,11 @@ public static class PortalSourceRegistration
                 return services;
 
             case PortalOptions.LactecSource:
+                services.AddHttpContextAccessor();
+                services.AddScoped<IQuoteCompanyScope, AuthenticatedQuoteCompanyScope>();
+                services.AddHttpClient<IQuoteRepository, SalesforceQuoteRepository>(client =>
+                    client.Timeout = TimeSpan.FromSeconds(10))
+                    .ConfigurePrimaryHttpMessageHandler(() => new HttpClientHandler { AllowAutoRedirect = false });
                 services.AddOptions<BackendAuthOptions>()
                     .Bind(configuration.GetSection(BackendAuthOptions.SectionName))
                     .Validate(value => Uri.TryCreate(value.BaseUrl, UriKind.Absolute, out Uri? uri)

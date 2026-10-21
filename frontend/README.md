@@ -28,6 +28,9 @@ indicada por `Retry-After` em 429, sem repetir a chamada automaticamente.
 Para subir o portal com Backend Auth e sem Backend Lab, siga a
 [configuração da API C#](../backend-portal-web/README.md#configuração-e-execução-em-lactec).
 As regras de publicação HTTPS e armazenamento do JWT também estão documentadas lá.
+No modo `lactec`, os orçamentos do Salesforce são filtrados pelos CNPJs no JWT,
+inclusive o detalhe e o PDF. Sem empresas vinculadas, a lista fica vazia. O Angular
+propaga erros da API e não substitui os resultados por orçamentos de demonstração.
 Para desenvolvimento e testes locais, use Node 24+; o alvo `dev` do Docker inclui
 Chromium para `npm test -- --watch=false`.
 

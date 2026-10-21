@@ -50,7 +50,6 @@ builder.Services.AddScoped<IForConsultingLabResults, LabResultsConsultation>();
 
 builder.Services.AddPortalDataSource(builder.Configuration);
 
-builder.Services.AddScoped<IQuoteRepository, FakeSalesforceQuoteRepository>();
 // A proposta escrita a mao continua valendo; o orcamento sem arquivo recebe a pagina
 // gerada a partir dele mesmo, para o botao de baixar nunca cair no vazio na demonstracao.
 builder.Services.AddScoped<IQuoteDocumentRepository>(services =>

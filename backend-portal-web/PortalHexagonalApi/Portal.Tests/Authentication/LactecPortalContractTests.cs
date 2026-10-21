@@ -10,6 +10,8 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Options;
 using Microsoft.IdentityModel.Tokens;
 using Portal.Adapters.BackendAuth;
+using Portal.Adapters.Quotes;
+using Portal.Application.Quotes;
 using Portal.Application.Authentication;
 using Xunit;
 
@@ -29,7 +31,9 @@ public sealed class LactecPortalContractTests
     {
         string body = withoutCompanies ? Identity.Replace("\"04252011000110\",\"12ABC34501DE35\"", "") : Identity;
         using var backend = new AuthHandler(HttpStatusCode.OK, body);
-        using var portal = new AuthPortal(backend);
+        using var basePortal = new AuthPortal(backend);
+        using var portal = basePortal.WithWebHostBuilder(builder => builder.ConfigureTestServices(services =>
+            services.AddScoped<IQuoteRepository, FakeSalesforceQuoteRepository>()));
         using HttpClient client = portal.CreateClient();
         using var login = await Login(client, "  Marina@Empresa.com  ", "  Senha original  ");
         Assert.Equal(HttpStatusCode.OK, login.StatusCode);

@@ -5,10 +5,10 @@ import { Observable } from 'rxjs';
 import { API_URL } from '@/app/environment/env';
 import { QuotesService } from './quotes.service';
 
-describe('QuotesService, erros de autorização', () => {
+describe('QuotesService, erros da API', () => {
   beforeEach(() => TestBed.configureTestingModule({ providers: [provideHttpClient(), provideHttpClientTesting()] }));
   afterEach(() => TestBed.inject(HttpTestingController).verify());
-  for (const status of [401, 403]) for (const detail of [false, true])
+  for (const status of [400, 401, 403, 404, 502]) for (const detail of [false, true])
     it(`propaga ${status} sem substituir por demonstração (${detail ? 'detalhe' : 'lista'})`, () => {
       const service = TestBed.inject(QuotesService);
       const result: Observable<unknown> = detail ? service.getQuoteById('quote-1') : service.getQuotes();

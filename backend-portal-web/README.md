@@ -91,9 +91,10 @@ Há duas fontes, selecionadas exclusivamente por `Portal__DataSource` na inicial
 
 `lactec` é o modo Backend Auth. Não existe terceira fonte `backend-auth`, seleção por
 requisição ou fallback entre os serviços. Valores ausentes e desconhecidos impedem
-a inicialização. As configurações da fonte inativa são ignoradas. Orçamentos,
-documentos, equipamentos e ensaios mantêm suas implementações atuais; a seleção de
-`LabResults:Source` e a lógica atual de dados/tenant continuam independentes.
+a inicialização. As configurações da fonte inativa são ignoradas. No modo `lactec`,
+os orçamentos são consultados no Salesforce com os CNPJs autorizados no JWT.
+Equipamentos e ensaios mantêm suas implementações atuais; `LabResults:Source` e
+sua lógica de dados/tenant continuam independentes.
 
 `POST /auth/login` é público e recebe `{ "email": "...", "password": "..." }`.
 O controller chama `ILoginUseCase` → `LoginService` → `IClientAuthenticator`.
@@ -141,15 +142,15 @@ conta, serviço ou token de serviço só afetam JWTs já emitidos quando expiram
 Não há refresh token, revogação remota do JWT ou logout no servidor. Logout no
 Angular remove token, perfil e papel do armazenamento local. Uma nova autenticação
 é necessária após expiração; trocar a chave de assinatura invalida todas as sessões.
-Os CNPJs são informações de autorização para a futura integração de dados: esta
-mudança **não implementa filtragem de orçamentos ou ensaios por empresa**.
+Os CNPJs do JWT autorizam as consultas de orçamentos do Salesforce. A filtragem
+dos ensaios por empresa permanece fora desta integração.
 
 O Angular guarda o JWT em `localStorage` (`lactec.token`) e envia Bearer apenas às
 rotas protegidas da origem/caminho configurados em `API_URL`. Nome e papel vêm de
 `user`; ao recarregar uma sessão `lactec`, `/auth/me` restaura a identidade. A
 restauração do Backend Lab usa o seu perfil/claim `role`. O login de desenvolvimento
 foi removido. Credenciais erradas não encerram outra sessão, 401 de uma rota
-protegida encerra a sessão e 403 é exibido sem logout automático. Erros 401/403 não
+protegida encerra a sessão e 403 é exibido sem logout automático. Erros da API não
 são substituídos por orçamentos de demonstração.
 
 | HTTP | Significado no login |
@@ -164,6 +165,46 @@ espera e desabilita novos envios sem tentar novamente sozinho. CORS expõe
 `Retry-After`. Login e `/auth/me` usam `Cache-Control: no-store`; erros usam
 ProblemDetails sem expor respostas internas. Senhas antigas continuam aceitas no
 login; a política de composição é aplicada ao cadastro no Backend Auth.
+
+### Orçamentos do Salesforce por CNPJ
+
+No modo `lactec`, `IQuoteRepository` usa `SalesforceQuoteRepository`. O adapter recebe
+o escopo pela porta `IQuoteCompanyScope`, implementada no HTTP por
+`AuthenticatedQuoteCompanyScope`, que lê somente `companyCnpjs` do JWT validado.
+O cliente não pode ampliar esse escopo com parâmetros, cabeçalhos ou IDs de empresas.
+
+Uma empresa aplica `WHERE Opportunity.Account.CNPJ__c = '76436849000174'`, como em:
+
+```sql
+SELECT Id, Name, Opportunity.Account.Name, Opportunity.Account.CNPJ__c
+FROM Quote
+WHERE Opportunity.Account.CNPJ__c = '76436849000174'
+ORDER BY CreatedDate DESC LIMIT 5
+```
+
+Várias empresas usam `IN ('04252011000110', '76436849000174')`, sem duplicatas.
+A lista preserva o limite existente dos cinco orçamentos mais recentes e os campos
+usados pela tela. O formato dos CNPJs é canônico, com 14 caracteres, incluindo
+suporte a CNPJ alfanumérico. O número do exemplo não é fixado no código.
+
+A consulta por ID combina `Id = '...' AND Opportunity.Account.CNPJ__c ...`.
+O download em `/api/quotes/{id}/document` verifica essa mesma consulta antes de
+carregar ou gerar o PDF. Um orçamento de outra empresa retorna 404, assim como um
+ID inexistente. Sem CNPJs autorizados, a lista retorna `[]`, detalhe/documento
+retornam 404 e nenhuma chamada ao Salesforce é feita. Um escopo inválido também
+não consulta a origem. Os vínculos do JWT continuam valendo até sua expiração;
+entre novamente para obter uma associação de empresa recém-alterada.
+
+Configure `Salesforce__Url`, `Salesforce__GrantType`, `Salesforce__ClientId` e
+`Salesforce__ClientSecret` no `backend-portal-web/.env` para o Compose (ou no
+ambiente do processo para execução direta). A seção Salesforce abaixo contém o
+exemplo completo. A conexão de leitura usa o token OAuth do Salesforce, separado
+dos tokens do portal e do Backend Auth. Falhas de configuração, conexão, timeout
+ou resposta da origem retornam 502 sem expor seu corpo. Angular mostra o erro;
+nenhum dado de demonstração substitui uma consulta recusada ou indisponível.
+
+O modo `backend-lab` conserva o adapter de demonstração existente no C#. A mudança
+não implementa sua integração de orçamentos nem altera o módulo Backend Lab.
 
 ### Configuração e execução em lactec
 
@@ -226,7 +267,9 @@ npm run build
 ```
 
 Os testes HTTP cobrem as duas fontes, claims, expiração, assinatura, escopo do
-serviço, `/auth/me`, falhas de integração, cooldown, CORS e OpenAPI. O frontend
+serviço, `/auth/me`, falhas de integração, cooldown, CORS e OpenAPI. Os testes do
+Salesforce usam HTTP simulado e conferem o SOQL enviado, múltiplas empresas,
+ausência de vínculos, separação de clientes e bloqueio de detalhe/PDF fora do escopo. O frontend
 cobre armazenamento/restauração, envio restrito do Bearer, logout, mensagens e
 espera do login. Para um smoke real, mantenha o Backend Lab parado, use o Backend
 Auth com SQL Server, autentique pelo C#, consulte `/auth/me` e `/api/quotes` com o
