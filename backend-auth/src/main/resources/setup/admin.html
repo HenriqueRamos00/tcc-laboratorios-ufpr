@@ -1,0 +1,78 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="referrer" content="no-referrer">
+  <title>Configuração inicial · Backend Auth</title>
+  <style>
+    body { margin: 0; background: #f3f5f8; color: #182334; font: 16px system-ui, sans-serif; }
+    main { max-width: 420px; margin: 9vh auto; padding: 32px; background: white; border-radius: 12px; }
+    h1 { font-size: 26px; }
+    p { line-height: 1.5; }
+    label { display: block; margin-top: 18px; }
+    input, button { box-sizing: border-box; width: 100%; padding: 12px; margin-top: 6px; font: inherit; border-radius: 6px; }
+    input { border: 1px solid #acb6c4; }
+    button { margin-top: 24px; background: #184e87; border: 0; color: white; cursor: pointer; }
+    button:disabled { opacity: .6; cursor: wait; }
+    #message { white-space: pre-wrap; }
+    @media (max-width: 500px) { main { margin: 20px; padding: 24px; } }
+  </style>
+</head>
+<body>
+<main>
+  <h1>Configure o Backend Auth</h1>
+  <p>Crie o primeiro administrador deste serviço. Essa conta permite gerenciar a autenticação e os usuários; ela não recebe um perfil no Portal Web.</p>
+  <form id="setup-form" method="post" action="/api/setup/admin">
+    <label>Nome<input name="name" required maxlength="150" autocomplete="name"></label>
+    <label>E-mail<input name="email" type="email" required maxlength="254" autocomplete="username"></label>
+    <label>Senha<input name="password" type="password" required minlength="12" maxlength="72" autocomplete="new-password"></label>
+    <label>Confirme a senha<input name="confirmation" type="password" required autocomplete="new-password"></label>
+    <p>Use pelo menos 12 caracteres e no máximo 72 bytes UTF-8.</p>
+    <button type="submit">Criar administrador</button>
+  </form>
+  <p id="message" role="status" aria-live="polite"></p>
+</main>
+<script>
+  const form = document.getElementById('setup-form');
+  const message = document.getElementById('message');
+  const token = new URLSearchParams(location.search).get('token');
+  form.addEventListener('submit', async event => {
+    event.preventDefault();
+    const fields = new FormData(form);
+    const password = fields.get('password');
+    if (password !== fields.get('confirmation')) {
+      message.textContent = 'As senhas não coincidem.';
+      return;
+    }
+    if (new TextEncoder().encode(password).length > 72) {
+      message.textContent = 'A senha deve ter no máximo 72 bytes UTF-8.';
+      return;
+    }
+    const button = form.querySelector('button');
+    button.disabled = true;
+    message.textContent = 'Criando administrador…';
+    try {
+      const response = await fetch('/api/setup/admin', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'X-Setup-Token': token },
+        body: JSON.stringify({ name: fields.get('name'), email: fields.get('email'), password })
+      });
+      const result = await response.json();
+      if (!response.ok) {
+        message.textContent = result.message || 'Não foi possível criar o administrador.';
+        button.disabled = false;
+        return;
+      }
+      form.reset();
+      form.hidden = true;
+      history.replaceState(null, '', '/setup');
+      message.textContent = 'Administrador criado. A configuração inicial foi encerrada. Use essa conta para administrar o Backend Auth.';
+    } catch {
+      message.textContent = 'Não foi possível conectar ao serviço. Tente novamente.';
+      button.disabled = false;
+    }
+  });
+</script>
+</body>
+</html>

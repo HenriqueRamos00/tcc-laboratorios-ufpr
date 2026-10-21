@@ -2,6 +2,8 @@
 
 TCC Portal Web Laboratórios.
 
+O [Backend Auth](backend-auth/README.md) é um serviço Spring Boot independente, com SQL Server, login do portal sem token e operações administrativas com Bearer tokens opacos, sem JWT. O primeiro administrador é cadastrado por um link gerado nos logs e administra somente esse serviço, com permissões independentes do Portal Web. O módulo tem seu próprio Compose; o frontend de administração e a integração com a API C# serão feitos separadamente.
+
 ## Docker Compose na raiz
 
 Requisitos: Docker Engine e Docker Compose v2. Os comandos abaixo são executados na raiz do repositório.
