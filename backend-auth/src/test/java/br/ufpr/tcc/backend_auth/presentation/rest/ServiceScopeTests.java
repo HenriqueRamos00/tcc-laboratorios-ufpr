@@ -98,7 +98,8 @@ class ServiceScopeTests extends ServiceTestSupport {
                 .andExpect(status().isForbidden());
         mvc.perform(as(post("/api/auth/login"), serviceToken).contentType(MediaType.APPLICATION_JSON).content(credentials))
                 .andExpect(status().isOk()).andExpect(header().string("Cache-Control", "no-store"))
-                .andExpect(jsonPath("$.id").value(client.getId().toString())).andExpect(jsonPath("$.serviceId").value(servico.getId().toString()))
+                .andExpect(jsonPath("$.id").value(client.getId().toString())).andExpect(jsonPath("$.serviceCode").value(servico.getCodigo()))
+                .andExpect(jsonPath("$.serviceId").doesNotExist())
                 .andExpect(jsonPath("$.accessToken").doesNotExist()).andExpect(jsonPath("$.password").doesNotExist());
         mvc.perform(as(post("/api/auth/login"), outroToken).contentType(MediaType.APPLICATION_JSON).content(credentials))
                 .andExpect(status().isUnauthorized()).andExpect(content().json("{\"message\":\"Credenciais inválidas\"}"));

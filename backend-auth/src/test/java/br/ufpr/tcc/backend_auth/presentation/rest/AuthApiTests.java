@@ -64,9 +64,10 @@ class AuthApiTests extends ServiceTestSupport {
                 .andExpect(jsonPath("$.name").value("Usuário de Teste"))
                 .andExpect(jsonPath("$.email").value("user@example.test"))
                 .andExpect(jsonPath("$.role").value(role.name()))
+                .andExpect(jsonPath("$.serviceCode").value("portal-web"))
                 .andReturn();
         assertThat(json.readTree(result.getResponse().getContentAsString()).propertyNames())
-                .containsExactlyInAnyOrder("id", "name", "email", "role", "serviceId");
+                .containsExactlyInAnyOrder("id", "name", "email", "role", "serviceCode");
         // An identity response establishes no authenticated session.
         mvc.perform(post("/api/users").contentType(MediaType.APPLICATION_JSON)
                         .content(newUser("client@example.test", PASSWORD, "CLIENTE")))

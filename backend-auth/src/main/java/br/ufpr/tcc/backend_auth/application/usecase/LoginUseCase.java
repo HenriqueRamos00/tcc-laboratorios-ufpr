@@ -1,7 +1,7 @@
 package br.ufpr.tcc.backend_auth.application.usecase;
 
 import br.ufpr.tcc.backend_auth.application.dto.request.LoginRequest;
-import br.ufpr.tcc.backend_auth.application.dto.response.UsuarioResponse;
+import br.ufpr.tcc.backend_auth.application.dto.response.LoginUsuarioResponse;
 import br.ufpr.tcc.backend_auth.application.service.VerificadorCredenciais;
 import br.ufpr.tcc.backend_auth.domain.exception.CredenciaisInvalidasException;
 import br.ufpr.tcc.backend_auth.domain.model.entity.Usuario;
@@ -15,11 +15,11 @@ public class LoginUseCase {
     private final VerificadorCredenciais credenciais;
 
     @Transactional(readOnly = true)
-    public UsuarioResponse execute(LoginRequest request, Long servicoId) {
+    public LoginUsuarioResponse execute(LoginRequest request, Long servicoId) {
         Usuario usuario = credenciais.verificar(request, servicoId);
         if (usuario.getPerfil() == null) {
             throw new CredenciaisInvalidasException();
         }
-        return UsuarioResponse.fromEntity(usuario);
+        return LoginUsuarioResponse.fromEntity(usuario);
     }
 }

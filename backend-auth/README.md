@@ -167,7 +167,7 @@ Content-Type: application/json
 Resposta HTTP 200:
 
 ```json
-{"id":"2","name":"Cliente","email":"cliente@example.com","role":"CLIENTE","serviceId":"1"}
+{"id":"2","name":"Cliente","email":"cliente@example.com","role":"CLIENTE","serviceCode":"portal-web"}
 ```
 
 Credenciais corretas de um cliente associado a outro serviço, cliente sem associação, conta inexistente, conta inativa e senha incorreta retornam a mesma resposta 401. Sem token de serviço válido, a chamada é rejeitada antes de verificar as credenciais. Um Bearer administrativo não substitui o token de integração nesse login.

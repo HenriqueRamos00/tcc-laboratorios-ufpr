@@ -99,6 +99,8 @@ class OpenApiTests {
                 .containsExactlyInAnyOrder("id", "name", "email");
         assertThat(schemas.path("UsuarioResponse").path("properties").propertyNames())
                 .containsExactlyInAnyOrder("id", "name", "email", "role", "serviceId");
+        assertThat(schemas.path("LoginUsuarioResponse").path("properties").propertyNames())
+                .containsExactlyInAnyOrder("id", "name", "email", "role", "serviceCode");
         assertThat(schemas.path("ApiErrorResponse").path("properties").has("message")).isTrue();
         assertThat(schemas.path("LoginAdministradorResponse").path("properties").propertyNames())
                 .containsExactlyInAnyOrder("accessToken", "tokenType", "expiresIn", "user");
@@ -107,6 +109,8 @@ class OpenApiTests {
         }
         assertThat(document.at("/paths/~1api~1users/post/responses/201/content/application~1json/schema/$ref").asText())
                 .isEqualTo("#/components/schemas/UsuarioResponse");
+        assertThat(document.at("/paths/~1api~1auth~1login/post/responses/200/content/application~1json/schema/$ref").asText())
+                .isEqualTo("#/components/schemas/LoginUsuarioResponse");
     }
 
     @Test

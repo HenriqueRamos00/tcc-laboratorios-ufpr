@@ -1,7 +1,7 @@
 package br.ufpr.tcc.backend_auth.presentation.rest;
 
 import br.ufpr.tcc.backend_auth.application.dto.request.LoginRequest;
-import br.ufpr.tcc.backend_auth.application.dto.response.UsuarioResponse;
+import br.ufpr.tcc.backend_auth.application.dto.response.LoginUsuarioResponse;
 import br.ufpr.tcc.backend_auth.application.usecase.LoginUseCase;
 import jakarta.validation.Valid;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
@@ -27,7 +27,7 @@ public class AuthController {
     private final LoginUseCase login;
 
     @PostMapping("/login")
-    @Operation(summary = "Autenticar cliente do serviço", description = "Exige token do serviço do cliente. Retorna identidade, sem emitir token ou sessão.")
+    @Operation(summary = "Autenticar cliente do serviço", description = "Exige token do serviço do cliente. Retorna identidade e serviceCode, sem emitir token ou sessão.")
     @SecurityRequirement(name = "serviceToken")
     @ApiResponses({
         @ApiResponse(responseCode = "200", description = "Cliente autenticado"),
@@ -35,7 +35,7 @@ public class AuthController {
         @ApiResponse(responseCode = "401", ref = "#/components/responses/InvalidCredentials"),
         @ApiResponse(responseCode = "403", ref = "#/components/responses/Forbidden")
     })
-    public ResponseEntity<UsuarioResponse> login(@Valid @RequestBody LoginRequest request,
+    public ResponseEntity<LoginUsuarioResponse> login(@Valid @RequestBody LoginRequest request,
             @AuthenticationPrincipal OAuth2AuthenticatedPrincipal principal) {
         return ResponseEntity.ok().cacheControl(CacheControl.noStore()).body(login.execute(request, principal.getAttribute("serviceId")));
     }
