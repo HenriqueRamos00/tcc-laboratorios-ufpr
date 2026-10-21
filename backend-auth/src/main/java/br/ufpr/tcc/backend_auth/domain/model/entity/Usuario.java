@@ -7,6 +7,10 @@ import jakarta.persistence.Enumerated;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
+import jakarta.persistence.FetchType;
+import jakarta.persistence.JoinColumn;
+import jakarta.persistence.ManyToOne;
+import jakarta.persistence.Index;
 import jakarta.persistence.PrePersist;
 import jakarta.persistence.PreUpdate;
 import jakarta.persistence.Table;
@@ -18,7 +22,7 @@ import lombok.Setter;
 import org.hibernate.annotations.Nationalized;
 
 @Entity
-@Table(name = "usuarios", uniqueConstraints =
+@Table(name = "usuarios", indexes = @Index(name = "ix_usuarios_servico", columnList = "servico_id"), uniqueConstraints =
         @UniqueConstraint(name = "uk_usuarios_email", columnNames = "email"))
 @Getter
 @Setter
@@ -42,6 +46,11 @@ public class Usuario {
     @Enumerated(EnumType.STRING)
     @Column(length = 20)
     private PerfilUsuario perfil;
+
+    // Nulo para administradores e clientes antigos ainda não associados pelo administrador.
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "servico_id")
+    private Servico servico;
 
     @Column(name = "administrador_servico", nullable = false, columnDefinition = "bit default 0")
     private boolean administradorServico;

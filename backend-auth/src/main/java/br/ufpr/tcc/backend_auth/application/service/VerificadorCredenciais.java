@@ -19,8 +19,9 @@ public class VerificadorCredenciais {
     private final SenhaValidator senhaValidator;
 
     @Transactional(readOnly = true)
-    public Usuario verificar(LoginRequest request) {
-        return validar(request, usuarios.findByEmail(request.email()));
+    public Usuario verificar(LoginRequest request, Long servicoId) {
+        if (servicoId == null) throw new CredenciaisInvalidasException();
+        return validar(request, usuarios.findByEmailAndServicoIdAndServicoAtivoTrueAndPerfilIsNotNull(request.email(), servicoId));
     }
 
     @Transactional

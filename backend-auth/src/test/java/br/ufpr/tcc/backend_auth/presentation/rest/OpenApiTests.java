@@ -43,7 +43,8 @@ class OpenApiTests {
         assertThat(document.path("info").path("title").asText()).isEqualTo("Backend Auth API");
         JsonNode paths = document.path("paths");
         assertThat(paths.propertyNames()).containsExactlyInAnyOrder("/health", "/api/auth/login",
-                "/api/admin/auth/login", "/api/setup/admin", "/api/users", "/api/admins", "/api/users/{id}", "/api/admins/{id}");
+                "/api/admin/auth/login", "/api/setup/admin", "/api/users", "/api/admins", "/api/users/{id}", "/api/admins/{id}",
+                "/api/services", "/api/services/{id}", "/api/services/{serviceId}/tokens", "/api/services/{serviceId}/tokens/{tokenId}");
         JsonNode schemes = document.path("components").path("securitySchemes");
         assertThat(schemes.path("serviceAdmin").path("type").asText()).isEqualTo("http");
         assertThat(schemes.path("serviceAdmin").path("scheme").asText()).isEqualTo("bearer");
@@ -53,17 +54,24 @@ class OpenApiTests {
         assertThat(schemes.path("setupToken").path("name").asText()).isEqualTo("X-Setup-Token");
         assertThat(document.has("security")).isFalse();
         assertThat(paths.path("/health").path("get").has("security")).isFalse();
-        assertThat(paths.path("/api/auth/login").path("post").has("security")).isFalse();
+        assertThat(paths.path("/api/auth/login").path("post").at("/security/0/serviceToken").isArray()).isTrue();
+        assertThat(schemes.path("serviceToken").path("scheme").asText()).isEqualTo("bearer");
+        assertThat(paths.path("/api/users").path("get").path("security").toString()).contains("\"serviceToken\":[]");
+        assertThat(paths.path("/api/users/{id}").path("get").path("security").toString()).contains("\"serviceToken\":[]");
+        for (String path : new String[] {"/api/services", "/api/services/{serviceId}/tokens"}) {
+            assertThat(paths.path(path).path("post").at("/security/0/serviceAdmin").isArray()).isTrue();
+            assertThat(paths.path(path).path("get").path("security").toString()).contains("\"serviceAdmin\":[]");
+        }
         assertThat(paths.path("/api/admin/auth/login").path("post").has("security")).isFalse();
         for (String path : new String[] {"/api/users", "/api/admins"}) {
             JsonNode operation = paths.path(path).path("post");
             assertThat(operation.at("/security/0/serviceAdmin").isArray()).isTrue();
-            assertThat(operation.path("responses").propertyNames()).containsExactlyInAnyOrder("201", "400", "401", "403", "409");
+            assertThat(operation.path("responses").propertyNames()).contains("201", "400", "401", "403", "409");
             assertThat(operation.path("responses").has("200")).isFalse();
-            assertThat(paths.path(path).path("get").at("/security/0/serviceAdmin").isArray()).isTrue();
+            assertThat(paths.path(path).path("get").path("security").toString()).contains("\"serviceAdmin\":[]");
             for (String method : new String[] {"get", "put", "delete"}) {
                 JsonNode detail = paths.path(path + "/{id}").path(method);
-                assertThat(detail.at("/security/0/serviceAdmin").isArray()).isTrue();
+                assertThat(detail.path("security").toString()).contains("\"serviceAdmin\":[]");
                 assertThat(detail.path("responses").has("404")).isTrue();
             }
             assertThat(paths.path(path + "/{id}").path("delete").path("responses").has("204")).isTrue();
@@ -85,12 +93,12 @@ class OpenApiTests {
             assertThat(password.path("example").asText()).isNotBlank();
         }
         assertThat(schemas.path("CriarUsuarioRequest").path("required").toString())
-                .contains("name", "email", "password", "role");
+                .contains("name", "email", "password", "role", "serviceId");
         assertThat(schemas.path("CriarUsuarioRequest").at("/properties/password/minLength").asInt()).isEqualTo(12);
         assertThat(schemas.path("AdministradorResponse").path("properties").propertyNames())
                 .containsExactlyInAnyOrder("id", "name", "email");
         assertThat(schemas.path("UsuarioResponse").path("properties").propertyNames())
-                .containsExactlyInAnyOrder("id", "name", "email", "role");
+                .containsExactlyInAnyOrder("id", "name", "email", "role", "serviceId");
         assertThat(schemas.path("ApiErrorResponse").path("properties").has("message")).isTrue();
         assertThat(schemas.path("LoginAdministradorResponse").path("properties").propertyNames())
                 .containsExactlyInAnyOrder("accessToken", "tokenType", "expiresIn", "user");

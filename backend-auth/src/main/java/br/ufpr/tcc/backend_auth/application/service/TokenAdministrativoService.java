@@ -6,13 +6,7 @@ import br.ufpr.tcc.backend_auth.domain.exception.CredenciaisInvalidasException;
 import br.ufpr.tcc.backend_auth.domain.model.entity.SessaoAdministrativa;
 import br.ufpr.tcc.backend_auth.domain.model.entity.Usuario;
 import br.ufpr.tcc.backend_auth.domain.repository.SessaoAdministrativaRepository;
-import java.nio.charset.StandardCharsets;
-import java.security.MessageDigest;
-import java.security.NoSuchAlgorithmException;
-import java.security.SecureRandom;
 import java.time.Instant;
-import java.util.Base64;
-import java.util.HexFormat;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -21,7 +15,6 @@ import org.springframework.transaction.annotation.Transactional;
 public class TokenAdministrativoService {
     private final SessaoAdministrativaRepository sessoes;
     private final long expirationSeconds;
-    private final SecureRandom random = new SecureRandom();
 
     public TokenAdministrativoService(SessaoAdministrativaRepository sessoes,
             @Value("${admin.token.expiration-seconds:3600}") long expirationSeconds) {
@@ -36,11 +29,9 @@ public class TokenAdministrativoService {
     public LoginAdministradorResponse emitir(Usuario usuario) {
         Instant now = Instant.now();
         sessoes.excluirExpiradas(now);
-        byte[] bytes = new byte[32];
-        random.nextBytes(bytes);
-        String token = Base64.getUrlEncoder().withoutPadding().encodeToString(bytes);
+        String token = TokenOpaco.gerar();
         SessaoAdministrativa sessao = new SessaoAdministrativa();
-        sessao.setTokenHash(hash(token));
+        sessao.setTokenHash(TokenOpaco.hash(token));
         sessao.setUsuario(usuario);
         sessao.setExpiraEm(now.plusSeconds(expirationSeconds));
         sessoes.saveAndFlush(sessao);
@@ -52,19 +43,11 @@ public class TokenAdministrativoService {
         if (token == null || !token.matches("[A-Za-z0-9_-]{43}")) {
             throw new CredenciaisInvalidasException();
         }
-        SessaoAdministrativa sessao = sessoes.findById(hash(token)).orElseThrow(CredenciaisInvalidasException::new);
+        SessaoAdministrativa sessao = sessoes.findById(TokenOpaco.hash(token)).orElseThrow(CredenciaisInvalidasException::new);
         Usuario usuario = sessao.getUsuario();
         if (!sessao.getExpiraEm().isAfter(Instant.now()) || !usuario.isAtivo() || !usuario.isAdministradorServico()) {
             throw new CredenciaisInvalidasException();
         }
         return AdministradorResponse.fromEntity(usuario);
-    }
-
-    private String hash(String token) {
-        try {
-            return HexFormat.of().formatHex(MessageDigest.getInstance("SHA-256").digest(token.getBytes(StandardCharsets.UTF_8)));
-        } catch (NoSuchAlgorithmException exception) {
-            throw new IllegalStateException("SHA-256 indisponível", exception);
-        }
     }
 }

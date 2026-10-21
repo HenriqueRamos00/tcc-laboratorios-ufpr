@@ -6,9 +6,17 @@ public final class ViolacaoUnicidade {
     private ViolacaoUnicidade() {}
 
     public static boolean email(Throwable failure) {
+        return restricao(failure, "uk_usuarios_email");
+    }
+
+    public static boolean codigoServico(Throwable failure) {
+        return restricao(failure, "uk_servicos_codigo");
+    }
+
+    private static boolean restricao(Throwable failure, String nome) {
         for (Throwable cause = failure; cause != null; cause = cause.getCause()) {
             if (cause.getMessage() != null
-                    && cause.getMessage().toLowerCase(Locale.ROOT).contains("uk_usuarios_email")) {
+                    && cause.getMessage().toLowerCase(Locale.ROOT).contains(nome)) {
                 return true;
             }
         }

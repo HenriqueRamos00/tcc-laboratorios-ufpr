@@ -9,6 +9,8 @@ import br.ufpr.tcc.backend_auth.application.usecase.ConsultarUsuariosUseCase;
 import br.ufpr.tcc.backend_auth.application.usecase.AtualizarUsuarioUseCase;
 import br.ufpr.tcc.backend_auth.application.usecase.ExcluirUsuarioUseCase;
 import jakarta.validation.Valid;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.security.oauth2.core.OAuth2AuthenticatedPrincipal;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
@@ -29,7 +31,7 @@ import java.util.List;
 @RestController
 @RequestMapping("/api/users")
 @RequiredArgsConstructor
-@Tag(name = "Usuários do portal")
+@Tag(name = "Clientes dos serviços")
 public class UsuarioController {
     private final CriarUsuarioUseCase criarUsuario;
     private final ConsultarUsuariosUseCase consultar;
@@ -37,53 +39,57 @@ public class UsuarioController {
     private final ExcluirUsuarioUseCase excluir;
 
     @PostMapping
-    @Operation(summary = "Cadastrar usuário do portal", description = "Cria uma conta ativa com perfil CLIENTE, sem permissão de administração do serviço.")
+    @Operation(summary = "Cadastrar cliente", description = "Cria um cliente ativo associado ao serviceId informado, sem administração do Backend Auth.")
     @SecurityRequirement(name = "serviceAdmin")
     @ApiResponses({
         @ApiResponse(responseCode = "201", description = "Usuário cadastrado"),
         @ApiResponse(responseCode = "400", ref = "#/components/responses/InvalidRequest"),
         @ApiResponse(responseCode = "401", ref = "#/components/responses/InvalidCredentials"),
         @ApiResponse(responseCode = "403", ref = "#/components/responses/Forbidden"),
-        @ApiResponse(responseCode = "409", ref = "#/components/responses/EmailConflict")
+        @ApiResponse(responseCode = "404", ref = "#/components/responses/ServiceNotFound"),
+        @ApiResponse(responseCode = "409", ref = "#/components/responses/ClientConflict")
     })
     public ResponseEntity<UsuarioResponse> criar(@Valid @RequestBody CriarUsuarioRequest request) {
         return ResponseEntity.status(201).body(criarUsuario.execute(request));
     }
 
     @GetMapping
-    @Operation(summary = "Listar usuários do portal", description = "Inclui contas ativas e inativas, ordenadas por nome e ID.")
+    @Operation(summary = "Listar clientes", description = "Inclui contas ativas e inativas. Token de serviço vê somente seus clientes; administrador vê todos.")
     @SecurityRequirement(name = "serviceAdmin")
+    @SecurityRequirement(name = "serviceToken")
     @ApiResponses({@ApiResponse(responseCode = "200", description = "Usuários"),
         @ApiResponse(responseCode = "401", ref = "#/components/responses/InvalidCredentials")})
-    public List<UsuarioDetalheResponse> listar() {
-        return consultar.listar();
+    public List<UsuarioDetalheResponse> listar(@AuthenticationPrincipal OAuth2AuthenticatedPrincipal principal) {
+        return consultar.listar(principal.getAttribute("serviceId"));
     }
 
     @GetMapping("/{id}")
-    @Operation(summary = "Consultar usuário do portal")
+    @Operation(summary = "Consultar cliente", description = "Com token de serviço, IDs de outros serviços e clientes sem associação retornam 404.")
     @SecurityRequirement(name = "serviceAdmin")
+    @SecurityRequirement(name = "serviceToken")
     @ApiResponses({@ApiResponse(responseCode = "200", description = "Usuário"),
         @ApiResponse(responseCode = "400", ref = "#/components/responses/InvalidRequest"),
         @ApiResponse(responseCode = "401", ref = "#/components/responses/InvalidCredentials"),
         @ApiResponse(responseCode = "404", ref = "#/components/responses/AccountNotFound")})
-    public UsuarioDetalheResponse obter(@PathVariable Long id) {
-        return consultar.obter(id);
+    public UsuarioDetalheResponse obter(@PathVariable Long id,
+            @AuthenticationPrincipal OAuth2AuthenticatedPrincipal principal) {
+        return consultar.obter(id, principal.getAttribute("serviceId"));
     }
 
     @PutMapping("/{id}")
-    @Operation(summary = "Atualizar usuário do portal", description = "Omita password para preservar a senha. Não concede administração do serviço.")
+    @Operation(summary = "Atualizar cliente", description = "Informe serviceId para associar ou transferir o cliente. Novas associações exigem serviço ativo; editar um cliente já associado a serviço inativo é permitido. Omita password para preservar a senha.")
     @SecurityRequirement(name = "serviceAdmin")
     @ApiResponses({@ApiResponse(responseCode = "200", description = "Usuário atualizado"),
         @ApiResponse(responseCode = "400", ref = "#/components/responses/InvalidRequest"),
         @ApiResponse(responseCode = "401", ref = "#/components/responses/InvalidCredentials"),
         @ApiResponse(responseCode = "404", ref = "#/components/responses/AccountNotFound"),
-        @ApiResponse(responseCode = "409", ref = "#/components/responses/AccountConflict")})
+        @ApiResponse(responseCode = "409", ref = "#/components/responses/ClientConflict")})
     public UsuarioDetalheResponse atualizar(@PathVariable Long id, @Valid @RequestBody AtualizarUsuarioRequest request) {
         return atualizar.execute(id, request);
     }
 
     @DeleteMapping("/{id}")
-    @Operation(summary = "Excluir usuário do portal", description = "Remove a conta, preservando eventual permissão de administração do serviço.")
+    @Operation(summary = "Excluir cliente", description = "Remove a conta, preservando eventual permissão de administração do Backend Auth.")
     @SecurityRequirement(name = "serviceAdmin")
     @ApiResponses({@ApiResponse(responseCode = "204", description = "Usuário excluído"),
         @ApiResponse(responseCode = "400", ref = "#/components/responses/InvalidRequest"),

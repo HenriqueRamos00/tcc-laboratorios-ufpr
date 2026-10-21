@@ -7,6 +7,7 @@ import br.ufpr.tcc.backend_auth.domain.exception.DadosInvalidosException;
 import br.ufpr.tcc.backend_auth.domain.exception.EmailJaCadastradoException;
 import br.ufpr.tcc.backend_auth.domain.model.entity.Usuario;
 import br.ufpr.tcc.backend_auth.domain.repository.UsuarioRepository;
+import br.ufpr.tcc.backend_auth.application.service.ServicoService;
 import jakarta.validation.Validator;
 import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
@@ -18,6 +19,7 @@ import org.springframework.transaction.annotation.Transactional;
 @RequiredArgsConstructor
 public class CriarUsuarioUseCase {
     private final UsuarioRepository usuarios;
+    private final ServicoService servicos;
     private final PasswordEncoder encoder;
     private final SenhaValidator senhaValidator;
     private final Validator validator;
@@ -38,6 +40,7 @@ public class CriarUsuarioUseCase {
         usuario.setEmail(request.email());
         usuario.setSenhaHash(encoder.encode(request.password()));
         usuario.setPerfil(request.role());
+        usuario.setServico(servicos.exigirAtivo(request.serviceId()));
         return UsuarioResponse.fromEntity(usuarios.saveAndFlush(usuario));
     }
 }

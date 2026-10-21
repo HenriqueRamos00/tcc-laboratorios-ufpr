@@ -1,6 +1,6 @@
 package br.ufpr.tcc.backend_auth.infrastructure.config;
 
-import br.ufpr.tcc.backend_auth.infrastructure.security.AdminTokenIntrospector;
+import br.ufpr.tcc.backend_auth.infrastructure.security.BearerTokenIntrospector;
 import jakarta.servlet.DispatcherType;
 import jakarta.servlet.http.HttpServletResponse;
 import java.io.IOException;
@@ -21,7 +21,7 @@ import org.springframework.security.oauth2.server.resource.web.DefaultBearerToke
 public class SecurityConfig {
     @Bean
     SecurityFilterChain securityFilterChain(
-            HttpSecurity http, AdminTokenIntrospector introspector) throws Exception {
+            HttpSecurity http, BearerTokenIntrospector introspector) throws Exception {
         AuthenticationEntryPoint unauthorized = (request, response, exception) -> {
             response.setHeader("WWW-Authenticate", "Bearer");
             writeError(response, 401, "Credenciais inválidas");
@@ -40,6 +40,8 @@ public class SecurityConfig {
                             String path = request.getRequestURI().substring(request.getContextPath().length());
                             return path.equals("/api/users") || path.startsWith("/api/users/")
                                     || path.equals("/api/admins") || path.startsWith("/api/admins/")
+                                    || path.equals("/api/services") || path.startsWith("/api/services/")
+                                    || path.equals("/api/auth/login")
                                     ? resolver.resolve(request) : null;
                         }))
                 .authorizeHttpRequests(authorize -> authorize
@@ -48,8 +50,11 @@ public class SecurityConfig {
                                 "/v3/api-docs", "/v3/api-docs/**", "/v3/api-docs.yaml").permitAll()
                         .requestMatchers(HttpMethod.GET, "/health").permitAll()
                         .requestMatchers(HttpMethod.GET, "/setup").permitAll()
-                        .requestMatchers(HttpMethod.POST, "/api/auth/login", "/api/admin/auth/login", "/api/setup/admin").permitAll()
-                        .requestMatchers("/api/users", "/api/users/**", "/api/admins", "/api/admins/**").hasRole("SERVICE_ADMIN")
+                        .requestMatchers(HttpMethod.POST, "/api/admin/auth/login", "/api/setup/admin").permitAll()
+                        .requestMatchers(HttpMethod.POST, "/api/auth/login").hasRole("APPLICATION_SERVICE")
+                        .requestMatchers(HttpMethod.GET, "/api/users", "/api/users/*").hasAnyRole("SERVICE_ADMIN", "APPLICATION_SERVICE")
+                        .requestMatchers("/api/users", "/api/users/**", "/api/admins", "/api/admins/**",
+                                "/api/services", "/api/services/**").hasRole("SERVICE_ADMIN")
                         .anyRequest().denyAll())
                 .exceptionHandling(exception -> exception
                         .authenticationEntryPoint(unauthorized)

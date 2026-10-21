@@ -19,6 +19,7 @@ public class ExcluirUsuarioUseCase {
         var usuario = usuarios.findByIdAndPerfilIsNotNull(id).orElseThrow(ContaNaoEncontradaException::new);
         if (usuario.isAdministradorServico()) {
             usuario.setPerfil(null);
+            usuario.setServico(null);
             usuarios.saveAndFlush(usuario);
         } else {
             sessoes.excluirPorUsuario(id);

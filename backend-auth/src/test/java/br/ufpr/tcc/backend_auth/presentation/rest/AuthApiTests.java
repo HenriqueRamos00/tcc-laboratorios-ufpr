@@ -31,7 +31,7 @@ import tools.jackson.databind.ObjectMapper;
 
 @SpringBootTest
 @AutoConfigureMockMvc
-class AuthApiTests {
+class AuthApiTests extends ServiceTestSupport {
     private static final String PASSWORD = "Strong password 123!";
     @Autowired MockMvc mvc;
     @Autowired ObjectMapper json;
@@ -41,8 +41,7 @@ class AuthApiTests {
 
     @BeforeEach
     void cleanUsers() {
-        sessoes.deleteAll();
-        usuarios.deleteAll();
+        prepararServico();
     }
 
     @Test
@@ -55,7 +54,7 @@ class AuthApiTests {
     @EnumSource(PerfilUsuario.class)
     void loginReturnsOnlyIdentityForEachRole(PerfilUsuario role) throws Exception {
         Usuario usuario = saveUser("user@example.test", role, true);
-        var result = mvc.perform(post("/api/auth/login").contentType(MediaType.APPLICATION_JSON)
+        var result = mvc.perform(post("/api/auth/login").header("Authorization", "Bearer " + serviceToken).contentType(MediaType.APPLICATION_JSON)
                         .content(login("  USER@EXAMPLE.TEST  ", PASSWORD)))
                 .andExpect(status().isOk())
                 .andExpect(header().string("Cache-Control", "no-store"))
@@ -67,7 +66,7 @@ class AuthApiTests {
                 .andExpect(jsonPath("$.role").value(role.name()))
                 .andReturn();
         assertThat(json.readTree(result.getResponse().getContentAsString()).propertyNames())
-                .containsExactlyInAnyOrder("id", "name", "email", "role");
+                .containsExactlyInAnyOrder("id", "name", "email", "role", "serviceId");
         // An identity response establishes no authenticated session.
         mvc.perform(post("/api/users").contentType(MediaType.APPLICATION_JSON)
                         .content(newUser("client@example.test", PASSWORD, "CLIENTE")))
@@ -80,7 +79,7 @@ class AuthApiTests {
         if (!scenario.equals("missing")) {
             saveUser("user@example.test", PerfilUsuario.CLIENTE, !scenario.equals("inactive"));
         }
-        mvc.perform(post("/api/auth/login").contentType(MediaType.APPLICATION_JSON)
+        mvc.perform(post("/api/auth/login").header("Authorization", "Bearer " + serviceToken).contentType(MediaType.APPLICATION_JSON)
                         .content(login("user@example.test", scenario.equals("wrong-password") ? "wrong" : PASSWORD)))
                 .andExpect(status().isUnauthorized())
                 .andExpect(header().string("Cache-Control", "no-store"))
@@ -128,7 +127,7 @@ class AuthApiTests {
                 .andExpect(jsonPath("$.role").value(role.name()))
                 .andReturn();
         assertThat(json.readTree(response.getResponse().getContentAsString()).propertyNames())
-                .containsExactlyInAnyOrder("id", "name", "email", "role");
+                .containsExactlyInAnyOrder("id", "name", "email", "role", "serviceId");
         Usuario created = usuarios.findByEmail("new@example.test").orElseThrow();
         assertThat(created.isAtivo()).isTrue();
         assertThat(created.getSenhaHash()).isNotEqualTo(PASSWORD).startsWith("$2");
@@ -187,10 +186,10 @@ class AuthApiTests {
             mvc.perform(post("/api/users").with(bearerAuth("admin@example.test", PASSWORD))
                             .contentType(MediaType.APPLICATION_JSON).content(newUser(email, password, "CLIENTE")))
                     .andExpect(status().isCreated());
-            mvc.perform(post("/api/auth/login").contentType(MediaType.APPLICATION_JSON).content(login(email, password)))
+            mvc.perform(post("/api/auth/login").header("Authorization", "Bearer " + serviceToken).contentType(MediaType.APPLICATION_JSON).content(login(email, password)))
                     .andExpect(status().isOk());
         }
-        mvc.perform(post("/api/auth/login").contentType(MediaType.APPLICATION_JSON)
+        mvc.perform(post("/api/auth/login").header("Authorization", "Bearer " + serviceToken).contentType(MediaType.APPLICATION_JSON)
                         .content(login("boundary3@example.test", "password 123")))
                 .andExpect(status().isUnauthorized());
     }
@@ -208,7 +207,7 @@ class AuthApiTests {
                         .contentType(MediaType.APPLICATION_JSON).content(numericRole))
                 .andExpect(status().isBadRequest());
         for (String body : List.of("{", "{}", login("invalid-email", PASSWORD), login("user@example.test", "é".repeat(37)))) {
-            mvc.perform(post("/api/auth/login").contentType(MediaType.APPLICATION_JSON).content(body))
+            mvc.perform(post("/api/auth/login").header("Authorization", "Bearer " + serviceToken).contentType(MediaType.APPLICATION_JSON).content(body))
                     .andExpect(status().isBadRequest()).andExpect(jsonPath("$.message").isString());
         }
         mvc.perform(post("/api/admin/auth/login").contentType(MediaType.APPLICATION_JSON)
@@ -225,10 +224,16 @@ class AuthApiTests {
                 Map.<String, Object>of("name", "Nome", "email", "bad", "password", PASSWORD, "role", "CLIENTE"),
                 Map.<String, Object>of("name", "Nome", "email", "x@example.test", "password", PASSWORD))) {
             mvc.perform(post("/api/users").with(bearerAuth("admin@example.test", PASSWORD))
-                            .contentType(MediaType.APPLICATION_JSON).content(json.writeValueAsString(body)))
+                            .contentType(MediaType.APPLICATION_JSON).content(json.writeValueAsString(withService(body))))
                     .andExpect(status().isBadRequest());
         }
         assertThat(usuarios.count()).isEqualTo(1);
+    }
+
+    private Map<String, Object> withService(Map<String, Object> body) {
+        var request = new java.util.LinkedHashMap<>(body);
+        request.put("serviceId", servico.getId().toString());
+        return request;
     }
 
     private RequestPostProcessor bearerAuth(String email, String password) throws Exception {
@@ -244,7 +249,7 @@ class AuthApiTests {
     }
 
     private String newUser(String email, String password, String role) {
-        return json.writeValueAsString(Map.of("name", "  Nova Conta  ", "email", email, "password", password, "role", role));
+        return json.writeValueAsString(Map.of("name", "  Nova Conta  ", "email", email, "password", password, "role", role, "serviceId", servico.getId().toString()));
     }
 
     private Usuario saveAdmin() {
@@ -259,6 +264,7 @@ class AuthApiTests {
         usuario.setEmail(email);
         usuario.setSenhaHash(encoder.encode(PASSWORD));
         usuario.setPerfil(role);
+        if (role != null) usuario.setServico(servico);
         usuario.setAtivo(active);
         return usuarios.saveAndFlush(usuario);
     }

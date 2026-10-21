@@ -30,7 +30,7 @@ import tools.jackson.databind.ObjectMapper;
 
 @SpringBootTest
 @AutoConfigureMockMvc
-class AdminTokenCrudTests {
+class AdminTokenCrudTests extends ServiceTestSupport {
     private static final String PASSWORD = "Original password 123!";
     private static final String NEW_PASSWORD = "  New password 456!  ";
     @Autowired MockMvc mvc;
@@ -44,8 +44,7 @@ class AdminTokenCrudTests {
 
     @BeforeEach
     void prepare() throws Exception {
-        sessoes.deleteAll();
-        usuarios.deleteAll();
+        prepararServico();
         root = account("root@example.test", true, null);
         token = login(root.getEmail(), PASSWORD);
     }
@@ -64,7 +63,7 @@ class AdminTokenCrudTests {
         mvc.perform(post("/api/admin/auth/login").contentType(MediaType.APPLICATION_JSON)
                         .content(credentials("client@example.test", PASSWORD)))
                 .andExpect(status().isUnauthorized());
-        mvc.perform(post("/api/auth/login").contentType(MediaType.APPLICATION_JSON)
+        mvc.perform(post("/api/auth/login").header("Authorization", "Bearer " + serviceToken).contentType(MediaType.APPLICATION_JSON)
                         .content(credentials("client@example.test", PASSWORD)))
                 .andExpect(status().isOk()).andExpect(jsonPath("$.accessToken").doesNotExist());
     }
@@ -116,19 +115,19 @@ class AdminTokenCrudTests {
         Usuario updated = usuarios.findById(Long.valueOf(id)).orElseThrow();
         assertThat(updated.getSenhaHash()).isEqualTo(hash);
         assertThat(updated.isAdministradorServico()).isFalse();
-        mvc.perform(post("/api/auth/login").contentType(MediaType.APPLICATION_JSON).content(credentials(updated.getEmail(), PASSWORD)))
+        mvc.perform(post("/api/auth/login").header("Authorization", "Bearer " + serviceToken).contentType(MediaType.APPLICATION_JSON).content(credentials(updated.getEmail(), PASSWORD)))
                 .andExpect(status().isOk());
         mvc.perform(auth(put("/api/users/" + id)).contentType(MediaType.APPLICATION_JSON)
                         .content(clientRequest("Alice", updated.getEmail(), NEW_PASSWORD, false)))
                 .andExpect(status().isOk()).andExpect(jsonPath("$.active").value(false));
-        mvc.perform(post("/api/auth/login").contentType(MediaType.APPLICATION_JSON).content(credentials(updated.getEmail(), NEW_PASSWORD)))
+        mvc.perform(post("/api/auth/login").header("Authorization", "Bearer " + serviceToken).contentType(MediaType.APPLICATION_JSON).content(credentials(updated.getEmail(), NEW_PASSWORD)))
                 .andExpect(status().isUnauthorized());
         mvc.perform(auth(put("/api/users/" + id)).contentType(MediaType.APPLICATION_JSON)
                         .content(clientRequest("Alice", updated.getEmail(), null, true)))
                 .andExpect(status().isOk());
-        mvc.perform(post("/api/auth/login").contentType(MediaType.APPLICATION_JSON).content(credentials(updated.getEmail(), PASSWORD)))
+        mvc.perform(post("/api/auth/login").header("Authorization", "Bearer " + serviceToken).contentType(MediaType.APPLICATION_JSON).content(credentials(updated.getEmail(), PASSWORD)))
                 .andExpect(status().isUnauthorized());
-        mvc.perform(post("/api/auth/login").contentType(MediaType.APPLICATION_JSON).content(credentials(updated.getEmail(), NEW_PASSWORD)))
+        mvc.perform(post("/api/auth/login").header("Authorization", "Bearer " + serviceToken).contentType(MediaType.APPLICATION_JSON).content(credentials(updated.getEmail(), NEW_PASSWORD)))
                 .andExpect(status().isOk());
         mvc.perform(auth(delete("/api/users/" + id))).andExpect(status().isNoContent()).andExpect(content().string(""));
         mvc.perform(auth(get("/api/users/" + id))).andExpect(status().isNotFound());
@@ -150,7 +149,7 @@ class AdminTokenCrudTests {
                 .andExpect(jsonPath("$.active").value(true)).andExpect(jsonPath("$.role").doesNotExist());
         assertThat(usuarios.findById(Long.valueOf(id)).orElseThrow().getSenhaHash()).isEqualTo(originalHash);
         mvc.perform(get("/api/admins/" + id).header("Authorization", "Bearer " + secondToken)).andExpect(status().isOk());
-        mvc.perform(post("/api/auth/login").contentType(MediaType.APPLICATION_JSON).content(credentials("updated@example.test", PASSWORD)))
+        mvc.perform(post("/api/auth/login").header("Authorization", "Bearer " + serviceToken).contentType(MediaType.APPLICATION_JSON).content(credentials("updated@example.test", PASSWORD)))
                 .andExpect(status().isUnauthorized());
         mvc.perform(auth(delete("/api/admins/" + id))).andExpect(status().isNoContent());
         mvc.perform(auth(get("/api/admins/" + id))).andExpect(status().isNotFound());
@@ -222,7 +221,7 @@ class AdminTokenCrudTests {
         mvc.perform(get("/api/admins").header("Authorization", "Bearer " + secondToken)).andExpect(status().isUnauthorized());
         mvc.perform(auth(get("/api/admins/" + second.getId()))).andExpect(status().isNotFound());
         mvc.perform(auth(get("/api/users/" + second.getId()))).andExpect(status().isOk());
-        mvc.perform(post("/api/auth/login").contentType(MediaType.APPLICATION_JSON).content(credentials(second.getEmail(), PASSWORD)))
+        mvc.perform(post("/api/auth/login").header("Authorization", "Bearer " + serviceToken).contentType(MediaType.APPLICATION_JSON).content(credentials(second.getEmail(), PASSWORD)))
                 .andExpect(status().isOk()).andExpect(jsonPath("$.role").value("CLIENTE"));
     }
 
@@ -299,7 +298,7 @@ class AdminTokenCrudTests {
     }
 
     private String clientRequest(String name, String email, String password, boolean active) {
-        var value = new java.util.LinkedHashMap<String, Object>(Map.of("name", name, "email", email, "role", "CLIENTE", "active", active));
+        var value = new java.util.LinkedHashMap<String, Object>(Map.of("name", name, "email", email, "role", "CLIENTE", "active", active, "serviceId", servico.getId().toString()));
         if (password != null) value.put("password", password);
         return json.writeValueAsString(value);
     }
@@ -311,6 +310,7 @@ class AdminTokenCrudTests {
         user.setSenhaHash(encoder.encode(PASSWORD));
         user.setAdministradorServico(admin);
         user.setPerfil(role);
+        if (role != null) user.setServico(servico);
         return usuarios.saveAndFlush(user);
     }
 }

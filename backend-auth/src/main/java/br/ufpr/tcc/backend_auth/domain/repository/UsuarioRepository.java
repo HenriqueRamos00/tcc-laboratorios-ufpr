@@ -12,6 +12,10 @@ import org.springframework.stereotype.Repository;
 @Repository
 public interface UsuarioRepository extends JpaRepository<Usuario, Long> {
     Optional<Usuario> findByEmail(String email);
+    Optional<Usuario> findByEmailAndServicoIdAndServicoAtivoTrueAndPerfilIsNotNull(String email, Long servicoId);
+    List<Usuario> findAllByServicoIdAndServicoAtivoTrueAndPerfilIsNotNullOrderByNomeAscIdAsc(Long servicoId);
+    Optional<Usuario> findByIdAndServicoIdAndServicoAtivoTrueAndPerfilIsNotNull(Long id, Long servicoId);
+    boolean existsByServicoId(Long servicoId);
     boolean existsByEmail(String email);
     @Lock(LockModeType.PESSIMISTIC_READ)
     Optional<Usuario> findByEmailAndAdministradorServicoTrue(String email);

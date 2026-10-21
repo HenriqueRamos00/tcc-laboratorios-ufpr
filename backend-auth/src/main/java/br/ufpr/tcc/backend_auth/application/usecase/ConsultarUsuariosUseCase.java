@@ -14,11 +14,15 @@ import org.springframework.transaction.annotation.Transactional;
 public class ConsultarUsuariosUseCase {
     private final UsuarioRepository usuarios;
 
-    public List<UsuarioDetalheResponse> listar() {
-        return usuarios.findAllByPerfilIsNotNullOrderByNomeAscIdAsc().stream().map(UsuarioDetalheResponse::fromEntity).toList();
+    public List<UsuarioDetalheResponse> listar(Long servicoId) {
+        var encontrados = servicoId == null ? usuarios.findAllByPerfilIsNotNullOrderByNomeAscIdAsc()
+                : usuarios.findAllByServicoIdAndServicoAtivoTrueAndPerfilIsNotNullOrderByNomeAscIdAsc(servicoId);
+        return encontrados.stream().map(UsuarioDetalheResponse::fromEntity).toList();
     }
 
-    public UsuarioDetalheResponse obter(Long id) {
-        return UsuarioDetalheResponse.fromEntity(usuarios.findByIdAndPerfilIsNotNull(id).orElseThrow(ContaNaoEncontradaException::new));
+    public UsuarioDetalheResponse obter(Long id, Long servicoId) {
+        var encontrado = servicoId == null ? usuarios.findByIdAndPerfilIsNotNull(id)
+                : usuarios.findByIdAndServicoIdAndServicoAtivoTrueAndPerfilIsNotNull(id, servicoId);
+        return UsuarioDetalheResponse.fromEntity(encontrado.orElseThrow(ContaNaoEncontradaException::new));
     }
 }

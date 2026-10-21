@@ -35,7 +35,7 @@ import tools.jackson.databind.ObjectMapper;
 
 @SpringBootTest
 @AutoConfigureMockMvc
-class ConfiguracaoInicialTests {
+class ConfiguracaoInicialTests extends ServiceTestSupport {
     private static final String PASSWORD = "  Admin password 123!  ";
     @Autowired MockMvc mvc;
     @Autowired ObjectMapper json;
@@ -47,8 +47,7 @@ class ConfiguracaoInicialTests {
 
     @BeforeEach
     void cleanUsers() {
-        sessoes.deleteAll();
-        usuarios.deleteAll();
+        prepararServico();
     }
 
     @Test
@@ -113,19 +112,20 @@ class ConfiguracaoInicialTests {
                 .andExpect(jsonPath("$.accessToken").isString()).andExpect(jsonPath("$.tokenType").value("Bearer"))
                 .andExpect(header().string("Cache-Control", "no-store"))
                 .andExpect(header().doesNotExist("Set-Cookie"));
-        mvc.perform(post("/api/auth/login").contentType(MediaType.APPLICATION_JSON).content(login))
+        mvc.perform(post("/api/auth/login").header("Authorization", "Bearer " + serviceToken).contentType(MediaType.APPLICATION_JSON).content(login))
                 .andExpect(status().isUnauthorized());
 
         Usuario admin = usuarios.findByEmail("admin@example.test").orElseThrow();
         admin.setPerfil(PerfilUsuario.CLIENTE);
+        admin.setServico(servico);
         usuarios.saveAndFlush(admin);
-        mvc.perform(post("/api/auth/login").contentType(MediaType.APPLICATION_JSON).content(login))
+        mvc.perform(post("/api/auth/login").header("Authorization", "Bearer " + serviceToken).contentType(MediaType.APPLICATION_JSON).content(login))
                 .andExpect(status().isOk()).andExpect(jsonPath("$.role").value("CLIENTE"));
         admin.setAdministradorServico(false);
         usuarios.saveAndFlush(admin);
         mvc.perform(post("/api/admin/auth/login").contentType(MediaType.APPLICATION_JSON).content(login))
                 .andExpect(status().isUnauthorized());
-        mvc.perform(post("/api/auth/login").contentType(MediaType.APPLICATION_JSON).content(login))
+        mvc.perform(post("/api/auth/login").header("Authorization", "Bearer " + serviceToken).contentType(MediaType.APPLICATION_JSON).content(login))
                 .andExpect(status().isOk()).andExpect(jsonPath("$.role").value("CLIENTE"));
     }
 
@@ -143,7 +143,7 @@ class ConfiguracaoInicialTests {
         assertThat(second.getPerfil()).isNull();
 
         String client = json.writeValueAsString(Map.of("name", "Cliente", "email", "client@example.test",
-                "password", PASSWORD, "role", "CLIENTE", "administradorServico", true));
+                "password", PASSWORD, "role", "CLIENTE", "administradorServico", true, "serviceId", servico.getId().toString()));
         mvc.perform(post("/api/users").with(bearerAuth("admin@example.test", PASSWORD))
                         .contentType(MediaType.APPLICATION_JSON).content(client))
                 .andExpect(status().isCreated());

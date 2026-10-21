@@ -5,6 +5,7 @@ import br.ufpr.tcc.backend_auth.application.dto.response.UsuarioDetalheResponse;
 import br.ufpr.tcc.backend_auth.application.service.AlteracaoContaService;
 import br.ufpr.tcc.backend_auth.domain.exception.ContaNaoEncontradaException;
 import br.ufpr.tcc.backend_auth.domain.repository.UsuarioRepository;
+import br.ufpr.tcc.backend_auth.application.service.ServicoService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -13,6 +14,7 @@ import org.springframework.transaction.annotation.Transactional;
 @RequiredArgsConstructor
 public class AtualizarUsuarioUseCase {
     private final UsuarioRepository usuarios;
+    private final ServicoService servicos;
     private final AlteracaoContaService alteracao;
 
     @Transactional
@@ -24,6 +26,9 @@ public class AtualizarUsuarioUseCase {
             alteracao.preservarAdministrador(usuario, administradores);
         }
         usuario.setPerfil(request.role());
+        if (usuario.getServico() == null || !usuario.getServico().getId().equals(request.serviceId())) {
+            usuario.setServico(servicos.exigirAtivo(request.serviceId()));
+        }
         alteracao.atualizar(usuario, request.name(), request.email(), request.password(), request.active());
         return UsuarioDetalheResponse.fromEntity(usuario);
     }

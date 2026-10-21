@@ -15,8 +15,8 @@ public class LoginUseCase {
     private final VerificadorCredenciais credenciais;
 
     @Transactional(readOnly = true)
-    public UsuarioResponse execute(LoginRequest request) {
-        Usuario usuario = credenciais.verificar(request);
+    public UsuarioResponse execute(LoginRequest request, Long servicoId) {
+        Usuario usuario = credenciais.verificar(request, servicoId);
         if (usuario.getPerfil() == null) {
             throw new CredenciaisInvalidasException();
         }

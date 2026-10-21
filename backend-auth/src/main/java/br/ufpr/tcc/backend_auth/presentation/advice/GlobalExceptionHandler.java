@@ -6,6 +6,8 @@ import br.ufpr.tcc.backend_auth.domain.exception.DadosInvalidosException;
 import br.ufpr.tcc.backend_auth.domain.exception.EmailJaCadastradoException;
 import br.ufpr.tcc.backend_auth.domain.exception.ContaNaoEncontradaException;
 import br.ufpr.tcc.backend_auth.domain.exception.ConflitoContaException;
+import br.ufpr.tcc.backend_auth.domain.exception.ConflitoServicoException;
+import br.ufpr.tcc.backend_auth.domain.exception.RecursoNaoEncontradoException;
 import br.ufpr.tcc.backend_auth.infrastructure.persistence.ViolacaoUnicidade;
 import java.util.stream.Collectors;
 import org.springframework.dao.DataIntegrityViolationException;
@@ -19,13 +21,13 @@ import org.springframework.web.method.annotation.MethodArgumentTypeMismatchExcep
 
 @RestControllerAdvice
 public class GlobalExceptionHandler {
-    @ExceptionHandler(ContaNaoEncontradaException.class)
-    public ResponseEntity<ApiErrorResponse> notFound(ContaNaoEncontradaException exception) {
+    @ExceptionHandler({ContaNaoEncontradaException.class, RecursoNaoEncontradoException.class})
+    public ResponseEntity<ApiErrorResponse> notFound(RuntimeException exception) {
         return error(404, exception.getMessage());
     }
 
-    @ExceptionHandler(ConflitoContaException.class)
-    public ResponseEntity<ApiErrorResponse> accountConflict(ConflitoContaException exception) {
+    @ExceptionHandler({ConflitoContaException.class, ConflitoServicoException.class})
+    public ResponseEntity<ApiErrorResponse> accountConflict(RuntimeException exception) {
         return error(409, exception.getMessage());
     }
 
@@ -69,6 +71,9 @@ public class GlobalExceptionHandler {
     public ResponseEntity<ApiErrorResponse> integrityViolation(DataIntegrityViolationException exception) {
         if (ViolacaoUnicidade.email(exception)) {
             return error(409, "E-mail já cadastrado");
+        }
+        if (ViolacaoUnicidade.codigoServico(exception)) {
+            return error(409, "Código de serviço já cadastrado");
         }
         return error(500, "Falha ao persistir cadastro");
     }
