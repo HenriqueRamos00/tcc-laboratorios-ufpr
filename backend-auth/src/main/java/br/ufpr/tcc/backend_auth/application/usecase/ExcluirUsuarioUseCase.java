@@ -20,6 +20,7 @@ public class ExcluirUsuarioUseCase {
         if (usuario.isAdministradorServico()) {
             usuario.setPerfil(null);
             usuario.setServico(null);
+            usuario.getEmpresas().clear();
             usuarios.saveAndFlush(usuario);
         } else {
             sessoes.excluirPorUsuario(id);

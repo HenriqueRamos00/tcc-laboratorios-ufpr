@@ -1,6 +1,7 @@
 package br.ufpr.tcc.backend_auth.presentation.advice;
 
 import br.ufpr.tcc.backend_auth.domain.exception.CredenciaisInvalidasException;
+import br.ufpr.tcc.backend_auth.domain.exception.LoginBloqueadoException;
 import br.ufpr.tcc.backend_auth.domain.exception.ConfiguracaoInicialException;
 import br.ufpr.tcc.backend_auth.domain.exception.DadosInvalidosException;
 import br.ufpr.tcc.backend_auth.domain.exception.EmailJaCadastradoException;
@@ -21,6 +22,13 @@ import org.springframework.web.method.annotation.MethodArgumentTypeMismatchExcep
 
 @RestControllerAdvice
 public class GlobalExceptionHandler {
+    @ExceptionHandler(LoginBloqueadoException.class)
+    public ResponseEntity<ApiErrorResponse> loginBlocked(LoginBloqueadoException exception) {
+        return ResponseEntity.status(429).header("Cache-Control", "no-store")
+                .header("Retry-After", Long.toString(exception.getRetryAfterSeconds()))
+                .body(new ApiErrorResponse(exception.getMessage()));
+    }
+
     @ExceptionHandler({ContaNaoEncontradaException.class, RecursoNaoEncontradoException.class})
     public ResponseEntity<ApiErrorResponse> notFound(RuntimeException exception) {
         return error(404, exception.getMessage());
@@ -74,6 +82,9 @@ public class GlobalExceptionHandler {
         }
         if (ViolacaoUnicidade.codigoServico(exception)) {
             return error(409, "Código de serviço já cadastrado");
+        }
+        if (ViolacaoUnicidade.cnpj(exception)) {
+            return error(409, "CNPJ já cadastrado");
         }
         return error(500, "Falha ao persistir cadastro");
     }

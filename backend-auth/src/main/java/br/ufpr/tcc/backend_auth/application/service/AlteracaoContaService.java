@@ -22,6 +22,12 @@ public class AlteracaoContaService {
     private final Validator validator;
     private final SenhaValidator senhaValidator;
     private final PasswordEncoder encoder;
+    private final BloqueioLoginClienteService bloqueio;
+
+    public void validarCliente(Object request, String password) {
+        validar(request, password);
+        if (password != null) senhaValidator.validarCliente(password);
+    }
 
     public void validar(Object request, String password) {
         var erros = validator.validate(request);
@@ -53,6 +59,7 @@ public class AlteracaoContaService {
         usuario.setAtivo(active);
         if (password != null) {
             usuario.setSenhaHash(encoder.encode(password));
+            bloqueio.limpar(usuario);
         }
         if (password != null || !active) {
             sessoes.excluirPorUsuario(usuario.getId());

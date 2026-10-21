@@ -13,6 +13,10 @@ public final class ViolacaoUnicidade {
         return restricao(failure, "uk_servicos_codigo");
     }
 
+    public static boolean cnpj(Throwable failure) {
+        return restricao(failure, "uk_empresas_cnpj");
+    }
+
     private static boolean restricao(Throwable failure, String nome) {
         for (Throwable cause = failure; cause != null; cause = cause.getCause()) {
             if (cause.getMessage() != null

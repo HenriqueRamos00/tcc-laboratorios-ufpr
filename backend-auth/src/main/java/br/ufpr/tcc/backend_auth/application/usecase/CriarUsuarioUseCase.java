@@ -8,6 +8,7 @@ import br.ufpr.tcc.backend_auth.domain.exception.EmailJaCadastradoException;
 import br.ufpr.tcc.backend_auth.domain.model.entity.Usuario;
 import br.ufpr.tcc.backend_auth.domain.repository.UsuarioRepository;
 import br.ufpr.tcc.backend_auth.application.service.ServicoService;
+import br.ufpr.tcc.backend_auth.application.service.EmpresaService;
 import jakarta.validation.Validator;
 import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
@@ -20,6 +21,7 @@ import org.springframework.transaction.annotation.Transactional;
 public class CriarUsuarioUseCase {
     private final UsuarioRepository usuarios;
     private final ServicoService servicos;
+    private final EmpresaService empresas;
     private final PasswordEncoder encoder;
     private final SenhaValidator senhaValidator;
     private final Validator validator;
@@ -31,7 +33,7 @@ public class CriarUsuarioUseCase {
             throw new DadosInvalidosException(erros.stream().map(e -> e.getMessage())
                     .sorted().collect(Collectors.joining(", ")));
         }
-        senhaValidator.validar(request.password());
+        senhaValidator.validarCliente(request.password());
         if (usuarios.existsByEmail(request.email())) {
             throw new EmailJaCadastradoException();
         }
@@ -41,6 +43,7 @@ public class CriarUsuarioUseCase {
         usuario.setSenhaHash(encoder.encode(request.password()));
         usuario.setPerfil(request.role());
         usuario.setServico(servicos.exigirAtivo(request.serviceId()));
+        usuario.setEmpresas(empresas.associar(request.companyIds()));
         return UsuarioResponse.fromEntity(usuarios.saveAndFlush(usuario));
     }
 }

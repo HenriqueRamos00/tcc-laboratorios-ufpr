@@ -27,13 +27,16 @@ public class AuthController {
     private final LoginUseCase login;
 
     @PostMapping("/login")
-    @Operation(summary = "Autenticar cliente do serviço", description = "Exige token do serviço do cliente. Retorna identidade e serviceCode, sem emitir token ou sessão.")
+    @Operation(summary = "Autenticar cliente do serviço", description = "Exige token do serviço do cliente. Retorna identidade, serviceCode e authorizations.companyCnpjs. Cinco falhas consecutivas por cliente iniciam espera de 15 minutos por padrão; HTTP 429 e Retry-After informam o bloqueio.")
     @SecurityRequirement(name = "serviceToken")
     @ApiResponses({
         @ApiResponse(responseCode = "200", description = "Cliente autenticado"),
         @ApiResponse(responseCode = "400", ref = "#/components/responses/InvalidRequest"),
         @ApiResponse(responseCode = "401", ref = "#/components/responses/InvalidCredentials"),
-        @ApiResponse(responseCode = "403", ref = "#/components/responses/Forbidden")
+        @ApiResponse(responseCode = "403", ref = "#/components/responses/Forbidden"),
+        @ApiResponse(responseCode = "429", ref = "#/components/responses/LoginCooldown",
+                headers = @io.swagger.v3.oas.annotations.headers.Header(name = "Retry-After", description = "Segundos até liberar uma nova tentativa",
+                        schema = @io.swagger.v3.oas.annotations.media.Schema(type = "integer")))
     })
     public ResponseEntity<LoginUsuarioResponse> login(@Valid @RequestBody LoginRequest request,
             @AuthenticationPrincipal OAuth2AuthenticatedPrincipal principal) {

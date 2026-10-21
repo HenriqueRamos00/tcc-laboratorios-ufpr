@@ -41,6 +41,7 @@ public class SecurityConfig {
                             return path.equals("/api/users") || path.startsWith("/api/users/")
                                     || path.equals("/api/admins") || path.startsWith("/api/admins/")
                                     || path.equals("/api/services") || path.startsWith("/api/services/")
+                                    || path.equals("/api/companies") || path.startsWith("/api/companies/")
                                     || path.equals("/api/auth/login")
                                     ? resolver.resolve(request) : null;
                         }))
@@ -54,7 +55,7 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.POST, "/api/auth/login").hasRole("APPLICATION_SERVICE")
                         .requestMatchers(HttpMethod.GET, "/api/users", "/api/users/*").hasAnyRole("SERVICE_ADMIN", "APPLICATION_SERVICE")
                         .requestMatchers("/api/users", "/api/users/**", "/api/admins", "/api/admins/**",
-                                "/api/services", "/api/services/**").hasRole("SERVICE_ADMIN")
+                                "/api/services", "/api/services/**", "/api/companies", "/api/companies/**").hasRole("SERVICE_ADMIN")
                         .anyRequest().denyAll())
                 .exceptionHandling(exception -> exception
                         .authenticationEntryPoint(unauthorized)

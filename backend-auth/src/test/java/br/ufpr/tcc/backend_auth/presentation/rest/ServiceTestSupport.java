@@ -8,6 +8,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 
 abstract class ServiceTestSupport {
     @Autowired ServicoRepository servicos;
+    @Autowired EmpresaRepository empresas;
     @Autowired TokenServicoRepository tokensServico;
     @Autowired TokenServicoService emissorTokens;
     @Autowired private UsuarioRepository contas;
@@ -19,6 +20,7 @@ abstract class ServiceTestSupport {
         tokensAdmin.deleteAll();
         tokensServico.deleteAll();
         contas.deleteAll();
+        empresas.deleteAll();
         servicos.deleteAll();
         servico = new Servico();
         servico.setNome("Portal Web");

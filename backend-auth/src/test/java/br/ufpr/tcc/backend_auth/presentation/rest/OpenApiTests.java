@@ -44,7 +44,7 @@ class OpenApiTests {
         JsonNode paths = document.path("paths");
         assertThat(paths.propertyNames()).containsExactlyInAnyOrder("/health", "/api/auth/login",
                 "/api/admin/auth/login", "/api/setup/admin", "/api/users", "/api/admins", "/api/users/{id}", "/api/admins/{id}",
-                "/api/services", "/api/services/{id}", "/api/services/{serviceId}/tokens", "/api/services/{serviceId}/tokens/{tokenId}");
+                "/api/services", "/api/services/{id}", "/api/services/{serviceId}/tokens", "/api/services/{serviceId}/tokens/{tokenId}", "/api/companies", "/api/companies/{id}");
         JsonNode schemes = document.path("components").path("securitySchemes");
         assertThat(schemes.path("serviceAdmin").path("type").asText()).isEqualTo("http");
         assertThat(schemes.path("serviceAdmin").path("scheme").asText()).isEqualTo("bearer");
@@ -58,7 +58,7 @@ class OpenApiTests {
         assertThat(schemes.path("serviceToken").path("scheme").asText()).isEqualTo("bearer");
         assertThat(paths.path("/api/users").path("get").path("security").toString()).contains("\"serviceToken\":[]");
         assertThat(paths.path("/api/users/{id}").path("get").path("security").toString()).contains("\"serviceToken\":[]");
-        for (String path : new String[] {"/api/services", "/api/services/{serviceId}/tokens"}) {
+        for (String path : new String[] {"/api/services", "/api/services/{serviceId}/tokens", "/api/companies"}) {
             assertThat(paths.path(path).path("post").at("/security/0/serviceAdmin").isArray()).isTrue();
             assertThat(paths.path(path).path("get").path("security").toString()).contains("\"serviceAdmin\":[]");
         }
@@ -79,7 +79,8 @@ class OpenApiTests {
         JsonNode setup = paths.path("/api/setup/admin").path("post");
         assertThat(setup.at("/security/0/setupToken").isArray()).isTrue();
         assertThat(setup.path("responses").propertyNames()).contains("404", "410");
-        assertThat(document.toString()).doesNotContain("senhaHash", "tokenHash", "administradorServico");
+        assertThat(document.toString()).doesNotContain("senhaHash", "tokenHash", "administradorServico", "falhasLogin", "loginBloqueadoAte");
+        assertThat(paths.path("/api/auth/login").path("post").path("responses").has("429")).isTrue();
     }
 
     @Test
@@ -94,13 +95,13 @@ class OpenApiTests {
         }
         assertThat(schemas.path("CriarUsuarioRequest").path("required").toString())
                 .contains("name", "email", "password", "role", "serviceId");
-        assertThat(schemas.path("CriarUsuarioRequest").at("/properties/password/minLength").asInt()).isEqualTo(12);
+        assertThat(schemas.path("CriarUsuarioRequest").at("/properties/password/minLength").asInt()).isEqualTo(8);
         assertThat(schemas.path("AdministradorResponse").path("properties").propertyNames())
                 .containsExactlyInAnyOrder("id", "name", "email");
         assertThat(schemas.path("UsuarioResponse").path("properties").propertyNames())
-                .containsExactlyInAnyOrder("id", "name", "email", "role", "serviceId");
+                .containsExactlyInAnyOrder("id", "name", "email", "role", "serviceId", "companyIds", "authorizations");
         assertThat(schemas.path("LoginUsuarioResponse").path("properties").propertyNames())
-                .containsExactlyInAnyOrder("id", "name", "email", "role", "serviceCode");
+                .containsExactlyInAnyOrder("id", "name", "email", "role", "serviceCode", "authorizations");
         assertThat(schemas.path("ApiErrorResponse").path("properties").has("message")).isTrue();
         assertThat(schemas.path("LoginAdministradorResponse").path("properties").propertyNames())
                 .containsExactlyInAnyOrder("accessToken", "tokenType", "expiresIn", "user");

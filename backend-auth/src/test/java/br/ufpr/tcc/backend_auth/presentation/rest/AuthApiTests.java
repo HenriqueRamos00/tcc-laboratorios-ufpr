@@ -67,7 +67,7 @@ class AuthApiTests extends ServiceTestSupport {
                 .andExpect(jsonPath("$.serviceCode").value("portal-web"))
                 .andReturn();
         assertThat(json.readTree(result.getResponse().getContentAsString()).propertyNames())
-                .containsExactlyInAnyOrder("id", "name", "email", "role", "serviceCode");
+                .containsExactlyInAnyOrder("id", "name", "email", "role", "serviceCode", "authorizations");
         // An identity response establishes no authenticated session.
         mvc.perform(post("/api/users").contentType(MediaType.APPLICATION_JSON)
                         .content(newUser("client@example.test", PASSWORD, "CLIENTE")))
@@ -128,7 +128,7 @@ class AuthApiTests extends ServiceTestSupport {
                 .andExpect(jsonPath("$.role").value(role.name()))
                 .andReturn();
         assertThat(json.readTree(response.getResponse().getContentAsString()).propertyNames())
-                .containsExactlyInAnyOrder("id", "name", "email", "role", "serviceId");
+                .containsExactlyInAnyOrder("id", "name", "email", "role", "serviceId", "companyIds", "authorizations");
         Usuario created = usuarios.findByEmail("new@example.test").orElseThrow();
         assertThat(created.isAtivo()).isTrue();
         assertThat(created.getSenhaHash()).isNotEqualTo(PASSWORD).startsWith("$2");
@@ -180,7 +180,7 @@ class AuthApiTests extends ServiceTestSupport {
     @Test
     void passwordBoundariesAndWhitespaceArePreserved() throws Exception {
         saveAdmin();
-        List<String> passwords = List.of("a".repeat(12), "a".repeat(72), "é".repeat(36), "  password 123  ");
+        List<String> passwords = List.of("Valid123", "Aa1" + "a".repeat(69), "Aa1" + "é".repeat(34) + "a", "  Password 123  ");
         for (int index = 0; index < passwords.size(); index++) {
             String email = "boundary" + index + "@example.test";
             String password = passwords.get(index);
@@ -191,7 +191,7 @@ class AuthApiTests extends ServiceTestSupport {
                     .andExpect(status().isOk());
         }
         mvc.perform(post("/api/auth/login").header("Authorization", "Bearer " + serviceToken).contentType(MediaType.APPLICATION_JSON)
-                        .content(login("boundary3@example.test", "password 123")))
+                        .content(login("boundary3@example.test", "Password 123")))
                 .andExpect(status().isUnauthorized());
     }
 

@@ -85,9 +85,9 @@ Administradores podem gerenciar os dois recursos de contas:
 | PUT | `/api/admins/{id}` | `/api/users/{id}` | Atualiza cadastro; 200 |
 | DELETE | `/api/admins/{id}` | `/api/users/{id}` | Remove a conta nesse escopo; 204 |
 
-POST de administrador recebe `{name,email,password}`; POST de cliente recebe também `role`, atualmente `CLIENTE`, e `serviceId`, o ID de um serviço ativo. As listagens são arrays ordenados por nome e ID. GET e PUT retornam também `active` e, para clientes, `serviceId`; não retornam senha, hash ou tokens. Administradores consultam todos os clientes. Tokens de serviço podem usar somente os GETs e enxergam exclusivamente os clientes associados ao próprio serviço; IDs de outro serviço retornam 404.
+POST de administrador recebe `{name,email,password}`; POST de cliente recebe também `role`, atualmente `CLIENTE`, e `serviceId`, o ID de um serviço ativo. As listagens são arrays ordenados por nome e ID. GET e PUT retornam também `active` e, para clientes, `serviceId`, `companyIds` e `authorizations.companyCnpjs`; não retornam senha, hash ou tokens. Administradores consultam todos os clientes. Tokens de serviço podem usar somente os GETs e enxergam exclusivamente os clientes associados ao próprio serviço; IDs de outro serviço retornam 404.
 
-PUT de administrador exige `{name,email,active}` e PUT de cliente exige `{name,email,role,active,serviceId}`. Alterar `serviceId` transfere imediatamente o acesso ao cliente para o novo serviço. `password` é opcional: omita para preservar a senha; quando enviada, segue as regras de uma senha inicial. Exemplo de atualização:
+PUT de administrador exige `{name,email,active}` e PUT de cliente exige `{name,email,role,active,serviceId}`. Alterar `serviceId` transfere imediatamente o acesso ao cliente para o novo serviço. O campo opcional `companyIds` associa várias empresas cadastradas; em PUT, substitui a lista inteira. Omitir, enviar `null` ou `[]` remove todas as associações. `password` é opcional: omita para preservar a senha; quando enviada, segue as regras de uma senha inicial. Exemplo de atualização:
 
 ```json
 {"name":"Cliente atualizado","email":"cliente@example.com","role":"CLIENTE","active":true,"serviceId":"1"}
@@ -167,18 +167,76 @@ Content-Type: application/json
 Resposta HTTP 200:
 
 ```json
-{"id":"2","name":"Cliente","email":"cliente@example.com","role":"CLIENTE","serviceCode":"portal-web"}
+{"id":"2","name":"Cliente","email":"cliente@example.com","role":"CLIENTE","serviceCode":"portal-web","authorizations":{"companyCnpjs":["04252011000110","12ABC34501DE35"]}}
 ```
 
 Credenciais corretas de um cliente associado a outro serviço, cliente sem associação, conta inexistente, conta inativa e senha incorreta retornam a mesma resposta 401. Sem token de serviço válido, a chamada é rejeitada antes de verificar as credenciais. Um Bearer administrativo não substitui o token de integração nesse login.
 
 Uma conta criada somente para administrar o serviço não autentica como cliente do portal. Se uma conta tiver futuramente um perfil de portal explicitamente atribuído, esse perfil continuará independente da permissão administrativa. IDs são strings, senhas e hashes não são retornados, e respostas de login usam `Cache-Control: no-store`.
 
-Nomes são aparados e aceitam até 150 caracteres; e-mails são aparados, convertidos para minúsculas e aceitam até 254 caracteres. O e-mail é único entre todas as contas. Novas senhas têm pelo menos 12 caracteres e no máximo 72 bytes UTF-8, sem remover espaços ou normalizar seu conteúdo. Os hashes usam BCrypt.
+Nomes são aparados e aceitam até 150 caracteres; e-mails são aparados, convertidos para minúsculas e aceitam até 254 caracteres. O e-mail é único entre todas as contas. Novas senhas de clientes têm pelo menos 8 caracteres, com letra maiúscula, letra minúscula e número obrigatórios. Caracteres Unicode são aceitos. Senhas de administradores continuam exigindo pelo menos 12 caracteres. O limite de todas as senhas é 72 bytes UTF-8, sem remover espaços ou normalizar o conteúdo. Os hashes usam BCrypt. A nova regra de composição é aplicada no cadastro e na troca da senha do cliente; senhas existentes continuam válidas até serem alteradas.
 
-Erros seguem `{"message":"..."}`: 400 para dados inválidos, 401 para credenciais ou tokens ausentes, inválidos, expirados ou revogados, 403 para token sem permissão para a operação, 404 para conta, serviço ou token inexistente nesse escopo e 409 para e-mail/código duplicado, serviço inativo, exclusão de serviço com clientes ou tentativa de remover o último administrador ativo. Conta inexistente, inativa e senha incorreta têm a mesma resposta 401. Na configuração inicial, link inválido retorna 404 e configuração já concluída retorna 410.
+Erros seguem `{"message":"..."}`: 400 para dados inválidos, 401 para credenciais ou tokens ausentes, inválidos, expirados ou revogados, 403 para token sem permissão para a operação, 404 para conta, serviço ou token inexistente nesse escopo e 409 para e-mail/código duplicado, serviço inativo, exclusão de serviço com clientes ou tentativa de remover o último administrador ativo. CNPJ duplicado e empresa com clientes associados também retornam 409; bloqueio temporário de login retorna 429 com `Retry-After`. Conta inexistente, inativa e senha incorreta têm a mesma resposta 401. Na configuração inicial, link inválido retorna 404 e configuração já concluída retorna 410.
 
 `GET /health` é público e retorna `{"status":"UP"}`. O futuro frontend também poderá usar `POST /api/setup/admin` com o cabeçalho `X-Setup-Token` do link e o JSON `{name,email,password}`; nenhuma permissão ou perfil é aceito nesse cadastro.
+
+## Tentativas de login dos clientes
+
+Cada cliente pode acumular quatro falhas consecutivas com resposta 401. A quinta falha inicia um bloqueio de 15 minutos e retorna 429, com `Retry-After: 900` e `Cache-Control: no-store`. Durante o bloqueio, até credenciais corretas retornam 429; `Retry-After` informa os segundos restantes. Requisições bloqueadas não prolongam o período.
+
+Após o período, a próxima tentativa recebe um novo limite de cinco falhas. Login bem-sucedido e troca de senha por administrador zeram o contador e removem o bloqueio. O estado é persistido no SQL Server e as tentativas são serializadas por conta, incluindo chamadas concorrentes. Reiniciar a aplicação ou trocar o token de integração não permite evitar o limite.
+
+A contagem usa a conta do cliente dentro do serviço autorizado pelo Bearer, sem usar o IP. A API C# deve encaminhar 429 e `Retry-After` ao seu consumidor e aguardar antes de reenviar. Outros clientes que chegam pelo mesmo portal/IP têm contadores independentes. Token inválido e credenciais referentes a outro serviço não afetam o contador da conta. Essa política é exclusiva do login de clientes.
+
+`CLIENT_LOGIN_COOLDOWN_SECONDS` configura a duração; padrão `900` e intervalo aceito de 1 a 86400 segundos.
+
+## Empresas e autorizações dos clientes
+
+Empresas têm somente nome e CNPJ, além do ID gerado. O registro é global, com CNPJ único no banco; uma empresa pode estar associada a vários clientes e cada cliente pode ter várias empresas. Somente administradores do Backend Auth podem gerenciar esse cadastro e as associações.
+
+| Método | Endpoint | Uso |
+| --- | --- | --- |
+| POST | `/api/companies` | Cria com `{name,cnpj}`; 201 |
+| GET | `/api/companies` | Lista por nome e ID; 200 |
+| GET | `/api/companies/{id}` | Consulta empresa; 200 |
+| PUT | `/api/companies/{id}` | Atualiza com `{name,cnpj}`; 200 |
+| DELETE | `/api/companies/{id}` | Exclui empresa sem associações; 204 |
+
+`name` é aparado e aceita até 150 caracteres. O CNPJ aceita formato numérico e alfanumérico, com ou sem a máscara `XX.XXX.XXX/XXXX-XX`. É armazenado e retornado em maiúsculas, sem máscara, com 14 caracteres. Os dígitos verificadores seguem o [manual da Receita Federal](https://www.gov.br/receitafederal/pt-br/centrais-de-conteudo/publicacoes/documentos-tecnicos/cnpj/manual-dv-cnpj.pdf). CNPJ inválido retorna 400; duplicado retorna 409, inclusive em cadastros concorrentes.
+
+Exemplo de cadastro administrativo:
+
+```json
+{"name":"Empresa de exemplo","cnpj":"04.252.011/0001-10"}
+```
+
+Associe as empresas no POST ou PUT de cliente:
+
+```json
+{
+  "name": "Cliente",
+  "email": "cliente@example.com",
+  "password": "Valida123",
+  "role": "CLIENTE",
+  "active": true,
+  "serviceId": "1",
+  "companyIds": ["1", "2"]
+}
+```
+
+IDs repetidos são associados uma vez; IDs de empresas inexistentes retornam 404, sem alterar o cliente. Em PUT, `companyIds` substitui todas as associações: omitir ou enviar `null`/`[]` remove-as. Omita `password` para preservar a senha.
+
+O login de clientes e as respostas de criação/consulta/atualização de clientes incluem:
+
+```json
+{"authorizations":{"companyCnpjs":["04252011000110","12ABC34501DE35"]}}
+```
+
+A lista é ordenada e contém somente CNPJs de empresas associadas àquela conta. Sem empresas, retorna `{"authorizations":{"companyCnpjs":[]}}`. O login continua retornando `serviceCode`, sem `serviceId`. Os outros endpoints de clientes incluem `companyIds` para administrar os vínculos. Tokens de integração continuam limitados aos clientes do próprio serviço; não podem acessar o CRUD global de empresas nem alterar associações.
+
+Alterar um CNPJ atualiza as autorizações retornadas nos próximos logins e consultas. Excluir uma empresa ainda associada retorna 409; remova os vínculos dos clientes primeiro. Excluir um cliente remove apenas seus vínculos e preserva as empresas.
+
+Com `JPA_DDL_AUTO=update`, a inicialização adiciona `empresas`, a relação `usuarios_empresas`, `usuarios.falhas_login` (padrão zero) e `usuarios.login_bloqueado_ate`. Clientes existentes iniciam sem empresas e sem bloqueio; senhas e tokens são preservados. Com `validate`, aplique previamente a estrutura equivalente no schema gerenciado externamente.
 
 ## Execução fora do Compose
 
@@ -194,6 +252,7 @@ Provisione um SQL Server e configure o processo Java:
 | `APP_BASE_URL` | Origem usada no link inicial; padrão `http://localhost:${SERVER_PORT}` |
 | `ADMIN_TOKEN_EXPIRATION_SECONDS` | Validade dos tokens administrativos; padrão `3600`, valor positivo |
 | `SERVICE_TOKEN_EXPIRATION_SECONDS` | Validade padrão dos tokens de integração; padrão `2592000`, entre 1 e 31536000 |
+| `CLIENT_LOGIN_COOLDOWN_SECONDS` | Espera após cinco falhas consecutivas por cliente; padrão `900` (15 minutos), entre 1 e 86400 |
 
 Use um login próprio para a aplicação no banco externo e publique a API por HTTPS. A exceção `trustServerCertificate=true` está apenas no Compose local, para o certificado autoassinado. O processo Java não carrega automaticamente o `.env` do Compose. Não há fallback para `backend-lab` ou sincronização de contas entre módulos.
 
@@ -207,7 +266,7 @@ Com Java 21 selecionado pelo asdf:
 java -jar target/backend-auth-0.0.1-SNAPSHOT.jar
 ```
 
-Os testes usam H2 em modo SQL Server. Cobrem o link e formulário inicial, configuração concorrente, reinícios, validação, separação entre administradores e clientes, Bearer tokens e revogação, CRUD, proteção concorrente do último administrador, unicidade, BCrypt e limites de senha. Incluem CRUD de serviços, tokens de integração, isolamento de consultas e login, reassociação de clientes e contas antigas sem associação. Para verificar SQL Server real, inicie um Compose isolado, complete o cadastro pelo link, cadastre dois serviços com tokens e clientes distintos, verifique os limites de acesso e confirme a persistência após recriar os containers preservando o volume.
+Os testes usam H2 em modo SQL Server. Cobrem o link e formulário inicial, configuração concorrente, reinícios, validação, separação entre administradores e clientes, Bearer tokens e revogação, CRUD, proteção concorrente do último administrador, unicidade, BCrypt e limites de senha. Incluem CRUD de serviços, tokens de integração, isolamento de consultas e login, reassociação de clientes e contas antigas sem associação. Também cobrem complexidade de senha do cliente, bloqueio persistente e concorrente, CRUD de empresas, CNPJ numérico/alfanumérico, unicidade e autorizações com múltiplas empresas. Para verificar SQL Server real, inicie um Compose isolado, complete o cadastro pelo link, cadastre dois serviços com tokens e clientes distintos, verifique os limites de acesso e confirme a persistência após recriar os containers preservando o volume.
 
 ```bash
 docker compose down

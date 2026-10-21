@@ -8,19 +8,23 @@ import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Positive;
 import jakarta.validation.constraints.Size;
+import java.util.List;
 
 public record AtualizarUsuarioRequest(
         @NotBlank @Size(max = 150) String name,
         @NotBlank @Email @Size(max = 254) String email,
-        @Size(min = 12, max = 72)
+        @Size(min = 8, max = 72)
         @Schema(format = "password", accessMode = Schema.AccessMode.WRITE_ONLY,
-                description = "Opcional: omita para preservar a senha. Máximo de 72 bytes UTF-8.") String password,
+                description = "Opcional: omita para preservar a senha. Mínimo de 8 caracteres com maiúscula, minúscula e número; máximo de 72 bytes UTF-8.") String password,
         @NotNull PerfilUsuario role,
         @NotNull Boolean active,
-        @NotNull @Positive @Schema(type = "string", example = "1") Long serviceId) {
+        @NotNull @Positive @Schema(type = "string", example = "1") Long serviceId,
+        @Schema(description = "IDs das empresas autorizadas. Omitido, null ou [] significa nenhuma empresa; PUT substitui a lista inteira.")
+        List<@NotNull @Positive Long> companyIds) {
     public AtualizarUsuarioRequest {
         name = name == null ? null : name.trim();
         email = Normalizacao.email(email);
+        companyIds = companyIds == null ? List.of() : companyIds;
     }
 
     @Override

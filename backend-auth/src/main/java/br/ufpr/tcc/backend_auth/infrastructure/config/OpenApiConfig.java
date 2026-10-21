@@ -40,6 +40,9 @@ public class OpenApiConfig {
                 .addResponses("ClientConflict", error("E-mail já cadastrado, novo serviço inativo ou tentativa de desativar o último administrador ativo"))
                 .addResponses("ServiceNotFound", error("Serviço ou token não encontrado neste escopo"))
                 .addResponses("ServiceConflict", error("Código duplicado, serviço inativo ou serviço com clientes associados"))
+                .addResponses("CompanyNotFound", error("Empresa não encontrada"))
+                .addResponses("CompanyConflict", error("CNPJ já cadastrado ou empresa associada a clientes"))
+                .addResponses("LoginCooldown", error("Cinco falhas consecutivas: login do cliente bloqueado temporariamente; aguarde Retry-After segundos"))
                 .addResponses("InvalidSetupLink", error("Link de configuração inválido"))
                 .addResponses("SetupCompleted", error("O administrador inicial já foi cadastrado"));
         ModelConverters.getInstance().read(ApiErrorResponse.class).forEach(components::addSchemas);

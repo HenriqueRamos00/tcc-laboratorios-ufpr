@@ -10,12 +10,17 @@ import jakarta.persistence.Id;
 import jakarta.persistence.FetchType;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
+import jakarta.persistence.ManyToMany;
+import jakarta.persistence.JoinTable;
 import jakarta.persistence.Index;
 import jakarta.persistence.PrePersist;
 import jakarta.persistence.PreUpdate;
 import jakarta.persistence.Table;
 import jakarta.persistence.UniqueConstraint;
 import java.util.Locale;
+import java.util.LinkedHashSet;
+import java.util.Set;
+import java.time.Instant;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
@@ -51,6 +56,19 @@ public class Usuario {
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "servico_id")
     private Servico servico;
+
+    @ManyToMany
+    @JoinTable(name = "usuarios_empresas",
+            joinColumns = @JoinColumn(name = "usuario_id"),
+            inverseJoinColumns = @JoinColumn(name = "empresa_id"),
+            indexes = @Index(name = "ix_usuarios_empresas_empresa", columnList = "empresa_id"))
+    private Set<Empresa> empresas = new LinkedHashSet<>();
+
+    @Column(name = "falhas_login", nullable = false, columnDefinition = "int default 0")
+    private int falhasLogin;
+
+    @Column(name = "login_bloqueado_ate")
+    private Instant loginBloqueadoAte;
 
     @Column(name = "administrador_servico", nullable = false, columnDefinition = "bit default 0")
     private boolean administradorServico;
