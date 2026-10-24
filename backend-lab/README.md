@@ -163,6 +163,14 @@ Authorization: Bearer <jwt>
 
 Para criar a conta inicial do administrador na primeira execução local, preencha `AUTH_SEED_ADMIN_*` no arquivo `.env`. `AUTH_SEED_TECHNICIAN_*` permanece disponível para preparar um técnico legado de desenvolvimento; técnicos também podem ser cadastrados e mantidos pelo Portal Interno. As senhas são armazenadas com BCrypt.
 
+### Dashboard do Administrador
+
+`GET /api/admin/dashboard` retorna os indicadores globais do banco PostgreSQL da aplicação e exige perfil ADMIN. A resposta contém `totalQuotes`, `pendingAcceptance`, `activeClients` e `totalQuotedValue`; as três quantidades são inteiras e o valor monetário é serializado como número decimal.
+
+`totalQuotes` conta todos os orçamentos persistidos, sem filtro de status, data ou empresa. `pendingAcceptance` conta somente o status comercial `PendingAcceptance`. `totalQuotedValue` soma o `totalPrice` persistido de todos os orçamentos e status, sem recalcular os itens; quando não há propostas, retorna zero. `activeClients` conta clientes cujo usuário tem perfil CLIENTE e está ativo, uma vez por cadastro, independentemente de seus vínculos com empresas.
+
+Sem autenticação válida, a API retorna 401. Técnicos autenticados recebem 403. Tokens de clientes são recusados pelo filtro de autenticação nas rotas internas e recebem 401.
+
 ## Execução local
 
 Inicie um PostgreSQL local com um banco chamado `backend_lab` e configure as variáveis de conexão. Em seguida, execute:

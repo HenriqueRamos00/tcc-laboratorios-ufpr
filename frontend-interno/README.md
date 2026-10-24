@@ -71,6 +71,19 @@ O administrador inicial é configurado pelo backend usando `AUTH_SEED_ADMIN_*`.
 Portal Interno, a gestão de técnicos está disponível em **Técnicos** no menu
 administrativo.
 
+## Dashboard do Administrador
+
+A rota `/admin` apresenta indicadores consultados em `GET /api/admin/dashboard`:
+total de orçamentos, pendentes de aceite, clientes ativos e valor total orçado.
+Os valores são agregados pelo Backend Lab a partir do PostgreSQL e atualizados
+quando o dashboard é aberto ou quando o administrador tenta novamente após uma
+falha. Os cards apresentam a resposta da API; uma resposta válida com totais
+zerados é exibida como `0` e `R$ 0,00`.
+
+O dashboard também oferece atalhos para **Orçamentos**, **Técnicos**,
+**Empresas** e **Clientes**. A rota é exclusiva para ADMIN e usa a sessão e o
+shell existentes do Portal Interno.
+
 ## Empresas e clientes
 
 As páginas **Empresas** (`/admin/empresas`) e **Clientes** (`/admin/clientes`) permitem pesquisar, cadastrar, editar e alterar a situação dos registros. São exclusivas ADMIN e consomem diretamente a API Spring. Os dados de listagem também preenchem a edição, sem endpoint extra de detalhe.
