@@ -1,3 +1,4 @@
+import { Clipboard } from '@angular/cdk/clipboard';
 import { HttpErrorResponse } from '@angular/common/http';
 import { DATE_PIPE_DEFAULT_OPTIONS, registerLocaleData } from '@angular/common';
 import pt from '@angular/common/locales/pt';
@@ -19,6 +20,7 @@ registerLocaleData(pt);
 describe('Página de orçamentos', () => {
   let service: jasmine.SpyObj<OrcamentosService>;
   let dialog: jasmine.SpyObj<AppDialogService>;
+  let clipboard: jasmine.SpyObj<Clipboard>;
 
   const orcamento: Orcamento = {
     id: 'quote-1',
@@ -48,6 +50,8 @@ describe('Página de orçamentos', () => {
   }
 
   beforeEach(() => {
+    clipboard = jasmine.createSpyObj<Clipboard>('Clipboard', ['copy']);
+    clipboard.copy.and.returnValue(true);
     service = jasmine.createSpyObj<OrcamentosService>(
       'OrcamentosService', ['list', 'get', 'downloadDocument'],
     );
@@ -61,11 +65,12 @@ describe('Página de orçamentos', () => {
         { provide: DATE_PIPE_DEFAULT_OPTIONS, useValue: { timezone: '-0300' } },
         { provide: OrcamentosService, useValue: service },
         { provide: AppDialogService, useValue: dialog },
+        { provide: Clipboard, useValue: clipboard },
       ],
     });
   });
 
-  it('carrega a página inicial e abre os detalhes de leitura', fakeAsync(() => {
+  it('carrega a página inicial e abre os detalhes pela ação da tabela', fakeAsync(() => {
     service.list.and.returnValue(of(pagina([orcamento], 1, 21)));
     const fixture = TestBed.createComponent(OrcamentosComponent);
     fixture.detectChanges();
@@ -75,17 +80,66 @@ describe('Página de orçamentos', () => {
     expect(service.list).toHaveBeenCalledOnceWith({ search: '', status: null, page: 1, pageSize: 20 });
     expect(fixture.nativeElement.textContent).toContain('Copel Distribuição');
     expect(fixture.nativeElement.textContent).toContain('Análise físico-química de óleo isolante');
-    expect(fixture.nativeElement.querySelector('[aria-label^="Abrir detalhes do orçamento"]')).not.toBeNull();
+    expect(fixture.nativeElement.querySelector('[aria-label^="Copiar número da proposta"]')).not.toBeNull();
     expect(fixture.nativeElement.querySelectorAll('[aria-label^="Editar orçamento"]').length).toBe(1);
     expect(fixture.nativeElement.querySelectorAll('[aria-label^="Baixar PDF do orçamento"]').length).toBe(1);
-    expect(fixture.nativeElement.querySelector('[aria-label^="Visualizar orçamento"]')).toBeNull();
+    expect(fixture.nativeElement.querySelector('[aria-label^="Visualizar orçamento"]')).not.toBeNull();
 
-    fixture.componentInstance.visualizar(orcamento);
+    const botaoVisualizar = fixture.nativeElement.querySelector(
+      '[aria-label^="Visualizar orçamento"]',
+    ) as HTMLButtonElement | null;
+    botaoVisualizar?.click();
     expect(dialog.openLateral).toHaveBeenCalledWith(
       QuoteDetailDialogComponent,
       { quoteId: 'quote-1', quoteCode: orcamento.code },
       `Detalhes do orçamento ${orcamento.code}`,
     );
+    fixture.destroy();
+  }));
+
+  it('copia o código original pelo botão da proposta e confirma sem abrir detalhes', fakeAsync(() => {
+    const codigoExato = ' EAQ_2026_45482_V_1 ';
+    service.list.and.returnValue(of(pagina([{ ...orcamento, code: codigoExato }])));
+    const fixture = TestBed.createComponent(OrcamentosComponent);
+    const snackBar = fixture.debugElement.injector.get(MatSnackBar);
+    spyOn(snackBar, 'open');
+    fixture.detectChanges();
+    tick();
+    fixture.detectChanges();
+
+    const botaoCopiar = fixture.nativeElement.querySelector(
+      '[aria-label^="Copiar número da proposta"]',
+    ) as HTMLButtonElement | null;
+    botaoCopiar?.click();
+
+    expect(clipboard.copy).toHaveBeenCalledOnceWith(codigoExato);
+    expect(snackBar.open).toHaveBeenCalledOnceWith(
+      'Número da proposta copiado.', 'Fechar', jasmine.objectContaining({ duration: 4000 }),
+    );
+    expect(dialog.openLateral).not.toHaveBeenCalled();
+    fixture.destroy();
+  }));
+
+  it('informa quando o navegador não copia o código da proposta', fakeAsync(() => {
+    clipboard.copy.and.returnValue(false);
+    service.list.and.returnValue(of(pagina([orcamento])));
+    const fixture = TestBed.createComponent(OrcamentosComponent);
+    const snackBar = fixture.debugElement.injector.get(MatSnackBar);
+    spyOn(snackBar, 'open');
+    fixture.detectChanges();
+    tick();
+    fixture.detectChanges();
+
+    const botaoCopiar = fixture.nativeElement.querySelector(
+      '[aria-label^="Copiar número da proposta"]',
+    ) as HTMLButtonElement | null;
+    botaoCopiar?.click();
+
+    expect(clipboard.copy).toHaveBeenCalledOnceWith(orcamento.code);
+    expect(snackBar.open).toHaveBeenCalledOnceWith(
+      'Não foi possível copiar o número da proposta.', 'Fechar', jasmine.objectContaining({ duration: 4000 }),
+    );
+    expect(dialog.openLateral).not.toHaveBeenCalled();
     fixture.destroy();
   }));
 

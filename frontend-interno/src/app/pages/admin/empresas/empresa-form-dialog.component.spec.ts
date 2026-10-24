@@ -107,7 +107,7 @@ describe('Formulário de empresa', () => {
 
     expect(service.create).toHaveBeenCalledWith({
       legalName: 'Empresa de Teste', cnpj: '04368898000106', address: 'Rua Um, 10', city: 'Curitiba', state: 'PR',
-      contactName: 'Ana Lima', contactPhone: '(41) 3333-4444', contactEmail: 'ana@example.com', status: 'ACTIVE',
+      contactName: 'Ana Lima', contactPhone: '4133334444', contactEmail: 'ana@example.com', status: 'ACTIVE',
     });
     expect(dialogRef.close).toHaveBeenCalled();
   });

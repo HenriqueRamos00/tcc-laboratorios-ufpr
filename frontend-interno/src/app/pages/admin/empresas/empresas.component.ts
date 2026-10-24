@@ -13,6 +13,7 @@ import { combineLatest, of, Subject } from 'rxjs';
 import { catchError, debounceTime, distinctUntilChanged, finalize, startWith, switchMap, tap } from 'rxjs/operators';
 
 import { Empresa, EmpresaStatus, EmpresaStatusFilter } from '@/app/model/empresa';
+import { separarEmailParaQuebra } from '@/app/model/email-presentation';
 import { formatarTelefoneBr } from '@/app/model/telefone-presentation';
 import { AppDialogService } from '@/app/services/app-dialog.service';
 import { EmpresasService } from '@/app/services/empresas.service';
@@ -53,6 +54,7 @@ export class EmpresasComponent {
   readonly empresas = signal<Empresa[]>([]);
   readonly formatarCnpj = formatarCnpjBr;
   readonly formatarTelefone = formatarTelefoneBr;
+  readonly separarEmail = separarEmailParaQuebra;
   readonly carregando = signal(true);
   readonly erro = signal(false);
   readonly erroPermissao = signal(false);
