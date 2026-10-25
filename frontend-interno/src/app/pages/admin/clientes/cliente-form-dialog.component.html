@@ -45,7 +45,7 @@
     <div class="flex flex-col gap-2">
       <label for="cliente-phone" class="text-xs font-medium tracking-wide text-lactec-ink-soft">Telefone <span class="text-lactec-danger">*</span></label>
       <div class="input-field" [class.input-field--error]="phoneInvalid">
-        <input id="cliente-phone" formControlName="phone" maxlength="30" type="tel" autocomplete="tel" class="input-field__input"
+        <input id="cliente-phone" formControlName="phone" mask="(00) 0000-0000||(00) 00000-0000" maxlength="30" type="tel" inputmode="tel" autocomplete="tel" placeholder="(00) 00000-0000" class="input-field__input"
           [attr.aria-invalid]="phoneInvalid" [attr.aria-describedby]="phoneInvalid ? 'cliente-phone-error' : null" />
       </div>
       @if (phoneInvalid) {

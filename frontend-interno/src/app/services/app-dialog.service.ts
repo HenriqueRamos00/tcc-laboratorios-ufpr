@@ -1,9 +1,12 @@
+import { DOCUMENT } from '@angular/common';
 import { inject, Injectable, Type } from '@angular/core';
 import { MatDialog, MatDialogConfig, MatDialogRef } from '@angular/material/dialog';
 
 @Injectable({ providedIn: 'root' })
 export class AppDialogService {
   private readonly dialog = inject(MatDialog);
+  private readonly document = inject(DOCUMENT);
+  private lateralDialogsOpen = 0;
 
   open<T, D = unknown, R = unknown>(
     component: Type<T>,
@@ -27,7 +30,7 @@ export class AppDialogService {
     data: D | undefined,
     ariaLabel: string,
   ): MatDialogRef<T, R> {
-    return this.open<T, D, R>(component, data, ariaLabel, {
+    const ref = this.open<T, D, R>(component, data, ariaLabel, {
       width: '520px',
       minWidth: '0',
       maxWidth: '100vw',
@@ -37,5 +40,16 @@ export class AppDialogService {
       hasBackdrop: true,
       panelClass: 'lactec-dialog-lateral',
     });
+
+    this.lateralDialogsOpen++;
+    this.document.body.classList.add('lactec-lateral-dialog-open');
+    ref.afterClosed().subscribe(() => {
+      this.lateralDialogsOpen--;
+      if (this.lateralDialogsOpen === 0) {
+        this.document.body.classList.remove('lactec-lateral-dialog-open');
+      }
+    });
+
+    return ref;
   }
 }

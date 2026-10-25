@@ -13,6 +13,7 @@ import { combineLatest, of, Subject } from 'rxjs';
 import { catchError, debounceTime, distinctUntilChanged, finalize, startWith, switchMap, tap } from 'rxjs/operators';
 
 import { Empresa, EmpresaStatus, EmpresaStatusFilter } from '@/app/model/empresa';
+import { formatarTelefoneBr } from '@/app/model/telefone-presentation';
 import { AppDialogService } from '@/app/services/app-dialog.service';
 import { EmpresasService } from '@/app/services/empresas.service';
 import { ConfirmacaoDialogComponent, ConfirmacaoDialogData } from '@/app/shared/components/confirmacao-dialog/confirmacao-dialog.component';
@@ -51,6 +52,7 @@ export class EmpresasComponent {
   readonly statusControl = new FormControl<EmpresaStatusFilter>('ALL', { nonNullable: true });
   readonly empresas = signal<Empresa[]>([]);
   readonly formatarCnpj = formatarCnpjBr;
+  readonly formatarTelefone = formatarTelefoneBr;
   readonly carregando = signal(true);
   readonly erro = signal(false);
   readonly erroPermissao = signal(false);
