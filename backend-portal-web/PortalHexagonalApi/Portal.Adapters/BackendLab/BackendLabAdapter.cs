@@ -8,7 +8,7 @@ namespace Portal.Adapters.BackendLab;
 
 public sealed class BackendLabAdapter(HttpClient httpClient) : IClientAuthenticator
 {
-    public async Task<ClientSession?> AuthenticateAsync(
+    public async Task<ClientAuthenticationResult?> AuthenticateAsync(
         string email, string password, CancellationToken cancellationToken = default)
     {
         try
@@ -28,7 +28,7 @@ public sealed class BackendLabAdapter(HttpClient httpClient) : IClientAuthentica
             if (!HasValidSession(session))
                 throw new AuthenticationSourceUnavailableException("A fonte de autenticação retornou uma sessão incompleta.");
 
-            return session;
+            return new ClientAuthenticationResult(session!.User, session);
         }
         catch (HttpRequestException failure)
         {

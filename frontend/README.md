@@ -13,7 +13,33 @@ docker compose up -d --build web            # http://localhost:4200
 PORTAL_WEB_PORT=4300 docker compose up -d web  # outra porta, se a 4200 estiver ocupada
 ```
 
-Login de desenvolvimento: `lactec@lactec` / `lactec`.
+O login usa `POST /auth/login` da API C#, configurada em `src/app/environment/env.ts`.
+Não há conta ou token de desenvolvimento no frontend. Cadastre o cliente na fonte
+selecionada pelo C# (`backend-lab` ou `lactec`, que usa Backend Auth).
+
+No modo `lactec`, o C# emite JWT de 15 minutos. Angular guarda a sessão em
+`localStorage` (`lactec.token`, `lactec.username`, `lactec.user`), envia Bearer
+somente a `/api/**` e `/auth/me` da API e restaura o perfil com `/auth/me` após
+recarregar. Nome e papel vêm da resposta de login; CNPJs ficam em
+`currentIdentity().authorizations.companyCnpjs`. Expiração e 401 de operações
+protegidas encerram a sessão; 403 é exibido sem logout. O login mostra a espera
+indicada por `Retry-After` em 429, sem repetir a chamada automaticamente.
+
+Para subir o portal com Backend Auth e sem Backend Lab, siga a
+[configuração da API C#](../backend-portal-web/README.md#configuração-e-execução-em-lactec).
+Para a demonstração completa, execute `docker compose -f compose.auth.yaml up -d --build`
+na raiz e abra http://localhost:4200. Entre com `client1@lactec.com` ou
+`client2@lactec.com`, usando o próprio e-mail como senha. Cada conta vê seus
+orçamentos e ensaios. `lactec@lactec.com` é administrador somente do Backend Auth.
+As fixtures da tela de relatórios são filtradas pelos orçamentos autorizados na API:
+client1 recebe os quatro relatórios de `quote-18`; client2 recebe cinco de
+`quote-15` e `quote-19`. Os PDFs de laudos continuam sendo os exemplos locais existentes.
+As regras de publicação HTTPS e armazenamento do JWT também estão documentadas lá.
+No modo `lactec`, os orçamentos do Salesforce são filtrados pelos CNPJs no JWT,
+inclusive o detalhe e o PDF. Sem empresas vinculadas, a lista fica vazia. O Angular
+propaga erros da API e não substitui os resultados por orçamentos de demonstração.
+Para desenvolvimento e testes locais, use Node 24+; o alvo `dev` do Docker inclui
+Chromium para `npm test -- --watch=false`.
 
 This project was generated using [Angular CLI](https://github.com/angular/angular-cli) version 19.2.27.
 

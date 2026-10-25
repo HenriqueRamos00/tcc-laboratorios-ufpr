@@ -4,6 +4,7 @@ using System.Text.Json.Serialization;
 using Portal.Adapters.Quotes;
 using Portal.Adapters.Salesforce;
 using Portal.Api.Configuration;
+using Portal.Api.Authentication;
 using Portal.Api.LabResults;
 using Portal.Application.Authentication;
 using Portal.Application.LabResults;
@@ -22,7 +23,8 @@ builder.Services.AddCors(options =>
                 "http://localhost",
                 "http://localhost:80")
             .AllowAnyHeader()
-            .AllowAnyMethod());
+            .AllowAnyMethod()
+            .WithExposedHeaders("Retry-After"));
 });
 
 // The portal's camelCase used to be a default inherited from the host, not a declared
@@ -48,7 +50,6 @@ builder.Services.AddScoped<IForConsultingLabResults, LabResultsConsultation>();
 
 builder.Services.AddPortalDataSource(builder.Configuration);
 
-builder.Services.AddScoped<IQuoteRepository, FakeSalesforceQuoteRepository>();
 // A proposta escrita a mao continua valendo; o orcamento sem arquivo recebe a pagina
 // gerada a partir dele mesmo, para o botao de baixar nunca cair no vazio na demonstracao.
 builder.Services.AddScoped<IQuoteDocumentRepository>(services =>
@@ -62,13 +63,19 @@ builder.Services.AddHttpClient<ISalesforceTokenClient, SalesforceTokenClient>();
 builder.Services.AddSingleton<ISalesforceTokenProvider, SalesforceTokenProvider>();
 
 builder.Services.AddEndpointsApiExplorer();
-builder.Services.AddOpenApi();
+builder.Services.AddOpenApi(options => options.AddDocumentTransformer<PortalBearerDocumentTransformer>());
 
 WebApplication app = builder.Build();
 
-app.MapOpenApi();
+app.MapOpenApi().AllowAnonymous();
 
 app.UseCors(PortalWebCorsPolicy);
+
+if (builder.Configuration["Portal:DataSource"] == PortalOptions.LactecSource)
+{
+    app.UseAuthentication();
+    app.UseAuthorization();
+}
 
 app.MapControllers();
 

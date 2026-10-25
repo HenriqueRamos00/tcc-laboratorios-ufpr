@@ -1,17 +1,14 @@
 namespace Portal.Application.Authentication;
 
-public sealed class LoginService : ILoginUseCase
+public sealed class LoginService(IClientAuthenticator authenticator, IPortalSessionIssuer? issuer = null) : ILoginUseCase
 {
-    private readonly IClientAuthenticator _authenticator;
-
-    public LoginService(IClientAuthenticator authenticator)
-    {
-        _authenticator = authenticator;
-    }
-
-    public Task<ClientSession?> LoginAsync(
+    public async Task<ClientSession?> LoginAsync(
         string email, string password, CancellationToken cancellationToken)
     {
-        return _authenticator.AuthenticateAsync(email, password, cancellationToken);
+        ClientAuthenticationResult? authenticated = await authenticator.AuthenticateAsync(email, password, cancellationToken);
+        if (authenticated is null) return null;
+        if (authenticated.ExistingSession is not null) return authenticated.ExistingSession;
+        return (issuer ?? throw new InvalidOperationException("Emissor de sessão do portal não configurado."))
+            .Issue(authenticated.User);
     }
 }

@@ -2,6 +2,8 @@ using System.Net;
 using System.Net.Http.Json;
 using System.Text.Json.Nodes;
 
+using Microsoft.AspNetCore.Hosting;
+
 using Portal.Adapters.BackendLab;
 using Portal.Application.Authentication;
 
@@ -288,13 +290,33 @@ public sealed class ClientLoginContractTests
         BackendLabAdapter adapter = new(client);
         using CancellationTokenSource cancellation = new();
 
-        Task<ClientSession?> request = adapter.AuthenticateAsync(
+        Task<ClientAuthenticationResult?> request = adapter.AuthenticateAsync(
             "marina@empresa.com", "senha123", cancellation.Token);
 
         await backend.RequestStarted.Task.WaitAsync(TimeSpan.FromSeconds(5));
         cancellation.Cancel();
 
         await Assert.ThrowsAnyAsync<OperationCanceledException>(() => request);
+    }
+
+    [Fact]
+    public async Task BackendLabIgnoraConfiguracaoInvalidaDoBackendAuthEMeRetorna501()
+    {
+        ScriptedBackendLabHandler backend = ScriptedBackendLabHandler.Returning(HttpStatusCode.OK, LoginResponse);
+        using AuthenticationPortal basePortal = new(backend);
+        using var portal = basePortal.WithWebHostBuilder(builder =>
+        {
+            builder.UseSetting("BackendAuth:BaseUrl", "invalid");
+            builder.UseSetting("BackendAuth:ServiceToken", "invalid");
+            builder.UseSetting("PortalJwt:SigningKey", "invalid");
+        });
+        using HttpClient client = portal.CreateClient();
+        using var login = await client.PostAsJsonAsync("/auth/login", new { email = "marina@empresa.com", password = "senha123" });
+        Assert.Equal(HttpStatusCode.OK, login.StatusCode);
+        Assert.Equal("spring-access-token", (string?)(await ReadBodyAsync(login))["Token"]);
+        using var me = await client.GetAsync("/auth/me");
+        Assert.Equal(HttpStatusCode.NotImplemented, me.StatusCode);
+        Assert.Equal(1, backend.RequestCount);
     }
 
     private static async Task<JsonObject> ReadBodyAsync(HttpResponseMessage response)

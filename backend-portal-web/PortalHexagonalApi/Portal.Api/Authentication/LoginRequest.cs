@@ -9,4 +9,7 @@ public sealed record LoginRequest(
     string Email,
     [Required(ErrorMessage = "Senha é obrigatória.")]
     [StringLength(72, ErrorMessage = "Senha deve ter no máximo 72 caracteres.")]
-    string Password);
+    string Password)
+{
+    public override string ToString() => "LoginRequest { Password = [REDACTED] }";
+}

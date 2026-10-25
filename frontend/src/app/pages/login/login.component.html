@@ -85,9 +85,6 @@
       </div>
 
       <div class="flex justify-between items-center gap-4">
-        <mat-checkbox formControlName="keepConnected">
-          Me mantenha conectado
-        </mat-checkbox>
         <a routerLink="." class="text-lactec-primary-dark font-medium text-sm hover:underline">
           Esqueceu a senha?
         </a>
@@ -96,10 +93,10 @@
       <button
         mat-flat-button
         type="submit"
-        [disabled]="submitting()"
+        [disabled]="submitting() || cooldownRemaining() > 0"
         class="w-full h-11"
       >
-        <span>{{ submitting() ? 'Acessando…' : 'Acessar' }}</span>
+        <span>{{ submitting() ? 'Acessando…' : cooldownRemaining() > 0 ? 'Aguarde ' + cooldownRemaining() + 's' : 'Acessar' }}</span>
         @if (!submitting()) {
           <mat-icon iconPositionEnd>arrow_forward</mat-icon>
         }

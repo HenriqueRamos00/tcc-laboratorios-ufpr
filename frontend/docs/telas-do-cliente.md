@@ -12,8 +12,8 @@ que ficou pendente.
 PORTAL_WEB_PORT=4300 docker compose up -d --build web
 ```
 
-Acesse `http://localhost:4300`. O login de desenvolvimento é `lactec@lactec` /
-`lactec` (`src/app/services/dev-login.ts`, que já existia).
+Acesse `http://localhost:4300`. Autentique um cliente cadastrado na fonte da API C#.
+O login de desenvolvimento foi removido; consulte a [integração de autenticação](../../backend-portal-web/README.md#autenticação-do-portal-do-cliente).
 
 ## A linha de etapas
 
@@ -98,12 +98,10 @@ e comentado no lugar de uso.
   Os serviços (`EquipmentsService`, `HealthService`, `ReportsService`) devolvem a
   massa com a mesma assinatura que a versão HTTP vai ter; trocar é substituir o
   corpo de cada método, sem tocar nas telas.
-- **Orçamentos** falam com a API de verdade. Quando ela não responde, o serviço
-  cai na massa de `orcamentos.fixture.ts` para que o portal possa ser
-  apresentado sem o backend no ar. A chave é
-  `CAI_PARA_DEMONSTRACAO_SEM_API` em `quotes.service.ts`: mude para `false` e os
-  erros voltam a subir, exibindo "Não foi possível carregar os orçamentos no
-  momento".
+- **Orçamentos** falam com a API C#. No modo `lactec`, a API consulta Salesforce
+  com os CNPJs autorizados no JWT; o modo `backend-lab` mantém seu adapter de
+  demonstração no C#. Erros de consulta são exibidos na tela, sem fallback para
+  fixtures no Angular.
 - **Aceite e recusa** ficam registrados em memória durante a sessão
   (`QuoteDecisionService`), com o formato do POST que a aplicação Java vai expor.
 - **PDF da proposta** vem do Salesforce e ainda não está integrado; a tela mostra

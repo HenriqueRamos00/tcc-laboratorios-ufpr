@@ -1,0 +1,62 @@
+services:
+  sqlserver:
+    image: mcr.microsoft.com/mssql/server:2022-latest
+    environment:
+      ACCEPT_EULA: "Y"
+      MSSQL_PID: Developer
+      MSSQL_SA_PASSWORD: ${SQLSERVER_SA_PASSWORD:?Configure SQLSERVER_SA_PASSWORD no .env}
+    ports:
+      - "127.0.0.1:${SQLSERVER_PORT:-1433}:1433"
+    volumes:
+      - auth-sqlserver-data:/var/opt/mssql
+    healthcheck:
+      test:
+        - CMD-SHELL
+        - >-
+          SQLCMDPASSWORD="$$MSSQL_SA_PASSWORD" /opt/mssql-tools18/bin/sqlcmd -S localhost -U sa -C -b
+          -Q "SELECT COUNT(*) FROM tempdb.sys.tables; IF DB_ID(N'backend_auth') IS NOT NULL EXEC(N'USE [backend_auth]; SELECT 1');"
+          -o /dev/null
+      interval: 5s
+      timeout: 5s
+      retries: 30
+      start_period: 20s
+
+  database-init:
+    image: mcr.microsoft.com/mssql/server:2022-latest
+    entrypoint: ["/opt/mssql-tools18/bin/sqlcmd"]
+    command: ["-S", "sqlserver", "-U", "sa", "-C", "-b", "-Q", "IF DB_ID(N'backend_auth') IS NULL CREATE DATABASE [backend_auth]"]
+    environment:
+      SQLCMDPASSWORD: ${SQLSERVER_SA_PASSWORD:?Configure SQLSERVER_SA_PASSWORD no .env}
+    depends_on:
+      sqlserver:
+        condition: service_healthy
+
+  backend-auth:
+    build:
+      context: .
+    environment:
+      SERVER_PORT: 8080
+      DB_URL: "jdbc:sqlserver://sqlserver:1433;databaseName=backend_auth;encrypt=true;trustServerCertificate=true"
+      DB_USERNAME: sa
+      DB_PASSWORD: ${SQLSERVER_SA_PASSWORD:?Configure SQLSERVER_SA_PASSWORD no .env}
+      JPA_DDL_AUTO: ${JPA_DDL_AUTO:-update}
+      APP_BASE_URL: ${APP_BASE_URL:-http://localhost:${AUTH_PORT:-8081}}
+      ADMIN_TOKEN_EXPIRATION_SECONDS: ${ADMIN_TOKEN_EXPIRATION_SECONDS:-3600}
+      SERVICE_TOKEN_EXPIRATION_SECONDS: ${SERVICE_TOKEN_EXPIRATION_SECONDS:-2592000}
+      CLIENT_LOGIN_COOLDOWN_SECONDS: ${CLIENT_LOGIN_COOLDOWN_SECONDS:-900}
+      AUTH_DEMO_SEED_ENABLED: ${AUTH_DEMO_SEED_ENABLED:-false}
+      BACKEND_AUTH_SERVICE_TOKEN: ${BACKEND_AUTH_SERVICE_TOKEN:-}
+    ports:
+      - "127.0.0.1:${AUTH_PORT:-8081}:8080"
+    depends_on:
+      database-init:
+        condition: service_completed_successfully
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:8080/health | grep -q '\"status\":\"UP\"'"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 20s
+
+volumes:
+  auth-sqlserver-data:

@@ -37,10 +37,10 @@ describe('Rotas da área do cliente, ligação dos parâmetros', () => {
       providers: [
         provideHttpClient(),
         provideRouter(routes, withComponentInputBinding()),
-        { provide: JwtHelperService, useValue: { isTokenExpired: () => false } },
+        { provide: JwtHelperService, useValue: { isTokenExpired: () => false, decodeToken: () => ({ role: 'Client', exp: Date.now() / 1000 + 900 }) } },
         {
           provide: UserRole,
-          useValue: { role: () => CLIENT_ROLE, dashboardPath: () => '/cliente', clear: () => {} },
+          useValue: { role: () => CLIENT_ROLE, dashboardPath: () => '/cliente', clear: () => {}, setRoleFromTokenClaim: () => {} },
         },
         {
           provide: ReportsService,
