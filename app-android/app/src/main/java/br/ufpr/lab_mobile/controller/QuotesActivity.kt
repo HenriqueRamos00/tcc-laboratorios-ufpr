@@ -1,6 +1,5 @@
 package br.ufpr.lab_mobile.controller
 
-import android.content.Intent
 import android.os.Bundle
 import android.view.View
 import android.widget.AdapterView
@@ -52,14 +51,7 @@ class QuotesActivity : AppCompatActivity() {
             insets
         }
 
-        token = intent.getStringExtra(LoginActivity.EXTRA_ACCESS_TOKEN)
-            ?: getSharedPreferences(LoginActivity.SESSION_PREFERENCES, MODE_PRIVATE)
-                .getString(LoginActivity.ACCESS_TOKEN, null)
-            ?: run {
-                startActivity(Intent(this, LoginActivity::class.java))
-                finish()
-                return
-            }
+        token = requireSessionToken() ?: return
         quoteService = QuoteService(
             RetrofitProvider.retrofit(getString(R.string.api_base_url))
                 .create(QuoteApiService::class.java),
@@ -126,14 +118,9 @@ class QuotesActivity : AppCompatActivity() {
             } catch (error: CancellationException) {
                 throw error
             } catch (error: HttpException) {
-                if (error.code() == 401) LoginActivity.clearSession(this@QuotesActivity)
+                if (error.code() == 401) { returnToLogin(clear = true); return@launch }
                 quoteAdapter.updateQuotes(emptyList())
-                showState(
-                    getString(
-                        if (error.code() == 401) R.string.session_expired
-                        else R.string.quotes_loading_error,
-                    ),
-                )
+                showState(getString(R.string.quotes_loading_error))
             } catch (_: Exception) {
                 quoteAdapter.updateQuotes(emptyList())
                 showState(getString(R.string.quotes_loading_error))

@@ -102,8 +102,8 @@ class QuoteDetailsActivity : AppCompatActivity() {
         }
         binding.backButton.setOnClickListener { finish() }
         quoteId = intent.getStringExtra(EXTRA_QUOTE_ID)?.trim().orEmpty()
-        token = intent.getStringExtra(LoginActivity.EXTRA_ACCESS_TOKEN)
-            ?: getSharedPreferences(LoginActivity.SESSION_PREFERENCES, MODE_PRIVATE).getString(LoginActivity.ACCESS_TOKEN, null).orEmpty()
+        token = requireSessionToken() ?: return
+        watchSessionExpiry()
         currentPage = savedInstanceState?.getInt("pdf_page") ?: 0
         pendingExportUri = savedInstanceState?.getString("export_uri")?.let(Uri::parse)
         binding.retryButton.setOnClickListener { loadQuote() }
@@ -116,7 +116,6 @@ class QuoteDetailsActivity : AppCompatActivity() {
         binding.acceptQuote.setOnClickListener { quote?.let { QuoteDecisionDialogFragment.show(supportFragmentManager, it, false) } }
         binding.rejectQuote.setOnClickListener { quote?.let { QuoteDecisionDialogFragment.show(supportFragmentManager, it, true) } }
         supportFragmentManager.setFragmentResultListener(QuoteDecisionDialogFragment.RESULT, this) { _, _ -> renderSimulation() }
-        if (token.isBlank()) { showError(R.string.session_expired, false); return }
         QuoteSimulations.startSession(token)
         service = QuoteService(RetrofitProvider.retrofit(getString(R.string.api_base_url)).create(QuoteApiService::class.java))
         loadQuote()
@@ -149,8 +148,8 @@ class QuoteDetailsActivity : AppCompatActivity() {
                 loadDocument()
             } catch (error: CancellationException) { throw error
             } catch (error: HttpException) {
-                if (error.code() == 401) LoginActivity.clearSession(this@QuoteDetailsActivity)
-                showError(when (error.code()) { 401 -> R.string.session_expired; 404 -> R.string.quote_status_not_found; else -> R.string.quote_details_error }, error.code() !in listOf(401,404))
+                if (error.code() == 401) { returnToLogin(clear = true); return@launch }
+                showError(if (error.code() == 404) R.string.quote_status_not_found else R.string.quote_details_error, error.code() != 404)
             } catch (_: Exception) { showError(R.string.quote_details_error, true) }
         }
     }
@@ -212,8 +211,8 @@ class QuoteDetailsActivity : AppCompatActivity() {
                 renderPage(currentPage.coerceIn(0, count - 1))
             } catch (error: CancellationException) { throw error
             } catch (error: HttpException) {
-                if (error.code() == 401) { LoginActivity.clearSession(this@QuoteDetailsActivity); renderSimulation() }
-                pdfError(when (error.code()) { 401 -> R.string.session_expired; 404 -> R.string.quote_document_missing; else -> R.string.quote_document_error }, error.code() !in listOf(401,404))
+                if (error.code() == 401) { returnToLogin(clear = true); return@launch }
+                pdfError(if (error.code() == 404) R.string.quote_document_missing else R.string.quote_document_error, error.code() != 404)
             } catch (_: InvalidQuoteDocumentException) { pdfError(R.string.quote_document_invalid, true)
             } catch (_: Exception) { pdfError(R.string.quote_document_error, true)
             } finally { if (!retained) file?.delete() }

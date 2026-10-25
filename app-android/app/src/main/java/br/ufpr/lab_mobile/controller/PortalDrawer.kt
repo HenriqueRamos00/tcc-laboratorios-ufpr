@@ -3,6 +3,8 @@ package br.ufpr.lab_mobile.controller
 import android.content.Intent
 import android.view.Gravity
 import android.view.View
+import android.widget.TextView
+import br.ufpr.lab_mobile.service.SessionStore
 import android.widget.ImageButton
 import androidx.activity.OnBackPressedCallback
 import androidx.appcompat.app.AppCompatActivity
@@ -30,6 +32,7 @@ internal class PortalDrawer(
     }
 
     init {
+        activity.watchSessionExpiry()
         activity.onBackPressedDispatcher.addCallback(activity, back)
         drawer.addDrawerListener(object : DrawerLayout.SimpleDrawerListener() {
             override fun onDrawerSlide(drawerView: View, slideOffset: Float) = updateMenu(slideOffset > 0)
@@ -52,15 +55,17 @@ internal class PortalDrawer(
             }
         }
         activity.findViewById<View>(R.id.logoutButton).setOnClickListener {
-            LoginActivity.clearSession(activity)
-            activity.startActivity(Intent(activity, LoginActivity::class.java)
-                .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK))
-            activity.finish()
+            activity.returnToLogin(clear = true)
         }
         updateMenu(false)
     }
 
     fun onResume() {
+        if (activity.requireSessionToken() == null) return
+        val session = SessionStore.get(activity).current ?: return
+        activity.findViewById<TextView>(R.id.quotes_greeting)?.text = activity.getString(
+            R.string.portal_greeting, session.user.name?.trim()?.takeIf(String::isNotEmpty) ?: activity.getString(R.string.portal_client),
+        )
         navigating = false
         updateMenu(drawer.isDrawerVisible(Gravity.RIGHT))
     }
@@ -77,7 +82,7 @@ internal class PortalDrawer(
 
     private fun open(destination: PortalDestination) {
         drawer.closeDrawer(Gravity.RIGHT)
-        if (destination == selected || navigating) return
+        if ((destination == selected && activity.javaClass == destination.screen) || navigating) return
         navigating = true
         activity.startActivity(Intent(activity, destination.screen)
             .putExtra(LoginActivity.EXTRA_ACCESS_TOKEN, token)

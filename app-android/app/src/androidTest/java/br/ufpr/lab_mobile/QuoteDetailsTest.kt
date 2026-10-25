@@ -150,9 +150,8 @@ class QuoteDetailsTest {
         retry()
         awaitPage(1)
         documentCode = 401
-        scenario!!.recreate()
-        awaitMessage(R.string.session_expired)
-        assertTrue(check { it.findViewById<View>(R.id.acceptQuote).visibility == View.GONE && it.findViewById<View>(R.id.rejectQuote).visibility == View.GONE })
+        scenario!!.onActivity { it.recreate() }
+        awaitLogin()
         assertFalse(QuoteSimulations.confirm("quote-test", "PendingAcceptance", SimulatedDecision.ACCEPTED, null))
     }
 
@@ -281,6 +280,7 @@ class QuoteDetailsTest {
     }
 
     private fun launch() {
+        seedSession(context, "test-session")
         scenario = ActivityScenario.launch(Intent(context, QuoteDetailsActivity::class.java)
             .putExtra(QuoteDetailsActivity.EXTRA_QUOTE_ID, "quote-test")
             .putExtra(LoginActivity.EXTRA_ACCESS_TOKEN, "test-session"))

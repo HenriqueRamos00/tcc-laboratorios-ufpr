@@ -82,7 +82,6 @@
     <string name="equipment_location">Localização</string>
     <string name="equipment_view">Ver Equipamento</string>
     <string name="equipment_view_accessibility">Ver Equipamento. Número de Série: %1$s. TAG: %2$s.</string>
-    <string name="equipment_details_soon">Detalhes do equipamento em breve.</string>
     <string name="equipment_not_informed">Não informado</string>
     <string name="equipment_loading">Carregando equipamentos…</string>
     <string name="equipment_empty">Nenhum equipamento encontrado.</string>
@@ -146,7 +145,6 @@
     <string name="quote_stage_received">Recebido</string>
     <string name="quote_stage_registered">Protocolado</string>
     <string name="quote_stage_running">Em execução</string>
-    <string name="quote_stage_incomplete">Incompleto</string>
     <string name="quote_stage_complete">Completo</string>
     <string name="quote_stage_validated">Validado</string>
     <string name="quote_stage_finished">Finalizado</string>
@@ -169,4 +167,35 @@
         <item>Cancelled</item>
     </string-array>
     <string name="api_base_url" translatable="false">http://127.0.0.1:5125/api</string>
+    <string name="portal_greeting">Bom dia, %1$s</string>
+    <string name="portal_client">Cliente</string>
+    <string name="login_bad_request">Dados de login inválidos. Confira seu e-mail e senha.</string>
+    <string name="login_invalid_response">O serviço retornou uma sessão inválida. Tente novamente.</string>
+    <string name="login_cooldown">Login temporariamente bloqueado. Tente novamente em %1$d segundos.</string>
+    <string name="session_restore_error">Não foi possível verificar sua sessão. Verifique sua conexão e tente novamente.</string>
+    <string name="session_restore_retry">Tentar restaurar sessão</string>
+    <string name="equipment_details_title">Detalhes do Equipamento</string>
+    <string name="equipment_details_loading">Carregando equipamento…</string>
+    <string name="equipment_details_error">Não foi possível carregar o equipamento. Verifique sua conexão e tente novamente.</string>
+    <string name="equipment_not_found">Não encontramos esse equipamento.</string>
+    <string name="equipment_identification">Identificação do equipamento</string>
+    <string name="equipment_power">Potência</string>
+    <string name="equipment_oil_type">Tipo do Óleo</string>
+    <string name="equipment_voltage">Tensão</string>
+    <string name="equipment_company">Empresa</string>
+    <string name="equipment_history_title">Histórico de Relatórios</string>
+    <string name="equipment_history_loading">Carregando histórico…</string>
+    <string name="equipment_history_empty">Não há histórico de análises disponível para este equipamento.</string>
+    <string name="equipment_history_error">Não foi possível carregar o histórico de relatórios.</string>
+    <string name="equipment_report_date">Data do relatório</string>
+    <string name="equipment_analysis_type">Tipo de análise</string>
+    <string name="equipment_analysis_physical_chemical">Análise Físico-Química</string>
+    <string name="equipment_analysis_chromatography">Cromatografia</string>
+    <string name="equipment_report_completed">Concluído</string>
+    <string name="equipment_report_in_progress">Em andamento</string>
+    <string name="equipment_report_download">Download</string>
+    <string name="equipment_pdf_unavailable">PDF indisponível</string>
+    <string name="equipment_report_range">%1$d–%2$d de %3$d</string>
+    <string name="equipment_history_previous">Anterior</string>
+    <string name="equipment_history_next">Próximo</string>
 </resources>

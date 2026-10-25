@@ -1,161 +1,119 @@
 package br.ufpr.lab_mobile.controller
 
-import android.content.Intent
 import android.content.Context
+import android.content.Intent
 import android.os.Bundle
-import android.view.View
 import android.view.inputmethod.InputMethodManager
 import androidx.activity.enableEdgeToEdge
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.content.getSystemService
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowInsetsCompat
+import androidx.core.view.isVisible
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.ViewModel
+import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.lifecycleScope
-import br.ufpr.lab_mobile.BuildConfig
+import androidx.lifecycle.repeatOnLifecycle
 import br.ufpr.lab_mobile.R
 import br.ufpr.lab_mobile.databinding.ActivityLoginBinding
 import br.ufpr.lab_mobile.service.LoginApiService
 import br.ufpr.lab_mobile.service.LoginService
 import br.ufpr.lab_mobile.service.RetrofitProvider
-import br.ufpr.lab_mobile.model.QuoteSimulations
-import kotlinx.coroutines.CancellationException
-import kotlinx.coroutines.Dispatchers
+import br.ufpr.lab_mobile.service.SessionStore
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
 
 class LoginActivity : AppCompatActivity() {
     private lateinit var binding: ActivityLoginBinding
-    private lateinit var loginService: LoginService
+    private lateinit var model: LoginViewModel
+    private var navigating = false
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
         binding = ActivityLoginBinding.inflate(layoutInflater)
         setContentView(binding.root)
-
         ViewCompat.setOnApplyWindowInsetsListener(binding.main) { view, insets ->
-            val bars = insets.getInsets(WindowInsetsCompat.Type.systemBars())
+            val bars = insets.getInsets(WindowInsetsCompat.Type.systemBars() or WindowInsetsCompat.Type.ime())
             view.setPadding(bars.left, bars.top, bars.right, bars.bottom)
             insets
         }
-
-        loginService = LoginService(
-            RetrofitProvider.retrofit(getString(R.string.api_base_url))
-                .create(LoginApiService::class.java),
-        )
-        getSharedPreferences(SESSION_PREFERENCES, MODE_PRIVATE)
-            .getString(ACCESS_TOKEN, null)?.let {
-            openQuotes(it)
-            return
-        }
+        val service = LoginService(RetrofitProvider.retrofit(getString(R.string.api_base_url)).create(LoginApiService::class.java))
+        model = ViewModelProvider(this, object : ViewModelProvider.Factory {
+            override fun <T : ViewModel> create(modelClass: Class<T>): T {
+                @Suppress("UNCHECKED_CAST")
+                return LoginViewModel(service, SessionStore.get(this@LoginActivity), savedInstanceState?.getLong("cooldown_until") ?: 0) as T
+            }
+        })[LoginViewModel::class.java]
         binding.loginButton.setOnClickListener { submit() }
-        binding.forgotPassword.setOnClickListener {
-            showMessage(getString(R.string.password_recovery_unavailable))
-        }
-    }
-
-    private fun submit() {
-        clearErrors()
-        val email = binding.email.text?.toString().orEmpty().trim()
-        val password = binding.password.text?.toString().orEmpty()
-        val inputError = validateLogin(email, password)
-        if (inputError != null) {
-            showValidation(inputError)
-            return
-        }
-
-        getSystemService<InputMethodManager>()
-            ?.hideSoftInputFromWindow(binding.password.windowToken, 0)
-        if (isTestLogin(BuildConfig.DEBUG, email, password)) {
-            saveSessionAndOpenQuotes(TEST_TOKEN)
-            return
-        }
-
-        setLoading(true)
+        binding.restoreRetry.setOnClickListener { model.restore() }
+        binding.forgotPassword.setOnClickListener { showMessage(getString(R.string.password_recovery_unavailable)) }
         lifecycleScope.launch {
-            try {
-                val response = withContext(Dispatchers.IO) {
-                    loginService.login(email, password)
+            repeatOnLifecycle(Lifecycle.State.STARTED) {
+                model.state.collect { state ->
+                    binding.loginButton.isEnabled = !state.busy && state.cooldownUntil <= System.currentTimeMillis()
+                    binding.email.isEnabled = !state.busy
+                    binding.password.isEnabled = !state.busy
+                    binding.keepConnected.isEnabled = !state.busy
+                    binding.loginButton.setText(if (state.busy) R.string.logging_in else R.string.login_action)
+                    binding.loginProgress.isVisible = state.busy
+                    binding.restoreRetry.isVisible = state.retryRestore
+                    binding.errorCard.isVisible = state.message != null
+                    state.message?.let {
+                        showMessage(if (it == R.string.login_cooldown) getString(it, state.secondsRemaining) else getString(it))
+                    }
+                    state.token?.let { if (!navigating) openQuotes(it) }
                 }
-
-                when (val outcome = loginOutcome(response.code(), response.body()?.accessToken)) {
-                    is LoginOutcome.Success -> saveSessionAndOpenQuotes(outcome.accessToken)
-                    LoginOutcome.InvalidCredentials -> showMessage(getString(R.string.invalid_credentials))
-                    LoginOutcome.ServiceUnavailable -> showMessage(getString(R.string.login_service_unavailable))
-                    LoginOutcome.Failure -> showMessage(getString(R.string.login_loading_error))
-                }
-            } catch (error: CancellationException) {
-                throw error
-            } catch (_: Exception) {
-                showMessage(getString(R.string.login_loading_error))
-            } finally {
-                setLoading(false)
             }
         }
     }
 
-    private fun showValidation(error: LoginInputError) {
-        binding.emailLayout.error = when (error.emailError) {
-            EmailError.REQUIRED -> getString(R.string.required_email)
-            EmailError.INVALID -> getString(R.string.invalid_email)
-            null -> null
-        }
-        binding.passwordLayout.error =
-            if (error.passwordMissing) getString(R.string.required_password) else null
-        (if (error.emailError != null) binding.email else binding.password).requestFocus()
-    }
-
-    private fun clearErrors() {
+    private fun submit() {
+        if (model.state.value.busy || model.state.value.cooldownUntil > System.currentTimeMillis()) return
         binding.emailLayout.error = null
         binding.passwordLayout.error = null
-        binding.errorCard.visibility = View.GONE
+        binding.errorCard.isVisible = false
+        val email = binding.email.text?.toString().orEmpty()
+        val password = binding.password.text?.toString().orEmpty()
+        val error = validateLogin(email, password)
+        if (error != null) {
+            binding.emailLayout.error = when (error.emailError) {
+                EmailError.REQUIRED -> getString(R.string.required_email)
+                EmailError.INVALID -> getString(R.string.invalid_email)
+                null -> null
+            }
+            binding.passwordLayout.error = if (error.passwordMissing) getString(R.string.required_password) else null
+            (if (error.emailError != null) binding.email else binding.password).requestFocus()
+            return
+        }
+        getSystemService<InputMethodManager>()?.hideSoftInputFromWindow(binding.password.windowToken, 0)
+        model.submit(email, password, binding.keepConnected.isChecked)
     }
 
     private fun showMessage(message: String) {
         binding.errorMessage.text = message
-        binding.errorCard.visibility = View.VISIBLE
+        binding.errorCard.isVisible = true
     }
 
-    private fun setLoading(loading: Boolean) {
-        binding.loginButton.isEnabled = !loading
-        binding.loginButton.text = getString(if (loading) R.string.logging_in else R.string.login_action)
-        binding.loginProgress.visibility = if (loading) View.VISIBLE else View.GONE
-    }
-
-    private fun saveSessionAndOpenQuotes(accessToken: String) {
-        QuoteSimulations.clear()
-        val preferences = getSharedPreferences(SESSION_PREFERENCES, MODE_PRIVATE).edit()
-        if (binding.keepConnected.isChecked) preferences.putString(ACCESS_TOKEN, accessToken)
-        else preferences.remove(ACCESS_TOKEN)
-        preferences.apply()
-        openQuotes(accessToken)
-    }
-
-    private fun openQuotes(accessToken: String) {
-        startActivity(
-            Intent(this, QuotesActivity::class.java)
-                .putExtra(EXTRA_ACCESS_TOKEN, accessToken),
-        )
+    private fun openQuotes(token: String) {
+        navigating = true
+        startActivity(Intent(this, QuotesActivity::class.java).putExtra(EXTRA_ACCESS_TOKEN, token)
+            .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK))
         finish()
     }
 
+    override fun onSaveInstanceState(outState: Bundle) {
+        outState.putLong("cooldown_until", model.state.value.cooldownUntil)
+        super.onSaveInstanceState(outState)
+    }
+
     companion object {
-        fun clearSession(context: Context) {
-            QuoteSimulations.clear()
-            context.getSharedPreferences(SESSION_PREFERENCES, Context.MODE_PRIVATE).edit().remove(ACCESS_TOKEN).apply()
-        }
-        const val TEST_TOKEN = "local-test-token"
-        const val SESSION_PREFERENCES = "session"
-        const val ACCESS_TOKEN = "access_token"
+        fun clearSession(context: Context) = SessionStore.get(context).clear()
+        const val SESSION_PREFERENCES = SessionStore.PREFERENCES
+        const val ACCESS_TOKEN = SessionStore.ACCESS_TOKEN
         const val EXTRA_ACCESS_TOKEN = "access_token"
     }
 }
-
-private const val TEST_EMAIL = "lactec@lactec.com"
-private const val TEST_PASSWORD = "lactec"
-
-internal fun isTestLogin(debug: Boolean, email: String, password: String) =
-    debug && email == TEST_EMAIL && password == TEST_PASSWORD
 
 internal data class LoginInputError(val emailError: EmailError?, val passwordMissing: Boolean)
 internal enum class EmailError { REQUIRED, INVALID }
@@ -171,20 +129,3 @@ internal fun validateLogin(email: String, password: String): LoginInputError? {
         LoginInputError(emailError, password.isBlank())
     } else null
 }
-
-internal sealed interface LoginOutcome {
-    data class Success(val accessToken: String) : LoginOutcome
-    data object InvalidCredentials : LoginOutcome
-    data object ServiceUnavailable : LoginOutcome
-    data object Failure : LoginOutcome
-}
-
-internal fun loginOutcome(statusCode: Int, accessToken: String?): LoginOutcome =
-    when (statusCode) {
-        200 -> accessToken?.takeIf(String::isNotBlank)
-            ?.let(LoginOutcome::Success)
-            ?: LoginOutcome.Failure
-        401 -> LoginOutcome.InvalidCredentials
-        502 -> LoginOutcome.ServiceUnavailable
-        else -> LoginOutcome.Failure
-    }

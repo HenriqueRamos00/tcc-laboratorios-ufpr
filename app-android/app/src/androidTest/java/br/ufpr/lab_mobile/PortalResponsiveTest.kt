@@ -61,7 +61,7 @@ class PortalResponsiveTest {
         scenario?.close()
         retrofitField.set(null, oldRetrofit)
         baseUrlField.set(null, oldBaseUrl)
-        context.getSharedPreferences(LoginActivity.SESSION_PREFERENCES, 0).edit().clear().commit()
+        LoginActivity.clearSession(context)
     }
 
     @Test
@@ -158,12 +158,14 @@ class PortalResponsiveTest {
     }
 
     private fun launchQuotes() {
+        seedSession(context, "responsive-test-session")
         scenario = ActivityScenario.launch<QuotesActivity>(
             Intent(context, QuotesActivity::class.java).putExtra(LoginActivity.EXTRA_ACCESS_TOKEN, "responsive-test-session"),
         )
     }
 
     private fun launchResults() {
+        seedSession(context, "responsive-test-session")
         scenario = ActivityScenario.launch<ResultsActivity>(
             Intent(context, ResultsActivity::class.java).putExtra(LoginActivity.EXTRA_ACCESS_TOKEN, "responsive-test-session"),
         )

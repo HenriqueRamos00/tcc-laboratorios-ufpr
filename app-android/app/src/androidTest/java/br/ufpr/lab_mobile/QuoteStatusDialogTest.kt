@@ -190,7 +190,7 @@ class QuoteStatusDialogTest {
     @Test
     fun notFoundAndExpiredSessionHideContentAndRetry() {
         launchList()
-        listOf(404 to R.string.quote_status_not_found, 401 to R.string.session_expired).forEach { (code, message) ->
+        listOf(404 to R.string.quote_status_not_found).forEach { (code, message) ->
             detailCode.set(code)
             openStatus()
             awaitUi("HTTP $code state") { dialog(it)?.findViewById<TextView>(R.id.stateMessage)?.text.toString() == context.getString(message) }
@@ -198,6 +198,15 @@ class QuoteStatusDialogTest {
             assertTrue(checkUi { dialog(it)!!.findViewById<View>(R.id.retryButton).visibility == View.GONE })
             closeStatus()
         }
+    }
+
+    @Test
+    fun unauthorizedReturnsToLoginAndClearsTheSession() {
+        launchList()
+        detailCode.set(401)
+        openStatus()
+        awaitLogin()
+        org.junit.Assert.assertNull(br.ufpr.lab_mobile.service.SessionStore.get(context).current)
     }
 
     @Test
@@ -342,6 +351,7 @@ class QuoteStatusDialogTest {
     }
 
     private fun launchList() {
+        seedSession(context, "device-test-token")
         scenario = ActivityScenario.launch(Intent(context, QuotesActivity::class.java).putExtra(LoginActivity.EXTRA_ACCESS_TOKEN, "device-test-token"))
         scenario!!.onActivity { it.window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON) }
         awaitList()

@@ -70,6 +70,8 @@ class EquipmentServiceTest {
     fun `network failure and cancellation are preserved`() = runBlocking {
         listOf(IOException("Offline"), CancellationException("Cancelled")).forEach { failure ->
             val api = object : EquipmentApiService {
+                override suspend fun getDetail(authorization: String, id: String): Response<br.ufpr.lab_mobile.model.EquipmentDetail> = throw failure
+                override suspend fun getReports(authorization: String, id: String): Response<List<br.ufpr.lab_mobile.model.EquipmentReport>> = throw failure
                 override suspend fun getEquipment(authorization: String): Response<List<Equipment>> = throw failure
             }
             try {

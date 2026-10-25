@@ -1,7 +1,6 @@
 package br.ufpr.lab_mobile.controller
 
 import android.app.Dialog
-import android.content.Context
 import android.content.DialogInterface
 import android.content.res.ColorStateList
 import android.graphics.Typeface
@@ -77,13 +76,7 @@ class QuoteStatusDialogFragment : DialogFragment() {
             showError(R.string.quote_status_invalid_id, retryable = false)
             return
         }
-        val token = requireActivity().intent.getStringExtra(LoginActivity.EXTRA_ACCESS_TOKEN)
-            ?: requireContext().getSharedPreferences(LoginActivity.SESSION_PREFERENCES, Context.MODE_PRIVATE)
-                .getString(LoginActivity.ACCESS_TOKEN, null)
-        if (token.isNullOrBlank()) {
-            showError(R.string.session_expired, retryable = false)
-            return
-        }
+        val token = requireActivity().requireSessionToken() ?: return
         views.loading.isVisible = true
         val service = QuoteService(
             RetrofitProvider.retrofit(getString(R.string.api_base_url))
@@ -102,7 +95,7 @@ class QuoteStatusDialogFragment : DialogFragment() {
                 throw error
             } catch (error: HttpException) {
                 when (error.code()) {
-                    401 -> { LoginActivity.clearSession(requireContext()); showError(R.string.session_expired, retryable = false) }
+                    401 -> requireActivity().returnToLogin(clear = true)
                     404 -> showError(R.string.quote_status_not_found, retryable = false)
                     else -> showError(R.string.quote_status_loading_error, retryable = true)
                 }
@@ -199,8 +192,7 @@ class QuoteStatusDialogFragment : DialogFragment() {
         val views = binding ?: return
         val quote = currentQuote ?: return
         val result = QuoteSimulations.get(arguments?.getString(ARG_QUOTE_ID))
-        val token = requireActivity().intent.getStringExtra(LoginActivity.EXTRA_ACCESS_TOKEN)
-            ?: requireContext().getSharedPreferences(LoginActivity.SESSION_PREFERENCES, Context.MODE_PRIVATE).getString(LoginActivity.ACCESS_TOKEN, null)
+        val token = requireActivity().requireSessionToken() ?: return
         val eligible = QuoteSimulations.isSessionActive(token) && QuoteStatusRules.canDecide(quote.stage, quote.status) && result == null
         views.acceptQuote.isVisible = eligible
         views.rejectQuote.isVisible = eligible

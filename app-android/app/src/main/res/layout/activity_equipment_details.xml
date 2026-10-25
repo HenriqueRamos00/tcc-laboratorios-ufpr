@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:id="@+id/equipmentDetailsRoot" android:layout_width="match_parent" android:layout_height="match_parent"
+    android:orientation="vertical" android:background="@color/lactec_paper">
+    <include layout="@layout/layout_portal_header" />
+    <androidx.drawerlayout.widget.DrawerLayout android:id="@+id/portalDrawer" android:layout_width="match_parent" android:layout_height="0dp" android:layout_weight="1">
+        <androidx.core.widget.NestedScrollView android:id="@+id/detailsScroll" android:layout_width="match_parent" android:layout_height="match_parent" android:fillViewport="true" android:saveEnabled="false">
+            <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="vertical" android:padding="16dp">
+                <TextView android:id="@+id/quotes_greeting" android:layout_width="match_parent" android:layout_height="wrap_content" android:accessibilityHeading="true" android:fontFamily="@font/instrument_sans" android:text="@string/quotes_greeting" android:textColor="@color/lactec_ink" android:textSize="22sp" android:textStyle="bold" />
+                <com.google.android.material.button.MaterialButton android:id="@+id/backButton" style="@style/Widget.Material3.Button.TextButton" android:layout_width="wrap_content" android:layout_height="wrap_content" android:minHeight="48dp" android:text="@string/quote_back" android:textAllCaps="false" app:icon="@drawable/ic_quote_back" />
+                <TextView android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginBottom="16dp" android:accessibilityHeading="true" android:fontFamily="@font/instrument_sans" android:text="@string/equipment_details_title" android:textColor="@color/lactec_ink" android:textSize="20sp" android:textStyle="bold" />
+                <ProgressBar android:id="@+id/loading" android:layout_width="48dp" android:layout_height="48dp" android:layout_gravity="center_horizontal" android:contentDescription="@string/equipment_details_loading" />
+                <TextView android:id="@+id/stateMessage" android:layout_width="match_parent" android:layout_height="wrap_content" android:accessibilityLiveRegion="polite" android:textColor="@color/lactec_muted" android:textSize="14sp" android:visibility="gone" />
+                <com.google.android.material.button.MaterialButton android:id="@+id/retryButton" android:layout_width="match_parent" android:layout_height="wrap_content" android:minHeight="48dp" android:text="@string/quote_status_retry" android:textAllCaps="false" android:visibility="gone" />
+                <LinearLayout android:id="@+id/detailsContent" android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="vertical" android:visibility="gone">
+                    <TextView android:layout_width="match_parent" android:layout_height="wrap_content" android:accessibilityHeading="true" android:layout_marginBottom="8dp" android:text="@string/equipment_identification" android:textColor="@color/lactec_ink" android:textSize="16sp" android:textStyle="bold" />
+                    <com.google.android.material.card.MaterialCardView android:layout_width="match_parent" android:layout_height="wrap_content" app:cardBackgroundColor="@color/lactec_paper" app:cardCornerRadius="6dp" app:cardElevation="0dp" app:strokeColor="@color/lactec_line" app:strokeWidth="1dp">
+                        <LinearLayout android:id="@+id/identificationFields" android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="vertical" android:padding="4dp" />
+                    </com.google.android.material.card.MaterialCardView>
+                    <TextView android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="20dp" android:layout_marginBottom="12dp" android:accessibilityHeading="true" android:fontFamily="@font/instrument_sans" android:text="@string/equipment_history_title" android:textColor="@color/lactec_ink" android:textSize="18sp" android:textStyle="bold" />
+                    <ProgressBar android:id="@+id/historyLoading" android:layout_width="48dp" android:layout_height="48dp" android:layout_gravity="center_horizontal" android:contentDescription="@string/equipment_history_loading" />
+                    <TextView android:id="@+id/historyState" android:layout_width="match_parent" android:layout_height="wrap_content" android:accessibilityLiveRegion="polite" android:textColor="@color/lactec_muted" android:textSize="14sp" android:visibility="gone" />
+                    <com.google.android.material.button.MaterialButton android:id="@+id/historyRetry" android:layout_width="match_parent" android:layout_height="wrap_content" android:minHeight="48dp" android:text="@string/quote_status_retry" android:textAllCaps="false" android:visibility="gone" />
+                    <LinearLayout android:id="@+id/reportsList" android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="vertical" />
+                    <LinearLayout android:id="@+id/pagination" android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="vertical" android:visibility="gone">
+                        <TextView android:id="@+id/pageRange" android:layout_width="match_parent" android:layout_height="wrap_content" android:accessibilityLiveRegion="polite" android:gravity="center" android:textColor="@color/lactec_muted" android:textSize="14sp" />
+                        <com.google.android.material.button.MaterialButton android:id="@+id/previousPage" android:layout_width="match_parent" android:layout_height="wrap_content" android:minHeight="48dp" android:text="@string/equipment_history_previous" android:textAllCaps="false" />
+                        <com.google.android.material.button.MaterialButton android:id="@+id/nextPage" android:layout_width="match_parent" android:layout_height="wrap_content" android:minHeight="48dp" android:text="@string/equipment_history_next" android:textAllCaps="false" />
+                    </LinearLayout>
+                </LinearLayout>
+            </LinearLayout>
+        </androidx.core.widget.NestedScrollView>
+        <include layout="@layout/layout_portal_drawer" android:layout_width="200dp" android:layout_height="match_parent" android:layout_gravity="right" />
+    </androidx.drawerlayout.widget.DrawerLayout>
+</LinearLayout>

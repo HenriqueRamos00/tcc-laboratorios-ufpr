@@ -1,6 +1,5 @@
 package br.ufpr.lab_mobile.controller
 
-import android.content.Intent
 import android.os.Bundle
 import androidx.activity.enableEdgeToEdge
 import androidx.appcompat.app.AppCompatActivity
@@ -20,14 +19,7 @@ class ResultsActivity : AppCompatActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        val token = intent.getStringExtra(LoginActivity.EXTRA_ACCESS_TOKEN)
-            ?: getSharedPreferences(LoginActivity.SESSION_PREFERENCES, MODE_PRIVATE)
-                .getString(LoginActivity.ACCESS_TOKEN, null)
-        if (token.isNullOrBlank()) {
-            startActivity(Intent(this, LoginActivity::class.java))
-            finish()
-            return
-        }
+        val token = requireSessionToken() ?: return
         enableEdgeToEdge()
         binding = ActivityResultsBinding.inflate(layoutInflater)
         setContentView(binding.root)

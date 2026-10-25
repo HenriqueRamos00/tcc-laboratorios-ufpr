@@ -56,7 +56,7 @@ class EquipmentActivityTest {
 
     @Before
     fun installResponses() {
-        context.getSharedPreferences(LoginActivity.SESSION_PREFERENCES, 0).edit().clear().commit()
+        LoginActivity.clearSession(context)
         oldRetrofit = retrofitField.get(null)
         oldBaseUrl = baseUrlField.get(null)
         val client = OkHttpClient.Builder().addInterceptor { chain ->
@@ -75,11 +75,11 @@ class EquipmentActivityTest {
         scenario?.close()
         retrofitField.set(null, oldRetrofit)
         baseUrlField.set(null, oldBaseUrl)
-        context.getSharedPreferences(LoginActivity.SESSION_PREFERENCES, 0).edit().clear().commit()
+        LoginActivity.clearSession(context)
     }
 
     @Test
-    fun loadingContentPlaceholdersLocalSearchAndDetailsNotice() {
+    fun loadingContentPlaceholdersAndLocalSearch() {
         responseGate = CountDownLatch(1)
         launch()
         await("loading visible") { check { it.findViewById<View>(R.id.loading)?.visibility == View.VISIBLE } }
@@ -93,10 +93,6 @@ class EquipmentActivityTest {
             assertEquals("TR-A", card.findViewById<TextView>(R.id.tag).text.toString())
             assertEquals(context.getString(R.string.equipment_not_informed), card.findViewById<TextView>(R.id.equipmentType).text.toString())
             assertEquals(context.getString(R.string.equipment_not_informed), card.findViewById<TextView>(R.id.location).text.toString())
-            card.findViewById<View>(R.id.viewEquipment).performClick()
-        }
-        await("temporary details notice shown") {
-            check { it.findViewById<TextView>(com.google.android.material.R.id.snackbar_text)?.text == context.getString(R.string.equipment_details_soon) }
         }
         setSearch("  sn-17 ")
         awaitItems(1)
@@ -166,15 +162,13 @@ class EquipmentActivityTest {
     }
 
     @Test
-    fun unauthorizedClearsSessionShowsExistingMessageAndDisablesRetry() {
+    fun unauthorizedClearsSessionAndProtectedNavigation() {
         context.getSharedPreferences(LoginActivity.SESSION_PREFERENCES, 0).edit()
             .putString(LoginActivity.ACCESS_TOKEN, "equipment-session").commit()
         status = 401
         launch()
-        awaitState(R.string.session_expired)
-        awaitItems(0)
+        awaitLogin()
         assertNull(context.getSharedPreferences(LoginActivity.SESSION_PREFERENCES, 0).getString(LoginActivity.ACCESS_TOKEN, null))
-        onActivity { assertEquals(View.GONE, it.findViewById<View>(R.id.retry).visibility) }
     }
 
     @Test
@@ -287,6 +281,7 @@ class EquipmentActivityTest {
     }
 
     private fun launch(token: String? = "equipment-session") {
+        seedSession(context, token)
         val intent = Intent(context, EquipmentActivity::class.java)
         token?.let { intent.putExtra(LoginActivity.EXTRA_ACCESS_TOKEN, it) }
         scenario = ActivityScenario.launch(intent)

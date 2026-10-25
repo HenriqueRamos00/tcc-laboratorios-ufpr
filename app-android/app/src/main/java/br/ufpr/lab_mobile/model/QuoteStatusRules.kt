@@ -15,7 +15,6 @@ enum class QuoteStage(val key: String, val labelRes: Int, val iconRes: Int) {
     RECEIVED("recebido", R.string.quote_stage_received, R.drawable.ic_quote_inbox),
     REGISTERED("protocolado", R.string.quote_stage_registered, R.drawable.ic_quote_assignment_turned_in),
     RUNNING("em-execucao", R.string.quote_stage_running, R.drawable.ic_quote_science),
-    INCOMPLETE("incompleto", R.string.quote_stage_incomplete, R.drawable.ic_quote_warning_amber),
     COMPLETE("completo", R.string.quote_stage_complete, R.drawable.ic_quote_done_all),
     VALIDATED("validado", R.string.quote_stage_validated, R.drawable.ic_quote_autorenew),
     FINISHED("finalizado", R.string.quote_stage_finished, R.drawable.ic_quote_task_alt),
@@ -23,10 +22,13 @@ enum class QuoteStage(val key: String, val labelRes: Int, val iconRes: Int) {
     PUBLISHED("relatorio-publicado", R.string.quote_stage_published, R.drawable.ic_quote_cloud_done),
 }
 
-enum class QuotePhase(val titleRes: Int, val first: Int, val last: Int) {
-    PROPOSAL(R.string.quote_status_phase_proposal, 0, 6),
-    TECHNICAL(R.string.quote_status_phase_technical, 6, 10),
-    LABORATORY(R.string.quote_status_phase_laboratory, 10, 14),
+enum class QuotePhase(val titleRes: Int, firstStage: QuoteStage, lastStage: QuoteStage) {
+    PROPOSAL(R.string.quote_status_phase_proposal, QuoteStage.QUALIFICATION, QuoteStage.RECEIVED),
+    TECHNICAL(R.string.quote_status_phase_technical, QuoteStage.RECEIVED, QuoteStage.COMPLETE),
+    LABORATORY(R.string.quote_status_phase_laboratory, QuoteStage.COMPLETE, QuoteStage.PUBLISHED);
+
+    val first = firstStage.ordinal
+    val last = lastStage.ordinal
 }
 
 enum class TerminalQuoteStatus(val labelRes: Int) {
@@ -71,7 +73,6 @@ object QuoteStatusRules {
         "fechado ganho" to QuoteStage.RECEIVED,
         "protocolado" to QuoteStage.REGISTERED,
         "em execução" to QuoteStage.RUNNING,
-        "incompleto" to QuoteStage.INCOMPLETE,
         "completo" to QuoteStage.COMPLETE,
         "validado" to QuoteStage.VALIDATED,
         "finalizado" to QuoteStage.FINISHED,

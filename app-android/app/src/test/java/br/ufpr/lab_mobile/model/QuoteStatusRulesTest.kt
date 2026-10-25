@@ -18,7 +18,6 @@ class QuoteStatusRulesTest {
             "Recebido" to QuoteStage.RECEIVED,
             "Protocolado" to QuoteStage.REGISTERED,
             "Em execução" to QuoteStage.RUNNING,
-            "Incompleto" to QuoteStage.INCOMPLETE,
             "Completo" to QuoteStage.COMPLETE,
             "Validado" to QuoteStage.VALIDATED,
             "Finalizado" to QuoteStage.FINISHED,
@@ -28,7 +27,7 @@ class QuoteStatusRulesTest {
         val keys = listOf(
             "qualificacao", "analise-da-area", "elaborando-proposta", "negociacao",
             "aprovado-pelo-cliente", "aguardando-amostra", "recebido", "protocolado",
-            "em-execucao", "incompleto", "completo", "validado", "finalizado",
+            "em-execucao", "completo", "validado", "finalizado",
             "elaborando-relatorio", "relatorio-publicado",
         )
 
@@ -55,7 +54,7 @@ class QuoteStatusRulesTest {
     }
 
     @Test
-    fun terminalStageOrStatusOverridesProgressAndIncompleteIsNotTerminal() {
+    fun terminalStageOrStatusOverridesProgressAndLegacyIncompleteIsUnknown() {
         assertEquals(
             ResolvedQuoteStatus.Terminal(TerminalQuoteStatus.CANCELLED),
             QuoteStatusRules.resolve("Finalizado", "Cancelado"),
@@ -68,7 +67,7 @@ class QuoteStatusRulesTest {
             ResolvedQuoteStatus.Terminal(TerminalQuoteStatus.REFUSED),
             QuoteStatusRules.resolve("Recusado", "Incompleto"),
         )
-        assertEquals(QuoteStage.INCOMPLETE, progress("Incompleto"))
+        assertEquals(ResolvedQuoteStatus.Unknown("Incompleto"), QuoteStatusRules.resolve("Incompleto", "Finished"))
         assertEquals(QuoteStage.COMPLETE, progress("Completo"))
     }
 
@@ -108,7 +107,7 @@ class QuoteStatusRulesTest {
         assertEquals(QuotePhase.PROPOSAL, QuoteStatusRules.phase(QuoteStage.QUALIFICATION))
         assertEquals(QuotePhase.PROPOSAL, QuoteStatusRules.phase(QuoteStage.NEGOTIATION))
         assertEquals(QuotePhase.TECHNICAL, QuoteStatusRules.phase(QuoteStage.RECEIVED))
-        assertEquals(QuotePhase.TECHNICAL, QuoteStatusRules.phase(QuoteStage.INCOMPLETE))
+        assertEquals(QuotePhase.TECHNICAL, QuoteStatusRules.phase(QuoteStage.RUNNING))
         assertEquals(QuotePhase.LABORATORY, QuoteStatusRules.phase(QuoteStage.COMPLETE))
         assertEquals(QuotePhase.LABORATORY, QuoteStatusRules.phase(QuoteStage.PUBLISHED))
     }
@@ -151,8 +150,7 @@ class QuoteStatusRulesTest {
         assertWindow(QuoteStage.AWAITING_SAMPLE, QuoteStage.APPROVED, QuoteStage.AWAITING_SAMPLE, QuoteStage.RECEIVED)
 
         assertWindow(QuoteStage.RECEIVED, null, QuoteStage.RECEIVED, QuoteStage.REGISTERED)
-        assertWindow(QuoteStage.RUNNING, QuoteStage.REGISTERED, QuoteStage.RUNNING, QuoteStage.INCOMPLETE)
-        assertWindow(QuoteStage.INCOMPLETE, QuoteStage.RUNNING, QuoteStage.INCOMPLETE, QuoteStage.COMPLETE)
+        assertWindow(QuoteStage.RUNNING, QuoteStage.REGISTERED, QuoteStage.RUNNING, QuoteStage.COMPLETE)
 
         assertWindow(QuoteStage.COMPLETE, null, QuoteStage.COMPLETE, QuoteStage.VALIDATED)
         assertWindow(QuoteStage.FINISHED, QuoteStage.VALIDATED, QuoteStage.FINISHED, QuoteStage.DRAFTING_REPORT)

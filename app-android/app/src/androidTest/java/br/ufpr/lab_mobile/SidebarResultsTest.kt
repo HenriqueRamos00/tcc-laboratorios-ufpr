@@ -61,7 +61,7 @@ class SidebarResultsTest {
         retrofitField.set(null, oldRetrofit)
         baseUrlField.set(null, oldBaseUrl)
         QuoteSimulations.clear()
-        context.getSharedPreferences(LoginActivity.SESSION_PREFERENCES, 0).edit().clear().commit()
+        LoginActivity.clearSession(context)
     }
 
     @Test
@@ -200,9 +200,9 @@ class SidebarResultsTest {
     fun logoutClearsSavedAndSimulationSessionsAndMissingSessionOpensLogin() {
         context.getSharedPreferences(LoginActivity.SESSION_PREFERENCES, 0).edit()
             .putString(LoginActivity.ACCESS_TOKEN, "test-session").commit()
+        launchResults()
         QuoteSimulations.startSession("test-session")
         assertTrue(QuoteSimulations.isSessionActive("test-session"))
-        launchResults()
         openDrawer(R.id.navReports)
         onActive { it.findViewById<View>(R.id.logoutButton).performClick() }
         await("login shown after logout") { activeActivity() is LoginActivity }
@@ -215,12 +215,14 @@ class SidebarResultsTest {
     }
 
     private fun launchResults(token: String? = "test-session") {
+        seedSession(context, token)
         val intent = Intent(context, ResultsActivity::class.java)
         token?.let { intent.putExtra(LoginActivity.EXTRA_ACCESS_TOKEN, it) }
         scenario = ActivityScenario.launch<ResultsActivity>(intent)
     }
 
     private fun launchQuotes() {
+        seedSession(context, "test-session")
         scenario?.close()
         scenario = ActivityScenario.launch<QuotesActivity>(
             Intent(context, QuotesActivity::class.java).putExtra(LoginActivity.EXTRA_ACCESS_TOKEN, "test-session"),

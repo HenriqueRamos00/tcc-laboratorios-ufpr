@@ -25,7 +25,6 @@ import br.ufpr.lab_mobile.model.filterEquipment
 import br.ufpr.lab_mobile.service.EquipmentApiService
 import br.ufpr.lab_mobile.service.EquipmentService
 import br.ufpr.lab_mobile.service.RetrofitProvider
-import com.google.android.material.snackbar.Snackbar
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
@@ -40,21 +39,15 @@ class EquipmentActivity : AppCompatActivity() {
     private var loadedEquipment: List<Equipment>? = null
     private var requestJob: Job? = null
     private var savedListPosition: Parcelable? = null
-    private val equipmentAdapter = EquipmentAdapter {
-        Snackbar.make(binding.equipmentRoot, R.string.equipment_details_soon, Snackbar.LENGTH_LONG).show()
+    private val equipmentAdapter = EquipmentAdapter { equipment ->
+        startActivity(Intent(this, EquipmentDetailsActivity::class.java)
+            .putExtra(EquipmentDetailsActivity.EXTRA_EQUIPMENT_ID, equipment.id)
+            .putExtra(LoginActivity.EXTRA_ACCESS_TOKEN, token))
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        val sessionToken = intent.getStringExtra(LoginActivity.EXTRA_ACCESS_TOKEN)
-            ?: getSharedPreferences(LoginActivity.SESSION_PREFERENCES, MODE_PRIVATE)
-                .getString(LoginActivity.ACCESS_TOKEN, null)
-        if (sessionToken.isNullOrBlank()) {
-            startActivity(Intent(this, LoginActivity::class.java))
-            finish()
-            return
-        }
-        token = sessionToken
+        token = requireSessionToken() ?: return
         enableEdgeToEdge()
         binding = ActivityEquipmentBinding.inflate(layoutInflater)
         setContentView(binding.root)
@@ -122,8 +115,8 @@ class EquipmentActivity : AppCompatActivity() {
             } catch (error: CancellationException) {
                 throw error
             } catch (error: HttpException) {
-                if (error.code() == 401) LoginActivity.clearSession(this@EquipmentActivity)
-                showState(if (error.code() == 401) R.string.session_expired else R.string.equipment_loading_error, error.code() != 401)
+                if (error.code() == 401) { returnToLogin(clear = true); return@launch }
+                showState(R.string.equipment_loading_error, retry = true)
             } catch (_: Exception) {
                 showState(R.string.equipment_loading_error, retry = true)
             }
