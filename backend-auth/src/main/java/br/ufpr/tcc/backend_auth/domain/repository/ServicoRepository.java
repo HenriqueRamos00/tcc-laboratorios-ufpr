@@ -9,6 +9,7 @@ import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.Query;
 
 public interface ServicoRepository extends JpaRepository<Servico, Long> {
+    Optional<Servico> findByCodigo(String codigo);
     boolean existsByCodigo(String codigo);
     boolean existsByCodigoAndIdNot(String codigo, Long id);
     List<Servico> findAllByOrderByNomeAscIdAsc();

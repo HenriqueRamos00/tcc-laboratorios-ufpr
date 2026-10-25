@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Mvc;
 
 using Portal.Api.LabResults;
+using Portal.Api.Configuration;
 using Portal.Application.LabResults.Exceptions;
 using Portal.Domain.LabResults.Exceptions;
 using Portal.Application.LabResults;
@@ -19,13 +20,16 @@ public sealed class HealthIndicatorsController : ControllerBase
 {
     private readonly IForConsultingLabResults _labResults;
     private readonly LabResultsOptions _labResultsOptions;
+    private readonly PortalOptions _portalOptions;
 
     public HealthIndicatorsController(
         IForConsultingLabResults labResults,
-        LabResultsOptions labResultsOptions)
+        LabResultsOptions labResultsOptions,
+        PortalOptions portalOptions)
     {
         _labResults = labResults;
         _labResultsOptions = labResultsOptions;
+        _portalOptions = portalOptions;
     }
 
     [HttpGet("{id}/health")]
@@ -60,7 +64,7 @@ public sealed class HealthIndicatorsController : ControllerBase
         if (reportId is not null && !OpaqueIdentifier.TryDecode(reportId, out selectedProtocol))
             return this.UnreadableReportIdentifier();
 
-        string? tenant = TenantResolution.Resolve(User, _labResultsOptions);
+        string? tenant = TenantResolution.Resolve(User, _labResultsOptions, _portalOptions);
 
         if (tenant is null) return this.TenantNotIdentified();
 
@@ -71,6 +75,8 @@ public sealed class HealthIndicatorsController : ControllerBase
                 cancellationToken);
 
             return indicators is null
+                || (_portalOptions is { UseDemoData: true, DataSource: PortalOptions.LactecSource }
+                    && selectedProtocol is not null && indicators.SelectedAnalysis is null)
                 ? this.EquipmentWithoutAnalysis()
                 : Ok(PositionalFlattening.Flatten(indicators, id));
         }

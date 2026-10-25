@@ -4,6 +4,48 @@ TCC Portal Web Laboratórios.
 
 O [Backend Auth](backend-auth/README.md) é um serviço Spring Boot independente, com SQL Server, login do portal sem token e operações administrativas com Bearer tokens opacos, sem JWT. O primeiro administrador é cadastrado por um link gerado nos logs e administra somente esse serviço, com permissões independentes do Portal Web. O módulo tem seu próprio Compose; o frontend de administração será feito separadamente. A API C# usa esse serviço quando `Portal__DataSource=lactec` e emite o JWT do Portal do Cliente. Veja a [configuração da integração](backend-portal-web/README.md#configuração-e-execução-em-lactec).
 
+## Demonstração com Backend Auth
+
+Na raiz, com Docker Engine e Compose v2, sem configurar `.env`:
+
+```bash
+docker compose -f compose.auth.yaml up -d --build
+```
+
+Abra http://localhost:4200. O Compose inicia SQL Server, Backend Auth
+(http://localhost:8081/swagger-ui.html), API C# (http://localhost:5125) e frontend.
+Não inicia Backend Lab nem Portal Interno; encerre outros stacks que usem essas portas.
+
+| Conta | Senha | Acesso |
+| --- | --- | --- |
+| `lactec@lactec.com` | `lactec@lactec.com` | Administrador do Backend Auth, pelo Swagger/API |
+| `client1@lactec.com` | `client1@lactec.com` | EMPRESA DE ENERGIA: nove orçamentos, quatro equipamentos, nove laudos |
+| `client2@lactec.com` | `client2@lactec.com` | DISTRIBUIDORA DE ENERGIA: nove orçamentos, dois equipamentos, dois laudos |
+
+O seed cria o serviço `portal-web` e seu token de integração automaticamente. O portal
+autentica no Auth, emite JWT e filtra orçamentos, PDFs e ensaios pelo CNPJ da conta.
+As medidas e séries laboratoriais existentes são preservadas. O administrador não
+tem acesso de cliente ao portal. Veja os [detalhes do demo](backend-auth/README.md#seed-de-demonstração).
+Os relatórios de orçamento já simulados no frontend também são separados: quatro
+para `client1` e cinco para `client2`, conforme seus orçamentos autorizados.
+
+As senhas e chaves padrão são públicas e exclusivas deste ambiente local. O `.env`
+da raiz permite substituir `SQLSERVER_SA_PASSWORD`, `BACKEND_AUTH_SERVICE_TOKEN`
+e `PORTAL_JWT_SIGNING_KEY`; nenhum desses valores é enviado ao frontend.
+O SQL Server fica somente na rede interna e usa o volume separado
+`tcc-auth-demo_auth-sqlserver-data`. Reiniciar preserva senhas, estado e vínculos
+editados; o seed apenas cria registros ausentes e renova seu token se estiver expirado.
+
+```bash
+docker compose -f compose.auth.yaml down     # preserva o banco
+docker compose -f compose.auth.yaml down -v  # apaga o banco demo e os volumes do frontend
+docker compose -f compose.auth.yaml up -d --build
+```
+
+Ao mudar a senha SQL depois do primeiro início, mantenha a senha já usada pelo volume
+ou descarte somente os dados demo com o comando acima. O seed fica desativado por
+padrão fora deste Compose. O arquivo é independente; não deve ser combinado com `compose.yaml`.
+
 ## Docker Compose na raiz
 
 Requisitos: Docker Engine e Docker Compose v2. Os comandos abaixo são executados na raiz do repositório.
@@ -83,8 +125,8 @@ docker compose up -d --build --renew-anon-volumes frontend frontend-interno
 
 O ADMIN mantém empresas e clientes em `/admin/empresas` e `/admin/clientes` no Portal Interno, que acessa diretamente a API Spring. O cadastro de cliente define a senha inicial e os vínculos com uma ou mais empresas ativas. O Spring armazena hashes BCrypt, aplica as regras de cadastro e preserva o histórico ao desativar registros.
 
-O Backend Lab também oferece autenticação de clientes em `POST /api/auth/login`, consulta de orçamentos em `/api/client/quotes` e download dos respectivos documentos. Com `Portal__DataSource=backend-lab`, o C# adapta o login em `POST /auth/login` e preserva o token Spring. Com `Portal__DataSource=lactec`, autentica no Backend Auth com um token de serviço restrito a `portal-web`, emite JWT próprio (15 minutos) e protege `/api/**` e `/auth/me`. As fontes são exclusivas e não há fallback. Angular guarda o JWT em localStorage, envia Bearer para o C# e restaura o perfil; o login de desenvolvimento foi removido. Em `lactec`, as consultas de orçamentos do Salesforce são filtradas pelos CNPJs das empresas no JWT, incluindo detalhe e PDF; clientes sem empresas recebem lista vazia. A integração de ensaios por empresa permanece para outra etapa.
+O Backend Lab também oferece autenticação de clientes em `POST /api/auth/login`, consulta de orçamentos em `/api/client/quotes` e download dos respectivos documentos. Com `Portal__DataSource=backend-lab`, o C# adapta o login em `POST /auth/login` e preserva o token Spring. Com `Portal__DataSource=lactec`, autentica no Backend Auth com um token de serviço restrito a `portal-web`, emite JWT próprio (15 minutos) e protege `/api/**` e `/auth/me`. As fontes são exclusivas e não há fallback. Angular guarda o JWT em localStorage, envia Bearer para o C# e restaura o perfil. Em `lactec`, os orçamentos são filtrados pelos CNPJs das empresas no JWT, incluindo detalhe e PDF; clientes sem empresas recebem lista vazia. `Portal__UseDemoData=true` seleciona os orçamentos fictícios e resolve a empresa dos ensaios embutidos pelo CNPJ; a integração real com o AutoLAB permanece para outra etapa.
 
-Para iniciar apenas o Portal do Cliente com Backend Auth, suba primeiro `backend-auth/`, configure o serviço, seus clientes e as variáveis indicadas no [README do C#](backend-portal-web/README.md#configuração-e-execução-em-lactec), e execute `docker compose -f compose.yaml -f compose.auth.yaml up -d --build frontend`. O overlay usa a rede do Backend Auth independente e não inicia Backend Lab/PostgreSQL. O Compose original da raiz permanece inalterado.
+Para testar o Portal do Cliente com Backend Auth, use `docker compose -f compose.auth.yaml up -d --build`. Para integração com o Salesforce real, siga a [configuração do C#](backend-portal-web/README.md#configuração-e-execução-em-lactec) e mantenha `Portal__UseDemoData=false`.
 
 Para carregar os dados de demonstração do Backend Lab, configure `DEMO_SEED_ENABLED=true` no `.env` local e reinicie a API. O seed SQL cria uma empresa, a conta Spring `lactec@lactec.com` (senha `lactec`), um orçamento e seu PDF estático versionado. A flag fica desativada por padrão e deve ser habilitada somente em ambiente local.

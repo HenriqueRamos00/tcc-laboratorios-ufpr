@@ -1,4 +1,6 @@
 using System.Security.Claims;
+using Portal.Adapters.Demo;
+using Portal.Api.Configuration;
 
 namespace Portal.Api.LabResults;
 
@@ -8,17 +10,25 @@ namespace Portal.Api.LabResults;
 /// divergencia que serve o laudo de um cliente para outro quando so uma das copias e
 /// corrigida.
 ///
-/// Nao ha autenticacao configurada nesta fatia. Enquanto nao houver, o inquilino vem da
-/// configuracao de desenvolvimento, e a ausencia dela nao tem queda silenciosa: quem chama
-/// recebe nulo e responde 401.
+/// Na demonstracao autenticada, o CNPJ assinado escolhe a empresa da amostra embutida.
+/// Os demais modos conservam a resolucao de inquilino existente.
 /// </summary>
 public static class TenantResolution
 {
     public const string ClaimName = "inquilino";
 
-    public static string? Resolve(ClaimsPrincipal? user, LabResultsOptions options)
+    public static string? Resolve(ClaimsPrincipal? user, LabResultsOptions options, PortalOptions portal)
     {
         ArgumentNullException.ThrowIfNull(options);
+
+        if (portal.UseDemoData && portal.DataSource == PortalOptions.LactecSource)
+        {
+            if (user?.Identity?.IsAuthenticated != true) return null;
+            string[] cnpjs = user.FindAll("companyCnpjs").Select(claim => claim.Value)
+                .Distinct(StringComparer.Ordinal).ToArray();
+            // shortcut: cada cliente demo tem uma empresa; ampliar antes de demonstrar clientes multiempresa.
+            return cnpjs.Length == 1 ? DemoCompanies.NameForCnpj(cnpjs[0]) : null;
+        }
 
         string? fromClaim = user?.FindFirst(ClaimName)?.Value;
 

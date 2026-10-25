@@ -1,21 +1,104 @@
-# Portal do Cliente usando o Backend Auth independente, sem iniciar o Backend Lab.
-# docker compose -f compose.yaml -f compose.auth.yaml up -d --build frontend
+# Demonstração local: docker compose -f compose.auth.yaml up -d --build
+name: tcc-auth-demo
+
+# Segredos públicos apenas para este ambiente local; substituíveis pelo .env da raiz.
+x-demo-service-token: &demo-service-token ${BACKEND_AUTH_SERVICE_TOKEN:-svc_abcdefghijklmnopqrstuvwxyz0123456789ABCDEFG}
+x-demo-sql-password: &demo-sql-password ${SQLSERVER_SA_PASSWORD:-LactecDemo2026!}
+
 services:
-  portal-api:
+  sqlserver:
+    image: mcr.microsoft.com/mssql/server:2022-latest
     environment:
+      ACCEPT_EULA: "Y"
+      MSSQL_PID: Developer
+      MSSQL_SA_PASSWORD: *demo-sql-password
+    volumes:
+      - auth-sqlserver-data:/var/opt/mssql
+    healthcheck:
+      test:
+        - CMD-SHELL
+        - >-
+          SQLCMDPASSWORD="$$MSSQL_SA_PASSWORD" /opt/mssql-tools18/bin/sqlcmd -S localhost -U sa -C -b
+          -Q "SELECT COUNT(*) FROM tempdb.sys.tables; IF DB_ID(N'backend_auth') IS NOT NULL EXEC(N'USE [backend_auth]; SELECT 1');"
+          -o /dev/null
+      interval: 5s
+      timeout: 5s
+      retries: 30
+      start_period: 20s
+
+  database-init:
+    image: mcr.microsoft.com/mssql/server:2022-latest
+    entrypoint: ["/opt/mssql-tools18/bin/sqlcmd"]
+    command: ["-S", "sqlserver", "-U", "sa", "-C", "-b", "-Q", "IF DB_ID(N'backend_auth') IS NULL CREATE DATABASE [backend_auth]"]
+    environment:
+      SQLCMDPASSWORD: *demo-sql-password
+    depends_on:
+      sqlserver:
+        condition: service_healthy
+
+  backend-auth:
+    build:
+      context: ./backend-auth
+    environment:
+      SERVER_PORT: 8080
+      DB_URL: "jdbc:sqlserver://sqlserver:1433;databaseName=backend_auth;encrypt=true;trustServerCertificate=true"
+      DB_USERNAME: sa
+      DB_PASSWORD: *demo-sql-password
+      JPA_DDL_AUTO: update
+      APP_BASE_URL: ${APP_BASE_URL:-http://localhost:${AUTH_PORT:-8081}}
+      AUTH_DEMO_SEED_ENABLED: "true"
+      BACKEND_AUTH_SERVICE_TOKEN: *demo-service-token
+      SERVICE_TOKEN_EXPIRATION_SECONDS: ${SERVICE_TOKEN_EXPIRATION_SECONDS:-2592000}
+    ports:
+      - "127.0.0.1:${AUTH_PORT:-8081}:8080"
+    depends_on:
+      database-init:
+        condition: service_completed_successfully
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:8080/health | grep -q '\"status\":\"UP\"'"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 20s
+
+  portal-api:
+    build:
+      context: ./backend-portal-web
+    environment:
+      ASPNETCORE_ENVIRONMENT: Development
+      ASPNETCORE_URLS: http://+:8080
       Portal__DataSource: lactec
-      BackendAuth__BaseUrl: ${BACKEND_AUTH_BASE_URL:-http://backend-auth:8080}
-      BackendAuth__ServiceToken: ${BACKEND_AUTH_SERVICE_TOKEN:?Configure BACKEND_AUTH_SERVICE_TOKEN}
-      BackendAuth__ServiceCode: ${BACKEND_AUTH_SERVICE_CODE:-portal-web}
+      Portal__UseDemoData: "true"
+      LabResults__Source: embedded-sample
+      LabResults__DevelopmentTenant: ""
+      BackendAuth__BaseUrl: http://backend-auth:8080
+      BackendAuth__ServiceToken: *demo-service-token
+      BackendAuth__ServiceCode: portal-web
       PortalJwt__Issuer: ${PORTAL_JWT_ISSUER:-portal-api}
       PortalJwt__Audience: ${PORTAL_JWT_AUDIENCE:-portal-web}
-      PortalJwt__SigningKey: ${PORTAL_JWT_SIGNING_KEY:?Configure PORTAL_JWT_SIGNING_KEY em Base64}
+      PortalJwt__SigningKey: ${PORTAL_JWT_SIGNING_KEY:-bGFjdGVjLWRlbW8tand0LWtleS0zMi1ieXRlcy1vbmx5IQ==}
       PortalJwt__ExpirationSeconds: ${PORTAL_JWT_EXPIRATION_SECONDS:-900}
-    networks:
-      - default
-      - backend-auth
+    ports:
+      - "127.0.0.1:5125:8080"
+    depends_on:
+      backend-auth:
+        condition: service_healthy
 
-networks:
-  backend-auth:
-    external: true
-    name: ${BACKEND_AUTH_NETWORK:-backend-auth_default}
+  frontend:
+    build:
+      context: ./frontend
+      target: dev
+    ports:
+      - "127.0.0.1:4200:4200"
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules
+      - /app/.angular
+    depends_on:
+      portal-api:
+        condition: service_started
+    stdin_open: true
+    tty: true
+
+volumes:
+  auth-sqlserver-data:

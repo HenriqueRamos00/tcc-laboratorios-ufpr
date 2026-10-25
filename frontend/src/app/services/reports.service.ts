@@ -1,7 +1,8 @@
-import { Injectable } from '@angular/core';
-import { delay, Observable, of } from 'rxjs';
+import { inject, Injectable } from '@angular/core';
+import { delay, map, Observable, of } from 'rxjs';
 
 import type { AnalysisConclusion, PublishedReport } from '@/app/model/report';
+import { QuotesService } from './quotes.service';
 
 const LATENCIA_SIMULADA = 300;
 
@@ -126,7 +127,7 @@ const ANALYSIS_CONCLUSIONS: readonly AnalysisConclusion[] = [
       },
     ],
   },
-  // Orçamento da massa de demonstração do portal, usada quando a API não responde.
+  // Orçamento da antiga massa local; só aparece se a API autorizar esse identificador.
   {
     quoteId: 'EAQ_2026_45490_V_3',
     quoteCode: 'EAQ_2026_45490_V_3',
@@ -160,12 +161,10 @@ const CONCLUSION_BY_QUOTE = new Map<string, AnalysisConclusion>(
   ANALYSIS_CONCLUSIONS.map((conclusion) => [conclusion.quoteId, conclusion]),
 );
 
-const EVERY_PUBLISHED_REPORT: readonly PublishedReport[] = ANALYSIS_CONCLUSIONS.flatMap(
-  (conclusion) => conclusion.reports,
-);
-
 @Injectable({ providedIn: 'root' })
 export class ReportsService {
+  private readonly quotes = inject(QuotesService);
+
   /**
    * GET /api/quotes/{id}/reports
    *
@@ -174,12 +173,16 @@ export class ReportsService {
    * dizem frases diferentes ao cliente.
    */
   analysisConclusion(quoteId: string): Observable<AnalysisConclusion | null> {
-    return of(CONCLUSION_BY_QUOTE.get(quoteId) ?? null).pipe(delay(LATENCIA_SIMULADA));
+    return this.quotes.getQuoteById(quoteId).pipe(
+      map(() => CONCLUSION_BY_QUOTE.get(quoteId) ?? null),
+    );
   }
 
   /** GET /api/reports: todos os laudos publicados do cliente, de qualquer orçamento. */
   publishedReports(): Observable<readonly PublishedReport[]> {
-    return of(EVERY_PUBLISHED_REPORT).pipe(delay(LATENCIA_SIMULADA));
+    return this.quotes.getQuotes().pipe(
+      map((quotes) => quotes.flatMap((quote) => CONCLUSION_BY_QUOTE.get(quote.id)?.reports ?? [])),
+    );
   }
 
   /**

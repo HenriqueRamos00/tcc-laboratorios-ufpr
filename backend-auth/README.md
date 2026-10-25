@@ -6,6 +6,45 @@ O administrador do Backend Auth gerencia somente este serviço. Essa permissão 
 
 Cada cliente pertence a um serviço cadastrado, por exemplo `portal-web`. Integrações usam Bearer tokens opacos daquele serviço para consultar e autenticar somente seus clientes; o login do cliente retorna somente identidade. A administração do Backend Auth usa seus próprios Bearer tokens, emitidos pelo login exclusivo de administradores, sem JWT. A integração com a API C# permanece separada.
 
+## Seed de demonstração
+
+Para testar o sistema completo, execute na raiz do repositório:
+
+```bash
+docker compose -f compose.auth.yaml up -d --build
+```
+
+Esse Compose independente inicia SQL Server, este serviço, API C# e frontend.
+Não requer `.env`, cadastro inicial nem emissão manual de token. Abra o portal em
+http://localhost:4200 e a administração via Swagger em http://localhost:8081/swagger-ui.html.
+
+| E-mail e senha | Permissão | Empresa autorizada / CNPJ |
+| --- | --- | --- |
+| `lactec@lactec.com` | Administrador somente deste serviço | — |
+| `client1@lactec.com` | `CLIENTE` de `portal-web` | EMPRESA DE ENERGIA / `04252011000110` |
+| `client2@lactec.com` | `CLIENTE` de `portal-web` | DISTRIBUIDORA DE ENERGIA / `11222333000181` |
+
+O seed usa BCrypt e cria empresas, serviço, contas e token em uma transação. As
+senhas simples são uma exceção exclusiva do seed; as APIs de cadastro mantêm a
+política normal. A existência do administrador fecha o formulário inicial.
+Reinícios criam somente registros ausentes, preservando nomes, senhas, estado e
+vínculos já editados. Colisões de e-mail com outro perfil/serviço e tokens já
+vinculados a outro serviço abortam o seed sem alterar registros. O token de serviço
+é armazenado apenas como hash; permanece válido entre reinícios e é renovado pelo
+seed quando expira, respeitando `SERVICE_TOKEN_EXPIRATION_SECONDS`.
+
+Fora do Compose demo, `AUTH_DEMO_SEED_ENABLED` é `false` por padrão. Para habilitar
+somente neste módulo, configure essa variável e `BACKEND_AUTH_SERVICE_TOKEN`
+(`svc_` seguido de 43 caracteres base64url). A execução Java lê variáveis do processo;
+o Compose isolado lê seu `.env`. O portal deve usar o mesmo token.
+
+O Compose demo publica padrões locais de senha SQL, token de serviço e chave JWT,
+substituíveis pelo `.env` da raiz. Seu banco fica no volume dedicado
+`tcc-auth-demo_auth-sqlserver-data`, separado do Compose deste módulo. Para parar,
+use `docker compose -f compose.auth.yaml down` na raiz. Para apagar exclusivamente
+o ambiente demo e recriar as contas, use `down -v` e depois `up -d --build` com o
+mesmo arquivo. Esses comandos não alteram o banco do Compose isolado deste módulo.
+
 ## Swagger UI
 
 Com a API iniciada pelo Compose, abra [http://localhost:8081/swagger-ui.html](http://localhost:8081/swagger-ui.html). A especificação OpenAPI está em `/v3/api-docs` (JSON) e `/v3/api-docs.yaml` (YAML). Na execução Java fora do Docker, a porta padrão é `8080`.
@@ -253,6 +292,8 @@ Provisione um SQL Server e configure o processo Java:
 | `ADMIN_TOKEN_EXPIRATION_SECONDS` | Validade dos tokens administrativos; padrão `3600`, valor positivo |
 | `SERVICE_TOKEN_EXPIRATION_SECONDS` | Validade padrão dos tokens de integração; padrão `2592000`, entre 1 e 31536000 |
 | `CLIENT_LOGIN_COOLDOWN_SECONDS` | Espera após cinco falhas consecutivas por cliente; padrão `900` (15 minutos), entre 1 e 86400 |
+| `AUTH_DEMO_SEED_ENABLED` | Habilita as contas públicas locais; padrão `false` |
+| `BACKEND_AUTH_SERVICE_TOKEN` | Token de integração a cadastrar quando o seed está habilitado; obrigatório nesse caso |
 
 Use um login próprio para a aplicação no banco externo e publique a API por HTTPS. A exceção `trustServerCertificate=true` está apenas no Compose local, para o certificado autoassinado. O processo Java não carrega automaticamente o `.env` do Compose. Não há fallback para `backend-lab` ou sincronização de contas entre módulos.
 

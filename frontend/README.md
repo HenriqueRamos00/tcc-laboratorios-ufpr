@@ -27,6 +27,13 @@ indicada por `Retry-After` em 429, sem repetir a chamada automaticamente.
 
 Para subir o portal com Backend Auth e sem Backend Lab, siga a
 [configuração da API C#](../backend-portal-web/README.md#configuração-e-execução-em-lactec).
+Para a demonstração completa, execute `docker compose -f compose.auth.yaml up -d --build`
+na raiz e abra http://localhost:4200. Entre com `client1@lactec.com` ou
+`client2@lactec.com`, usando o próprio e-mail como senha. Cada conta vê seus
+orçamentos e ensaios. `lactec@lactec.com` é administrador somente do Backend Auth.
+As fixtures da tela de relatórios são filtradas pelos orçamentos autorizados na API:
+client1 recebe os quatro relatórios de `quote-18`; client2 recebe cinco de
+`quote-15` e `quote-19`. Os PDFs de laudos continuam sendo os exemplos locais existentes.
 As regras de publicação HTTPS e armazenamento do JWT também estão documentadas lá.
 No modo `lactec`, os orçamentos do Salesforce são filtrados pelos CNPJs no JWT,
 inclusive o detalhe e o PDF. Sem empresas vinculadas, a lista fica vazia. O Angular

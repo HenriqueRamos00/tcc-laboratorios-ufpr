@@ -35,7 +35,7 @@ public sealed class GeneratedQuoteDocumentTests
         string text = Encoding.Latin1.GetString(document);
         Assert.StartsWith("%PDF-1.4", text);
         Assert.Contains("EAQ_2026_45496_V_1", text);
-        Assert.Contains("Distribuidora Exemplo Ltda", text);
+        Assert.Contains("DISTRIBUIDORA DE ENERGIA", text);
         Assert.Contains("R$ 11.270,00", text);
     }
 

@@ -10,6 +10,7 @@ import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.Query;
 
 public interface EmpresaRepository extends JpaRepository<Empresa, Long> {
+    Optional<Empresa> findByCnpj(String cnpj);
     boolean existsByCnpj(String cnpj);
     boolean existsByCnpjAndIdNot(String cnpj, Long id);
     List<Empresa> findAllByOrderByNomeAscIdAsc();

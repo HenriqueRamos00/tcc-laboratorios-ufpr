@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Mvc;
 
 using Portal.Api.LabResults;
+using Portal.Api.Configuration;
 using Portal.Application.LabResults.Exceptions;
 using Portal.Domain.LabResults.Exceptions;
 using Portal.Application.LabResults;
@@ -19,13 +20,16 @@ public sealed class EquipmentController : ControllerBase
 {
     private readonly IForConsultingLabResults _labResults;
     private readonly LabResultsOptions _labResultsOptions;
+    private readonly PortalOptions _portalOptions;
 
     public EquipmentController(
         IForConsultingLabResults labResults,
-        LabResultsOptions labResultsOptions)
+        LabResultsOptions labResultsOptions,
+        PortalOptions portalOptions)
     {
         _labResults = labResults;
         _labResultsOptions = labResultsOptions;
+        _portalOptions = portalOptions;
     }
 
     [HttpGet]
@@ -81,7 +85,7 @@ public sealed class EquipmentController : ControllerBase
     /// </summary>
     private async Task<IActionResult> AnswerAsync(Func<string, Task<IActionResult>> answer)
     {
-        string? tenant = TenantResolution.Resolve(User, _labResultsOptions);
+        string? tenant = TenantResolution.Resolve(User, _labResultsOptions, _portalOptions);
 
         if (tenant is null) return this.TenantNotIdentified();
 

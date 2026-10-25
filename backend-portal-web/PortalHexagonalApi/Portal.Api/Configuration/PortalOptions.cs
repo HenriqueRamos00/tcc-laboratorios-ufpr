@@ -7,4 +7,5 @@ public sealed class PortalOptions
     public const string LactecSource = "lactec";
 
     public string? DataSource { get; init; }
+    public bool UseDemoData { get; init; }
 }

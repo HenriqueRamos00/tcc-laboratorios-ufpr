@@ -93,8 +93,9 @@ Há duas fontes, selecionadas exclusivamente por `Portal__DataSource` na inicial
 requisição ou fallback entre os serviços. Valores ausentes e desconhecidos impedem
 a inicialização. As configurações da fonte inativa são ignoradas. No modo `lactec`,
 os orçamentos são consultados no Salesforce com os CNPJs autorizados no JWT.
-Equipamentos e ensaios mantêm suas implementações atuais; `LabResults:Source` e
-sua lógica de dados/tenant continuam independentes.
+Com `Portal__UseDemoData=true`, o C# usa `FakeSalesforceQuoteRepository` e resolve
+a empresa dos ensaios embutidos pelo CNPJ autenticado, conforme o demo abaixo.
+Sem essa opção, equipamentos e ensaios mantêm sua resolução de tenant existente.
 
 `POST /auth/login` é público e recebe `{ "email": "...", "password": "..." }`.
 O controller chama `ILoginUseCase` → `LoginService` → `IClientAuthenticator`.
@@ -143,7 +144,8 @@ Não há refresh token, revogação remota do JWT ou logout no servidor. Logout 
 Angular remove token, perfil e papel do armazenamento local. Uma nova autenticação
 é necessária após expiração; trocar a chave de assinatura invalida todas as sessões.
 Os CNPJs do JWT autorizam as consultas de orçamentos do Salesforce. A filtragem
-dos ensaios por empresa permanece fora desta integração.
+dos ensaios por empresa está disponível para as duas empresas do demo; a conexão
+com o AutoLAB real permanece fora desta integração.
 
 O Angular guarda o JWT em `localStorage` (`lactec.token`) e envia Bearer apenas às
 rotas protegidas da origem/caminho configurados em `API_URL`. Nome e papel vêm de
@@ -206,34 +208,61 @@ nenhum dado de demonstração substitui uma consulta recusada ou indisponível.
 O modo `backend-lab` conserva o adapter de demonstração existente no C#. A mudança
 não implementa sua integração de orçamentos nem altera o módulo Backend Lab.
 
+### Demonstração com duas contas
+
+Execute na raiz do repositório:
+
+```bash
+docker compose -f compose.auth.yaml up -d --build
+```
+
+O arquivo é independente e inicia banco, Backend Auth, API C# e frontend. Abra
+http://localhost:4200. Não requer Salesforce, Backend Lab, `.env` nem cadastro manual.
+As senhas são iguais aos e-mails:
+
+| Cliente | Empresa / CNPJ | Orçamentos | Equipamentos / laudos |
+| --- | --- | --- | --- |
+| `client1@lactec.com` | EMPRESA DE ENERGIA / `04252011000110` | `1, 3, 6, 8, 10, 12, 14, 16, 18` | 4 / 9 |
+| `client2@lactec.com` | DISTRIBUIDORA DE ENERGIA / `11222333000181` | `4, 5, 7, 9, 11, 13, 15, 17, 19` | 2 / 2 |
+
+Os IDs de orçamento usam o prefixo `quote-`. Os valores, códigos, situações e descrições
+são preservados; as empresas dos orçamentos correspondem às contas. O PDF de `quote-3`
+também usa a empresa correta. Os arquivos de medidas e séries laboratoriais permanecem
+intactos. O agrupamento é por empresa; não há um vínculo novo entre orçamento e laudo.
+Os relatórios comerciais já simulados pelo frontend mantêm os vínculos existentes
+com `quote-18` (quatro relatórios para client1) e `quote-15`/`quote-19` (cinco para
+client2). A listagem e a conclusão consultam os orçamentos autorizados na API antes
+de mostrar essas fixtures; falhas da API não liberam a lista completa.
+
+`Portal__UseDemoData` é `false` por padrão e não altera o fluxo Backend Auth → JWT.
+Quando habilitado em `lactec`, lista, detalhe e PDF dos orçamentos usam o escopo de
+CNPJs autenticado. Ensaios exigem exatamente uma das empresas demo autorizadas;
+ausência, CNPJ desconhecido ou várias empresas retornam 401, sem fallback para
+`LabResults__DevelopmentTenant`. Acesso a um orçamento, equipamento ou laudo de
+outra conta retorna 404. Requisições sem JWT continuam retornando 401.
+
+O seed cria também `lactec@lactec.com`, com a mesma senha, para administrar somente
+o Backend Auth pelo Swagger/API. O token de integração e a chave JWT ficam nos
+backends. O Compose tem padrões públicos para uso local, substituíveis por
+`BACKEND_AUTH_SERVICE_TOKEN` e `PORTAL_JWT_SIGNING_KEY` no `.env` da raiz.
+O Auth recebe o mesmo token configurado no C# e mantém apenas seu hash.
+
+Reinícios preservam os dados e não redefinem as senhas ou permissões editadas.
+`docker compose -f compose.auth.yaml down` preserva o banco; `down -v` apaga o
+ambiente demo, permitindo recriar as contas com os padrões. O volume é separado
+dos demais Composes. Este arquivo substitui o antigo overlay de rede externa e
+não deve ser combinado com `compose.yaml`.
+
 ### Configuração e execução em lactec
 
 1. Suba o serviço independente seguindo o [README do Backend Auth](../backend-auth/README.md),
    cadastre o primeiro administrador pelo link dos logs e entre no Swagger UI.
 2. Crie o serviço com código `portal-web`, gere um token de serviço e crie um
    cliente ativo vinculado a esse serviço e, opcionalmente, a empresas.
-3. Preencha o `.env` da raiz com `Portal__DataSource=lactec`,
-   `BACKEND_AUTH_SERVICE_TOKEN` (o `accessToken` começando em `svc_`) e uma chave
-   exclusiva `PORTAL_JWT_SIGNING_KEY`, gerada com `openssl rand -base64 32`.
-4. Execute da raiz, com o Backend Auth já iniciado:
-
-```bash
-docker compose -f compose.yaml -f compose.auth.yaml up -d --build frontend
-```
-
-Esse comando inicia somente o Portal do Cliente e a API C#; não inicia o Backend
-Lab nem o PostgreSQL. Pare os serviços Backend Lab/Portal Interno que tiver iniciado
-se estiver alternando o ambiente completo. O Compose original permanece disponível
-para o modo `backend-lab`.
-
-O overlay conecta `portal-api` à rede externa `backend-auth_default`, configurável
-em `BACKEND_AUTH_NETWORK`. O endereço interno padrão é `http://backend-auth:8080`,
-evita depender da porta de loopback do host e não publica o SQL Server em outra
-interface. Para usar o Compose isolado do C# a partir da raiz:
-
-```bash
-docker compose --env-file .env -f backend-portal-web/docker-compose.yml -f compose.auth.yaml up -d --build portal-api
-```
+3. Para usar o Salesforce real, mantenha `Portal__UseDemoData=false`, configure as
+   credenciais Salesforce e exporte as variáveis abaixo no processo do C#.
+4. Com o Backend Auth já iniciado, execute `dotnet run --project PortalHexagonalApi/Portal.Api`
+   em `backend-portal-web/`. O `.env` sozinho não configura `dotnet run`.
 
 Para `dotnet run` fora do Docker, exporte as variáveis do processo:
 `Portal__DataSource=lactec`, `BackendAuth__BaseUrl=http://localhost:8081`,
@@ -242,6 +271,7 @@ Para `dotnet run` fora do Docker, exporte as variáveis do processo:
 `PortalJwt__ExpirationSeconds` é opcional (900) e deve ser positivo. A chave deve
 ser Base64 de pelo menos 32 bytes aleatórios, diferente de chaves do Backend Lab.
 Não há credenciais ou segredo padrão. Configuração inválida impede o startup.
+Os padrões públicos existem somente no Compose de demonstração independente.
 O `.env` do C# é carregado pelo Compose, não pelo `dotnet run`.
 
 Em `backend-lab`, configure somente `Portal__DataSource=backend-lab` e

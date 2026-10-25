@@ -49,9 +49,13 @@ public static class PortalSourceRegistration
             case PortalOptions.LactecSource:
                 services.AddHttpContextAccessor();
                 services.AddScoped<IQuoteCompanyScope, AuthenticatedQuoteCompanyScope>();
-                services.AddHttpClient<IQuoteRepository, SalesforceQuoteRepository>(client =>
-                    client.Timeout = TimeSpan.FromSeconds(10))
-                    .ConfigurePrimaryHttpMessageHandler(() => new HttpClientHandler { AllowAutoRedirect = false });
+                if (portal.UseDemoData)
+                    services.AddScoped<IQuoteRepository>(provider =>
+                        new FakeSalesforceQuoteRepository(provider.GetRequiredService<IQuoteCompanyScope>()));
+                else
+                    services.AddHttpClient<IQuoteRepository, SalesforceQuoteRepository>(client =>
+                        client.Timeout = TimeSpan.FromSeconds(10))
+                        .ConfigurePrimaryHttpMessageHandler(() => new HttpClientHandler { AllowAutoRedirect = false });
                 services.AddOptions<BackendAuthOptions>()
                     .Bind(configuration.GetSection(BackendAuthOptions.SectionName))
                     .Validate(value => Uri.TryCreate(value.BaseUrl, UriKind.Absolute, out Uri? uri)
