@@ -3,8 +3,8 @@
 @let emailInvalid = emailCtrl.touched && emailCtrl.invalid;
 @let passwordInvalid = passwordCtrl.touched && passwordCtrl.invalid;
 
-<div class="min-h-svh grid grid-rows-[auto_1fr] md:grid-rows-none md:grid-cols-2 bg-lactec-paper">
-  <section class="bg-lactec-nav bg-login-glow text-white grid place-items-center px-6 py-10 md:p-10">
+<div class="min-h-svh grid grid-cols-1 grid-rows-[auto_1fr] md:grid-rows-none md:grid-cols-2 bg-lactec-paper">
+  <section class="min-w-0 bg-lactec-nav bg-login-glow text-white grid place-items-center px-6 py-10 md:p-10">
     <div class="text-center max-w-sm flex flex-col items-center gap-4 md:gap-6">
       <app-logo [size]="36" />
       <h2 class="display text-2xl md:text-3xl font-semibold tracking-tight leading-tight m-0">
@@ -16,12 +16,12 @@
     </div>
   </section>
 
-  <section class="grid grid-rows-[1fr_auto] gap-6 p-6 md:p-10 bg-lactec-paper">
+  <section class="min-w-0 grid grid-cols-1 grid-rows-[1fr_auto] gap-6 p-6 md:p-10 bg-lactec-paper">
     <form
       [formGroup]="form"
       (ngSubmit)="submit()"
       novalidate
-      class="self-center justify-self-center w-full max-w-sm flex flex-col gap-5"
+      class="self-center justify-self-center min-w-0 w-full max-w-sm flex flex-col gap-5"
     >
       <h3 class="display text-2xl md:text-3xl font-semibold text-lactec-nav tracking-tight m-0 mb-1">
         Acessar
@@ -47,7 +47,7 @@
         </div>
         @if (emailInvalid) {
           <p id="login-email-error" class="text-xs text-lactec-danger m-0" role="alert">
-            Informe um e-mail válido.
+            {{ emailCtrl.hasError('required') ? 'Campo obrigatório.' : 'Informe um e-mail válido.' }}
           </p>
         }
       </div>
@@ -79,12 +79,15 @@
         </div>
         @if (passwordInvalid) {
           <p id="login-password-error" class="text-xs text-lactec-danger m-0" role="alert">
-            Informe sua senha.
+            {{ passwordCtrl.hasError('required') ? 'Campo obrigatório.' : 'A senha deve ter no máximo 72 caracteres.' }}
           </p>
         }
       </div>
 
-      <div class="flex justify-between items-center gap-4">
+      <div class="flex flex-wrap justify-between items-center gap-x-4 gap-y-2">
+        <mat-checkbox formControlName="keepConnected">
+          Me mantenha conectado
+        </mat-checkbox>
         <a routerLink="." class="text-lactec-primary-dark font-medium text-sm hover:underline">
           Esqueceu a senha?
         </a>
