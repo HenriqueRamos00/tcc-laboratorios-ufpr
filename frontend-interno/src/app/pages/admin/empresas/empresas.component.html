@@ -63,12 +63,12 @@
         <caption class="sr-only">Empresas cadastradas, com CNPJ, endereço, localidade, contato, status e ações.</caption>
         <thead>
           <tr class="bg-lactec-line-soft text-left">
-            <th scope="col" class="w-[18%] px-3 py-3 font-semibold text-lactec-ink">Razão social</th>
-            <th scope="col" class="w-[12%] px-3 py-3 font-semibold text-lactec-ink">CNPJ</th>
-            <th scope="col" class="w-[17%] px-3 py-3 font-semibold text-lactec-ink">Endereço</th>
-            <th scope="col" class="w-[12%] px-3 py-3 font-semibold text-lactec-ink">Localidade</th>
-            <th scope="col" class="w-[20%] px-3 py-3 font-semibold text-lactec-ink">Contato</th>
-            <th scope="col" class="w-[10%] px-3 py-3 font-semibold text-lactec-ink">Status</th>
+            <th scope="col" class="w-[17%] px-3 py-3 font-semibold text-lactec-ink">Razão social</th>
+            <th scope="col" class="w-[17%] px-3 py-3 font-semibold text-lactec-ink">CNPJ</th>
+            <th scope="col" class="w-[14%] px-3 py-3 font-semibold text-lactec-ink">Endereço</th>
+            <th scope="col" class="w-[11%] px-3 py-3 font-semibold text-lactec-ink">Localidade</th>
+            <th scope="col" class="w-[21%] px-3 py-3 font-semibold text-lactec-ink">Contato</th>
+            <th scope="col" class="w-[9%] px-2 py-3 font-semibold text-lactec-ink">Status</th>
             <th scope="col" class="w-[11%] px-2 py-3 text-right font-semibold text-lactec-ink">Ações</th>
           </tr>
         </thead>
@@ -76,14 +76,18 @@
           @for (empresa of empresas(); track empresa.id) {
             <tr class="border-t border-lactec-line-soft hover:bg-slate-50/70">
               <td class="break-words px-3 py-3 font-medium text-lactec-ink [overflow-wrap:anywhere]">{{ empresa.legalName }}</td>
-              <td class="break-all px-3 py-3 text-lactec-ink-soft">{{ formatarCnpj(empresa.cnpj) }}</td>
+              <td class="whitespace-nowrap px-3 py-3 text-lactec-ink-soft">{{ formatarCnpj(empresa.cnpj) }}</td>
               <td class="break-words px-3 py-3 text-lactec-ink-soft [overflow-wrap:anywhere]">{{ empresa.address }}</td>
               <td class="break-words px-3 py-3 text-lactec-ink-soft [overflow-wrap:anywhere]">{{ empresa.city }}/{{ empresa.state }}</td>
-              <td class="break-words px-3 py-3 text-lactec-ink-soft [overflow-wrap:anywhere]">
-                <span class="block">{{ formatarTelefone(empresa.contactPhone) }}</span>
-                <span class="block text-xs text-lactec-muted [overflow-wrap:anywhere]">{{ empresa.contactEmail }}</span>
+              <td class="px-3 py-3 text-lactec-ink-soft">
+                <span class="block whitespace-nowrap">{{ formatarTelefone(empresa.contactPhone) }}</span>
+                <span class="block text-xs text-lactec-muted">
+                  @for (parte of separarEmail(empresa.contactEmail); track $index) {
+                    <span>{{ parte }}</span><wbr />
+                  }
+                </span>
               </td>
-              <td class="px-4 py-3">
+              <td class="px-2 py-3">
                 <span class="inline-flex min-w-16 justify-center rounded-full px-2.5 py-1 text-xs font-semibold"
                   [class.bg-emerald-100]="empresa.status === 'ACTIVE'"
                   [class.text-emerald-900]="empresa.status === 'ACTIVE'"
@@ -126,7 +130,7 @@
           <dl class="mt-3 grid min-w-0 grid-cols-1 gap-3 text-sm sm:grid-cols-2">
             <div class="min-w-0">
               <dt class="text-xs font-medium text-lactec-muted">CNPJ</dt>
-              <dd class="mt-1 mb-0 break-all text-lactec-ink-soft">{{ formatarCnpj(empresa.cnpj) }}</dd>
+              <dd class="mt-1 mb-0 whitespace-nowrap text-lactec-ink-soft">{{ formatarCnpj(empresa.cnpj) }}</dd>
             </div>
             <div class="min-w-0">
               <dt class="text-xs font-medium text-lactec-muted">Localidade</dt>
@@ -138,8 +142,12 @@
             </div>
             <div class="min-w-0 sm:col-span-2">
               <dt class="text-xs font-medium text-lactec-muted">Contato</dt>
-              <dd class="mt-1 mb-0 break-words text-lactec-ink-soft [overflow-wrap:anywhere]">{{ formatarTelefone(empresa.contactPhone) }}</dd>
-              <dd class="mt-1 mb-0 break-words text-xs text-lactec-muted [overflow-wrap:anywhere]">{{ empresa.contactEmail }}</dd>
+              <dd class="mt-1 mb-0 whitespace-nowrap text-lactec-ink-soft">{{ formatarTelefone(empresa.contactPhone) }}</dd>
+              <dd class="mt-1 mb-0 text-xs text-lactec-muted">
+                @for (parte of separarEmail(empresa.contactEmail); track $index) {
+                  <span>{{ parte }}</span><wbr />
+                }
+              </dd>
             </div>
           </dl>
           <div class="mt-2 flex justify-end">

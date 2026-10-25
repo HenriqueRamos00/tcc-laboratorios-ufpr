@@ -9,6 +9,7 @@ import org.springframework.data.jpa.repository.EntityGraph;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 
+import java.math.BigDecimal;
 import java.util.List;
 import java.util.Optional;
 
@@ -16,6 +17,11 @@ public interface OrcamentoRepository extends JpaRepository<Orcamento, Long> {
     boolean existsByCode(String code);
 
     boolean existsByCodeAndIdNot(String code, Long id);
+
+    long countByStatus(StatusComercialOrcamento status);
+
+    @Query("select sum(orcamento.totalPrice) from Orcamento orcamento")
+    BigDecimal sumTotalPrice();
 
     @EntityGraph(attributePaths = {"empresa", "items"})
     @Query("select orcamento from Orcamento orcamento where orcamento.id = :id")

@@ -119,6 +119,10 @@ html {
   letter-spacing: -0.01em;
 }
 
+.shell-main {
+  scrollbar-gutter: stable;
+}
+
 /* Mantém o conteúdo da página imóvel enquanto um painel lateral está aberto.
    O conteúdo do painel tem sua própria rolagem. */
 body.lactec-lateral-dialog-open app-root main {

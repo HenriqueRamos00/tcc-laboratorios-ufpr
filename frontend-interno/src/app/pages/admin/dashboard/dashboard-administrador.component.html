@@ -1,0 +1,89 @@
+<div class="space-y-8 [overflow-wrap:anywhere]">
+  <app-page-header
+    [title]="saudacao()"
+    subtitle="Dashboard de administrador"
+    [breadcrumbs]="trilha"
+  />
+
+  @if (estado() === 'carregando') {
+    <section aria-label="Indicadores do dashboard" aria-busy="true">
+      <p class="sr-only" role="status">Carregando indicadores do painel.</p>
+      <div class="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
+        @for (card of cards; track card.chave) {
+          <article class="min-w-0 rounded-xl border border-lactec-line bg-lactec-paper p-5" aria-hidden="true">
+            <div class="mb-5 h-4 w-2/3 animate-pulse rounded bg-lactec-line-soft"></div>
+            <div class="h-8 w-1/2 animate-pulse rounded bg-lactec-line-soft"></div>
+          </article>
+        }
+      </div>
+    </section>
+  } @else if (estado() === 'erro') {
+    <app-empty-state
+      title="Não foi possível carregar os indicadores"
+      descricao="Verifique sua conexão e tente carregar o painel novamente."
+      icon="error_outline"
+      tom="erro"
+    >
+      <button mat-stroked-button type="button" (click)="tentarNovamente()">
+        <mat-icon aria-hidden="true">refresh</mat-icon>
+        Tentar novamente
+      </button>
+    </app-empty-state>
+  } @else {
+    @if (indicadores(); as dados) {
+      <section class="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4" aria-label="Indicadores do dashboard">
+        @for (card of cards; track card.chave) {
+          <article
+            class="min-w-0 rounded-xl border border-lactec-line bg-lactec-paper p-5 shadow-sm [container-type:inline-size]"
+            [attr.aria-labelledby]="'indicador-' + card.chave"
+          >
+            <div class="mb-5 flex min-w-0 items-start justify-between gap-3">
+              <h2
+                class="m-0 min-w-0 text-sm font-medium uppercase leading-snug text-lactec-muted"
+                [id]="'indicador-' + card.chave"
+              >
+                {{ card.rotulo }}
+              </h2>
+              <mat-icon class="shrink-0 text-lactec-faint" aria-hidden="true">
+                {{ card.icone }}
+              </mat-icon>
+            </div>
+            @if (card.formato === 'moeda') {
+              <p class="m-0 min-w-0 text-[clamp(1.125rem,11.5cqi,1.5rem)] font-semibold leading-tight tabular-nums text-lactec-ink [overflow-wrap:normal]">
+                @for (parte of formatarMoeda(dados[card.chave]); track $index) {
+                  <span>{{ parte }}</span><wbr />
+                }
+              </p>
+            } @else {
+              <p class="m-0 min-w-0 text-3xl font-semibold leading-tight tabular-nums text-lactec-ink [overflow-wrap:anywhere]">
+                {{ dados[card.chave] | number: '1.0-0' }}
+              </p>
+            }
+          </article>
+        }
+      </section>
+    }
+  }
+
+  <nav class="mx-auto grid w-full max-w-3xl grid-cols-1 gap-4 sm:grid-cols-2" aria-label="Acesso rápido aos módulos">
+    @for (atalho of atalhos; track atalho.rota) {
+      <a
+        class="group flex min-h-32 min-w-0 flex-col justify-between gap-4 rounded-xl border border-lactec-line bg-lactec-paper p-5 shadow-sm transition-colors hover:border-lactec-primary hover:shadow-md focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-lactec-primary"
+        [routerLink]="atalho.rota"
+        [attr.aria-label]="'Acessar ' + atalho.rotulo"
+      >
+        <span class="flex min-w-0 items-start gap-3">
+          <mat-icon class="shrink-0 text-lactec-primary" aria-hidden="true">{{ atalho.icone }}</mat-icon>
+          <span class="min-w-0">
+            <span class="block font-semibold text-lactec-ink">{{ atalho.rotulo }}</span>
+            <span class="mt-1 block text-sm leading-snug text-lactec-muted">{{ atalho.descricao }}</span>
+          </span>
+        </span>
+        <span class="inline-flex items-center gap-1 text-sm font-medium text-lactec-primary-dark">
+          Acessar
+          <mat-icon class="icone-16" aria-hidden="true">arrow_forward</mat-icon>
+        </span>
+      </a>
+    }
+  </nav>
+</div>

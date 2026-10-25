@@ -1,3 +1,4 @@
+import { Clipboard } from '@angular/cdk/clipboard';
 import { CurrencyPipe, DatePipe, NgClass } from '@angular/common';
 import { HttpErrorResponse } from '@angular/common/http';
 import { ChangeDetectionStrategy, Component, DestroyRef, inject, signal } from '@angular/core';
@@ -96,6 +97,7 @@ export class OrcamentosComponent {
   private readonly orcamentosService = inject(OrcamentosService);
   private readonly dialog = inject(AppDialogService);
   private readonly snackBar = inject(MatSnackBar);
+  private readonly clipboard = inject(Clipboard);
   private readonly destroyRef = inject(DestroyRef);
   private readonly pedidosPagina$ = new Subject<{ pageIndex: number; pageSize: number }>();
   private readonly tentarNovamente$ = new Subject<void>();
@@ -202,6 +204,13 @@ export class OrcamentosComponent {
 
   tentarNovamente(): void {
     this.tentarNovamente$.next();
+  }
+
+  copiarCodigo(orcamento: Orcamento): void {
+    const mensagem = this.clipboard.copy(orcamento.code)
+      ? 'Número da proposta copiado.'
+      : 'Não foi possível copiar o número da proposta.';
+    this.snackBar.open(mensagem, 'Fechar', { duration: 4000 });
   }
 
   visualizar(orcamento: Orcamento): void {

@@ -39,14 +39,9 @@ export const routes: Routes = [
         path: '',
         pathMatch: 'full',
         loadComponent: () =>
-          import('@/app/pages/placeholder/placeholder.component').then(
-            (module) => module.PlaceholderComponent,
+          import('@/app/pages/admin/dashboard/dashboard-administrador.component').then(
+            (module) => module.DashboardAdministradorComponent,
           ),
-        data: placeholder(
-          'Dashboard',
-          'Resumo das atividades administrativas do laboratório.',
-          'dashboard',
-        ),
         title: 'Dashboard - Portal Interno Lactec',
       },
       {
