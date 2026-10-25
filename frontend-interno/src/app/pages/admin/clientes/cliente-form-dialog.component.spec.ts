@@ -77,7 +77,7 @@ describe('Formulário de cliente', () => {
     component.save();
 
     expect(clients.create).toHaveBeenCalledWith({
-      name: 'Ana Lima', email: 'ana@example.com', phone: '(41) 3333-4444', position: 'Compradora', status: 'ACTIVE',
+      name: 'Ana Lima', email: 'ana@example.com', phone: '4133334444', position: 'Compradora', status: 'ACTIVE',
       companyIds: ['empresa-ativa', 'empresa-ativa-2'], password: '  senha inicial  ',
     });
     expect(dialogRef.close).toHaveBeenCalled();

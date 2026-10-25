@@ -27,6 +27,21 @@ public final class ViolacaoUnicidade {
         return isViolation(error, CONSTRAINTS_CNPJ);
     }
 
+    /**
+     * Identifica quando duas requisições tentam salvar orçamentos com o mesmo código ao mesmo
+     * tempo. Se ambas passarem pela verificação prévia, o banco rejeita a segunda gravação
+     * pela restrição de unicidade, e o sistema informa que o código já está cadastrado.
+     */
+    public static boolean codigoOrcamento(Throwable error) {
+        for (Throwable cause = error; cause != null; cause = cause.getCause()) {
+            if (cause instanceof ConstraintViolationException violation
+                    && SQL_STATE_UNIQUE_VIOLATION.equals(violation.getSQLState())) {
+                return true;
+            }
+        }
+        return false;
+    }
+
     private static boolean isViolation(Throwable error, Set<String> knownConstraints) {
         for (Throwable cause = error; cause != null; cause = cause.getCause()) {
             if (cause instanceof ConstraintViolationException violation

@@ -31,6 +31,7 @@ import br.ufpr.tcc.backend_lab.domain.model.entity.Empresa;
 import br.ufpr.tcc.backend_lab.domain.model.entity.Orcamento;
 import br.ufpr.tcc.backend_lab.domain.model.entity.PerfilUsuario;
 import br.ufpr.tcc.backend_lab.domain.model.entity.Usuario;
+import br.ufpr.tcc.backend_lab.domain.model.enums.StatusComercialOrcamento;
 import br.ufpr.tcc.backend_lab.domain.repository.ClienteRepository;
 import br.ufpr.tcc.backend_lab.domain.repository.DocumentoOrcamentoRepository;
 import br.ufpr.tcc.backend_lab.domain.repository.EmpresaRepository;
@@ -393,7 +394,7 @@ class FluxoClienteTests {
         orcamento.setName(codigo);
         orcamento.setDescription("Análise de amostra");
         orcamento.setStage("Em negociação");
-        orcamento.setStatus("Em negociação");
+        orcamento.setStatus(StatusComercialOrcamento.PENDING_ACCEPTANCE);
         orcamento.setTotalPrice(BigDecimal.TEN);
         orcamento.setCreatedDate(OffsetDateTime.now());
         orcamento = orcamentos.saveAndFlush(orcamento);

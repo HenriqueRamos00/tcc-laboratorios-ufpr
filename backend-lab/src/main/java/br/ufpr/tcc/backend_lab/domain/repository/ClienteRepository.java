@@ -1,6 +1,7 @@
 package br.ufpr.tcc.backend_lab.domain.repository;
 
 import br.ufpr.tcc.backend_lab.domain.model.entity.Cliente;
+import br.ufpr.tcc.backend_lab.domain.model.entity.PerfilUsuario;
 
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
@@ -10,6 +11,8 @@ import java.util.Optional;
 
 public interface ClienteRepository extends JpaRepository<Cliente, Long> {
     Optional<Cliente> findByUsuarioId(Long id);
+
+    long countByUsuarioPerfilAndUsuarioAtivoTrue(PerfilUsuario perfil);
 
     @Query(
             """

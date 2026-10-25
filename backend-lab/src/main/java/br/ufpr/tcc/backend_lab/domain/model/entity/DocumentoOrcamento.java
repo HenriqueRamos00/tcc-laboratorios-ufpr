@@ -8,6 +8,8 @@ import jakarta.persistence.JoinColumn;
 import jakarta.persistence.MapsId;
 import jakarta.persistence.OneToOne;
 import jakarta.persistence.Table;
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
 
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -27,6 +29,7 @@ public class DocumentoOrcamento {
     private Orcamento orcamento;
 
     // TODO: migrar o conteúdo binário para o sistema de arquivos.
-    @Column(nullable = false)
+    @JdbcTypeCode(SqlTypes.VARBINARY)
+    @Column(nullable = false, columnDefinition = "bytea")
     private byte[] content;
 }

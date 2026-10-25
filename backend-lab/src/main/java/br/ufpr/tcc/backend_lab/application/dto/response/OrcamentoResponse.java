@@ -23,12 +23,16 @@ public record OrcamentoResponse(
                 orcamento.getId().toString(),
                 orcamento.getCode(),
                 orcamento.getName(),
-                orcamento.getStatus(),
+                orcamento.getStatus().codigo(),
                 orcamento.getStage(),
                 orcamento.getDescription(),
                 empresa.getLegalName(),
-                empresa.getContactName(),
-                empresa.getContactEmail(),
+                orcamento.getExternalContactName() == null
+                        ? empresa.getContactName()
+                        : orcamento.getExternalContactName(),
+                orcamento.getExternalContactEmail() == null
+                        ? empresa.getContactEmail()
+                        : orcamento.getExternalContactEmail(),
                 orcamento.getTotalPrice(),
                 orcamento.getCreatedDate());
     }

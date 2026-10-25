@@ -13,6 +13,8 @@ import { combineLatest, of, Subject } from 'rxjs';
 import { catchError, debounceTime, distinctUntilChanged, finalize, startWith, switchMap, tap } from 'rxjs/operators';
 
 import { Cliente, ClienteStatus, ClienteStatusFilter } from '@/app/model/cliente';
+import { separarEmailParaQuebra } from '@/app/model/email-presentation';
+import { formatarTelefoneBr } from '@/app/model/telefone-presentation';
 import { AppDialogService } from '@/app/services/app-dialog.service';
 import { ClientesService } from '@/app/services/clientes.service';
 import { ConfirmacaoDialogComponent, ConfirmacaoDialogData } from '@/app/shared/components/confirmacao-dialog/confirmacao-dialog.component';
@@ -44,6 +46,8 @@ export class ClientesComponent {
   readonly searchControl = new FormControl('', { nonNullable: true });
   readonly statusControl = new FormControl<ClienteStatusFilter>('ALL', { nonNullable: true });
   readonly clientes = signal<Cliente[]>([]);
+  readonly formatarTelefone = formatarTelefoneBr;
+  readonly separarEmail = separarEmailParaQuebra;
   readonly carregando = signal(true);
   readonly erro = signal(false);
   readonly erroPermissao = signal(false);

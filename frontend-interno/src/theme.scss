@@ -125,6 +125,16 @@ html {
   @include mat.icon-button-overrides((icon-color: var(--color-lactec-muted)));
 }
 
+.orcamentos-acao-compacta {
+  @include mat.icon-button-overrides(
+    (
+      state-layer-size: 32px,
+      icon-size: 20px,
+      touch-target-display: none,
+    )
+  );
+}
+
 // Botão compacto dos cards de orçamento.
 .orcamento-card-action {
   @include mat.button-overrides(
@@ -176,6 +186,12 @@ html {
 .lactec-dialog-desktop,
 .lactec-dialog-lateral {
   @include mat.dialog-overrides((container-shape: 0));
+}
+
+// O conteúdo do painel lateral tem sua própria rolagem. A superfície não deve
+// rolar quando um controle focado, como o seletor de arquivo, estiver no fim do formulário.
+.lactec-dialog-lateral .mat-mdc-dialog-surface {
+  overflow: clip;
 }
 
 .lactec-dialog-mobile {

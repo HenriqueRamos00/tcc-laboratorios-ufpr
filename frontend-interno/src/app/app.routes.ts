@@ -39,27 +39,19 @@ export const routes: Routes = [
         path: '',
         pathMatch: 'full',
         loadComponent: () =>
-          import('@/app/pages/placeholder/placeholder.component').then(
-            (module) => module.PlaceholderComponent,
+          import('@/app/pages/admin/dashboard/dashboard-administrador.component').then(
+            (module) => module.DashboardAdministradorComponent,
           ),
-        data: placeholder(
-          'Dashboard',
-          'Resumo das atividades administrativas do laboratório.',
-          'dashboard',
-        ),
         title: 'Dashboard - Portal Interno Lactec',
       },
-      ...([
-        ['orcamentos', 'Orçamentos', 'Gestão dos orçamentos do laboratório.', 'description'],
-      ] as const).map(([path, title, description, icon]) => ({
-        path,
+      {
+        path: 'orcamentos',
         loadComponent: () =>
-          import('@/app/pages/placeholder/placeholder.component').then(
-            (module) => module.PlaceholderComponent,
+          import('@/app/pages/admin/orcamentos/orcamentos.component').then(
+            (module) => module.OrcamentosComponent,
           ),
-        data: placeholder(title, description, icon),
-        title: title + ' - Portal Interno Lactec',
-      })),
+        title: 'Orçamentos - Portal Interno Lactec',
+      },
       {
         path: 'empresas',
         loadComponent: () =>
