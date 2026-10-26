@@ -1,0 +1,164 @@
+spring:
+  application:
+    name: backend-auth2
+  web:
+    resources:
+      # Este servico serve JSON e nada mais: nao existe pasta static, public nem template.
+      # O mapeamento estatico padrao do Boot publica /webjars/**, que nenhuma propriedade do
+      # springdoc governa, e por ele os arquivos do webjar swagger-ui 5.34.0, que vem no
+      # classpath pela dependencia da documentacao, continuariam alcancaveis por qualquer
+      # token de aplicacao mesmo com a documentacao gerada desligada. Desligar o mapeamento
+      # tira esse caminho sem afetar a subida descartavel que gera docs/openapi.json, porque
+      # o springdoc registra o proprio tratador de recurso.
+      add-mappings: false
+  datasource:
+    # Sem marcador declarado aqui de proposito. As variaveis SPRING_DATASOURCE_URL,
+    # SPRING_DATASOURCE_USERNAME e SPRING_DATASOURCE_PASSWORD ligam por nome, e marcador
+    # sem valor padrao quebraria todo teste de contexto antes do banco de teste entrar.
+    hikari:
+      # O pool declarado e menor que o numero de threads de atendimento de
+      # proposito: sem teto, uma rajada de login enfileira conexao ate as
+      # threads do Tomcat acabarem e a sonda de saude parar de responder.
+      # A aplicacao entra como usuario restrito, que nao e dono de objeto nenhum. Sem
+      # apontar o esquema do dono na abertura da conexao, todo comando sem prefixo
+      # responderia ORA-00942, e prefixar o nome do esquema dentro do codigo amarraria o
+      # SQL a um nome de ambiente.
+      connection-init-sql: ALTER SESSION SET CURRENT_SCHEMA = ${AUTH_SCHEMA:AUTH_OWNER}
+      maximum-pool-size: 10
+      connection-timeout: 3000
+      validation-timeout: 2000
+  jpa:
+    open-in-view: false
+    properties:
+      # O Flyway e dono do esquema e a aplicacao entra como usuario restrito, que nao
+      # possui objeto nenhum. Sem o esquema declarado o Hibernate procuraria as tabelas no
+      # esquema do usuario da conexao e o validate reprovaria por tabela ausente.
+      hibernate.default_schema: ${AUTH_SCHEMA:AUTH_OWNER}
+      # O validate padrao confere tabela e coluna e ignora unicidade e indice. Com NAMED
+      # ele passa a cobrar que a restricao nomeada no mapeamento exista no banco.
+      #
+      # A validacao de indice fica de fora, e isto foi medido, nao suposto: com ela ligada
+      # o Hibernate 7.4.5 recusa a subida com "Index mismatch - IX_CLIENT_ACCOUNT_COMPANY"
+      # contra um indice que o catalogo do Oracle reporta exatamente como declarado,
+      # APPLICATION_ID na posicao 1 e COMPANY_ID na 2. Quem protege o indice sao os testes
+      # de dado, que provam comportamento em vez de comparar metadado.
+      hibernate.tooling.schema.unique_key_validation: NAMED
+    hibernate:
+      # Quem cria e altera tabela e o Flyway, nunca o Hibernate. Deixar o
+      # Hibernate gerar o esquema esconde a mudanca de banco dentro do
+      # deploy e impede revisar o que vai rodar em producao.
+      ddl-auto: validate
+  flyway:
+    enabled: true
+  mail:
+    # O endereco do servidor nao e declarado aqui, pelo mesmo motivo do datasource:
+    # SPRING_MAIL_HOST, SPRING_MAIL_PORT, SPRING_MAIL_USERNAME e SPRING_MAIL_PASSWORD ligam
+    # por nome. E a ausencia dele e o que mantem o adaptador SMTP fora do contexto, entao um
+    # marcador com valor padrao vazio seria pior que nada: a propriedade passaria a existir,
+    # o adaptador subiria apontando para lugar nenhum, e toda confirmacao falharia em vez de
+    # dizer que nao existe servidor configurado.
+    properties:
+      # Os tres tempos limite da biblioteca. O padrao dos tres e infinito, declarado no
+      # resumo do pacote smtp do Angus Mail, e infinito aqui significa thread de envio presa
+      # para sempre num servidor que aceita a conexao e nao responde.
+      #
+      # Cinco segundos para conectar porque o primeiro reenvio de SYN acontece em um segundo
+      # e o segundo em dois, entao cinco cobrem duas perdas de pacote sem ler perda
+      # transitoria como servidor fora do ar. Dez segundos por leitura e por escrita porque
+      # servidor de e-mail legitimamente demora na saudacao e no fim do DATA, e o que nao se
+      # pode e esperar minutos com duas threads de envio no total.
+      #
+      # O que nenhum dos tres cobre e a resolucao de nome, que acontece antes da conexao.
+      # Quem limita o estrago dela e o tamanho do pool e o disjuntor.
+      "[mail.smtp.connectiontimeout]": 5000
+      "[mail.smtp.timeout]": 10000
+      "[mail.smtp.writetimeout]": 10000
+      # O token de confirmacao viaja dentro do corpo, entao a sessao e cifrada ou nao existe.
+      # Com required ligado, servidor que nao anuncia STARTTLS derruba a conexao em vez de
+      # entregar o segredo em texto claro. Isto tambem fixa o prefixo das tres propriedades
+      # acima: trocar spring.mail.protocol para smtps renomearia todas para mail.smtps.*, e
+      # os tempos limite voltariam ao padrao infinito em silencio.
+      "[mail.smtp.starttls.enable]": true
+      "[mail.smtp.starttls.required]": true
+
+logging:
+  structured:
+    # Log em JSON e nativo do Spring Boot desde a 3.4, conferido dentro do
+    # proprio spring-boot-4.1.1.jar. Alem de ser consultavel por maquina, ele
+    # escapa quebra de linha vinda do cliente, que em log de texto corrido
+    # permitiria forjar uma linha inteira.
+    format:
+      console: ecs
+
+springdoc:
+  api-docs:
+    # A documentacao gerada lista a superficie administrativa inteira, e o botao de
+    # experimentar da interface gasta tentativa da conta que ele usar. O artefato fica
+    # versionado em docs/openapi.json, gerado com SPRINGDOC_API_DOCS_ENABLED=true numa
+    # subida descartavel, e nunca servido pela aplicacao publicada.
+    enabled: false
+  swagger-ui:
+    enabled: false
+
+server:
+  port: 8081
+  # Encerramento gradual: sem isso o processo corta requisicao em andamento a
+  # cada publicacao, e com reinicio automatico isso se repete.
+  shutdown: graceful
+  error:
+    whitelabel:
+      enabled: false
+
+management:
+  endpoints:
+    web:
+      # O contrato publico promete GET /health. Com o prefixo padrao o caminho
+      # real seria /actuator/health, a borda sondaria /health e levaria 404.
+      base-path: /
+      exposure:
+        include: health
+  endpoint:
+    health:
+      probes:
+        enabled: true
+      show-details: never
+      group:
+        # O estado do envio sai num grupo proprio, com detalhe, porque a raiz de /health e
+        # publica e mostra so o resumo. Nenhum detalhe identifica pessoa nem servidor.
+        mail:
+          include: mailDelivery
+          show-details: always
+      status:
+        # Configurar um mapeamento desliga os padroes, entao o 503 de DOWN e redeclarado
+        # junto. OUT_OF_SERVICE vai para 200 de proposito: so o envio de e-mail o produz, e
+        # borda que tirasse o servico de rotacao por isso derrubaria o login inteiro por
+        # causa de um e-mail que nao saiu. O corpo continua dizendo a verdade.
+        http-mapping:
+          down: 503
+          out-of-service: 200
+  health:
+    # A sonda de e-mail do Boot e ativa: ela consulta o servidor a cada chamada, e /health e
+    # rota aberta, entao ela viraria um jeito de qualquer um bater no servidor de e-mail do
+    # Lactec de graca. Pior, ela reporta DOWN quando o servidor cai, e DOWN na raiz faz a
+    # borda tirar de rotacao o unico servico de autenticacao que existe. Quem publica o
+    # estado aqui e MailDeliveryHealthIndicator, que e passiva.
+    mail:
+      enabled: false
+
+auth:
+  notification:
+    # Pool e fila dimensionados e declarados, nunca no padrao implicito. Duas threads sao
+    # duas conexoes simultaneas ao servidor, que e o que um provedor com limite de conexao
+    # tolera sem reclamar; cinquenta e o teto de mensagens esperando, e portanto tambem o
+    # teto de tokens parados em memoria.
+    sender-threads: 2
+    queue-capacity: 50
+    # Espera na parada, abaixo do stop_grace_period do compose.
+    shutdown-wait: PT5S
+    circuit:
+      # Tres falhas em sequencia abrem o disjuntor, e um minuto depois ele deixa passar uma
+      # tentativa de prova. Tres porque falha isolada e normal numa rede e abrir na primeira
+      # descartaria mensagem boa; um minuto porque e curto o bastante para a volta do
+      # servidor ser notada e longo o bastante para nao virar nova rajada.
+      failure-threshold: 3
+      wait-before-probe: PT1M
