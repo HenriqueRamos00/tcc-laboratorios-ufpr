@@ -1,0 +1,93 @@
+name: backend-auth2
+
+services:
+  oracle:
+    image: container-registry.oracle.com/database/free:23.26.1.0
+    environment:
+      ORACLE_PWD: ${ORACLE_PASSWORD:?defina ORACLE_PASSWORD no .env}
+      ORACLE_PDB: FREEPDB1
+      AUTH_SCHEMA_OWNER_USERNAME: ${AUTH_SCHEMA_OWNER_USERNAME:?defina AUTH_SCHEMA_OWNER_USERNAME no .env}
+      AUTH_SCHEMA_OWNER_PASSWORD: ${AUTH_SCHEMA_OWNER_PASSWORD:?defina AUTH_SCHEMA_OWNER_PASSWORD no .env}
+      AUTH_APPLICATION_USERNAME: ${AUTH_DATASOURCE_USERNAME:?defina AUTH_DATASOURCE_USERNAME no .env}
+      AUTH_APPLICATION_PASSWORD: ${AUTH_DATASOURCE_PASSWORD:?defina AUTH_DATASOURCE_PASSWORD no .env}
+    # A SGA do Oracle nao cabe nos 64 MB padrao de /dev/shm.
+    shm_size: 1g
+    # Sem porta publicada no host: quem precisa do banco esta na rede interna, e
+    # o acesso de manutencao passa por `docker compose exec`.
+    expose:
+      - "1521"
+    volumes:
+      - oracle-data:/opt/oracle/oradata
+      # Cria os dois usuarios. O diretorio de inicializacao roda a cada subida, e o
+      # script e idempotente: medido, o diretorio de preparacao nao executa nesta imagem,
+      # porque ela ja traz um banco pronto e pula o caminho de criacao.
+      - ./docker/oracle/init:/opt/oracle/scripts/startup:ro
+    healthcheck:
+      test: ["CMD", "/opt/oracle/checkDBStatus.sh"]
+      interval: 15s
+      timeout: 10s
+      retries: 40
+      start_period: 180s
+
+  api:
+    build: .
+    depends_on:
+      oracle:
+        condition: service_healthy
+    environment:
+      SPRING_DATASOURCE_URL: ${AUTH_DATASOURCE_URL:?defina AUTH_DATASOURCE_URL no .env}
+      SPRING_DATASOURCE_USERNAME: ${AUTH_DATASOURCE_USERNAME:?defina AUTH_DATASOURCE_USERNAME no .env}
+      SPRING_DATASOURCE_PASSWORD: ${AUTH_DATASOURCE_PASSWORD:?defina AUTH_DATASOURCE_PASSWORD no .env}
+      # A migracao roda com o dono do esquema, nunca com o usuario da aplicacao.
+      SPRING_FLYWAY_USER: ${AUTH_SCHEMA_OWNER_USERNAME:?defina AUTH_SCHEMA_OWNER_USERNAME no .env}
+      SPRING_FLYWAY_PASSWORD: ${AUTH_SCHEMA_OWNER_PASSWORD:?defina AUTH_SCHEMA_OWNER_PASSWORD no .env}
+      AUTH_SCHEMA: ${AUTH_SCHEMA_OWNER_USERNAME:?defina AUTH_SCHEMA_OWNER_USERNAME no .env}
+      # Segredo de instalacao. Sem ele a rota de cadastro do primeiro administrador
+      # responde como inexistente, inclusive num banco vazio.
+      AUTH_SETUP_SECRET: ${AUTH_SETUP_SECRET:?defina AUTH_SETUP_SECRET no .env}
+      # Servidor de e-mail. Sem SPRING_MAIL_HOST o adaptador SMTP nao entra no contexto e
+      # nenhuma confirmacao sai, entao aqui ele e obrigatorio: este compose e a forma de
+      # producao, e subir sem envio tem de ser escolha escrita, nao esquecimento.
+      SPRING_MAIL_HOST: ${AUTH_MAIL_HOST:?defina AUTH_MAIL_HOST no .env}
+      SPRING_MAIL_PORT: ${AUTH_MAIL_PORT:?defina AUTH_MAIL_PORT no .env}
+      SPRING_MAIL_USERNAME: ${AUTH_MAIL_USERNAME:?defina AUTH_MAIL_USERNAME no .env}
+      SPRING_MAIL_PASSWORD: ${AUTH_MAIL_PASSWORD:?defina AUTH_MAIL_PASSWORD no .env}
+      AUTH_NOTIFICATION_SENDER: ${AUTH_MAIL_SENDER:?defina AUTH_MAIL_SENDER no .env}
+      # O endereco do link e da tela que recebe a pessoa, nao deste servico. O marcador
+      # {token} e obrigatorio, e a aplicacao recusa a subida sem ele.
+      AUTH_NOTIFICATION_CONFIRMATION_LINK: ${AUTH_CONFIRMATION_LINK:?defina AUTH_CONFIRMATION_LINK no .env}
+      AUTH_NOTIFICATION_RECOVERY_LINK: ${AUTH_RECOVERY_LINK:?defina AUTH_RECOVERY_LINK no .env}
+    ports:
+      - "127.0.0.1:8081:8081"
+    # O contentor sobe sem poder escrever no proprio sistema de arquivos e sem
+    # nenhuma capacidade de root. O unico lugar gravavel e o /tmp, que a JVM
+    # usa, e ele e um disco em memoria que morre junto com o contentor.
+    read_only: true
+    tmpfs:
+      - /tmp:rw,noexec,nosuid,size=64m
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    # Teto de recurso declarado. Sem ele a JVM calcula a heap pela maquina
+    # inteira e um pico de carga derruba o host junto com o servico.
+    mem_limit: 768m
+    cpus: 1.5
+    pids_limit: 256
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://127.0.0.1:8081/health/readiness"]
+      interval: 15s
+      timeout: 3s
+      start_period: 60s
+      retries: 5
+    # O log do contentor nao pode crescer sem teto no servidor do cliente.
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "5"
+    stop_grace_period: 30s
+    restart: unless-stopped
+
+volumes:
+  oracle-data:
