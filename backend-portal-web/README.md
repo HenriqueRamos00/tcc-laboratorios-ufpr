@@ -147,7 +147,12 @@ Os CNPJs do JWT autorizam as consultas de orçamentos do Salesforce. A filtragem
 dos ensaios por empresa está disponível para as duas empresas do demo; a conexão
 com o AutoLAB real permanece fora desta integração.
 
-O Angular guarda o JWT em `localStorage` (`lactec.token`) e envia Bearer apenas às
+O Angular guarda o JWT em `localStorage` quando **Me mantenha conectado** está
+marcado, ou em `sessionStorage` quando desmarcado. Nome, identidade e papel usam o
+mesmo armazenamento; logout limpa ambos. A escolha vale para as duas fontes e não
+estende a validade do JWT. O frontend valida o formato da resposta, validade e
+perfil de cliente antes de persistir uma sessão; assinatura e autorização são
+verificadas pelo backend. Angular envia Bearer apenas às
 rotas protegidas da origem/caminho configurados em `API_URL`. Nome e papel vêm de
 `user`; ao recarregar uma sessão `lactec`, `/auth/me` restaura a identidade. A
 restauração do Backend Lab usa o seu perfil/claim `role`. O login de desenvolvimento
