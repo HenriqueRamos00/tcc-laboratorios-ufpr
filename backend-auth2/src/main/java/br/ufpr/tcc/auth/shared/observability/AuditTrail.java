@@ -60,6 +60,22 @@ public class AuditTrail {
                 .log("Cadastro de cliente alterado");
     }
 
+    /**
+     * Cadastro, alteracao e exclusao de empresa.
+     *
+     * Empresa decide quem o cliente representa na aplicacao, entao ela entra na mesma lista
+     * de cadastro que a conta: a regra 4 nomeia criacao, alteracao e exclusao sem abrir
+     * excecao por tipo de registro.
+     */
+    public void companyChanged(String action, String applicationId, String companyId) {
+        LOGGER.atInfo()
+                .addKeyValue("event", "company_" + action)
+                .addKeyValue("actor", currentActor())
+                .addKeyValue("application_id", applicationId)
+                .addKeyValue("company_id", companyId)
+                .log("Cadastro de empresa alterado");
+    }
+
     /** Confirmacao de endereco e troca de senha por recuperacao. */
     public void clientCredentialChanged(String action, String accountId) {
         LOGGER.atInfo()
@@ -74,6 +90,20 @@ public class AuditTrail {
                 .addKeyValue("event", "administrative_sign_in_attempted")
                 .addKeyValue("outcome", outcome)
                 .log("Tentativa de entrada administrativa");
+    }
+
+    /**
+     * Bloqueio da entrada administrativa por excesso de tentativa.
+     *
+     * Evento proprio, e nao o de cliente: o contador guarda a entrada administrativa num
+     * espaco de chave reservado, sem aplicacao, e reusar o evento de cliente faria a trilha
+     * afirmar que uma conta da aplicacao zero foi bloqueada. Aplicacao zero nao existe.
+     */
+    public void administrativeLockedOut(long retryAfterSeconds) {
+        LOGGER.atWarn()
+                .addKeyValue("event", "administrative_locked_out")
+                .addKeyValue("retry_after_seconds", Long.toString(retryAfterSeconds))
+                .log("Entrada administrativa bloqueada por excesso de tentativa");
     }
 
     /** Cadastro e alteracao de aplicacao, que decide quem pode chamar o servico. */

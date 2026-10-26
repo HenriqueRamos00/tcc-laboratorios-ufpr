@@ -4,10 +4,15 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 
 import br.ufpr.tcc.auth.shared.database.OracleIntegrationTestBase;
+import ch.qos.logback.classic.Level;
+import ch.qos.logback.classic.LoggerContext;
+import ch.qos.logback.classic.spi.ILoggingEvent;
+import ch.qos.logback.core.read.ListAppender;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.MethodOrderer;
 import org.junit.jupiter.api.Order;
 import org.junit.jupiter.api.Test;
+import org.slf4j.LoggerFactory;
 import org.junit.jupiter.api.TestMethodOrder;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
@@ -37,6 +42,8 @@ class BootstrapAndRegistrationContractIntegrationTest extends OracleIntegrationT
     private static String administrativeToken;
     private static String applicationId;
 
+    private final ListAppender<ILoggingEvent> auditLines = new ListAppender<>();
+
     @Autowired
     private MockMvc mockMvc;
 
@@ -49,6 +56,24 @@ class BootstrapAndRegistrationContractIntegrationTest extends OracleIntegrationT
      * estabelece: outras classes semeiam administrador para os proprios casos, e depender
      * da ordem entre classes seria defeito silencioso ate o dia em que a ordem muda.
      */
+    @org.junit.jupiter.api.BeforeAll
+    void captureAuditTrail() {
+        ch.qos.logback.classic.Logger logger =
+                ((LoggerContext) LoggerFactory.getILoggerFactory())
+                        .getLogger(br.ufpr.tcc.auth.shared.observability.AuditTrail.class);
+        auditLines.start();
+        logger.addAppender(auditLines);
+        logger.setLevel(Level.INFO);
+    }
+
+    private java.util.List<String> auditedEvents() {
+        return auditLines.list.stream()
+                .flatMap(event -> event.getKeyValuePairs().stream())
+                .filter(pair -> "event".equals(pair.key))
+                .map(pair -> String.valueOf(pair.value))
+                .toList();
+    }
+
     @org.junit.jupiter.api.BeforeAll
     void clearAdministrators() {
         jdbcClient.sql("DELETE FROM ADMINISTRATIVE_SESSION").update();
@@ -82,6 +107,9 @@ class BootstrapAndRegistrationContractIntegrationTest extends OracleIntegrationT
                 .andReturn();
 
         assertThat(result.getResponse().getStatus()).isEqualTo(201);
+        assertThat(auditedEvents())
+                .as("a conta mais privilegiada do servico nao pode nascer sem linha na trilha")
+                .contains("administrator_installed");
     }
 
     // Fechar so por estado deixaria uma janela entre a subida do contentor e a

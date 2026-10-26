@@ -73,9 +73,11 @@ Restricao por regiao reduz ruido, nao risco. Rede virtual privada, proxy residen
 alugada em nuvem dentro do Brasil passam direto; base de geolocalizacao erra, e o proprio
 produto da Azure tem uma classe para endereco ainda nao mapeado; e operadora movel com
 endereco compartilhado gera recusa de usuario legitimo. Ela nunca e o controle que protege o
-login: o que protege e senha com hash forte, limite de tentativa e limite de requisicao, e os
-tres estao implementados e provados neste modulo. Se o bloqueio por regiao virar razao para
-afrouxar qualquer um dos tres, ele esta fazendo mal.
+login: o que protege e senha com hash forte, limite de tentativa e limite de requisicao. Os
+dois primeiros estao implementados e provados neste modulo; **o terceiro nao existe**, e isso
+esta declarado na secao de disponibilidade do `CLAUDE.md` como divida aberta, com a chave do
+limite ja decidida e registrada no `round-2`. Se o bloqueio por regiao virar razao para
+afrouxar qualquer um dos tres, ou para considerar o terceiro dispensavel, ele esta fazendo mal.
 
 Consequencia operacional que o Lactec precisa aceitar por escrito: funcionario em viagem fora
 do pais deixa de acessar. Ou existe lista de excecao com dono e prazo, ou o chamado vai

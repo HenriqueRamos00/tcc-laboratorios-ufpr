@@ -289,6 +289,29 @@ class RealServerErrorDispatchIntegrationTest extends OracleIntegrationTestBase {
     }
 
     /**
+     * Credencial administrativa em rota que exige escopo de aplicacao.
+     *
+     * Estas rotas leem o chamador como aplicacao para derivar o escopo. Com credencial
+     * administrativa a identidade nao e do tipo esperado, o resolvedor do framework entrega
+     * nulo, e o que sai e erro de servidor: status fora da matriz, pilha no log, e no
+     * consumidor a leitura de fonte indisponivel. A cadeia precisa recusar antes do despacho.
+     */
+    @Test
+    @DisplayName("credencial administrativa em rota de aplicacao e recusada, e nunca da 5xx")
+    void administrativeCredentialIsRefusedOnApplicationScopedRoutes() throws Exception {
+        String administrativeToken = administrativeToken();
+
+        for (HttpMethod method : List.of(HttpMethod.GET, HttpMethod.POST)) {
+            Observed observed = observe(method, "/api/companies", administrativeToken);
+            assertThat(observed.status()).as("%s /api/companies", method).isEqualTo(403);
+        }
+        for (String path : List.of("/api/auth/login", "/api/auth/recoveries", "/api/users")) {
+            Observed observed = observe(HttpMethod.POST, path, administrativeToken);
+            assertThat(observed.status()).as("POST %s", path).isEqualTo(403);
+        }
+    }
+
+    /**
      * A exclusao da configuracao automatica do usuario em memoria e o que impede a linha
      * "Using generated security password" no log de toda subida. Sem este caso, remover a
      * exclusao deixa a suite verde e devolve a credencial ao log.

@@ -38,11 +38,15 @@ Resposta **200**:
   "email": "pessoa@empresa.exemplo",
   "role": "CLIENTE",
   "serviceCode": "portal-web",
-  "authorizations": { "companyCnpjs": ["12345678000199"] }
+  "companyCnpjs": ["12345678000199"]
 }
 ```
 
-Tres coisas sobre esse corpo:
+Quatro coisas sobre esse corpo:
+
+- **`companyCnpjs` fica na raiz, e nao dentro de um envelope.** Este documento prometia um
+  campo `authorizations` que nunca existiu, e quem programasse por ele leria indefinido. O
+  corpo acima foi copiado de uma resposta de verdade da aplicacao subida.
 
 - **`id` e texto, nao numero.** Ele tem 64 bits, e numero desse tamanho perde digito em
   JavaScript. Trate como texto do comeco ao fim.
@@ -105,8 +109,9 @@ Cadastrar uma pessoa, com a credencial da sua aplicacao:
 curl -X POST https://<host>/api/users \
   -H "Authorization: Bearer $TOKEN_DA_APLICACAO" \
   -H 'Content-Type: application/json' \
-  -d '{"name":"Pessoa","email":"pessoa@empresa.exemplo","password":"SenhaForte123",
-       "role":"CLIENTE","serviceId":"<id da sua aplicacao>"}'
+  -d "{\"name\":\"Pessoa\",\"email\":\"pessoa@empresa.exemplo\",
+       \"password\":\"$SENHA_DA_PESSOA\",\"role\":\"CLIENTE\",
+       \"serviceId\":\"<id da sua aplicacao>\"}"
 ```
 
 **A conta nasce sem poder entrar.** O login so passa depois que o endereco for confirmado
@@ -198,8 +203,14 @@ tokens em uso:
 curl https://<host>/health
 ```
 
-Responde **200** com `{"status":"UP"}`. E a unica rota que nao pede credencial, e serve para
-a sonda do seu orquestrador.
+Responde **200**. Para a sua sonda use `GET /health/readiness`, que responde
+`{"status":"UP"}` e e a mesma que o contentor consulta. A raiz `GET /health` agrega tambem o
+envio de e-mail do servico, entao ela pode responder `{"status":"OUT_OF_SERVICE"}`, **sempre
+com HTTP 200**, quando o envio esta degradado. Isso nao afeta o login: tratar
+`OUT_OF_SERVICE` da raiz como servico fora do ar tiraria de rotacao um servico que esta
+atendendo.
+
+As rotas de saude sao as unicas que nao pedem credencial.
 
 ## O que o servico nunca devolve
 
@@ -208,6 +219,10 @@ indicacao de que um e-mail existe. Se voce precisa de algum desses dados para a 
 converse com quem administra o servico antes de contornar.
 
 ## Valores de exemplo
+
+**Nenhum comando deste documento traz senha escrita.** Ela entra por variavel da sua
+sessao, como `$SENHA_DA_PESSOA`, porque documento e o texto que mais se copia e cola, e
+senha de exemplo que satisfaz a politica vira senha de ambiente publicado.
 
 Todos os valores de exemplo deste documento e do Swagger sao **apenas exemplos**: nao sao
 credenciais validas e nao funcionam em nenhum ambiente. Em especial, nao use o exemplo de

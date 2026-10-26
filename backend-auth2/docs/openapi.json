@@ -839,25 +839,12 @@
                         "maxLength": 150,
                         "minLength": 0
                     },
-                    "email": {
-                        "type": "string",
-                        "format": "email",
-                        "maxLength": 254,
-                        "minLength": 0
-                    },
-                    "role": {
-                        "type": "string",
-                        "pattern": "CLIENTE"
-                    },
                     "active": {
                         "type": "boolean"
-                    },
-                    "serviceId": {
-                        "type": "string"
                     }
                 },
                 "required": [
-                    "email",
+                    "active",
                     "name"
                 ]
             },
@@ -906,6 +893,7 @@
                     }
                 },
                 "required": [
+                    "active",
                     "code",
                     "name"
                 ]

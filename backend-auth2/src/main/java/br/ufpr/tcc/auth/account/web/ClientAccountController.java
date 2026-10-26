@@ -12,6 +12,7 @@ import org.springframework.web.bind.annotation.PutMapping;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Size;
 import org.springframework.http.HttpStatus;
@@ -84,19 +85,30 @@ class ClientAccountController {
                 .orElseGet(() -> ResponseEntity.notFound().build());
     }
 
+    /**
+     * A alteracao muda nome e situacao, e declara apenas isso.
+     *
+     * Endereco, perfil e aplicacao sairam daqui porque a rota nao os honra, e campo declarado
+     * que a rota descarta e pior que campo ausente: quem manda endereco novo recebia 200 com
+     * o endereco antigo. Trocar o endereco e operacao propria, com confirmacao do novo
+     * endereco, e ela ainda nao existe; perfil tem um unico valor; e a aplicacao sai da
+     * credencial. Campo fora desta lista agora responde 400, porque a desserializacao recusa
+     * o que nao conhece.
+     *
+     * A situacao e obrigatoria pela mesma razao da aplicacao: ela decide se a conta entra,
+     * entao nao muda por omissao. Enquanto era opcional e ausente valia verdadeiro, um pedido
+     * de renomeacao reativava conta desativada em silencio.
+     */
     record UpdateClientRequest(
             @NotBlank @Size(max = 150) String name,
-            @NotBlank @Email @Size(max = 254) String email,
-            @Pattern(regexp = "CLIENTE", message = "Perfil deve ser CLIENTE") String role,
-            Boolean active,
-            String serviceId) {
+            @NotNull Boolean active) {
     }
 
     @PutMapping("/api/users/{id}")
     ResponseEntity<AccountLifecycle.AccountSummary> update(@AuthenticationPrincipal Object caller,
             @PathVariable String id, @Valid @RequestBody UpdateClientRequest request) {
         return lifecycle.update(CallerScope.applicationScopeOf(caller), id, request.name(),
-                        request.active() == null || request.active())
+                        request.active())
                 .map(ResponseEntity::ok)
                 .orElseGet(() -> ResponseEntity.notFound().build());
     }

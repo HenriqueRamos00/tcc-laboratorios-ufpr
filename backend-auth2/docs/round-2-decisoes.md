@@ -81,5 +81,6 @@ conhecido e confiavel.
   a mesma armadilha do sufixo `IT`, com outro nome. O custo e controlado pelo contentor
   unico reaproveitado pela suite inteira, com `@ServiceConnection`, e **nao** por
   `withReuse`, que a propria documentacao declara experimental.
-- **`POST /api/setup/admin` fecha por estado, nao por segredo.** Ele so responde enquanto
+- **`POST /api/setup/admin` fecha por estado, nao por segredo.** **Esta decisao foi revista depois, e o registro dela fica aqui de proposito:** fechar so por estado deixa uma janela entre a subida do contentor e a primeira chamada do operador, e quem chegar primeiro vira administrador do servico inteiro. A regra que valeu esta no `CLAUDE.md`, secao `POST /api/setup/admin`: a rota exige segredo de ambiente **e** ausencia de administrador, e faltando qualquer uma responde 404. O texto original da votacao continua abaixo porque apagar decisao revista esconde o caminho, e o caminho e parte da entrega.
+- Ele so responde enquanto
   nao existir nenhum administrador. Depois do primeiro, responde como rota inexistente.

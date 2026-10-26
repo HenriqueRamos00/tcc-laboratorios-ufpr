@@ -3,6 +3,7 @@ package br.ufpr.tcc.auth.application.web;
 import br.ufpr.tcc.auth.application.ApplicationRegistry;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Positive;
 import jakarta.validation.constraints.Size;
@@ -53,8 +54,13 @@ class ApplicationController {
     @PostMapping("/api/services")
     ResponseEntity<ApplicationRegistry.RegisteredApplicationView> register(
             @Valid @RequestBody RegisterApplicationRequest request) {
-        return ResponseEntity.status(HttpStatus.CREATED)
-                .body(registry.register(request.name(), request.code()));
+        ApplicationRegistry.Registration registration =
+                registry.register(request.name(), request.code());
+        return switch (registration.outcome()) {
+            case CREATED -> ResponseEntity.status(HttpStatus.CREATED)
+                    .body(registration.application());
+            case CODE_ALREADY_REGISTERED -> ResponseEntity.status(HttpStatus.CONFLICT).build();
+        };
     }
 
     @GetMapping("/api/services")
@@ -75,18 +81,33 @@ class ApplicationController {
             @NotBlank @Size(max = 80) @Pattern(regexp = "[a-z0-9]+(?:-[a-z0-9]+)*",
                     message = "Codigo deve ter apenas letras minusculas, digitos e hifen isolado")
             String code,
-            Boolean active) {
+            @NotNull Boolean active) {
     }
 
+    /**
+     * A situacao e obrigatoria, e isto corrige um defeito medido.
+     *
+     * Enquanto o campo era opcional e ausente valia verdadeiro, um pedido enviado para
+     * corrigir o nome de uma aplicacao desativada a devolvia ao ar: quem desativou nao pediu
+     * isso, e quem corrigiu o nome nao soube que reabriu o acesso. A situacao decide o acesso
+     * da aplicacao no mesmo instante, entao ela nao muda por omissao.
+     */
     @PutMapping("/api/services/{serviceId}")
     ResponseEntity<ApplicationRegistry.RegisteredApplicationView> update(
             @PathVariable String serviceId, @Valid @RequestBody UpdateApplicationRequest request) {
-        return identifierOf(serviceId)
-                .filter(id -> registry.update(id, request.name(), request.code(),
-                        request.active() == null || request.active()))
-                .flatMap(registry::find)
-                .map(ResponseEntity::ok)
-                .orElseGet(() -> ResponseEntity.notFound().build());
+        Optional<Long> parsed = identifierOf(serviceId);
+        if (parsed.isEmpty()) {
+            return ResponseEntity.notFound().build();
+        }
+        long applicationId = parsed.get();
+        return switch (registry.update(applicationId, request.name(), request.code(),
+                request.active())) {
+            case CHANGED -> registry.find(applicationId)
+                    .map(ResponseEntity::ok)
+                    .orElseGet(() -> ResponseEntity.notFound().build());
+            case CODE_ALREADY_REGISTERED -> ResponseEntity.status(HttpStatus.CONFLICT).build();
+            case NOT_FOUND -> ResponseEntity.notFound().build();
+        };
     }
 
     /** Excluir aplicacao e desativar: ver a justificativa no registro. */

@@ -49,6 +49,18 @@ class SecurityConfiguration {
      * o par de respostas ainda contava se a instalacao ja havia sido feita. Com o verbo
      * preso, todo verbo diferente de POST cai no 401 uniforme de caminho inexistente.
      *
+     * Tres familias de rota exigem credencial de APLICACAO, e nao credencial autenticada
+     * qualquer: o login de cliente, o pedido de recuperacao, o cadastro de cliente e as rotas
+     * de empresa. O motivo nao e hierarquia, e tipo: o tratador dessas rotas le o chamador como
+     * aplicacao para derivar o escopo, e com credencial administrativa a identidade nao e do
+     * tipo esperado. Medido na aplicacao no ar antes da correcao: o resolvedor do framework
+     * entregava nulo e as cinco rotas respondiam 500, com pilha no log, status fora da matriz, e
+     * no consumidor a leitura de fonte indisponivel. Recusar na cadeia troca isso por 403.
+     *
+     * As rotas que aceitam as duas credenciais sao as que derivam o escopo do chamador de forma
+     * explicita, pela leitura e pela alteracao de conta: aplicacao enxerga as contas dela,
+     * administrador atravessa aplicacoes.
+     *
      * A decisao sobre 405 fica escrita aqui, porque ela precisa estar escrita e nao
      * descoberta em producao. Nos caminhos fechados a cadeia recusa antes do despacho, entao
      * verbo que nao existe responde 401 sem credencial e 403 com credencial de aplicacao,
@@ -78,8 +90,12 @@ class SecurityConfiguration {
                         .requestMatchers("/api/services", "/api/services/**", "/api/admins",
                                 "/api/admins/**")
                         .hasAuthority(ServiceTokenAuthenticationFilter.ADMINISTRATOR_AUTHORITY)
-                        .requestMatchers("/api/auth/**", "/api/users", "/api/users/**",
+                        .requestMatchers(HttpMethod.POST, "/api/users")
+                        .hasAuthority(ServiceTokenAuthenticationFilter.APPLICATION_AUTHORITY)
+                        .requestMatchers("/api/auth/login", "/api/auth/recoveries",
                                 "/api/companies", "/api/companies/**")
+                        .hasAuthority(ServiceTokenAuthenticationFilter.APPLICATION_AUTHORITY)
+                        .requestMatchers("/api/auth/**", "/api/users", "/api/users/**")
                         .authenticated()
                         .anyRequest().authenticated())
                 .exceptionHandling(handling -> handling

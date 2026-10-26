@@ -1,6 +1,7 @@
 package br.ufpr.tcc.auth.company;
 
 import br.ufpr.tcc.auth.shared.identifier.IdentifierFactory;
+import br.ufpr.tcc.auth.shared.observability.AuditTrail;
 import java.time.OffsetDateTime;
 import java.util.List;
 import java.util.Optional;
@@ -25,10 +26,13 @@ public class CompanyRegistry {
 
     private final JdbcClient jdbcClient;
     private final IdentifierFactory identifiers;
+    private final AuditTrail auditTrail;
 
-    CompanyRegistry(JdbcClient jdbcClient, IdentifierFactory identifiers) {
+    CompanyRegistry(JdbcClient jdbcClient, IdentifierFactory identifiers,
+            AuditTrail auditTrail) {
         this.jdbcClient = jdbcClient;
         this.identifiers = identifiers;
+        this.auditTrail = auditTrail;
     }
 
     private static CompanyView toView(java.sql.ResultSet resultSet) throws java.sql.SQLException {
@@ -63,6 +67,7 @@ public class CompanyRegistry {
                         + " VALUES (:id, :applicationId, :name, :cnpj, :now, :now)")
                 .param("id", id).param("applicationId", applicationId).param("name", name)
                 .param("cnpj", cnpj).param("now", OffsetDateTime.now()).update();
+        auditTrail.companyChanged("registered", Long.toString(applicationId), Long.toString(id));
         return new CompanyView(Long.toString(id), name, cnpj, Long.toString(applicationId));
     }
 
@@ -75,6 +80,8 @@ public class CompanyRegistry {
                         + " WHERE ID = :id AND APPLICATION_ID = :applicationId")
                 .param("id", companyId).param("applicationId", applicationId).param("name", name)
                 .param("cnpj", cnpj).param("now", OffsetDateTime.now()).update();
+        auditTrail.companyChanged("changed", Long.toString(applicationId),
+                Long.toString(companyId));
         return find(applicationId, companyId);
     }
 
@@ -85,8 +92,13 @@ public class CompanyRegistry {
      */
     @Transactional
     public boolean delete(long applicationId, long companyId) {
-        return jdbcClient.sql("DELETE FROM COMPANY WHERE ID = :id"
+        boolean removed = jdbcClient.sql("DELETE FROM COMPANY WHERE ID = :id"
                         + " AND APPLICATION_ID = :applicationId")
                 .param("id", companyId).param("applicationId", applicationId).update() == 1;
+        if (removed) {
+            auditTrail.companyChanged("removed", Long.toString(applicationId),
+                    Long.toString(companyId));
+        }
+        return removed;
     }
 }
