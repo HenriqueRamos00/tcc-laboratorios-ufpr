@@ -1,6 +1,14 @@
 spring:
   application:
     name: backend-auth2
+  jackson:
+    deserialization:
+      # Campo que o pedido declara e a rota nao honra precisa ser recusado, e nao ignorado.
+      # A regra do modulo diz o porque: ignorar ensina ao chamador que o campo existe e e
+      # aceito, e foi exatamente o que acontecia na alteracao de conta, que validava endereco,
+      # perfil e aplicacao e gravava apenas nome e situacao. O padrao do Boot e descartar em
+      # silencio, entao isto precisa estar escrito.
+      fail-on-unknown-properties: true
   web:
     resources:
       # Este servico serve JSON e nada mais: nao existe pasta static, public nem template.
@@ -82,6 +90,24 @@ spring:
       "[mail.smtp.starttls.required]": true
 
 logging:
+  level:
+    # Os dois resolvedores de excecao do servidor de rotas ecoam a excecao inteira na linha de
+    # log, e a mensagem de uma falha de validacao carrega o **valor recusado**, campo por
+    # campo. Medido na aplicacao no ar: senha acima do teto e endereco fora do formato iam
+    # para o log em texto claro, pela rota aberta de entrada administrativa inclusive.
+    #
+    # O tratador de pedido invalido ja impede isso no nivel de aviso, registrando apenas o
+    # nome dos campos. Estes dois niveis fixados fecham o caminho que sobra: o eco em DEBUG,
+    # que e justamente o nivel que alguem liga para diagnosticar. Nivel de logger vence nivel
+    # de raiz, entao ligar DEBUG na aplicacao nao reabre o vazamento.
+    org.springframework.web.servlet.mvc.method.annotation.ExceptionHandlerExceptionResolver: info
+    org.springframework.web.servlet.mvc.support.DefaultHandlerExceptionResolver: info
+    # O processador de corpo registra, em DEBUG, o objeto desserializado pelo toString dele.
+    # Os pedidos que carregam segredo sobrescrevem toString e omitem a senha, entao o segredo
+    # nao sai por aqui; o que saia era o endereco de e-mail, que e dado pessoal e, pela regra
+    # de log, so aparece onde a auditoria precisa dele. Fixar o nivel desliga o eco do corpo
+    # sem desligar o resto do diagnostico da camada web.
+    org.springframework.web.servlet.mvc.method.annotation.RequestResponseBodyMethodProcessor: info
   structured:
     # Log em JSON e nativo do Spring Boot desde a 3.4, conferido dentro do
     # proprio spring-boot-4.1.1.jar. Alem de ser consultavel por maquina, ele

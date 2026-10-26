@@ -141,9 +141,10 @@ public class AccountLifecycle {
      * Devolve sempre a mesma coisa, exista ou nao o endereco, e por isso nao devolve nada.
      * Endereco que nao existe simplesmente nao gera link, e nenhuma mensagem sai.
      *
-     * Observacao que precisa acompanhar a troca por um servidor de e-mail de verdade: o
-     * envio tera de sair do caminho da resposta, senao o tempo a mais do endereco
-     * cadastrado entrega o cadastro mesmo com a resposta identica.
+     * O envio ja sai do caminho da resposta, e por este motivo: o tempo a mais do endereco
+     * cadastrado entregaria o cadastro mesmo com a resposta identica. A porta de envio apenas
+     * anota a intencao dentro desta transacao, e quem fala com o servidor roda depois do
+     * commit, noutra thread.
      */
     @Transactional
     public void requestPasswordRecovery(ApplicationCaller caller, String email) {

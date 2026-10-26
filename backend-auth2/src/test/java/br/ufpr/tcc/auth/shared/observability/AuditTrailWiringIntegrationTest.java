@@ -230,9 +230,7 @@ class AuditTrailWiringIntegrationTest extends OracleIntegrationTestBase {
                         .header(HttpHeaders.AUTHORIZATION, "Bearer " + applicationToken)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
-                                {"name":"Pessoa renomeada","email":"%s","role":"CLIENTE",
-                                 "active":true,"serviceId":"%s"}"""
-                                .formatted(clientEmail, applicationId)))
+                                {"name":"Pessoa renomeada","active":true}"""))
                 .andReturn();
         mockMvc.perform(post("/api/auth/confirmations")
                         .header(HttpHeaders.AUTHORIZATION, "Bearer " + applicationToken)
@@ -301,6 +299,61 @@ class AuditTrailWiringIntegrationTest extends OracleIntegrationTestBase {
 
         assertThat(recordedEvents()).contains("application_changed")
                 .contains("application_deactivated");
+    }
+
+    /**
+     * O bloqueio da entrada administrativa tem evento proprio.
+     *
+     * Reusar o evento de cliente faria a trilha afirmar que uma conta de cliente da aplicacao
+     * zero foi bloqueada, e aplicacao zero nao existe: e o espaco de chave reservado do
+     * contador. Auditoria que mente sobre quem foi bloqueado e pior que auditoria ausente,
+     * porque quem investiga acredita nela.
+     */
+    @Test
+    @DisplayName("bloquear a entrada administrativa gera evento proprio, e nao o de cliente")
+    void administrativeLockOutHasItsOwnEvent() throws Exception {
+        for (int attempt = 1; attempt <= 5; attempt++) {
+            mockMvc.perform(post("/api/admin/auth/login")
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content("""
+                                    {"email":"trava.auditoria@lactec.exemplo",
+                                     "password":"ErradaTotal999"}"""))
+                    .andReturn();
+        }
+
+        assertThat(recordedEvents()).contains("administrative_locked_out")
+                .doesNotContain("client_locked_out");
+    }
+
+    /**
+     * O cadastro de empresa muda quem o cliente representa, e a regra 4 nomeia criacao,
+     * alteracao e exclusao de cadastro sem abrir excecao para empresa.
+     */
+    @Test
+    @DisplayName("cadastro, alteracao e exclusao de empresa geram evento")
+    void companyEventsAreRecorded() throws Exception {
+        MvcResult created = mockMvc.perform(post("/api/companies")
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + applicationToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"name":"Empresa da auditoria","cnpj":"44444444444444"}"""))
+                .andReturn();
+        assertThat(created.getResponse().getStatus()).isEqualTo(201);
+        String companyId = JSON.readTree(created.getResponse().getContentAsString())
+                .get("id").asString();
+
+        mockMvc.perform(put("/api/companies/" + companyId)
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + applicationToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"name":"Empresa renomeada","cnpj":"44444444444444"}"""))
+                .andReturn();
+        mockMvc.perform(delete("/api/companies/" + companyId)
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + applicationToken))
+                .andReturn();
+
+        assertThat(recordedEvents()).contains("company_registered").contains("company_changed")
+                .contains("company_removed");
     }
 
     private String accountIdentifierOf(String email) {

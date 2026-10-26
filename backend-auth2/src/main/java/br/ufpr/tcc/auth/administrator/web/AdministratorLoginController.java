@@ -6,6 +6,7 @@ import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
 import java.util.Map;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -39,13 +40,23 @@ class AdministratorLoginController {
 
     @PostMapping("/api/admin/auth/login")
     ResponseEntity<Object> login(@Valid @RequestBody AdministratorLoginRequest request) {
-        return access.signIn(request.email(), request.password())
-                .<ResponseEntity<Object>>map(session -> ResponseEntity.ok(Map.of(
-                        "accessToken", session.accessToken(),
-                        "tokenType", "Bearer",
-                        "expiresIn", session.expiresInSeconds(),
-                        "user", Map.of("id", session.id(), "name", session.name(),
-                                "email", session.email()))))
-                .orElseGet(() -> ResponseEntity.status(HttpStatus.UNAUTHORIZED).build());
+        AdministratorAccess.AdministrativeSignIn signIn =
+                access.signIn(request.email(), request.password());
+        return switch (signIn.outcome()) {
+            case SIGNED_IN -> ResponseEntity.ok(bodyOf(signIn.session()));
+            case LOCKED -> ResponseEntity.status(HttpStatus.TOO_MANY_REQUESTS)
+                    .header(HttpHeaders.RETRY_AFTER, Long.toString(signIn.retryAfterSeconds()))
+                    .build();
+            case REJECTED -> ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+        };
+    }
+
+    private static Object bodyOf(AdministratorAccess.SignedIn session) {
+        return Map.of(
+                "accessToken", session.accessToken(),
+                "tokenType", "Bearer",
+                "expiresIn", session.expiresInSeconds(),
+                "user", Map.of("id", session.id(), "name", session.name(),
+                        "email", session.email()));
     }
 }

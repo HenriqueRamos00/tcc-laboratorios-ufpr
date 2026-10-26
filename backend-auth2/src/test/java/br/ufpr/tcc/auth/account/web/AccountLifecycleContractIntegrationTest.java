@@ -1,7 +1,9 @@
 package br.ufpr.tcc.auth.account.web;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 
 import br.ufpr.tcc.auth.notification.RecordedMessages;
 import br.ufpr.tcc.auth.shared.database.OracleIntegrationTestBase;
@@ -17,6 +19,7 @@ import org.springframework.http.MediaType;
 import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.MvcResult;
+import tools.jackson.databind.json.JsonMapper;
 import br.ufpr.tcc.auth.credential.model.ServiceToken;
 
 /**
@@ -31,6 +34,7 @@ import br.ufpr.tcc.auth.credential.model.ServiceToken;
         properties = "auth.notification.record-messages=true")
 class AccountLifecycleContractIntegrationTest extends OracleIntegrationTestBase {
 
+    private static final JsonMapper JSON = JsonMapper.builder().build();
     private static final AtomicLong NEXT_ID = new AtomicLong(600_000L);
     private static final String GOOD_PASSWORD = "SenhaForte123";
 
@@ -174,6 +178,86 @@ class AccountLifecycleContractIntegrationTest extends OracleIntegrationTestBase 
 
         assertThat(result.getResponse().getStatus())
                 .as("ou cadastra, ou recusa a entrada, mas nao estoura").isIn(201, 400);
+    }
+
+    /**
+     * Campo que a rota nao honra nao pode ser aceito em silencio.
+     *
+     * Medido antes da correcao: o pedido de alteracao declarava endereco, perfil e aplicacao,
+     * validava os tres, e gravava apenas nome e situacao. Quem mandasse endereco novo recebia
+     * 200 com o endereco antigo, e a regra do modulo diz o contrario: ignorar ensina ao
+     * chamador que o campo existe e e aceito.
+     */
+    @Test
+    @DisplayName("campo que a alteracao de conta nao honra e recusado, e nao ignorado")
+    void fieldThatTheUpdateDoesNotHonourIsRefused() throws Exception {
+        String email = uniqueEmail();
+        mockMvc.perform(post("/api/users")
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + applicationToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"name":"Pessoa","email":"%s","password":"SenhaForte123",
+                                 "role":"CLIENTE","serviceId":"%s"}"""
+                                .formatted(email, applicationId)))
+                .andReturn();
+        String accountId = JSON.readTree(mockMvc.perform(get("/api/users")
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + applicationToken))
+                .andReturn().getResponse().getContentAsString()).get(0).get("id").asString();
+
+        MvcResult withForeignField = mockMvc.perform(put("/api/users/" + accountId)
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + applicationToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"name":"Nome novo","active":true,
+                                 "email":"outro.endereco@lactec.exemplo"}"""))
+                .andReturn();
+
+        assertThat(withForeignField.getResponse().getStatus()).isEqualTo(400);
+    }
+
+    /**
+     * A situacao da conta decide se ela entra, entao ela nao pode mudar por omissao de campo.
+     * Medido antes da correcao: campo ausente valia verdadeiro, e um pedido de renomeacao
+     * reativava conta desativada em silencio.
+     */
+    @Test
+    @DisplayName("alterar conta sem declarar a situacao e recusado, e nao reativa em silencio")
+    void updateWithoutTheSituationIsRefused() throws Exception {
+        String email = uniqueEmail();
+        mockMvc.perform(post("/api/users")
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + applicationToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"name":"Pessoa","email":"%s","password":"SenhaForte123",
+                                 "role":"CLIENTE","serviceId":"%s"}"""
+                                .formatted(email, applicationId)))
+                .andReturn();
+        String accountId = JSON.readTree(mockMvc.perform(get("/api/users")
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + applicationToken))
+                .andReturn().getResponse().getContentAsString()).get(0).get("id").asString();
+
+        mockMvc.perform(put("/api/users/" + accountId)
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + applicationToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"name":"Pessoa","active":false}"""))
+                .andReturn();
+
+        MvcResult withoutSituation = mockMvc.perform(put("/api/users/" + accountId)
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + applicationToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"name":"Nome novo","email":"%s","role":"CLIENTE",
+                                 "serviceId":"%s"}""".formatted(email, applicationId)))
+                .andReturn();
+
+        assertThat(withoutSituation.getResponse().getStatus()).isEqualTo(400);
+        MvcResult afterwards = mockMvc.perform(get("/api/users/" + accountId)
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + applicationToken))
+                .andReturn();
+        assertThat(JSON.readTree(afterwards.getResponse().getContentAsString())
+                .get("active").asBoolean())
+                .as("a conta continua desativada").isFalse();
     }
 
     // A aplicacao que chama so cadastra dentro dela mesma. O identificador que vem no

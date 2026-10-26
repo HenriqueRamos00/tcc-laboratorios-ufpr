@@ -7,7 +7,7 @@ package br.ufpr.tcc.auth.authentication;
  * o consumidor le o valor em segundos inteiros: a outra forma que a norma permite deixaria
  * o campo vazio no cliente e a tela mostraria falha de infraestrutura.
  */
-record LoginAttemptOutcome(boolean locked, long retryAfterSeconds) {
+public record LoginAttemptOutcome(boolean locked, long retryAfterSeconds) {
 
     static LoginAttemptOutcome allowed() {
         return new LoginAttemptOutcome(false, 0L);

@@ -25,9 +25,20 @@ public class ProblemDetailWriter {
 
     private final JsonMapper jsonMapper = JsonMapper.builder().build();
 
+    /**
+     * O corpo, sem escrever na resposta.
+     *
+     * Ele existe separado porque o tratador de excecao devolve corpo em vez de escrever nele,
+     * e as duas saidas precisam produzir a mesma coisa: com dois formatos, a regra de que
+     * respostas irmas sao identicas morre na primeira divergencia.
+     */
+    public ProblemDetail bodyOf(HttpStatus status, String detail) {
+        return ProblemDetail.forStatusAndDetail(status, detail);
+    }
+
     public void write(HttpServletResponse response, HttpStatus status, String detail)
             throws IOException {
-        ProblemDetail body = ProblemDetail.forStatusAndDetail(status, detail);
+        ProblemDetail body = bodyOf(status, detail);
         response.setStatus(status.value());
         response.setContentType(MediaType.APPLICATION_PROBLEM_JSON_VALUE);
         response.getWriter().write(jsonMapper.writeValueAsString(body));

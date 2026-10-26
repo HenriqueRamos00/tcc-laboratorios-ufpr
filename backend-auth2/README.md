@@ -13,9 +13,16 @@ cp .env.example .env     # e preencha as senhas e o segredo de instalacao
 docker compose up --build
 ```
 
-O banco leva alguns minutos na primeira subida, porque ele cria os dois usuarios do
-esquema. Quando `GET http://localhost:8081/health` responder `{"status":"UP"}`, esta
-pronto.
+O banco leva alguns minutos na primeira subida porque a imagem do Oracle inicializa o banco
+dela. Os dois usuarios do esquema nao sao o motivo da espera: eles nascem de um script
+idempotente que roda a cada subida.
+
+A sonda certa para saber que esta pronto e `GET http://localhost:8081/health/readiness`,
+que e a mesma que o healthcheck do contentor consulta. **A raiz `GET /health` agrega tambem
+o envio de e-mail**, e com o disjuntor do envio aberto ela responde
+`{"status":"OUT_OF_SERVICE"}`, sempre com HTTP 200. Medido nesta maquina: com o servidor de
+e-mail recusando a conexao, tres tentativas abrem o disjuntor e a raiz muda de corpo
+enquanto a prontidao segue `{"status":"UP"}`.
 
 ## Testar
 
@@ -96,26 +103,47 @@ esta versionado:
 
 | Verbo | Rota | Quem pode chamar |
 | --- | --- | --- |
-| GET | `/health` | qualquer um |
+| GET | `/health` | qualquer um; agrega banco e envio de e-mail |
+| GET | `/health/readiness` | qualquer um; e a sonda que o contentor consulta |
+| GET | `/health/liveness` | qualquer um |
+| GET | `/health/mail` | qualquer um; estado do envio, com os contadores |
 | POST | `/api/setup/admin` | segredo de instalacao, e so enquanto nao existir administrador |
 | POST | `/api/admin/auth/login` | qualquer um, com e-mail e senha de administrador |
 | GET POST | `/api/services` | administrador |
-| GET PUT DELETE | `/api/services/{id}` | administrador |
-| GET POST | `/api/services/{id}/tokens` | administrador |
-| DELETE | `/api/services/{id}/tokens/{tokenId}` | administrador |
+| GET PUT DELETE | `/api/services/{serviceId}` | administrador |
+| GET POST | `/api/services/{serviceId}/tokens` | administrador |
+| DELETE | `/api/services/{serviceId}/tokens/{tokenId}` | administrador |
 | GET POST | `/api/admins` | administrador |
 | GET PUT DELETE | `/api/admins/{id}` | administrador |
-| GET POST | `/api/users` | aplicacao, no proprio escopo; administrador, em todos |
+| GET | `/api/users` | aplicacao, no proprio escopo; administrador, em todas |
+| POST | `/api/users` | aplicacao, e so ela: o escopo sai da credencial |
 | GET PUT DELETE | `/api/users/{id}` | aplicacao, no proprio escopo; administrador, em todos |
 | GET POST | `/api/companies` | aplicacao, no proprio escopo |
 | GET PUT DELETE | `/api/companies/{id}` | aplicacao, no proprio escopo |
 | POST | `/api/auth/login` | aplicacao |
-| POST | `/api/auth/confirmations` | aplicacao |
+| POST | `/api/auth/confirmations` | qualquer credencial valida: quem autoriza e o token do link |
 | POST | `/api/auth/recoveries` | aplicacao |
-| POST | `/api/auth/password-resets` | aplicacao |
+| POST | `/api/auth/password-resets` | qualquer credencial valida: quem autoriza e o token do link |
+
+As rotas marcadas como "aplicacao" recusam credencial administrativa na propria cadeia, com
+403. Isso e correcao de um defeito medido: enquanto a cadeia so exigia credencial valida,
+token administrativo chegava ao tratador, o chamador tipado como aplicacao vinha nulo e cinco
+rotas respondiam 500 com pilha no log.
 
 Excluir aplicacao e desativacao logica: a linha fica, o acesso cai no mesmo instante, e a
 trilha de auditoria continua explicavel.
+
+**A situacao e obrigatoria nas tres rotas de alteracao**, e isso tambem corrige defeito
+medido: enquanto o campo era opcional em aplicacao e em conta de cliente, ausente valia
+verdadeiro, e um pedido enviado para corrigir o nome reativava em silencio o registro que
+alguem tinha desativado. Hoje corpo sem `active` responde 400 nas tres.
+
+**Campo que a rota nao honra responde 400, e nao e ignorado.** A desserializacao recusa
+propriedade desconhecida, porque aceitar e descartar ensina ao chamador que o campo existe:
+era o que a alteracao de conta fazia com endereco, perfil e aplicacao.
+
+Codigo de aplicacao repetido responde 409. Antes subia como erro de servidor, que nao esta na
+matriz de codigos.
 
 Administrador e o contrario: a exclusao apaga a linha, porque o cadastro de administrador
 e pequeno e revisado por gente. O que nao se permite e ficar sem nenhum administrador

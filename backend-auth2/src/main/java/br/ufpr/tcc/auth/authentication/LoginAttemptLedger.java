@@ -17,13 +17,17 @@ import org.springframework.stereotype.Component;
  * e-mail que nao existe no cadastro e contado igual a um que existe, e sem isso o codigo
  * de bloqueio passaria a significar que a conta existe.
  *
+ * Ele atende as duas entradas do servico, a de cliente e a administrativa, em espacos de
+ * chave separados. Separados importa: com espaco unico, um cliente de qualquer aplicacao com o
+ * mesmo endereco de um administrador poderia tranca lo de fora, e o contrario tambem.
+ *
  * O incremento acontece dentro do comando e a checagem do bloqueio vive no mesmo WHERE.
  * Isso resolve as duas corridas de uma vez: nao existe leitura seguida de escrita para se
  * perder, e nao existe janela entre consultar e agir. O relogio e o do banco, para que
  * duas instancias nao discordem sobre quando o bloqueio expira.
  */
 @Component
-class LoginAttemptLedger {
+public class LoginAttemptLedger {
 
     /** Regra de negocio do Lactec: cinco tentativas. */
     private static final int MAXIMUM_FAILURES = 5;
@@ -65,7 +69,18 @@ class LoginAttemptLedger {
         this.jdbcClient = jdbcClient;
     }
 
-    LoginAttemptOutcome registerFailure(long applicationId, String identifier, Duration cooldown) {
+    /**
+     * Espaco de chave da entrada administrativa.
+     *
+     * Zero nao colide com aplicacao nenhuma: identificador de aplicacao e TSID, que carrega o
+     * instante de criacao nos bits altos e por isso nunca e zero. Usar um valor reservado em
+     * vez de uma coluna nova mantem o contador com uma chave so, que e o que permite o mesmo
+     * comando atomico servir as duas entradas.
+     */
+    public static final long ADMINISTRATIVE_SCOPE = 0L;
+
+    public LoginAttemptOutcome registerFailure(long applicationId, String identifier,
+            Duration cooldown) {
         byte[] attemptKey = attemptKey(applicationId, identifier);
         ensureRowExists(attemptKey);
         jdbcClient.sql(REGISTER_FAILURE)
@@ -81,7 +96,7 @@ class LoginAttemptLedger {
      * ultimo acerto, e uma conta pouco usada que erra uma vez por mes trancaria sozinha
      * depois de cinco meses.
      */
-    void registerSuccess(long applicationId, String identifier) {
+    public void registerSuccess(long applicationId, String identifier) {
         jdbcClient.sql("UPDATE LOGIN_ATTEMPT SET FAILED_ATTEMPTS = 0, LOCKED_UNTIL = NULL"
                         + " WHERE ATTEMPT_KEY = :attemptKey")
                 .param("attemptKey", attemptKey(applicationId, identifier))
@@ -89,7 +104,7 @@ class LoginAttemptLedger {
     }
 
     /** Estado atual do bloqueio, sem contar tentativa. */
-    LoginAttemptOutcome currentOutcome(long applicationId, String identifier) {
+    public LoginAttemptOutcome currentOutcome(long applicationId, String identifier) {
         return currentOutcome(attemptKey(applicationId, identifier));
     }
 

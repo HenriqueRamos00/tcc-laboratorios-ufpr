@@ -3,6 +3,7 @@ package br.ufpr.tcc.auth.application;
 import br.ufpr.tcc.auth.credential.model.ServiceToken;
 import br.ufpr.tcc.auth.shared.identifier.IdentifierFactory;
 import br.ufpr.tcc.auth.shared.observability.AuditTrail;
+import org.springframework.dao.DuplicateKeyException;
 import java.time.Duration;
 import java.time.OffsetDateTime;
 import org.springframework.jdbc.core.simple.JdbcClient;
@@ -34,14 +35,33 @@ public class ApplicationRegistry {
     }
 
     @Transactional
-    public RegisteredApplicationView register(String name, String code) {
+    /**
+     * Desfecho do cadastro de aplicacao.
+     *
+     * O codigo e unico no banco, e o segundo cadastro com o mesmo codigo precisa responder
+     * conflito. Medido antes desta traducao: a violacao da restricao subia como erro de
+     * servidor, que nao esta na matriz de codigos e que no consumidor vira fonte
+     * indisponivel. O 409 e aceitavel aqui porque quem chama ja pode ler a lista inteira de
+     * aplicacoes na rota ao lado, entao a resposta nao conta nada novo.
+     */
+    public record Registration(Outcome outcome, RegisteredApplicationView application) {
+
+        public enum Outcome { CREATED, CODE_ALREADY_REGISTERED }
+    }
+
+    public Registration register(String name, String code) {
         long id = identifiers.nextIdentifier();
-        jdbcClient.sql("INSERT INTO APPLICATION (ID, CODE, NAME, ACTIVE, CREATED_AT, UPDATED_AT)"
-                        + " VALUES (:id, :code, :name, TRUE, :now, :now)")
-                .param("id", id).param("code", code).param("name", name)
-                .param("now", OffsetDateTime.now()).update();
+        try {
+            jdbcClient.sql("INSERT INTO APPLICATION (ID, CODE, NAME, ACTIVE, CREATED_AT,"
+                            + " UPDATED_AT) VALUES (:id, :code, :name, TRUE, :now, :now)")
+                    .param("id", id).param("code", code).param("name", name)
+                    .param("now", OffsetDateTime.now()).update();
+        } catch (DuplicateKeyException codeAlreadyRegistered) {
+            return new Registration(Registration.Outcome.CODE_ALREADY_REGISTERED, null);
+        }
         auditTrail.applicationChanged("registered", Long.toString(id));
-        return new RegisteredApplicationView(Long.toString(id), name, code, true);
+        return new Registration(Registration.Outcome.CREATED,
+                new RegisteredApplicationView(Long.toString(id), name, code, true));
     }
 
     public record IssuedTokenView(String accessToken, String id, String name, String serviceId,
@@ -132,15 +152,24 @@ public class ApplicationRegistry {
     }
 
     @Transactional
-    public boolean update(long applicationId, String name, String code, boolean active) {
-        boolean changed = jdbcClient.sql("UPDATE APPLICATION SET NAME = :name, CODE = :code,"
-                        + " ACTIVE = :active, UPDATED_AT = :now WHERE ID = :id")
-                .param("id", applicationId).param("name", name).param("code", code)
-                .param("active", active).param("now", OffsetDateTime.now()).update() == 1;
-        if (changed) {
-            auditTrail.applicationChanged("changed", Long.toString(applicationId));
+    /** Desfecho da alteracao, com o conflito de codigo separado de nao encontrado. */
+    public enum UpdateOutcome { CHANGED, NOT_FOUND, CODE_ALREADY_REGISTERED }
+
+    public UpdateOutcome update(long applicationId, String name, String code, boolean active) {
+        boolean changed;
+        try {
+            changed = jdbcClient.sql("UPDATE APPLICATION SET NAME = :name, CODE = :code,"
+                            + " ACTIVE = :active, UPDATED_AT = :now WHERE ID = :id")
+                    .param("id", applicationId).param("name", name).param("code", code)
+                    .param("active", active).param("now", OffsetDateTime.now()).update() == 1;
+        } catch (DuplicateKeyException codeAlreadyRegistered) {
+            return UpdateOutcome.CODE_ALREADY_REGISTERED;
         }
-        return changed;
+        if (!changed) {
+            return UpdateOutcome.NOT_FOUND;
+        }
+        auditTrail.applicationChanged("changed", Long.toString(applicationId));
+        return UpdateOutcome.CHANGED;
     }
 
     /**

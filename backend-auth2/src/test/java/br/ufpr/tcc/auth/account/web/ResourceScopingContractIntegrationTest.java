@@ -181,9 +181,7 @@ class ResourceScopingContractIntegrationTest extends OracleIntegrationTestBase {
                         .header(HttpHeaders.AUTHORIZATION, "Bearer " + first.token())
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
-                                {"name":"Pessoa Desativada","email":"%s","role":"CLIENTE",
-                                 "active":false,"serviceId":"%s"}"""
-                                .formatted(email, first.applicationId())))
+                                {"name":"Pessoa Desativada","active":false}"""))
                 .andReturn().getResponse().getStatus();
 
         assertThat(updated).isEqualTo(200);

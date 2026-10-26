@@ -23,6 +23,24 @@ Portal, que recusa subir se o valor configurado nele nao casar. O formato e: ped
 letra minuscula e digito, ligados por hifen isolado. `portal-web` serve; `Portal-Web`,
 `portal--web` e `portal-web-` nao.
 
+## Os valores de exemplo deste documento
+
+**Nenhum comando aqui traz senha.** A senha do primeiro administrador entra por
+`$AUTH_ADMIN_PASSWORD`, que voce define na sua sessao e nao guarda em arquivo nenhum:
+
+```bash
+read -rs -p 'senha do primeiro administrador: ' AUTH_ADMIN_PASSWORD
+export AUTH_ADMIN_PASSWORD
+```
+
+Isso nao e cerimonia. Documento de instalacao e o texto que mais se copia e cola, e senha de
+exemplo que satisfaz a politica vira a senha do administrador do servico inteiro num ambiente
+publicado. A politica cobra oito caracteres com maiuscula, minuscula e numero; o resto da
+escolha e sua.
+
+Os outros valores de exemplo, como `admin@lactec.exemplo` e `portal-web`, sao so exemplo:
+troque pelos seus.
+
 ## Antes do primeiro administrador
 
 Numa instalacao nova nao existe administrador, e a rota que cria o primeiro exige **duas**
@@ -37,7 +55,8 @@ a instalacao ainda nao foi feita.
 curl -X POST http://localhost:8081/api/setup/admin \
   -H "X-Setup-Secret: $AUTH_SETUP_SECRET" \
   -H 'Content-Type: application/json' \
-  -d '{"name":"Administrador","email":"admin@lactec.exemplo","password":"SenhaForte123"}'
+  -d "{\"name\":\"Administrador\",\"email\":\"admin@lactec.exemplo\",
+       \"password\":\"$AUTH_ADMIN_PASSWORD\"}"
 ```
 
 Resposta: **201**, sem corpo. Chamar de novo, mesmo com o segredo correto, responde **404**.
@@ -50,7 +69,7 @@ com maiuscula, minuscula e numero. Senha fora disso responde **400**.
 ```bash
 curl -X POST http://localhost:8081/api/admin/auth/login \
   -H 'Content-Type: application/json' \
-  -d '{"email":"admin@lactec.exemplo","password":"SenhaForte123"}'
+  -d "{\"email\":\"admin@lactec.exemplo\",\"password\":\"$AUTH_ADMIN_PASSWORD\"}"
 ```
 
 Resposta **200**:
