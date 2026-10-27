@@ -87,6 +87,14 @@ export const routes: Routes = [
     data: { role: 'TECNICO' },
     children: [
       {
+        path: 'orcamentos',
+        loadComponent: () =>
+          import('@/app/pages/tecnico/orcamentos/orcamentos.component').then(
+            (module) => module.OrcamentosTecnicosComponent,
+          ),
+        title: 'Pesquisar Orçamentos - Portal Interno Lactec',
+      },
+      {
         path: '',
         pathMatch: 'full',
         loadComponent: () =>
@@ -101,12 +109,6 @@ export const routes: Routes = [
         title: 'Dashboard - Portal Interno Lactec',
       },
       ...([
-        [
-          'ensaios-amostras',
-          'Pesquisar Ensaios e Amostras',
-          'Pesquise ensaios e amostras disponíveis no laboratório.',
-          'search',
-        ],
         ['ensaios', 'Manter Ensaio', 'Cadastro e manutenção de ensaios.', 'science'],
         ['resultados', 'Resultados', 'Consulta e manutenção de resultados de ensaios.', 'fact_check'],
         ['relatorios', 'Pesquisar Relatório', 'Pesquise os relatórios técnicos.', 'description'],

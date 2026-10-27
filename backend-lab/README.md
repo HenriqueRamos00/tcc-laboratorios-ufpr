@@ -161,7 +161,7 @@ Envie o token nas demais requisições protegidas:
 Authorization: Bearer <jwt>
 ```
 
-Para criar a conta inicial do administrador na primeira execução local, preencha `AUTH_SEED_ADMIN_*` no arquivo `.env`. `AUTH_SEED_TECHNICIAN_*` permanece disponível para preparar um técnico legado de desenvolvimento; técnicos também podem ser cadastrados e mantidos pelo Portal Interno. As senhas são armazenadas com BCrypt.
+Para criar o administrador inicial, preencha `AUTH_SEED_ADMIN_*` no arquivo `.env`. As variáveis `AUTH_SEED_TECHNICIAN_*` permitem criar um técnico de desenvolvimento. Os demais técnicos podem ser cadastrados pelo Portal Interno. As senhas são armazenadas com BCrypt.
 
 ### Dashboard do Administrador
 
@@ -237,7 +237,7 @@ O Portal Interno consome diretamente `/api/companies` e `/api/clients` no Spring
 
 `POST /api/auth/login` autentica somente CLIENTE ativo. O login interno continua exclusivo ADMIN/TECNICO. Ambos emitem tokens com o mesmo formato; cada família de rotas verifica o perfil permitido e a situação atual do usuário. A resposta pública usa IDs string em login e gestão; as entidades Java mantêm chaves numéricas internamente, e os endpoints de técnicos preservam IDs numéricos.
 
-O Portal do Cliente mantém suas chamadas à API C#. Na fonte `backend-lab`, a API C# adapta o login para esta API Spring; os adapters de orçamentos e documentos ainda estão pendentes. A conta de demonstração e os cadastros desta API não substituem o login de desenvolvimento do portal.
+O Portal do Cliente acessa a API C#. No modo `backend-lab`, o C# encaminha o login para esta API Spring; os adapters de orçamentos e documentos ainda não estão implementados. Para entrar nesse modo, use uma conta de cliente ativa cadastrada no Backend Lab.
 
 As consultas privadas `/api/client/quotes`, `/{id}` e `/{id}/document` conferem usuário, vínculos e situação das empresas atuais. O PDF está em tabela separada e seus bytes são consultados somente após a autorização. Empresa sem vínculo ativo retorna 403; orçamento/arquivo inexistente retorna 404. Cliente ativo sem empresas ativas pode autenticar e recebe lista vazia. Remover vínculo ou desativar usuário/empresa afeta o token anterior na próxima requisição.
 
@@ -261,10 +261,41 @@ O documento é opcional e limitado a 50 MiB; a API valida extensão `.pdf` e ass
 
 Nas respostas de orçamento, `id` identifica o orçamento persistido no Spring. O campo `opportunityId` pertence ao contrato Salesforce da API C# e não é retornado pelo Spring.
 
+### Consulta técnica de orçamentos
+
+Técnicos podem listar propostas em `GET /api/technician/quotes` e consultar os detalhes em `GET /api/technician/quotes/{id}`. As duas rotas exigem perfil TECNICO e permitem apenas consulta.
+
+A listagem aceita `search`, `status`, `from`, `to`, `page` e `pageSize`. A busca encontra trechos do código, nome da proposta ou razão social, sem diferenciar maiúsculas de minúsculas. As datas usam `YYYY-MM-DD` e incluem o dia inteiro no fuso `America/Sao_Paulo`; é possível informar só o início ou só o fim do período. A página inicial é 1, com 20 itens por padrão e limite de 100 por página. Os resultados vêm dos mais recentes para os mais antigos, com desempate pelo maior ID.
+
+A resposta contém `items`, `page`, `pageSize` e `totalItems`. Cada proposta traz `id`, `code`, `name`, `companyName`, `createdDate` e `technicalStatus`. O detalhe acrescenta `description`, `laboratoryName`, `scope` e itens com `testType`, `sampleCount` e `standard`. A consulta técnica não retorna valores, contatos comerciais, etapa, status comercial ou PDF. As rotas administrativas `/api/quotes` e seus documentos exigem perfil ADMIN.
+
+O status técnico acompanha o andamento das execuções vinculadas à proposta. Ele é calculado antes da paginação, com a mesma regra na lista e no detalhe. Quando há execuções ativas, as canceladas ficam fora do cálculo e prevalece a etapa menos avançada:
+
+| Status técnico | Condição |
+| --- | --- |
+| `incomplete` | Há uma execução ativa incompleta. |
+| `complete` | Todas chegaram pelo menos a completo, mas alguma ainda não foi validada. |
+| `validated` | Todas chegaram pelo menos a validado, mas ainda falta concluir a publicação de algum relatório. Inclui execuções em `finalized` e `drafting-report`. |
+| `report-published` | Todas as execuções ativas estão publicadas, com referência de relatório preenchida e data em `publishedAt`. |
+| `cancelled` | Todas as execuções foram canceladas. |
+
+Sem execuções, `technicalStatus` é nulo. Uma execução marcada como publicada sem referência ou data do relatório ainda conta como `validated`.
+
+Os itens do orçamento descrevem os serviços propostos; as execuções registram seu andamento técnico separadamente. Cada execução pode guardar a referência e a data de publicação de um relatório. O cadastro completo de laudos e seu histórico ainda não estão implementados.
+
 Limites: empresa - razão social 200, endereço 255, cidade 120, UF brasileira com 2 caracteres, nome do contato 150, telefone 30, e-mail 254. CNPJ numérico com 14 dígitos e dígitos verificadores, aceitando máscara, é normalizado e único. Cliente - nome 150, e-mail 254, telefone 30, cargo 120; senha com até 72 caracteres e 72 bytes UTF-8, sem trim. CNPJ alfanumérico não é suportado.
 
-Para carregar a base de demonstração, configure `DEMO_SEED_ENABLED=true` e reinicie o Backend Lab. Em um banco vazio, ela contém 6 empresas (incluindo a empresa Lactec já usada no exemplo), 6 técnicos, 7 clientes (6 novos e a conta Lactec), 26 orçamentos com os cinco status comerciais, 44 itens de orçamento e o PDF estático da proposta Lactec. Quatro propostas anteriores não têm laboratório, escopo, contato próprio ou itens; seus status também usam códigos comerciais. As cinco empresas adicionadas e os novos contatos são fictícios; os CNPJs passam pela validação e os e-mails usam `example.test`.
+### Dados de demonstração
+
+Para carregar os exemplos, configure `DEMO_SEED_ENABLED=true` e reinicie o Backend Lab. Em um banco vazio, o seed cria:
+
+- 6 empresas, 6 técnicos e 7 clientes;
+- 26 orçamentos com os cinco status comerciais e 44 itens de serviço;
+- 14 execuções técnicas com exemplos de pendências, cancelamentos, validação e publicação;
+- um PDF de exemplo na proposta Lactec.
+
+Quatro propostas não têm laboratório, escopo, contato próprio ou itens, para demonstrar a consulta de registros antigos. As execuções têm andamento próprio, separado do status comercial. As contas e empresas são fictícias; os CNPJs passam pela validação e os novos e-mails usam `example.test`.
 
 As contas adicionadas usam a senha de desenvolvimento `Demo@12345`. Exemplos: `demo.tecnico.helena@example.test` e `demo.cliente.mariana@example.test`. Contas Lactec novas usam a senha `lactec`; senhas de contas existentes não são redefinidas. A senha de administrador é definida separadamente pelas variáveis `AUTH_SEED_ADMIN_*`.
 
-A carga é opcional e fica desativada por padrão. Com a flag ligada, o Backend Lab grava a versão aplicada em `demo_seed_runs` somente depois de inserir os dados e o PDF na mesma transação. A versão atual converte status antigos apenas nos quatro registros de demonstração identificados por seus códigos e valores anteriores exatos. Inicializações seguintes preservam alterações e exclusões feitas nos dados de demonstração. Ative-a somente em ambiente local; ela não sincroniza dados nem associa cadastros de outras fontes.
+O seed fica desativado por padrão e deve ser usado apenas no desenvolvimento local. Cada versão aplicada é registrada em `demo_seed_runs`, na mesma transação dos dados e do PDF. Reiniciar o backend não reaplica versões já registradas, preservando edições e exclusões. A carga também corrige os status antigos de quatro propostas de demonstração, conferindo o código e o valor anterior antes de alterá-los. Não há sincronização com outras fontes.

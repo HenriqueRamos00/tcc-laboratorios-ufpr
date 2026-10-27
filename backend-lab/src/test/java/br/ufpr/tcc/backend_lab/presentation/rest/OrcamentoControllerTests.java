@@ -4,6 +4,7 @@ import static org.hamcrest.Matchers.everyItem;
 import static org.hamcrest.Matchers.is;
 import static org.hamcrest.Matchers.nullValue;
 import static org.junit.jupiter.api.Assertions.assertArrayEquals;
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.multipart;
@@ -14,16 +15,23 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import br.ufpr.tcc.backend_lab.domain.model.entity.DocumentoOrcamento;
+import br.ufpr.tcc.backend_lab.domain.model.entity.ExecucaoEnsaio;
 import br.ufpr.tcc.backend_lab.domain.model.entity.Empresa;
 import br.ufpr.tcc.backend_lab.domain.model.entity.Orcamento;
+import br.ufpr.tcc.backend_lab.domain.model.entity.OrcamentoItem;
 import br.ufpr.tcc.backend_lab.domain.model.entity.PerfilUsuario;
 import br.ufpr.tcc.backend_lab.domain.model.entity.Usuario;
 import br.ufpr.tcc.backend_lab.domain.model.enums.StatusComercialOrcamento;
 import br.ufpr.tcc.backend_lab.domain.repository.DocumentoOrcamentoRepository;
+import br.ufpr.tcc.backend_lab.domain.repository.ExecucaoEnsaioRepository;
 import br.ufpr.tcc.backend_lab.domain.repository.EmpresaRepository;
 import br.ufpr.tcc.backend_lab.domain.repository.OrcamentoRepository;
 import br.ufpr.tcc.backend_lab.domain.repository.UsuarioRepository;
+import br.ufpr.tcc.backend_lab.domain.model.enums.StatusExecucaoEnsaio;
 import br.ufpr.tcc.backend_lab.infrastructure.security.JwtService;
+
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -43,6 +51,8 @@ import java.math.BigDecimal;
 import java.nio.charset.StandardCharsets;
 import java.time.OffsetDateTime;
 import java.util.Arrays;
+import java.util.HashSet;
+import java.util.Set;
 
 @SpringBootTest
 @AutoConfigureMockMvc
@@ -53,8 +63,10 @@ class OrcamentoControllerTests {
     @Autowired EmpresaRepository empresas;
     @Autowired OrcamentoRepository orcamentos;
     @Autowired DocumentoOrcamentoRepository documentos;
+    @Autowired ExecucaoEnsaioRepository execucoes;
     @Autowired JwtService jwtService;
     @Autowired PasswordEncoder passwordEncoder;
+    private final ObjectMapper objectMapper = new ObjectMapper();
 
     private Empresa copel;
     private Empresa sanepar;
@@ -276,6 +288,339 @@ class OrcamentoControllerTests {
                                 .header("Authorization", tokenCliente))
                 .andExpect(status().isUnauthorized());
 
+    }
+
+    @Test
+    @DisplayName("permite ao técnico consultar lista técnica sem campos comerciais")
+    void tecnicoConsultaListaTecnicaRestrita() throws Exception {
+        mockMvc.perform(
+                        get("/api/technician/quotes")
+                                .param("page", "1")
+                                .param("pageSize", "2")
+                                .header("Authorization", tokenTecnico))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.page").value(1))
+                .andExpect(jsonPath("$.pageSize").value(2))
+                .andExpect(jsonPath("$.totalItems").value(4))
+                .andExpect(jsonPath("$.items.length()").value(2))
+                .andExpect(jsonPath("$.items[0].id").value(orcamentoMesmoDia.getId().toString()))
+                .andExpect(jsonPath("$.items[0].code").value("EAQ_2026_33322_V_3"))
+                .andExpect(jsonPath("$.items[0].companyName").value("Sanepar"))
+                .andExpect(jsonPath("$.items[0].technicalStatus").value(nullValue()))
+                .andExpect(jsonPath("$.items[0].totalPrice").doesNotExist())
+                .andExpect(jsonPath("$.items[0].externalContactName").doesNotExist())
+                .andExpect(jsonPath("$.items[0].externalContactEmail").doesNotExist())
+                .andExpect(jsonPath("$.items[0].status").doesNotExist())
+                .andExpect(jsonPath("$.items[0].stage").doesNotExist())
+                .andExpect(jsonPath("$.items[0].hasDocument").doesNotExist())
+                .andExpect(jsonPath("$.items[0].items").doesNotExist());
+
+        var resposta =
+                mockMvc.perform(
+                                get("/api/technician/quotes")
+                                        .header("Authorization", tokenTecnico))
+                        .andReturn();
+        JsonNode raiz = objectMapper.readTree(resposta.getResponse().getContentAsString());
+        assertEquals(Set.of("items", "page", "pageSize", "totalItems"), nomesDosCampos(raiz));
+        assertEquals(
+                Set.of("id", "code", "name", "companyName", "createdDate", "technicalStatus"),
+                nomesDosCampos(raiz.path("items").get(0)));
+    }
+
+    @Test
+    @DisplayName("combina busca e extremos de período inclusivos na consulta técnica")
+    void pesquisaTecnicaPorTextoEPeriodoInclusivo() throws Exception {
+        criarOrcamento(
+                copel,
+                "TECNICO-INICIO",
+                "Limite inicial",
+                "Descrição fora da busca técnica",
+                StatusComercialOrcamento.CANCELLED,
+                OffsetDateTime.parse("2026-10-15T03:00:00Z"));
+        criarOrcamento(
+                copel,
+                "TECNICO-FIM",
+                "Limite final",
+                "Descrição fora da busca técnica",
+                StatusComercialOrcamento.CANCELLED,
+                OffsetDateTime.parse("2026-10-16T03:00:00Z"));
+
+        mockMvc.perform(
+                        get("/api/technician/quotes")
+                                .param("search", "  cOpEl  ")
+                                .param("from", "2026-10-15")
+                                .param("to", "2026-10-15")
+                                .header("Authorization", tokenTecnico))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.totalItems").value(2));
+
+        mockMvc.perform(
+                        get("/api/technician/quotes")
+                                .param("search", "TECNICO-INICIO")
+                                .param("from", "2026-10-15")
+                                .param("to", "2026-10-15")
+                                .header("Authorization", tokenTecnico))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.totalItems").value(1))
+                .andExpect(jsonPath("$.items[0].code").value("TECNICO-INICIO"));
+
+        mockMvc.perform(
+                        get("/api/technician/quotes")
+                                .param("search", "EAQ_2026_33322_V_3")
+                                .header("Authorization", tokenTecnico))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.totalItems").value(1))
+                .andExpect(jsonPath("$.items[0].code").value("EAQ_2026_33322_V_3"));
+
+        mockMvc.perform(
+                        get("/api/technician/quotes")
+                                .param("search", "Descrição fora da busca técnica")
+                                .header("Authorization", tokenTecnico))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.totalItems").value(0));
+    }
+
+    @Test
+    @DisplayName("aceita extremos de período independentes e rejeita período inválido")
+    void validaPeriodoDaPesquisaTecnica() throws Exception {
+        mockMvc.perform(
+                        get("/api/technician/quotes")
+                                .param("from", "2026-10-10")
+                                .header("Authorization", tokenTecnico))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.totalItems").value(3));
+
+        mockMvc.perform(
+                        get("/api/technician/quotes")
+                                .param("to", "2026-10-10")
+                                .header("Authorization", tokenTecnico))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.totalItems").value(2));
+
+        mockMvc.perform(
+                        get("/api/technician/quotes")
+                                .param("from", "2026-10-16")
+                                .param("to", "2026-10-15")
+                                .header("Authorization", tokenTecnico))
+                .andExpect(status().isBadRequest());
+
+        mockMvc.perform(
+                        get("/api/technician/quotes")
+                                .param("from", "2026-02-30")
+                                .header("Authorization", tokenTecnico))
+                .andExpect(status().isBadRequest());
+
+        mockMvc.perform(
+                        get("/api/technician/quotes")
+                                .param("from", "10000-10-15")
+                                .header("Authorization", tokenTecnico))
+                .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    @DisplayName("valida status técnico sem converter status comercial")
+    void validaFiltroDeStatusTecnico() throws Exception {
+        criarExecucao(
+                orcamentoMaisNovo,
+                StatusExecucaoEnsaio.REPORT_PUBLISHED,
+                "LAUDO-VALIDADO",
+                OffsetDateTime.parse("2026-10-16T10:00:00Z"));
+
+        mockMvc.perform(
+                        get("/api/technician/quotes")
+                                .param("status", "validated")
+                                .header("Authorization", tokenTecnico))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.totalItems").value(0));
+
+        mockMvc.perform(
+                        get("/api/technician/quotes")
+                                .param("status", "report-published")
+                                .header("Authorization", tokenTecnico))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.totalItems").value(1));
+
+        mockMvc.perform(
+                        get("/api/technician/quotes")
+                                .param("status", "PendingAcceptance")
+                                .header("Authorization", tokenTecnico))
+                .andExpect(status().isBadRequest());
+
+        mockMvc.perform(
+                        get("/api/technician/quotes")
+                                .param("status", "unknown")
+                                .header("Authorization", tokenTecnico))
+                .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    @DisplayName("retorna detalhe técnico sem valores, contatos ou documento comercial")
+    void consultaDetalheTecnicoRestrito() throws Exception {
+        adicionarItemProposto(orcamentoMaisNovo);
+        criarExecucao(
+                orcamentoMaisNovo,
+                StatusExecucaoEnsaio.REPORT_PUBLISHED,
+                "LAUDO-DETALHE",
+                OffsetDateTime.parse("2026-10-16T10:00:00Z"));
+
+        mockMvc.perform(
+                        get("/api/technician/quotes/{id}", orcamentoMaisNovo.getId())
+                                .header("Authorization", tokenTecnico))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.code").value("EAQ_2026_45482_V_1"))
+                .andExpect(jsonPath("$.companyName").value("Copel Distribuição"))
+                .andExpect(jsonPath("$.technicalStatus").value("report-published"))
+                .andExpect(jsonPath("$.description").value("Análise físico-química de óleo isolante 100%"))
+                .andExpect(jsonPath("$.items.length()").value(1))
+                .andExpect(jsonPath("$.items[0].testType").value("Resistência à tração"))
+                .andExpect(jsonPath("$.items[0].sampleCount").value(2))
+                .andExpect(jsonPath("$.items[0].standard").value("ABNT NBR 1234"))
+                .andExpect(jsonPath("$.totalPrice").doesNotExist())
+                .andExpect(jsonPath("$.items[0].unitPrice").doesNotExist())
+                .andExpect(jsonPath("$.externalContactName").doesNotExist())
+                .andExpect(jsonPath("$.externalContactEmail").doesNotExist())
+                .andExpect(jsonPath("$.status").doesNotExist())
+                .andExpect(jsonPath("$.stage").doesNotExist())
+                .andExpect(jsonPath("$.hasDocument").doesNotExist());
+
+        var resposta =
+                mockMvc.perform(
+                                get("/api/technician/quotes/{id}", orcamentoMaisNovo.getId())
+                                        .header("Authorization", tokenTecnico))
+                        .andReturn();
+        JsonNode raiz = objectMapper.readTree(resposta.getResponse().getContentAsString());
+        assertEquals(
+                Set.of(
+                        "id", "code", "name", "companyName", "createdDate", "technicalStatus",
+                        "description", "laboratoryName", "scope", "items"),
+                nomesDosCampos(raiz));
+        assertEquals(
+                Set.of("testType", "sampleCount", "standard"),
+                nomesDosCampos(raiz.path("items").get(0)));
+
+        mockMvc.perform(
+                        get("/api/technician/quotes/{id}", 999999L)
+                                .header("Authorization", tokenTecnico))
+                .andExpect(status().isNotFound());
+    }
+
+    @Test
+    @DisplayName("restringe a API técnica ao técnico e mantém somente leitura")
+    void restringeApiTecnicaPorPerfilEPermiteSomenteLeitura() throws Exception {
+        mockMvc.perform(get("/api/technician/quotes"))
+                .andExpect(status().isUnauthorized());
+
+        mockMvc.perform(
+                        get("/api/technician/quotes")
+                                .header("Authorization", tokenAdministrador))
+                .andExpect(status().isForbidden());
+
+        mockMvc.perform(
+                        get("/api/technician/quotes/{id}", orcamentoMaisNovo.getId())
+                                .header("Authorization", tokenAdministrador))
+                .andExpect(status().isForbidden());
+
+        mockMvc.perform(
+                        get("/api/technician/quotes")
+                                .header("Authorization", tokenCliente))
+                .andExpect(status().isUnauthorized());
+
+        mockMvc.perform(
+                        post("/api/technician/quotes")
+                                .header("Authorization", tokenTecnico)
+                                .contentType(MediaType.APPLICATION_JSON)
+                                .content("{}"))
+                .andExpect(status().isMethodNotAllowed());
+    }
+
+    @Test
+    @DisplayName("resume execução ativa, cancelamentos e evidência de publicação antes da paginação")
+    void agregaStatusTecnicoEFiltraAntesDaPaginacao() throws Exception {
+        criarExecucao(orcamentoMaisNovo, StatusExecucaoEnsaio.REPORT_PUBLISHED,
+                "LAUDO-MAIS-NOVO", OffsetDateTime.parse("2026-10-16T10:00:00Z"));
+        criarExecucao(orcamentoMaisNovo, StatusExecucaoEnsaio.CANCELLED, null, null);
+        criarExecucao(orcamentoMesmoDia, StatusExecucaoEnsaio.INCOMPLETE, null, null);
+        criarExecucao(orcamentoMesmoDia, StatusExecucaoEnsaio.COMPLETE, null, null);
+        criarExecucao(orcamentoAntigo, StatusExecucaoEnsaio.COMPLETE, null, null);
+        criarExecucao(orcamentoAntigo, StatusExecucaoEnsaio.CANCELLED, null, null);
+
+        Orcamento finalizado =
+                criarOrcamento(
+                        sanepar,
+                        "TECNICO-FINALIZADO",
+                        "Execução finalizada",
+                        "Descrição finalizada",
+                        StatusComercialOrcamento.PENDING_ACCEPTANCE,
+                        OffsetDateTime.parse("2026-10-08T10:00:00Z"));
+        criarExecucao(finalizado, StatusExecucaoEnsaio.FINALIZED, null, null);
+        criarExecucao(finalizado, StatusExecucaoEnsaio.DRAFTING_REPORT, null, null);
+
+        Orcamento cancelado =
+                criarOrcamento(
+                        sanepar,
+                        "TECNICO-TODOS-CANCELADOS",
+                        "Execuções canceladas",
+                        "Descrição cancelada",
+                        StatusComercialOrcamento.PENDING_ACCEPTANCE,
+                        OffsetDateTime.parse("2026-10-07T10:00:00Z"));
+        criarExecucao(cancelado, StatusExecucaoEnsaio.CANCELLED, null, null);
+        criarExecucao(cancelado, StatusExecucaoEnsaio.CANCELLED, null, null);
+
+        Orcamento evidenciasIncompletas =
+                criarOrcamento(
+                        sanepar,
+                        "TECNICO-EVIDENCIA-INCOMPLETA",
+                        "Publicação sem evidência completa",
+                        "Descrição da publicação incompleta",
+                        StatusComercialOrcamento.PENDING_ACCEPTANCE,
+                        OffsetDateTime.parse("2026-10-20T10:00:00Z"));
+        criarExecucao(
+                evidenciasIncompletas,
+                StatusExecucaoEnsaio.REPORT_PUBLISHED,
+                "   ",
+                OffsetDateTime.parse("2026-10-20T10:00:00Z"));
+
+        assertStatusTecnico("EAQ_2026_45482_V_1", "report-published");
+        assertStatusTecnico("EAQ_2026_33322_V_3", "incomplete");
+        assertStatusTecnico("EAQ_2026_11111_V_1", "complete");
+        assertStatusTecnico("TECNICO-FINALIZADO", "validated");
+        assertStatusTecnico("TECNICO-EVIDENCIA-INCOMPLETA", "validated");
+        assertStatusTecnico("TECNICO-TODOS-CANCELADOS", "cancelled");
+        assertStatusTecnico("EAQX2026X45482XVX1", null);
+
+        mockMvc.perform(
+                        get("/api/technician/quotes")
+                                .param("status", "validated")
+                                .param("page", "1")
+                                .param("pageSize", "1")
+                                .header("Authorization", tokenTecnico))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.totalItems").value(2))
+                .andExpect(jsonPath("$.items.length()").value(1))
+                .andExpect(jsonPath("$.items[0].code").value("TECNICO-EVIDENCIA-INCOMPLETA"));
+
+        mockMvc.perform(
+                        get("/api/technician/quotes")
+                                .param("status", "validated")
+                                .param("page", "2")
+                                .param("pageSize", "1")
+                                .header("Authorization", tokenTecnico))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.totalItems").value(2))
+                .andExpect(jsonPath("$.items[0].code").value("TECNICO-FINALIZADO"));
+    }
+
+    @Test
+    @DisplayName("recusa técnico inativado mesmo quando o token ainda é válido")
+    void recusaTecnicoInativado() throws Exception {
+        Usuario tecnico = usuarios.findByEmailIgnoreCase("tecnico-orcamentos@example.test").orElseThrow();
+        tecnico.setAtivo(false);
+        usuarios.saveAndFlush(tecnico);
+
+        mockMvc.perform(
+                        get("/api/technician/quotes")
+                                .header("Authorization", tokenTecnico))
+                .andExpect(status().isUnauthorized());
     }
 
     @Test
@@ -611,6 +956,58 @@ class OrcamentoControllerTests {
         orcamento.setTotalPrice(new BigDecimal("12500.00"));
         orcamento.setCreatedDate(createdDate);
         return orcamentos.saveAndFlush(orcamento);
+    }
+
+    private void adicionarItemProposto(Orcamento orcamento) {
+        OrcamentoItem item = new OrcamentoItem();
+        item.setOrcamento(orcamento);
+        item.setPosition(1);
+        item.setTestType("Resistência à tração");
+        item.setSampleCount(2);
+        item.setStandard("ABNT NBR 1234");
+        item.setUnitPrice(new BigDecimal("15.00"));
+        orcamento.getItems().add(item);
+        orcamentos.saveAndFlush(orcamento);
+    }
+
+    private ExecucaoEnsaio criarExecucao(
+            Orcamento orcamento,
+            StatusExecucaoEnsaio status,
+            String reportReference,
+            OffsetDateTime publishedAt) {
+        ExecucaoEnsaio execucao = new ExecucaoEnsaio();
+        execucao.setOrcamento(orcamento);
+        execucao.setStatus(status);
+        execucao.setReportReference(reportReference);
+        execucao.setPublishedAt(publishedAt);
+        return execucoes.saveAndFlush(execucao);
+    }
+
+    private void assertStatusTecnico(String codigoOrcamento, String statusEsperado) throws Exception {
+        var resposta =
+                mockMvc.perform(
+                                get("/api/technician/quotes")
+                                        .param("search", codigoOrcamento)
+                                        .header("Authorization", tokenTecnico))
+                        .andExpect(status().isOk())
+                        .andExpect(jsonPath("$.totalItems").value(1))
+                        .andReturn();
+        JsonNode item =
+                objectMapper
+                        .readTree(resposta.getResponse().getContentAsString())
+                        .path("items")
+                        .get(0);
+        if (statusEsperado == null) {
+            assertTrue(item.path("technicalStatus").isNull());
+        } else {
+            assertEquals(statusEsperado, item.path("technicalStatus").asText());
+        }
+    }
+
+    private Set<String> nomesDosCampos(JsonNode objeto) {
+        Set<String> nomes = new HashSet<>();
+        objeto.fieldNames().forEachRemaining(nomes::add);
+        return nomes;
     }
 
     private String token(PerfilUsuario perfil, String email) {
