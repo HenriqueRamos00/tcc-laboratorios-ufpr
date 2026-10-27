@@ -1,0 +1,101 @@
+<app-dialog-shell
+  title="Detalhes técnicos do orçamento"
+  [subtitle]="data.quoteCode"
+  [lateral]="true"
+  closeLabel="Fechar detalhes técnicos do orçamento"
+>
+  @if (carregando()) {
+    <div class="flex min-h-44 items-center justify-center gap-3" role="status">
+      <mat-spinner diameter="24" aria-label="Carregando detalhes técnicos do orçamento"></mat-spinner>
+      <span class="text-sm text-lactec-muted">Carregando detalhes...</span>
+    </div>
+  } @else if (erro()) {
+    <section class="flex min-h-44 flex-col items-center justify-center gap-3 px-6 text-center" role="alert">
+      <p class="m-0 text-sm font-semibold text-lactec-ink">
+        @if (erroPermissao()) {
+          Sua conta não tem permissão para consultar este orçamento.
+        } @else if (erroNaoEncontrado()) {
+          Este orçamento não está mais disponível.
+        } @else {
+          Não foi possível carregar os detalhes técnicos do orçamento.
+        }
+      </p>
+      @if (!erroPermissao() && !erroNaoEncontrado()) {
+        <button type="button" class="rounded-lg border border-lactec-line px-4 py-2 text-sm font-medium text-lactec-primary-dark hover:bg-lactec-line-soft" (click)="carregar()">
+          Tentar novamente
+        </button>
+      }
+    </section>
+  } @else {
+    @if (orcamento(); as detalhe) {
+    <div class="min-w-0 space-y-5">
+      <div class="flex min-w-0 flex-wrap items-center justify-between gap-3">
+        <div class="min-w-0">
+          <p class="m-0 text-xs font-semibold uppercase tracking-wide text-lactec-muted">Proposta</p>
+          <p class="mono mt-1 mb-0 break-all text-sm font-semibold text-lactec-primary-dark">{{ detalhe.code }}</p>
+        </div>
+        @let status = statusApresentacao(detalhe.technicalStatus);
+        <span class="inline-block max-w-full break-words rounded-full px-3 py-1 text-xs font-semibold [overflow-wrap:anywhere]" [ngClass]="status.className">
+          {{ status.label }}
+        </span>
+      </div>
+
+      <dl class="grid min-w-0 grid-cols-1 gap-x-6 gap-y-4 border-y border-lactec-line-soft py-5 sm:grid-cols-2">
+        <div class="min-w-0">
+          <dt class="text-xs font-medium text-lactec-muted">Nome</dt>
+          <dd class="mt-1 mb-0 break-words text-sm text-lactec-ink-soft [overflow-wrap:anywhere]">{{ detalhe.name || '-' }}</dd>
+        </div>
+        <div class="min-w-0">
+          <dt class="text-xs font-medium text-lactec-muted">Empresa</dt>
+          <dd class="mt-1 mb-0 break-words text-sm font-medium text-lactec-ink [overflow-wrap:anywhere]">{{ detalhe.companyName || '-' }}</dd>
+        </div>
+        <div class="min-w-0">
+          <dt class="text-xs font-medium text-lactec-muted">Data de criação</dt>
+          <dd class="mt-1 mb-0 text-sm text-lactec-ink-soft">{{ formatarData(detalhe.createdDate) }}</dd>
+        </div>
+        <div class="min-w-0">
+          <dt class="text-xs font-medium text-lactec-muted">Laboratório</dt>
+          <dd class="mt-1 mb-0 break-words text-sm text-lactec-ink-soft [overflow-wrap:anywhere]">{{ detalhe.laboratoryName || 'Não informado' }}</dd>
+        </div>
+        <div class="min-w-0 sm:col-span-2">
+          <dt class="text-xs font-medium text-lactec-muted">Descrição</dt>
+          <dd class="mt-1 mb-0 break-words whitespace-pre-line text-sm text-lactec-ink-soft [overflow-wrap:anywhere]">{{ detalhe.description || 'Não informado' }}</dd>
+        </div>
+        <div class="min-w-0 sm:col-span-2">
+          <dt class="text-xs font-medium text-lactec-muted">Escopo</dt>
+          <dd class="mt-1 mb-0 break-words whitespace-pre-line text-sm text-lactec-ink-soft [overflow-wrap:anywhere]">{{ detalhe.scope || 'Não informado' }}</dd>
+        </div>
+      </dl>
+
+      <section class="min-w-0 space-y-3" aria-labelledby="orcamento-tecnico-itens-title">
+        <h3 id="orcamento-tecnico-itens-title" class="display m-0 min-w-0 break-words text-base font-semibold text-lactec-ink [overflow-wrap:anywhere]">Serviços propostos</h3>
+        @if (detalhe.items.length) {
+          <div class="min-w-0 space-y-3">
+            @for (item of detalhe.items; track $index) {
+              <article class="min-w-0 rounded-xl border border-lactec-line bg-lactec-surface p-4">
+                <h4 class="m-0 break-words text-sm font-semibold text-lactec-ink [overflow-wrap:anywhere]">{{ item.testType }}</h4>
+                <dl class="mt-3 grid min-w-0 grid-cols-2 gap-x-4 gap-y-3 text-sm">
+                  <div class="min-w-0">
+                    <dt class="text-xs text-lactec-muted">Quantidade prevista</dt>
+                    <dd class="mt-1 mb-0 break-words text-lactec-ink-soft">{{ item.sampleCount }}</dd>
+                  </div>
+                  <div class="min-w-0">
+                    <dt class="text-xs text-lactec-muted">Norma</dt>
+                    <dd class="mt-1 mb-0 break-words text-lactec-ink-soft [overflow-wrap:anywhere]">{{ item.standard || 'Não informada' }}</dd>
+                  </div>
+                </dl>
+              </article>
+            }
+          </div>
+        } @else {
+          <p class="m-0 rounded-lg bg-lactec-line-soft px-4 py-3 text-sm text-lactec-muted">Não há serviços técnicos descritos neste orçamento.</p>
+        }
+      </section>
+    </div>
+    }
+  }
+
+  <button dialog-footer type="button" mat-dialog-close class="w-full rounded-lg bg-lactec-primary px-5 py-2.5 text-sm font-semibold text-white hover:bg-lactec-primary-dark sm:w-auto">
+    Fechar
+  </button>
+</app-dialog-shell>
