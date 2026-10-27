@@ -1,0 +1,85 @@
+package br.ufpr.tcc.backend_lab.presentation.rest;
+
+import br.ufpr.tcc.backend_lab.application.dto.request.EnsaioRequest;
+import br.ufpr.tcc.backend_lab.application.dto.response.EnsaioDtos;
+import br.ufpr.tcc.backend_lab.application.usecase.AtualizarEnsaioUseCase;
+import br.ufpr.tcc.backend_lab.application.usecase.CriarEnsaioUseCase;
+import br.ufpr.tcc.backend_lab.application.usecase.ListarAmostrasEnsaioUseCase;
+import br.ufpr.tcc.backend_lab.application.usecase.ListarEnsaiosUseCase;
+import br.ufpr.tcc.backend_lab.application.usecase.ListarInstrumentosEnsaioUseCase;
+import br.ufpr.tcc.backend_lab.application.usecase.ListarTecnicosEnsaioUseCase;
+import br.ufpr.tcc.backend_lab.application.usecase.ObterEnsaioUseCase;
+import br.ufpr.tcc.backend_lab.application.usecase.TemplateMedicaoUseCase;
+import java.net.URI;
+import java.util.List;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.RestController;
+
+@RestController
+@RequestMapping("/api/tests")
+public class EnsaioController {
+    private final ListarEnsaiosUseCase listarEnsaios;
+    private final ObterEnsaioUseCase obterEnsaio;
+    private final CriarEnsaioUseCase criarEnsaio;
+    private final AtualizarEnsaioUseCase atualizarEnsaio;
+    private final ListarAmostrasEnsaioUseCase listarAmostras;
+    private final ListarTecnicosEnsaioUseCase listarTecnicos;
+    private final ListarInstrumentosEnsaioUseCase listarInstrumentos;
+    private final TemplateMedicaoUseCase templates;
+
+    public EnsaioController(ListarEnsaiosUseCase listarEnsaios, ObterEnsaioUseCase obterEnsaio,
+            CriarEnsaioUseCase criarEnsaio, AtualizarEnsaioUseCase atualizarEnsaio,
+            ListarAmostrasEnsaioUseCase listarAmostras, ListarTecnicosEnsaioUseCase listarTecnicos,
+            ListarInstrumentosEnsaioUseCase listarInstrumentos, TemplateMedicaoUseCase templates) {
+        this.listarEnsaios = listarEnsaios;
+        this.obterEnsaio = obterEnsaio;
+        this.criarEnsaio = criarEnsaio;
+        this.atualizarEnsaio = atualizarEnsaio;
+        this.listarAmostras = listarAmostras;
+        this.listarTecnicos = listarTecnicos;
+        this.listarInstrumentos = listarInstrumentos;
+        this.templates = templates;
+    }
+
+    @GetMapping
+    public EnsaioDtos.Pagina<EnsaioDtos.Resumo> listar(@RequestParam(required=false) String search,
+            @RequestParam(defaultValue="1") int page, @RequestParam(defaultValue="20") int pageSize) {
+        return listarEnsaios.executar(search, page, pageSize);
+    }
+
+    @GetMapping("/{id}")
+    public EnsaioDtos.Detalhe obter(@PathVariable String id) { return obterEnsaio.executar(id); }
+
+    @PostMapping
+    public ResponseEntity<EnsaioDtos.Detalhe> criar(@RequestBody EnsaioRequest request) {
+        EnsaioDtos.Detalhe detalhe = criarEnsaio.executar(request);
+        return ResponseEntity.created(URI.create("/api/tests/" + detalhe.id())).body(detalhe);
+    }
+
+    @PutMapping("/{id}")
+    public EnsaioDtos.Detalhe atualizar(@PathVariable String id, @RequestBody EnsaioRequest request) {
+        return atualizarEnsaio.executar(id, request);
+    }
+
+    @GetMapping("/references/samples")
+    public EnsaioDtos.Pagina<EnsaioDtos.AmostraRef> amostras(@RequestParam(required=false) String search,
+            @RequestParam(defaultValue="1") int page, @RequestParam(defaultValue="20") int pageSize) {
+        return listarAmostras.executar(search, page, pageSize);
+    }
+
+    @GetMapping("/references/technicians")
+    public List<EnsaioDtos.TecnicoRef> tecnicos() { return listarTecnicos.executar(); }
+
+    @GetMapping("/references/instruments")
+    public List<EnsaioDtos.InstrumentoRef> instrumentos() { return listarInstrumentos.executar(); }
+
+    @GetMapping("/measurement-templates/{analysisType}")
+    public EnsaioDtos.Template template(@PathVariable String analysisType) { return templates.obter(analysisType); }
+}

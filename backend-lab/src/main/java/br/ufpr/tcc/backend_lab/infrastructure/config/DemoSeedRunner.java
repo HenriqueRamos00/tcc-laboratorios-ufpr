@@ -17,6 +17,7 @@ import org.springframework.transaction.annotation.Transactional;
 public class DemoSeedRunner implements ApplicationRunner {
     private static final String DEMO_QUOTE_CODE = "DEMO-LACTEC-001";
     private static final String DEMO_SEED_VERSION = "development-catalog-v2";
+    private static final String HU25_SEED_VERSION = "hu25-ensaios-v1";
 
     private final DataSource dataSource;
     private final JdbcTemplate jdbc;
@@ -31,11 +32,16 @@ public class DemoSeedRunner implements ApplicationRunner {
     public void run(ApplicationArguments args) throws Exception {
         jdbc.execute(
                 "CREATE TABLE IF NOT EXISTS demo_seed_runs (seed_key VARCHAR(100) PRIMARY KEY)");
-        if (!seedVersionExists()) {
+        if (!seedVersionExists(DEMO_SEED_VERSION)) {
             new ResourceDatabasePopulator(new ClassPathResource("database/demo-seed.sql"))
                     .execute(dataSource);
             inserirPdfDeDemonstracaoSeAusente();
             jdbc.update("INSERT INTO demo_seed_runs (seed_key) VALUES (?)", DEMO_SEED_VERSION);
+        }
+        if (!seedVersionExists(HU25_SEED_VERSION)) {
+            new ResourceDatabasePopulator(new ClassPathResource("database/demo-seed-hu25.sql"))
+                    .execute(dataSource);
+            jdbc.update("INSERT INTO demo_seed_runs (seed_key) VALUES (?)", HU25_SEED_VERSION);
         }
     }
 
@@ -64,12 +70,12 @@ public class DemoSeedRunner implements ApplicationRunner {
         }
     }
 
-    private boolean seedVersionExists() {
+    private boolean seedVersionExists(String version) {
         Integer count =
                 jdbc.queryForObject(
                         "SELECT COUNT(*) FROM demo_seed_runs WHERE seed_key = ?",
                         Integer.class,
-                        DEMO_SEED_VERSION);
+                        version);
         return count != null && count > 0;
     }
 }

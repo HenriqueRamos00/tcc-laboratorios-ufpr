@@ -207,6 +207,15 @@ seguem o formato `{ "message": "..." }`.
 
 O arquivo `.env` é local e não deve conter credenciais reais versionadas. Use `.env.example` como referência.
 
+
+### Manutenção de ensaios
+
+O Portal Interno consulta `GET /api/tests`, abre `GET /api/tests/{id}` e usa `POST`/`PUT` para criar ou substituir uma execução. As consultas de seleção ficam em `/api/tests/references/samples`, `/technicians` e `/instruments`; os formatos conhecidos usam `/api/tests/measurement-templates/{analysisType}`. Todas essas rotas exigem um usuário ativo com perfil TECNICO.
+
+Uma execução pertence a uma amostra ligada a um orçamento e mantém suas medições, instrumentos laboratoriais, classificação informada e texto técnico em rascunho na base PostgreSQL. Equipamento analisado continua sendo a entidade de equipamento da empresa e não se confunde com instrumentos utilizados. A manutenção usa a base própria Spring/PostgreSQL; integração com AutoLAB não faz parte do escopo. O código é gerado no servidor. A edição exige `version` e usa controle otimista; quantidades são decimais em texto JSON, com limite de 16 dígitos inteiros e 8 casas. Resultados `quantity`, `not-detected`, `not-performed` e `text` mantêm significados distintos. A classificação não é calculada automaticamente e o texto não é relatório publicado.
+
+O seed da HU25 é opt-in por `DEMO_SEED_ENABLED=true`, depende das propostas/técnicos demonstrativos existentes e roda uma única vez por versão. Ele cria amostras e instrumentos demonstrativos, três execuções com quatro formas de resultado e datas coerentes. O seed não importa os JSONL do Portal do Cliente e não representa dados oficiais do AutoLAB.
+
 ## Testes
 
 Execute todos os testes com:

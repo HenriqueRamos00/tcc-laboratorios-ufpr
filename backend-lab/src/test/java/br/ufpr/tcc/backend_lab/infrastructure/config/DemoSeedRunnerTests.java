@@ -43,7 +43,14 @@ class DemoSeedRunnerTests {
         assertEquals(44, contar("itens_orcamento"));
         assertEquals(10, contar("cliente_empresas"));
         assertEquals(1, contar("documentos_orcamentos"));
-        assertEquals(1, contar("demo_seed_runs"));
+        assertEquals(2, contar("demo_seed_runs"));
+        assertEquals(3, contar("amostras"));
+        assertEquals(2, contar("instrumentos_laboratoriais"));
+        assertEquals(3, contar("execucoes_ensaios"));
+        assertEquals(18, contar("medicoes_ensaios"));
+        assertEquals(4, jdbc.queryForObject("SELECT COUNT(DISTINCT tipo_resultado) FROM medicoes_ensaios", Integer.class));
+        assertEquals(1, jdbc.queryForObject("SELECT COUNT(*) FROM equipamentos WHERE tag='DEMO-TR-HU25-01' AND numero_serie='111.594/1'", Integer.class));
+        assertEquals(2, jdbc.queryForObject("SELECT COUNT(*) FROM execucoes_ensaios e JOIN amostras a ON a.id=e.amostra_id WHERE a.codigo='A-HU25-DEMO-001/2026'", Integer.class));
         assertTrue(
                 passwordEncoder.matches(
                         "Demo@12345",
@@ -199,7 +206,7 @@ class DemoSeedRunnerTests {
         assertEquals(25, contar("orcamentos"));
         assertEquals(42, contar("itens_orcamento"));
         assertEquals(9, contar("cliente_empresas"));
-        assertEquals(0, contar("demo_seed_runs"));
+        assertEquals(1, contar("demo_seed_runs"));
         assertEquals(
                 0,
                 jdbc.queryForObject(
@@ -214,7 +221,7 @@ class DemoSeedRunnerTests {
         assertEquals(26, contar("orcamentos"));
         assertEquals(44, contar("itens_orcamento"));
         assertEquals(9, contar("cliente_empresas"));
-        assertEquals(1, contar("demo_seed_runs"));
+        assertEquals(2, contar("demo_seed_runs"));
         assertEquals(
                 0,
                 jdbc.queryForObject(

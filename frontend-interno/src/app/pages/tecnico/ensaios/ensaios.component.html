@@ -1,0 +1,135 @@
+<nav
+  class="mb-2 flex flex-wrap items-center gap-1 text-sm"
+  aria-label="Trilha de navegação"
+>
+  <a routerLink="/tecnico" class="text-lactec-primary hover:underline"
+    >Painel técnico</a
+  ><mat-icon class="icone-16 text-lactec-muted" aria-hidden="true"
+    >chevron_right</mat-icon
+  ><span aria-current="page">Ensaios</span>
+</nav>
+<header class="flex flex-wrap items-start justify-between gap-4">
+  <div>
+    <h1 class="m-0 text-2xl font-semibold text-lactec-ink md:text-3xl">
+      Manter ensaios
+    </h1>
+    <p class="mt-1 text-sm text-lactec-muted">
+      Consulte e mantenha execuções de análise do laboratório.
+    </p>
+  </div>
+  <a mat-flat-button routerLink="/tecnico/ensaios/novo"
+    ><mat-icon>add</mat-icon>Novo ensaio</a
+  >
+</header>
+<label class="mt-6 flex max-w-2xl items-center"
+  ><span class="sr-only"
+    >Buscar ensaios por código, amostra, empresa ou tipo</span
+  ><input
+    [formControl]="search"
+    type="search"
+    class="h-11 w-full rounded-lg border border-lactec-line bg-white px-4 text-sm focus:border-lactec-primary focus:outline-none focus:ring-2 focus:ring-lactec-primary/20"
+    placeholder="Buscar por ensaio, amostra, empresa ou tipo"
+/></label>
+@if (loading()) {
+  <div
+    class="mt-6 flex min-h-48 items-center justify-center gap-3 rounded-2xl border border-lactec-line bg-white"
+    role="status"
+  >
+    <mat-spinner diameter="24" /><span>Carregando ensaios…</span>
+  </div>
+} @else if (error()) {
+  <section
+    class="mt-6 rounded-2xl border border-red-200 bg-white p-8 text-center"
+    role="alert"
+  >
+    <h2>
+      {{
+        forbidden()
+          ? "Acesso não autorizado"
+          : "Não foi possível carregar os ensaios"
+      }}
+    </h2>
+    <p>Confira sua conexão e tente novamente.</p>
+    <button mat-stroked-button (click)="retry()">Tentar novamente</button>
+  </section>
+} @else if (!items().length) {
+  <section
+    class="mt-6 rounded-2xl border border-dashed border-lactec-line bg-white p-10 text-center"
+    role="status"
+  >
+    <h2 class="text-base">Nenhum ensaio encontrado</h2>
+    <p class="text-sm text-lactec-muted">
+      Ajuste a busca ou cadastre uma nova execução.
+    </p>
+  </section>
+} @else {
+  <div
+    class="mt-6 overflow-hidden rounded-2xl border border-lactec-line bg-white"
+  >
+    <div
+      class="overflow-x-auto"
+      tabindex="0"
+      role="region"
+      aria-label="Tabela de ensaios; role horizontalmente para ver todas as colunas"
+    >
+      <table class="w-full min-w-[850px] text-left text-sm">
+        <thead class="bg-lactec-line-soft">
+          <tr>
+            <th class="px-4 py-3">Código</th>
+            <th class="px-4 py-3">Amostra</th>
+            <th class="px-4 py-3">Tipo</th>
+            <th class="px-4 py-3">Agendamento</th>
+            <th class="px-4 py-3">Responsável</th>
+            <th class="px-4 py-3">Estado do processo</th>
+            <th class="px-4 py-3">Ação</th>
+          </tr>
+        </thead>
+        <tbody>
+          @for (item of items(); track item.id) {
+            <tr class="border-t border-lactec-line-soft">
+              <td class="px-4 py-3 font-mono">{{ item.code }}</td>
+              <td class="px-4 py-3">
+                <span class="font-medium">{{ item.sample.code }}</span
+                ><span class="block text-lactec-muted">{{
+                  item.sample.description
+                }}</span>
+              </td>
+              <td class="px-4 py-3">{{ item.type }}</td>
+              <td class="px-4 py-3">{{ formatDate(item.scheduledDate) }}</td>
+              <td class="px-4 py-3">{{ item.responsible.name }}</td>
+              <td class="px-4 py-3">{{ statusLabel(item.status) }}</td>
+              <td class="px-4 py-3">
+                <a
+                  mat-button
+                  [routerLink]="['/tecnico/ensaios', item.id, 'editar']"
+                  [attr.aria-label]="'Editar ensaio ' + item.code"
+                  ><mat-icon>edit</mat-icon>Editar</a
+                >
+              </td>
+            </tr>
+          }
+        </tbody>
+      </table>
+    </div>
+  </div>
+  <div class="mt-4 flex flex-wrap items-center justify-between gap-3">
+    <span class="text-sm text-lactec-muted"
+      >Página {{ page() }} de {{ pages }} - {{ total() }} ensaios</span
+    >
+    <div class="flex gap-2">
+      <button
+        mat-stroked-button
+        [disabled]="page() <= 1"
+        (click)="setPage(page() - 1)"
+      >
+        Anterior</button
+      ><button
+        mat-stroked-button
+        [disabled]="page() >= pages"
+        (click)="setPage(page() + 1)"
+      >
+        Próxima
+      </button>
+    </div>
+  </div>
+}
