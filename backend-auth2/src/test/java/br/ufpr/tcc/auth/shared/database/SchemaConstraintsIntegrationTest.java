@@ -116,6 +116,32 @@ class SchemaConstraintsIntegrationTest extends OracleIntegrationTestBase {
                 .withMessageContaining("CK_APPLICATION_CODE_FORMAT");
     }
 
+    /**
+     * A restricao de formato nao pode mudar de veredito com a ordenacao da sessao.
+     *
+     * A versao anterior usava a expressao de intervalo [a-z0-9], e em Oracle o significado de
+     * intervalo sai do NLS_SORT, que e parametro de sessao. Medido neste banco, antes da
+     * correcao: com XSPANISH e com GERMAN o codigo com cedilha passava, com BINARY era
+     * recusado. A sessao da aplicacao agora fixa BINARY, e por isso este caso **troca** a
+     * ordenacao de proposito: ele prova que a restricao sozinha recusa, mesmo quando quem
+     * grava entrou por fora da aplicacao e trouxe outra ordenacao.
+     *
+     * O valor e restaurado no fim porque a conexao volta para o pool, e deixar a ordenacao
+     * trocada nela contaminaria os casos seguintes.
+     */
+    @Test
+    @DisplayName("codigo com acento e recusado mesmo com outra ordenacao na sessao")
+    void accentedCodeIsRejectedEvenUnderAnotherCollation() {
+        jdbcClient.sql("ALTER SESSION SET NLS_SORT = XSPANISH").update();
+        try {
+            assertThatExceptionOfType(DataIntegrityViolationException.class)
+                    .isThrownBy(() -> insertApplication(1010L, "portal-çweb"))
+                    .withMessageContaining("CK_APPLICATION_CODE_FORMAT");
+        } finally {
+            jdbcClient.sql("ALTER SESSION SET NLS_SORT = BINARY").update();
+        }
+    }
+
     @Test
     @DisplayName("e-mail normalizado precisa ser a forma minuscula do e-mail cadastrado")
     void normalizedEmailMustBeTheLowercaseFormOfTheStoredEmail() {

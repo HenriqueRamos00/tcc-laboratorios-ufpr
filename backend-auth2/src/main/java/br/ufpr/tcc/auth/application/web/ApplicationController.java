@@ -1,6 +1,7 @@
 package br.ufpr.tcc.auth.application.web;
 
 import br.ufpr.tcc.auth.application.ApplicationRegistry;
+import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
@@ -13,6 +14,7 @@ import java.util.Optional;
 import java.util.LinkedHashMap;
 import java.util.Map;
 import org.springframework.http.HttpStatus;
+import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -30,6 +32,7 @@ import org.springframework.web.bind.annotation.RestController;
  * repete a checagem, porque autorizacao espalhada em dois lugares diverge no dia em que
  * alguem mexe num deles.
  */
+@SecurityRequirement(name = "credencial-administrativa")
 @RestController
 class ApplicationController {
 
@@ -48,6 +51,7 @@ class ApplicationController {
             @NotBlank @Size(max = 150) String name,
             @NotBlank @Size(max = 80) @Pattern(regexp = "[a-z0-9]+(?:-[a-z0-9]+)*",
                     message = "Codigo deve ter apenas letras minusculas, digitos e hifen isolado")
+            @Schema(pattern = "^[a-z0-9]+(?:-[a-z0-9]+)*$")
             String code) {
     }
 
@@ -80,6 +84,7 @@ class ApplicationController {
             @NotBlank @Size(max = 150) String name,
             @NotBlank @Size(max = 80) @Pattern(regexp = "[a-z0-9]+(?:-[a-z0-9]+)*",
                     message = "Codigo deve ter apenas letras minusculas, digitos e hifen isolado")
+            @Schema(pattern = "^[a-z0-9]+(?:-[a-z0-9]+)*$")
             String code,
             @NotNull Boolean active) {
     }

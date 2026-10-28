@@ -2,6 +2,7 @@ package br.ufpr.tcc.auth.company.web;
 
 import br.ufpr.tcc.auth.company.CompanyRegistry;
 import br.ufpr.tcc.auth.shared.security.ApplicationCaller;
+import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Pattern;
@@ -9,6 +10,7 @@ import jakarta.validation.constraints.Size;
 import java.util.List;
 import java.util.Optional;
 import org.springframework.http.HttpStatus;
+import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.DeleteMapping;
@@ -23,6 +25,7 @@ import org.springframework.web.bind.annotation.RestController;
  * Cadastro de empresa. O alcance vem da credencial, e empresa de outra aplicacao responde
  * como inexistente.
  */
+@SecurityRequirement(name = "credencial-de-aplicacao")
 @RestController
 class CompanyController {
 
@@ -39,7 +42,9 @@ class CompanyController {
     record CompanyRequest(
             @NotBlank @Size(max = 150) String name,
             @NotBlank @Pattern(regexp = "[0-9]{14}",
-                    message = "CNPJ deve ter 14 digitos, sem pontuacao") String cnpj) {
+                    message = "CNPJ deve ter 14 digitos, sem pontuacao")
+            @Schema(pattern = "^[0-9]{14}$")
+            String cnpj) {
     }
 
     @GetMapping("/api/companies")
@@ -52,11 +57,12 @@ class CompanyController {
     ResponseEntity<CompanyRegistry.CompanyView> register(
             @AuthenticationPrincipal ApplicationCaller caller,
             @Valid @RequestBody CompanyRequest request) {
-        if (registry.cnpjAlreadyUsedIn(caller.applicationId(), request.cnpj())) {
-            return ResponseEntity.status(HttpStatus.CONFLICT).build();
-        }
-        return ResponseEntity.status(HttpStatus.CREATED)
-                .body(registry.register(caller.applicationId(), request.name(), request.cnpj()));
+        CompanyRegistry.Registration registration =
+                registry.register(caller.applicationId(), request.name(), request.cnpj());
+        return switch (registration.outcome()) {
+            case CREATED -> ResponseEntity.status(HttpStatus.CREATED).body(registration.company());
+            case CNPJ_ALREADY_REGISTERED -> ResponseEntity.status(HttpStatus.CONFLICT).build();
+        };
     }
 
     @GetMapping("/api/companies/{id}")
@@ -71,11 +77,19 @@ class CompanyController {
     ResponseEntity<CompanyRegistry.CompanyView> update(
             @AuthenticationPrincipal ApplicationCaller caller, @PathVariable String id,
             @Valid @RequestBody CompanyRequest request) {
-        return identifierOf(id)
-                .flatMap(companyId -> registry.update(caller.applicationId(), companyId,
-                        request.name(), request.cnpj()))
-                .map(ResponseEntity::ok)
-                .orElseGet(() -> ResponseEntity.notFound().build());
+        Optional<Long> companyId = identifierOf(id);
+        if (companyId.isEmpty()) {
+            return ResponseEntity.notFound().build();
+        }
+        CompanyRegistry.UpdateOutcome outcome = registry.update(caller.applicationId(),
+                companyId.get(), request.name(), request.cnpj());
+        return switch (outcome) {
+            case CHANGED -> registry.find(caller.applicationId(), companyId.get())
+                    .map(ResponseEntity::ok)
+                    .orElseGet(() -> ResponseEntity.notFound().build());
+            case NOT_FOUND -> ResponseEntity.notFound().build();
+            case CNPJ_ALREADY_REGISTERED -> ResponseEntity.status(HttpStatus.CONFLICT).build();
+        };
     }
 
     @DeleteMapping("/api/companies/{id}")

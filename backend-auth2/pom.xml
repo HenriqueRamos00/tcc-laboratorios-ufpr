@@ -6,7 +6,16 @@
     <parent>
         <groupId>org.springframework.boot</groupId>
         <artifactId>spring-boot-starter-parent</artifactId>
-        <version>4.1.1</version>
+        <!-- O parent decide a versao de Tomcat, de Jackson, de Spring Framework, de Spring
+             Security e de Hibernate, entao subir uma versao de correcao aqui e a forma de
+             fechar aviso de seguranca de todos eles de uma vez. Da 4.1.1 para a 4.1.2:
+             Tomcat 11.0.24 para 11.0.27, Jackson 3.1.5 para 3.1.7 e 2.21.5 para 2.21.7. Dos
+             avisos de Tomcat, o unico alcancavel neste desenho e o do cabecalho
+             transfer-encoding em HTTP/1.0 atras de proxy reverso, e este servico assume
+             borda na frente; os de Jackson sao de consumo de tempo em numero decimal e nao
+             ha campo decimal em corpo de entrada nenhum. Ou seja, nenhum e exploravel aqui
+             hoje, e e justamente por isso que a atualizacao e barata. -->
+        <version>4.1.2</version>
         <relativePath/>
     </parent>
 
@@ -18,6 +27,12 @@
 
     <properties>
         <java.version>21</java.version>
+        <!-- Sem isto cada construcao gera um jar diferente do mesmo codigo, e nao da para
+             provar que a imagem publicada corresponde ao fonte: medido, duas construcoes
+             seguidas da mesma arvore deram resumos diferentes, com a hora da maquina gravada
+             no MANIFEST. O Maven 3.9 nao liga reprodutibilidade por padrao, e o repackage do
+             Boot le esta propriedade. A data acompanha a entrega. -->
+        <project.build.outputTimestamp>2026-10-28T00:00:00Z</project.build.outputTimestamp>
         <springdoc.version>3.2.0</springdoc.version>
         <hypersistence-tsid.version>2.1.4</hypersistence-tsid.version>
         <bouncycastle.version>1.86</bouncycastle.version>
@@ -92,11 +107,17 @@
         <!-- Exigida pelo Argon2PasswordEncoder do Spring Security, que declara na
              documentacao que a implementacao atual precisa do BouncyCastle. Licenca
              declarada no POM publicado como Bouncy Castle Licence, que e o texto do MIT
-             adaptado, e a serie corrente tem manutencao recente. -->
+             adaptado, e a serie corrente tem manutencao recente.
+
+             Escopo de execucao, e nao de compilacao, pelo mesmo motivo do driver do Oracle:
+             nenhum arquivo do modulo importa org.bouncycastle, a ligacao e feita dentro do
+             Spring Security, e em compilacao a biblioteca ficaria disponivel para alguem usar
+             primitiva criptografica direto, fora do PasswordHashing e fora de revisao. -->
         <dependency>
             <groupId>org.bouncycastle</groupId>
             <artifactId>bcprov-jdk18on</artifactId>
             <version>${bouncycastle.version}</version>
+            <scope>runtime</scope>
         </dependency>
 
         <dependency>
@@ -104,19 +125,14 @@
             <artifactId>spring-boot-starter-webmvc-test</artifactId>
             <scope>test</scope>
         </dependency>
-        <dependency>
-            <groupId>org.springframework.boot</groupId>
-            <artifactId>spring-boot-starter-security-test</artifactId>
-            <scope>test</scope>
-        </dependency>
+        <!-- spring-boot-starter-security-test e testcontainers-junit-jupiter sairam daqui:
+             nenhum arquivo da suite importa org.springframework.security.test nem usa as
+             anotacoes @Testcontainers e @Container, porque o ciclo de vida do contentor vem
+             do @ServiceConnection do Boot. Dependencia declarada e nao usada e peso na
+             resolucao e na camada de dependencia da imagem, e some da revisao. -->
         <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-testcontainers</artifactId>
-            <scope>test</scope>
-        </dependency>
-        <dependency>
-            <groupId>org.testcontainers</groupId>
-            <artifactId>testcontainers-junit-jupiter</artifactId>
             <scope>test</scope>
         </dependency>
         <dependency>

@@ -367,8 +367,16 @@ class AuditTrailWiringIntegrationTest extends OracleIntegrationTestBase {
      * a confirmacao e exercitada com um link proprio, gravado aqui com o digest que o servico
      * guarda. O que esta sendo provado e o evento da confirmacao, nao o fluxo do link, que tem
      * classe de contrato propria.
+     *
+     * O link que o cadastro emitiu e invalidado antes, e isso nao e detalhe de arrumacao: o
+     * banco passou a garantir no maximo um link pendente por conta e proposito, e sem esta
+     * linha o auxiliar estaria fabricando um estado que a producao nao alcanca. Foi
+     * exatamente assim que a restricao nova apareceu, recusando a segunda insercao.
      */
     private String confirmationTokenOf(String accountId) {
+        jdbcClient.sql("UPDATE ACCOUNT_CONFIRMATION SET USED_AT = SYSTIMESTAMP"
+                        + " WHERE CLIENT_ACCOUNT_ID = :accountId AND USED_AT IS NULL")
+                .param("accountId", Long.parseLong(accountId)).update();
         ConfirmationToken token = ConfirmationToken.generate();
         jdbcClient.sql("INSERT INTO ACCOUNT_CONFIRMATION (ID, CLIENT_ACCOUNT_ID, TOKEN_DIGEST,"
                         + " PURPOSE, CREATED_AT, EXPIRES_AT)"

@@ -27,8 +27,14 @@ FROM eclipse-temurin:21.0.12.1_1-jre-alpine-3.24@sha256:b48e02e0ea88d7bfb305335d
 # O processo roda com uma conta sem shell e sem senha, criada so para isto. O
 # jar continua pertencendo ao root e entra somente leitura: um processo que
 # vire refem nao consegue reescrever a propria aplicacao.
+#
+# O gerenciador de pacotes sai da imagem no mesmo comando. "Conta sem shell" vale para o
+# login, nao para o processo: medido dentro do contentor, /bin/sh e /usr/bin/wget existem,
+# porque vem do busybox da base, e com o apk tambem presente uma execucao remota dentro da
+# JVM poderia instalar o que faltasse. O wget fica, porque a sonda do compose depende dele.
 RUN addgroup -S -g 10001 authservice \
- && adduser -S -u 10001 -G authservice -s /sbin/nologin -H authservice
+ && adduser -S -u 10001 -G authservice -s /sbin/nologin -H authservice \
+ && apk del --no-network apk-tools
 
 WORKDIR /app
 COPY --from=build --chown=root:root --chmod=444 /workspace/target/backend-auth2.jar app.jar

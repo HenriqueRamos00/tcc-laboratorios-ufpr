@@ -51,8 +51,10 @@ class ConcurrentConfirmationIntegrationTest extends OracleIntegrationTestBase {
                 .param("id", applicationId).param("code", "corrida-" + applicationId)
                 .param("now", OffsetDateTime.now()).update();
         String email = "pessoa" + NEXT_ID.incrementAndGet() + "@exemplo.com";
-        lifecycle.register(new ApplicationCaller(applicationId, "corrida-" + applicationId),
-                Long.toString(applicationId), "Pessoa", email, "SenhaForte123");
+        ApplicationCaller caller = new ApplicationCaller(applicationId,
+                "corrida-" + applicationId);
+        lifecycle.register(caller, Long.toString(applicationId), "Pessoa", email,
+                "SenhaForte123");
         String link = recordedMessages.lastTokenFor(email);
 
         int threads = 4;
@@ -62,7 +64,7 @@ class ConcurrentConfirmationIntegrationTest extends OracleIntegrationTestBase {
             for (int worker = 0; worker < threads; worker++) {
                 results.add(pool.submit(() -> {
                     allAtOnce.await();
-                    return lifecycle.confirmEmail(link);
+                    return lifecycle.confirmEmail(caller, link);
                 }));
             }
         }

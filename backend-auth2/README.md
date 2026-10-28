@@ -121,9 +121,9 @@ esta versionado:
 | GET POST | `/api/companies` | aplicacao, no proprio escopo |
 | GET PUT DELETE | `/api/companies/{id}` | aplicacao, no proprio escopo |
 | POST | `/api/auth/login` | aplicacao |
-| POST | `/api/auth/confirmations` | qualquer credencial valida: quem autoriza e o token do link |
+| POST | `/api/auth/confirmations` | aplicacao: o link pertence a uma conta, e a conta a uma aplicacao |
 | POST | `/api/auth/recoveries` | aplicacao |
-| POST | `/api/auth/password-resets` | qualquer credencial valida: quem autoriza e o token do link |
+| POST | `/api/auth/password-resets` | aplicacao, pelo mesmo motivo da confirmacao |
 
 As rotas marcadas como "aplicacao" recusam credencial administrativa na propria cadeia, com
 403. Isso e correcao de um defeito medido: enquanto a cadeia so exigia credencial valida,
@@ -142,8 +142,23 @@ alguem tinha desativado. Hoje corpo sem `active` responde 400 nas tres.
 propriedade desconhecida, porque aceitar e descartar ensina ao chamador que o campo existe:
 era o que a alteracao de conta fazia com endereco, perfil e aplicacao.
 
-Codigo de aplicacao repetido responde 409. Antes subia como erro de servidor, que nao esta na
-matriz de codigos.
+Codigo de aplicacao repetido responde 409, e endereco de cliente repetido tambem, inclusive
+quando os dois cadastros chegam ao mesmo tempo e quem recusa e a restricao do banco. Antes os
+dois subiam como erro de servidor, que nao esta na matriz de codigos.
+
+**Corpo acima de 32 KB responde 413, recusado antes de ser lido.** O maior pedido legitimo
+deste servico tem menos de mil bytes, e sem teto o corpo era lido inteiro para a memoria antes
+de a validacao recusar o campo por tamanho.
+
+**Falta de capacidade responde 503 com `Retry-After`.** Medido numa rajada de 400 logins com
+200 em paralelo: antes do teto de threads e desta traducao, uma requisicao saia como erro de
+servidor por tempo limite de conexao. Depois, as 400 responderam 401, sem erro no log, sem
+reinicio e com a prontidao em 200.
+
+**O teto de threads de atendimento e 24, e o numero vem de uma conta.** Cada verificacao de
+senha aloca 7 MiB por desenho, o contentor tem 768 MiB e a heap fica em 75% disso: com as 200
+threads do padrao, uma rajada de 200 logins pediria 1,4 GiB so de hash e o processo sairia por
+falta de memoria, em laco de reinicio. Vinte e quatro pedem 168 MiB no pico.
 
 Administrador e o contrario: a exclusao apaga a linha, porque o cadastro de administrador
 e pequeno e revisado por gente. O que nao se permite e ficar sem nenhum administrador

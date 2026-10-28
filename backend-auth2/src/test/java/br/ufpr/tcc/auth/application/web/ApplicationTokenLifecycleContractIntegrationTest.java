@@ -186,7 +186,7 @@ class ApplicationTokenLifecycleContractIntegrationTest extends OracleIntegration
                                 .header(HttpHeaders.AUTHORIZATION, "Bearer " + secret))
                 .andReturn().getResponse().getStatus();
 
-        assertThat(listing).isIn(401, 403);
-        assertThat(revocation).isIn(401, 403);
+        assertThat(listing).as("listar token com credencial de aplicacao").isEqualTo(403);
+        assertThat(revocation).as("revogar token com credencial de aplicacao").isEqualTo(403);
     }
 }

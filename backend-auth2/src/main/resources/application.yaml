@@ -31,7 +31,25 @@ spring:
       # apontar o esquema do dono na abertura da conexao, todo comando sem prefixo
       # responderia ORA-00942, e prefixar o nome do esquema dentro do codigo amarraria o
       # SQL a um nome de ambiente.
-      connection-init-sql: ALTER SESSION SET CURRENT_SCHEMA = ${AUTH_SCHEMA:AUTH_OWNER}
+      # O NLS_SORT entra junto porque o significado de [a-z0-9] em expressao regular do
+      # Oracle sai dele, e a restricao de formato do codigo de aplicacao depende disso.
+      # Medido neste banco: com NLS_SORT em XSPANISH ou GERMAN, o codigo portal-cweb escrito
+      # com cedilha passa pela restricao, e com BINARY ele e recusado. O driver deriva o
+      # NLS_SORT do idioma do processo, entao sem fixar aqui uma variavel de ambiente de
+      # contentor decide se a restricao vale.
+      connection-init-sql: >-
+        ALTER SESSION SET CURRENT_SCHEMA = ${AUTH_SCHEMA:AUTH_OWNER} NLS_SORT = BINARY
+      # Valor padrao conservador, e o do ambiente publicado vem do compose.
+      #
+      # Duas medicoes definem esses dois numeros. Na aplicacao no ar, com 24 threads de
+      # atendimento, pool de 10 virou gargalo: doze threads esperando conexao e uma estourando
+      # o tempo limite. Na suite, pool de 24 derruba a subida com ORA-17800, porque o Oracle de
+      # teste tem limite baixo de sessao e a suite mantem varios contextos vivos no mesmo
+      # processo, cada um com o seu pool.
+      #
+      # Entao o padrao fica em 10, que e o que a suite aguenta, e o ambiente publicado sobe
+      # para o numero de threads por variavel. Falta de conexao nao vira mais erro de servidor
+      # em nenhum dos dois: ela responde 503 com Retry-After.
       maximum-pool-size: 10
       connection-timeout: 3000
       validation-timeout: 2000
@@ -58,6 +76,19 @@ spring:
       ddl-auto: validate
   flyway:
     enabled: true
+    # Pasta de migracao ausente ou renomeada faz o Flyway reportar sucesso com zero migracoes
+    # aplicadas, porque o padrao desta propriedade e falso. Medido no metadado de
+    # configuracao do spring-boot-flyway que viaja no jar. Hoje quem acusa o estrago e o
+    # validate do Hibernate, dois passos depois, com mensagem de mapeamento em vez de
+    # mensagem de migracao.
+    fail-on-missing-locations: true
+  lifecycle:
+    # A fase de desligamento e o teto do Spring, o stop_grace_period e o do Docker, e a
+    # segunda precisa caber na primeira com folga. O padrao desta propriedade e 30s, igual ao
+    # grace period que o compose declarava, entao o pior caso mandava SIGKILL no mesmo
+    # instante em que o Spring ainda esperava, e a fila de mensagens, que so existe em
+    # memoria, morria com o processo. Aqui 15s, mais 5s da fila, cabem nos 45s do compose.
+    timeout-per-shutdown-phase: 15s
   mail:
     # O endereco do servidor nao e declarado aqui, pelo mesmo motivo do datasource:
     # SPRING_MAIL_HOST, SPRING_MAIL_PORT, SPRING_MAIL_USERNAME e SPRING_MAIL_PASSWORD ligam
@@ -128,6 +159,29 @@ springdoc:
 
 server:
   port: 8081
+  tomcat:
+    threads:
+      # Teto de threads de atendimento, e a conta que decide o numero esta aqui porque ela nao
+      # e obvia.
+      #
+      # Toda verificacao de senha deste servico aloca 7 MiB, por desenho: o custo e o controle
+      # que protege o login. O contentor tem 768 MiB e a heap fica em 75% disso, cerca de
+      # 576 MiB. Com o padrao de 200 threads, uma rajada de 200 logins simultaneos pede
+      # 1,4 GiB so de hash, estoura a heap, e o processo sai por ExitOnOutOfMemoryError e
+      # reinicia em laco. Nao exige credencial: a entrada administrativa e rota aberta, e o
+      # bloqueio por tentativa e por identificador submetido, entao e-mail aleatorio nunca
+      # bloqueia.
+      #
+      # Vinte e quatro threads pedem no maximo 168 MiB de hash ao mesmo tempo, o que cabe na
+      # heap com folga para o resto do processo. Requisicao acima disso espera na fila em vez
+      # de derrubar o servico, e esperar e o desfecho honesto: o servico continua atendendo
+      # quem ja estava dentro.
+      max: 24
+      min-spare: 4
+    # Conexao aceita e enfileirada sem thread livre. O teto existe para a fila nao crescer sem
+    # limite e virar o mesmo problema deslocado para outro lugar.
+    max-connections: 200
+    accept-count: 50
   # Encerramento gradual: sem isso o processo corta requisicao em andamento a
   # cada publicacao, e com reinicio automatico isso se repete.
   shutdown: graceful
@@ -149,6 +203,30 @@ management:
         enabled: true
       show-details: never
       group:
+        # A prontidao nasce so com o estado de disponibilidade da aplicacao, e com isso ela
+        # mentia: medido com o contentor do banco pausado, /health/readiness respondia 200 UP
+        # enquanto toda rota de negocio respondia 503, e a raiz de /health, que agrega o
+        # banco, respondia 503. O healthcheck do contentor consulta a prontidao, entao quem
+        # olhasse o compose veria um servico sadio que nao atende nada.
+        #
+        # Incluir o banco aqui nao causa reinicio em cascata: o Docker nao reinicia contentor
+        # insalubre, e depends_on nao e reavaliado. O efeito e so o estado ficar visivel.
+        readiness:
+          include: readinessState,db
+          # O mapeamento global manda OUT_OF_SERVICE para 200, e o motivo escrito mais abaixo
+          # vale para a raiz de /health, nao para a prontidao: o estado REFUSING_TRAFFIC,
+          # que e o mecanismo documentado para tirar a instancia de rotacao, e publicado como
+          # OUT_OF_SERVICE e sairia com 200 para a sonda, que so olha o status. Hoje nenhum
+          # codigo publica esse estado, entao isto e defesa de quem escrever o proximo.
+          status:
+            http-mapping:
+              down: 503
+              out-of-service: 503
+        liveness:
+          status:
+            http-mapping:
+              down: 503
+              out-of-service: 503
         # O estado do envio sai num grupo proprio, com detalhe, porque a raiz de /health e
         # publica e mostra so o resumo. Nenhum detalhe identifica pessoa nem servidor.
         mail:
@@ -172,6 +250,22 @@ management:
       enabled: false
 
 auth:
+  request:
+    # Teto do corpo da requisicao, em bytes. O maior pedido legitimo deste servico e o
+    # cadastro de cliente, com nome de 150, endereco de 254 e senha de 72 caracteres: menos de
+    # mil bytes. Trinta e dois mil deixa folga de mais de uma ordem de grandeza para
+    # acentuacao e para campo novo, e continua pequeno demais para servir de alavanca contra a
+    # memoria do processo.
+    maximum-body-bytes: 32768
+  confirmation:
+    # Prazo do link de confirmacao de cadastro. Pode ser longo porque quem nao confirma nao
+    # entra: o link so transforma conta inerte em conta que funciona.
+    lifetime: PT24H
+  recovery:
+    # Prazo do link de recuperacao, proprio e curto. Ele e o contrario do de confirmacao,
+    # porque ele **abre** a conta: cada hora a mais e uma hora em que um link parado em caixa
+    # postal ou em historico de navegador continua valendo como chave.
+    lifetime: PT1H
   notification:
     # Pool e fila dimensionados e declarados, nunca no padrao implicito. Duas threads sao
     # duas conexoes simultaneas ao servidor, que e o que um provedor com limite de conexao

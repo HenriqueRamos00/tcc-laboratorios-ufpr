@@ -41,6 +41,59 @@ class ApplicationUserPrivilegeIntegrationTest extends OracleIntegrationTestBase 
                 .withStackTraceContaining("ORA-01031");
     }
 
+    /**
+     * Os dois casos acima provam que **um comando falha**, e nao que a lista de privilegios e
+     * a declarada. Acrescentar um papel ao usuario da aplicacao, por exemplo RESOURCE, nao
+     * traz CREATE TABLE nesta versao do Oracle, entao ORA-01031 continuaria valendo e os dois
+     * continuariam verdes com o usuario carregando poder que ele nao deveria ter.
+     *
+     * Este caso cobra a lista inteira, e e a forma de a separacao de privilegio deixar de ser
+     * afirmacao em documento.
+     */
+    @Test
+    @DisplayName("o usuario da aplicacao tem apenas entrada de sessao e o papel de leitura e escrita")
+    void applicationUserHasNothingBeyondTheDeclaredPrivileges() {
+        java.util.List<String> systemPrivileges = jdbcClient
+                .sql("SELECT PRIVILEGE FROM USER_SYS_PRIVS ORDER BY PRIVILEGE")
+                .query(String.class).list();
+        java.util.List<String> roles = jdbcClient
+                .sql("SELECT GRANTED_ROLE FROM USER_ROLE_PRIVS ORDER BY GRANTED_ROLE")
+                .query(String.class).list();
+        java.util.List<String> directTablePrivileges = jdbcClient
+                .sql("SELECT PRIVILEGE FROM USER_TAB_PRIVS WHERE GRANTEE = USER")
+                .query(String.class).list();
+
+        assertThat(systemPrivileges).containsExactly("CREATE SESSION");
+        assertThat(roles).containsExactly("AUTH_READWRITE");
+        assertThat(directTablePrivileges)
+                .as("tudo passa pelo papel, para a revisao ter um lugar so").isEmpty();
+    }
+
+    /**
+     * Migracao que cria tabela e esquece a concessao nao quebra a migracao: ela quebra na
+     * primeira consulta, com ORA-00942, e so se algum outro caso tocar aquela tabela. Como as
+     * concessoes vivem espalhadas por um arquivo de migracao por fatia, esquecer uma e o
+     * defeito mais facil de cometer.
+     */
+    @Test
+    @DisplayName("toda tabela do dono concede as quatro operacoes ao papel da aplicacao")
+    void everyOwnerTableGrantsTheFourOperationsToTheRole() {
+        java.util.List<String> withoutTheFullGrant = schemaOwnerQuery("""
+                SELECT owned.TABLE_NAME
+                  FROM USER_TABLES owned
+                 WHERE owned.TABLE_NAME <> 'flyway_schema_history'
+                   AND (SELECT COUNT(DISTINCT granted.PRIVILEGE)
+                          FROM USER_TAB_PRIVS granted
+                         WHERE granted.TABLE_NAME = owned.TABLE_NAME
+                           AND granted.GRANTEE = 'AUTH_READWRITE'
+                           AND granted.PRIVILEGE IN ('SELECT', 'INSERT', 'UPDATE', 'DELETE')) < 4
+                 ORDER BY owned.TABLE_NAME
+                """);
+
+        assertThat(withoutTheFullGrant)
+                .as("tabela sem as quatro concessoes responde ORA-00942 em producao").isEmpty();
+    }
+
     @Test
     @DisplayName("o usuario da aplicacao le e grava nas tabelas do esquema")
     void applicationUserReadsAndWritesTheSchema() {

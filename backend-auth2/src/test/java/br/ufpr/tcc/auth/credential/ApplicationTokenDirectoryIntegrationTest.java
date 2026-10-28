@@ -28,8 +28,16 @@ class ApplicationTokenDirectoryIntegrationTest extends OracleIntegrationTestBase
     @Autowired
     private JdbcClient jdbcClient;
 
+    /**
+     * Identificador de uma sequencia propria da classe, e nao derivado do relogio nem do
+     * resumo do codigo: as duas formas anteriores podiam colidir com outra classe, e quem
+     * salvava disso era apenas o @Transactional desta, que e protecao por acidente.
+     */
+    private static final java.util.concurrent.atomic.AtomicLong NEXT =
+            new java.util.concurrent.atomic.AtomicLong(970_000L);
+
     private long createApplication(String code, boolean active) {
-        long id = Math.abs(code.hashCode()) + 9_000_000L;
+        long id = NEXT.incrementAndGet();
         jdbcClient.sql("INSERT INTO APPLICATION (ID, CODE, NAME, ACTIVE, CREATED_AT, UPDATED_AT)"
                         + " VALUES (:id, :code, :name, :active, :now, :now)")
                 .param("id", id).param("code", code).param("name", "Aplicacao " + code)
@@ -42,7 +50,7 @@ class ApplicationTokenDirectoryIntegrationTest extends OracleIntegrationTestBase
         jdbcClient.sql("INSERT INTO APPLICATION_TOKEN"
                         + " (ID, APPLICATION_ID, NAME, TOKEN_DIGEST, CREATED_AT, EXPIRES_AT, REVOKED_AT)"
                         + " VALUES (:id, :applicationId, :name, :digest, :now, :expiresAt, :revokedAt)")
-                .param("id", applicationId + System.nanoTime() % 1000)
+                .param("id", NEXT.incrementAndGet())
                 .param("applicationId", applicationId).param("name", "token de teste")
                 .param("digest", token.digest().asBytes()).param("now", OffsetDateTime.now())
                 .param("expiresAt", expiresAt).param("revokedAt", revokedAt).update();

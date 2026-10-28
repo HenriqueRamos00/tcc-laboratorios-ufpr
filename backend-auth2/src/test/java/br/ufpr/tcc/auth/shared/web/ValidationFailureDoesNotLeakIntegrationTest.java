@@ -53,12 +53,14 @@ class ValidationFailureDoesNotLeakIntegrationTest extends OracleIntegrationTestB
 
     private final ListAppender<ILoggingEvent> everything = new ListAppender<>();
     private Logger rootLogger;
+    private Level previousRootLevel;
     private String applicationToken;
     private String applicationId;
 
     @BeforeEach
     void captureEveryLogLine() {
         rootLogger = ((LoggerContext) LoggerFactory.getILoggerFactory()).getLogger("ROOT");
+        previousRootLevel = rootLogger.getLevel();
         everything.start();
         rootLogger.addAppender(everything);
         rootLogger.setLevel(Level.DEBUG);
@@ -78,10 +80,19 @@ class ValidationFailureDoesNotLeakIntegrationTest extends OracleIntegrationTestB
         applicationToken = token.clearValue();
     }
 
+    /**
+     * O nivel do ROOT volta ao que era, e nao apenas o apendice sai.
+     *
+     * Ele e global e o contentor de contexto da suite e compartilhado: deixar o ROOT em
+     * DEBUG faria toda classe que rodasse depois desta rodar com nivel diferente da
+     * configuracao, e um caso que dependesse disso passaria ou falharia pela ordem de
+     * execucao.
+     */
     @AfterEach
     void releaseLogLines() {
         rootLogger.detachAppender(everything);
         everything.stop();
+        rootLogger.setLevel(previousRootLevel);
     }
 
     private void assertNothingLeaked() {
@@ -139,6 +150,29 @@ class ValidationFailureDoesNotLeakIntegrationTest extends OracleIntegrationTestB
 
         assertThat(result.getResponse().getStatus()).isEqualTo(400);
         assertNothingLeaked();
+    }
+
+    /**
+     * Corpo acima do teto e recusado antes de ser lido.
+     *
+     * Sem teto, um corpo grande e lido inteiro para a memoria antes de a validacao recusar o
+     * campo por tamanho: o custo e pago antes da decisao, e algumas dezenas em paralelo
+     * esgotam a memoria do processo. A recusa vem com 413, que e o status que a norma reserva
+     * para carga grande demais, e nao com o 400 de corpo malformado: o corpo nao esta errado,
+     * ele e grande.
+     */
+    @Test
+    @DisplayName("corpo acima do teto responde 413, e nao e lido")
+    void bodyAboveTheLimitIsRefusedWithoutBeingRead() throws Exception {
+        String enormousName = "a".repeat(2_000_000);
+
+        MvcResult result = mockMvc.perform(post("/api/companies")
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + applicationToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"name\":\"" + enormousName + "\",\"cnpj\":\"66666666666666\"}"))
+                .andReturn();
+
+        assertThat(result.getResponse().getStatus()).isEqualTo(413);
     }
 
     /** Corpo que o desserializador recusa entra pelo mesmo caminho e tambem nao pode vazar. */

@@ -4,6 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 
+import br.ufpr.tcc.auth.authentication.LoginAttemptLedger;
 import br.ufpr.tcc.auth.credential.model.ServiceToken;
 import br.ufpr.tcc.auth.shared.database.OracleIntegrationTestBase;
 import java.time.OffsetDateTime;
@@ -42,6 +43,9 @@ class ClientLoginContractIntegrationTest extends OracleIntegrationTestBase {
 
     @Autowired
     private PasswordEncoder passwordEncoder;
+
+    @Autowired
+    private LoginAttemptLedger ledger;
 
     private record Registered(String serviceToken, String applicationCode, String email) {
     }
@@ -171,6 +175,11 @@ class ClientLoginContractIntegrationTest extends OracleIntegrationTestBase {
         assertThat(fifth.getResponse().getHeader(HttpHeaders.CACHE_CONTROL)).contains("no-store");
     }
 
+    /**
+     * A segunda metade do nome do caso tambem precisa ser afirmada. Sem conferir o contador,
+     * um 400 que debitasse tentativa passaria, e corpo invalido repetido viraria o jeito mais
+     * barato de trancar conta alheia.
+     */
     @Test
     @DisplayName("corpo malformado responde 400 e nao gasta tentativa")
     void malformedBodyAnswersBadRequest() throws Exception {
@@ -180,8 +189,85 @@ class ClientLoginContractIntegrationTest extends OracleIntegrationTestBase {
                         .header(HttpHeaders.AUTHORIZATION, "Bearer " + registered.serviceToken())
                         .contentType(MediaType.APPLICATION_JSON).content("{\"email\":\"x@y.com\"}"))
                 .andReturn();
+        MvcResult unreadable = mockMvc.perform(post("/api/auth/login")
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + registered.serviceToken())
+                        .contentType(MediaType.APPLICATION_JSON).content("{isto nao e json}"))
+                .andReturn();
 
         assertThat(missingField.getResponse().getStatus()).isEqualTo(400);
+        assertThat(unreadable.getResponse().getStatus())
+                .as("corpo ilegivel e campo faltando sao o mesmo desfecho nesta rota")
+                .isEqualTo(400);
+        assertThat(attemptsOf(registered))
+                .as("nenhuma das duas recusas de corpo debita tentativa").isZero();
+    }
+
+    /**
+     * No login nao existe minimo de senha, e este caso existe para proteger essa ausencia.
+     *
+     * Cobrar oito caracteres aqui responderia 400 onde o contrato espera 401, entregaria o
+     * tamanho da senha a quem sonda e deixaria a tentativa curta sem gastar uma das cinco.
+     * Medido antes deste caso: nenhuma chamada da suite as duas rotas de login usava senha
+     * com menos de oito caracteres, entao acrescentar a restricao de tamanho no pedido
+     * passava sem nenhum teste cair.
+     */
+    @Test
+    @DisplayName("senha curta no login responde 401 como senha errada, e nao 400")
+    void shortPasswordOnLoginAnswersUnauthorizedAndNotBadRequest() throws Exception {
+        Registered registered = registerApplicationWithAccount("portal-senha-curta", true, true);
+
+        MvcResult tooShort = login(registered.serviceToken(), registered.email(), "Ab1");
+        MvcResult simplyWrong = login(registered.serviceToken(), registered.email(), "Errada123");
+
+        assertThat(tooShort.getResponse().getStatus()).isEqualTo(401);
+        assertThat(tooShort.getResponse().getHeader(HttpHeaders.WWW_AUTHENTICATE))
+                .as("recusa de senha nao desafia").isNull();
+        assertThat(comparableForm(tooShort))
+                .as("senha curta e senha errada sao a mesma resposta, byte a byte")
+                .isEqualTo(comparableForm(simplyWrong));
+        assertThat(attemptsOf(registered))
+                .as("as duas tentativas curtas e erradas contam igual").isEqualTo(2);
+    }
+
+    /**
+     * Entrar com a senha certa precisa zerar a contagem **pela rota**, e nao apenas no
+     * contador chamado direto.
+     *
+     * O caso que existia chamava o contador diretamente, entao a fiacao entre o caso de uso e
+     * ele nunca era exercitada: apagar a linha que zera deixava a suite verde, e o titular que
+     * entrasse depois de quatro erros ficaria com quatro erros guardados, trancando a conta no
+     * erro de digitacao seguinte, que e exatamente o que a funcao existe para evitar.
+     */
+    @Test
+    @DisplayName("entrar com a senha certa zera a contagem de tentativa")
+    void successfulSignInClearsTheFailureCount() throws Exception {
+        Registered registered = registerApplicationWithAccount("portal-zera", true, true);
+        for (int attempt = 1; attempt <= 4; attempt++) {
+            login(registered.serviceToken(), registered.email(), "Errada123");
+        }
+
+        assertThat(login(registered.serviceToken(), registered.email(), GOOD_PASSWORD)
+                .getResponse().getStatus()).isEqualTo(200);
+        assertThat(attemptsOf(registered)).as("a contagem volta a zero").isZero();
+
+        for (int attempt = 1; attempt <= 4; attempt++) {
+            assertThat(login(registered.serviceToken(), registered.email(), "Errada123")
+                    .getResponse().getStatus())
+                    .as("tentativa " + attempt + " depois do acerto").isEqualTo(401);
+        }
+    }
+
+    /**
+     * Tentativas debitadas para aquela conta naquela aplicacao, perguntadas ao contador real.
+     *
+     * A contagem vem da producao de proposito. Recalcular a chave do contador dentro do teste
+     * faria ele concordar com uma mudanca de formato de chave em vez de acusa-la, que foi
+     * exatamente o defeito encontrado no caso irmao da entrada administrativa.
+     */
+    private int attemptsOf(Registered registered) {
+        long applicationId = jdbcClient.sql("SELECT ID FROM APPLICATION WHERE CODE = :code")
+                .param("code", registered.applicationCode()).query(Long.class).single();
+        return ledger.failedAttemptsOf(applicationId, registered.email());
     }
 
     @Test
@@ -203,6 +289,6 @@ class ClientLoginContractIntegrationTest extends OracleIntegrationTestBase {
                 .content("username=user&password=x")).andReturn();
 
         assertThat(formLogin.getResponse().getStatus()).isNotEqualTo(302);
-        assertThat(formLogin.getResponse().getStatus()).isIn(401, 404);
+        assertThat(formLogin.getResponse().getStatus()).isEqualTo(401);
     }
 }

@@ -56,11 +56,28 @@ class ClientAccountRegistry {
      * usada dentro do WHERE: o numero de linhas afetadas vira a decisao, e duas chamadas
      * simultaneas com o mesmo link nao conseguem as duas achar que ganharam.
      */
-    Optional<Long> consume(ConfirmationToken token, OutboundMessage.Purpose purpose) {
-        Long accountId = jdbcClient.sql("SELECT CLIENT_ACCOUNT_ID FROM ACCOUNT_CONFIRMATION"
-                        + " WHERE TOKEN_DIGEST = :digest AND PURPOSE = :purpose"
-                        + " AND USED_AT IS NULL AND EXPIRES_AT > SYSTIMESTAMP")
+    /**
+     * A aplicacao do chamador entra no WHERE, e nao numa comparacao depois.
+     *
+     * O link pertence a uma conta, e a conta pertence a uma aplicacao. Sem esta condicao a
+     * rota de confirmacao era o unico lugar do servico que nao isolava por aplicacao: medido,
+     * a aplicacao B confirmava conta da aplicacao A apresentando o link dela. Filtrar na
+     * consulta em vez de comparar em memoria mantem o vazamento impossivel por construcao,
+     * do mesmo jeito que na busca de conta.
+     */
+    Optional<Long> consume(long applicationId, ConfirmationToken token,
+            OutboundMessage.Purpose purpose) {
+        Long accountId = jdbcClient.sql("SELECT confirmation.CLIENT_ACCOUNT_ID"
+                        + " FROM ACCOUNT_CONFIRMATION confirmation"
+                        + " JOIN CLIENT_ACCOUNT account"
+                        + " ON account.ID = confirmation.CLIENT_ACCOUNT_ID"
+                        + " WHERE confirmation.TOKEN_DIGEST = :digest"
+                        + " AND confirmation.PURPOSE = :purpose"
+                        + " AND confirmation.USED_AT IS NULL"
+                        + " AND confirmation.EXPIRES_AT > SYSTIMESTAMP"
+                        + " AND account.APPLICATION_ID = :applicationId")
                 .param("digest", token.digest().asBytes()).param("purpose", purpose.name())
+                .param("applicationId", applicationId)
                 .query(Long.class).optional().orElse(null);
         if (accountId == null) {
             return Optional.empty();
@@ -71,13 +88,25 @@ class ClientAccountRegistry {
         return consumed == 1 ? Optional.of(accountId) : Optional.empty();
     }
 
-    Optional<Long> findIdByApplicationAndEmail(long applicationId, String email) {
-        return jdbcClient.sql("SELECT ID FROM CLIENT_ACCOUNT"
+    /**
+     * A conta encontrada para o pedido de recuperacao, com o endereco **cadastrado**.
+     *
+     * O endereco vem daqui e nao do pedido porque a busca casa pela forma minuscula que o
+     * banco calcula: grafias diferentes encontram a mesma conta, e mandar a mensagem para a
+     * grafia submetida faria o link do titular sair para um endereco que nao e o cadastrado.
+     */
+    record AccountToNotify(long id, String registeredEmail) {
+    }
+
+    Optional<AccountToNotify> findToNotifyByApplicationAndEmail(long applicationId, String email) {
+        return jdbcClient.sql("SELECT ID, EMAIL FROM CLIENT_ACCOUNT"
                         + " WHERE APPLICATION_ID = :applicationId"
                         + " AND EMAIL_NORMALIZED = LOWER(:email)")
                 .param("applicationId", applicationId)
                 .param("email", withoutSurroundingSpace(email))
-                .query(Long.class).optional();
+                .query((resultSet, rowNumber) -> new AccountToNotify(resultSet.getLong("ID"),
+                        resultSet.getString("EMAIL")))
+                .optional();
     }
 
     void updatePasswordHash(long accountId, String passwordHash) {
@@ -94,6 +123,20 @@ class ClientAccountRegistry {
      * o caso de a conta estar comprometida: deixar o link anterior vivo devolveria o acesso
      * a quem pediu primeiro.
      */
+    /**
+     * Mata os links pendentes de um proposito so.
+     *
+     * A recuperacao usa isto ao emitir um link novo, porque a regra diz que o anterior morre
+     * quando o novo nasce. Restringir ao proposito importa: um pedido de recuperacao nao pode
+     * derrubar a confirmacao de cadastro que a pessoa ainda nao usou.
+     */
+    void invalidatePendingConfirmations(long accountId, OutboundMessage.Purpose purpose) {
+        jdbcClient.sql("UPDATE ACCOUNT_CONFIRMATION SET USED_AT = SYSTIMESTAMP"
+                        + " WHERE CLIENT_ACCOUNT_ID = :accountId AND USED_AT IS NULL"
+                        + " AND PURPOSE = :purpose")
+                .param("accountId", accountId).param("purpose", purpose.name()).update();
+    }
+
     void invalidatePendingConfirmations(long accountId) {
         jdbcClient.sql("UPDATE ACCOUNT_CONFIRMATION SET USED_AT = SYSTIMESTAMP"
                         + " WHERE CLIENT_ACCOUNT_ID = :accountId AND USED_AT IS NULL")
@@ -110,6 +153,21 @@ class ClientAccountRegistry {
     record AccountView(String id, String name, String email, String role, boolean active,
             String serviceId, boolean emailConfirmed) {
     }
+
+    private static final String UPDATE_ACCOUNT = "UPDATE CLIENT_ACCOUNT SET NAME = :name,"
+            + " ACTIVE = :active, UPDATED_AT = :now WHERE ID = :id";
+
+    /**
+     * As credenciais de uso unico saem primeiro, porque a chave estrangeira existe justamente
+     * para impedir que sobrem apontando para o nada, e elas tambem filtram pela aplicacao,
+     * pela conta a que pertencem.
+     */
+    private static final String DELETE_CONFIRMATIONS_OF = "DELETE FROM ACCOUNT_CONFIRMATION"
+            + " WHERE CLIENT_ACCOUNT_ID IN (SELECT ID FROM CLIENT_ACCOUNT WHERE ID = :id";
+
+    private static final String DELETE_ACCOUNT = "DELETE FROM CLIENT_ACCOUNT WHERE ID = :id";
+
+    private static final String WITHIN_APPLICATION = " AND APPLICATION_ID = :applicationId";
 
     private static final String SELECT_ACCOUNT = "SELECT ID, NAME, EMAIL, ACTIVE,"
             + " EMAIL_CONFIRMED, APPLICATION_ID FROM CLIENT_ACCOUNT";
@@ -148,21 +206,47 @@ class ClientAccountRegistry {
                         .query((resultSet, rowNumber) -> toView(resultSet)).optional());
     }
 
-    void update(long accountId, String name, boolean active) {
-        jdbcClient.sql("UPDATE CLIENT_ACCOUNT SET NAME = :name, ACTIVE = :active, UPDATED_AT = :now"
-                        + " WHERE ID = :id")
-                .param("id", accountId).param("name", name).param("active", active ? 1 : 0)
-                .param("now", OffsetDateTime.now()).update();
+    /**
+     * O alcance de quem chamou entra tambem na gravacao, e nao apenas na leitura anterior.
+     *
+     * Sem ele o isolamento entre aplicacoes vive inteiro na consulta que roda antes: trocar
+     * aquela consulta por uma sem escopo passaria a permitir que a aplicacao A renomeasse e
+     * desativasse conta de cliente da aplicacao B, e nenhum teste cairia. Desativar conta
+     * alheia e negacao de servico contra o cliente de outra aplicacao do Lactec, entao a
+     * condicao e repetida de proposito. Alcance vazio e administrador, que atravessa
+     * aplicacoes.
+     */
+    void update(java.util.Optional<Long> applicationScope, long accountId, String name,
+            boolean active) {
+        OffsetDateTime now = OffsetDateTime.now();
+        applicationScope.ifPresentOrElse(
+                applicationId -> jdbcClient.sql(UPDATE_ACCOUNT
+                                + " AND APPLICATION_ID = :applicationId")
+                        .param("id", accountId).param("name", name)
+                        .param("active", active ? 1 : 0).param("now", now)
+                        .param("applicationId", applicationId).update(),
+                () -> jdbcClient.sql(UPDATE_ACCOUNT)
+                        .param("id", accountId).param("name", name)
+                        .param("active", active ? 1 : 0).param("now", now).update());
     }
 
     /**
-     * Remove a conta e as credenciais de uso unico dela, porque a chave estrangeira existe
-     * justamente para impedir que sobrem apontando para o nada.
+     * Remove a conta e as credenciais de uso unico dela, dentro do alcance de quem chamou,
+     * pelo mesmo motivo que a alteracao: o isolamento entre aplicacoes nao pode viver inteiro
+     * na consulta que roda antes da gravacao.
      */
-    void delete(long accountId) {
-        jdbcClient.sql("DELETE FROM ACCOUNT_CONFIRMATION WHERE CLIENT_ACCOUNT_ID = :id")
-                .param("id", accountId).update();
-        jdbcClient.sql("DELETE FROM CLIENT_ACCOUNT WHERE ID = :id").param("id", accountId).update();
+    void delete(java.util.Optional<Long> applicationScope, long accountId) {
+        applicationScope.ifPresentOrElse(
+                applicationId -> {
+                    jdbcClient.sql(DELETE_CONFIRMATIONS_OF + WITHIN_APPLICATION + ")")
+                            .param("id", accountId).param("applicationId", applicationId).update();
+                    jdbcClient.sql(DELETE_ACCOUNT + WITHIN_APPLICATION)
+                            .param("id", accountId).param("applicationId", applicationId).update();
+                },
+                () -> {
+                    jdbcClient.sql(DELETE_CONFIRMATIONS_OF + ")").param("id", accountId).update();
+                    jdbcClient.sql(DELETE_ACCOUNT).param("id", accountId).update();
+                });
     }
 
     /**

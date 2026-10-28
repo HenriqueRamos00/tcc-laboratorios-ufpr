@@ -9,6 +9,7 @@ import br.ufpr.tcc.auth.shared.observability.AuditTrail;
 import br.ufpr.tcc.auth.shared.security.ApplicationCaller;
 import java.time.Duration;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.dao.DuplicateKeyException;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -37,23 +38,31 @@ public class AccountLifecycle {
     private final MessageDelivery messageDelivery;
     private final AuditTrail auditTrail;
     private final Duration confirmationLifetime;
+    private final Duration recoveryLifetime;
 
     AccountLifecycle(ClientAccountRegistry registry, PasswordEncoder passwordEncoder,
             IdentifierFactory identifiers, MessageDelivery messageDelivery,
             AuditTrail auditTrail,
-            @Value("${auth.confirmation.lifetime:PT24H}") Duration confirmationLifetime) {
+            @Value("${auth.confirmation.lifetime}") Duration confirmationLifetime,
+            @Value("${auth.recovery.lifetime}") Duration recoveryLifetime) {
         this.registry = registry;
         this.passwordEncoder = passwordEncoder;
         this.identifiers = identifiers;
         this.messageDelivery = messageDelivery;
         this.auditTrail = auditTrail;
         this.confirmationLifetime = confirmationLifetime;
+        this.recoveryLifetime = recoveryLifetime;
     }
 
     /**
      * O identificador de aplicacao do corpo e **pedido**, nao identidade. Quando ele
      * contradiz a credencial, a resposta e recusa e nao um campo ignorado em silencio,
      * porque ignorar ensina ao chamador que o campo existe e e aceito.
+     *
+     * A consulta de endereco repetido nao substitui a restricao unica do banco: entre
+     * consultar e gravar existe janela, e dois cadastros simultaneos do mesmo endereco
+     * passam os dois pela consulta. Quem recusa o segundo e a restricao, e sem traduzir essa
+     * recusa o desfecho seria erro de servidor no lugar do conflito que a matriz manda.
      */
     @Transactional
     public RegistrationOutcome register(ApplicationCaller caller, String requestedApplicationId,
@@ -69,8 +78,12 @@ public class AccountLifecycle {
             return RegistrationOutcome.EMAIL_TAKEN;
         }
         long accountId = identifiers.nextIdentifier();
-        registry.insert(accountId, caller.applicationId(), name, email,
-                passwordEncoder.encode(password));
+        try {
+            registry.insert(accountId, caller.applicationId(), name, email,
+                    passwordEncoder.encode(password));
+        } catch (DuplicateKeyException addressAlreadyTaken) {
+            return RegistrationOutcome.EMAIL_TAKEN;
+        }
         ConfirmationToken token = ConfirmationToken.generate();
         registry.issueConfirmation(identifiers.nextIdentifier(), accountId, token,
                 OutboundMessage.Purpose.EMAIL_CONFIRMATION, confirmationLifetime);
@@ -107,7 +120,7 @@ public class AccountLifecycle {
             String accountId, String name, boolean active) {
         return identifierOf(accountId)
                 .flatMap(id -> registry.findWithinScope(applicationScope, id).map(found -> {
-                    registry.update(id, name, active);
+                    registry.update(applicationScope, id, name, active);
                     auditTrail.clientAccountChanged("changed", found.serviceId(), found.id());
                     return summaryOf(new ClientAccountRegistry.AccountView(found.id(), name,
                             found.email(), found.role(), active, found.serviceId(),
@@ -119,7 +132,7 @@ public class AccountLifecycle {
     public boolean delete(java.util.Optional<Long> applicationScope, String accountId) {
         return identifierOf(accountId)
                 .flatMap(id -> registry.findWithinScope(applicationScope, id).map(found -> {
-                    registry.delete(id);
+                    registry.delete(applicationScope, id);
                     auditTrail.clientAccountChanged("removed", found.serviceId(), found.id());
                     return true;
                 }))
@@ -141,20 +154,43 @@ public class AccountLifecycle {
      * Devolve sempre a mesma coisa, exista ou nao o endereco, e por isso nao devolve nada.
      * Endereco que nao existe simplesmente nao gera link, e nenhuma mensagem sai.
      *
+     * O pedido novo mata o link anterior, e o prazo e o da recuperacao, nao o da confirmacao
+     * de cadastro: confirmacao pode esperar o dia inteiro, porque quem nao confirma nao entra,
+     * e recuperacao e o contrario, ela abre a conta.
+     *
+     * O endereco que recebe a mensagem e o **cadastrado**, e nao o que veio no pedido: a busca
+     * casa pela forma minuscula que o banco calcula, entao grafias diferentes encontram a
+     * mesma conta e usar a grafia submetida mandaria o link para um endereco que nao e o dela.
+     *
      * O envio ja sai do caminho da resposta, e por este motivo: o tempo a mais do endereco
      * cadastrado entregaria o cadastro mesmo com a resposta identica. A porta de envio apenas
      * anota a intencao dentro desta transacao, e quem fala com o servidor roda depois do
      * commit, noutra thread.
+     *
+     * Invalidar antes de inserir nao garante um unico link pendente, e isso foi medido: com
+     * quatro pedidos simultaneos para a mesma conta ficaram quatro links de recuperacao
+     * validos, porque duas transacoes nao se veem inserir. Quem garante o invariante agora e
+     * o indice unico parcial de V006, e perder essa corrida nao e falha: significa que outro
+     * pedido identico ja emitiu o link e ja vai mandar a mensagem, entao este desiste em
+     * silencio e a resposta continua sendo a mesma de sempre.
      */
     @Transactional
     public void requestPasswordRecovery(ApplicationCaller caller, String email) {
-        registry.findIdByApplicationAndEmail(caller.applicationId(), email).ifPresent(accountId -> {
-            ConfirmationToken token = ConfirmationToken.generate();
-            registry.issueConfirmation(identifiers.nextIdentifier(), accountId, token,
-                    OutboundMessage.Purpose.PASSWORD_RECOVERY, confirmationLifetime);
-            messageDelivery.deliver(new OutboundMessage(email,
-                    OutboundMessage.Purpose.PASSWORD_RECOVERY, token.clearValue()));
-        });
+        registry.findToNotifyByApplicationAndEmail(caller.applicationId(), email)
+                .ifPresent(account -> {
+                    registry.invalidatePendingConfirmations(account.id(),
+                            OutboundMessage.Purpose.PASSWORD_RECOVERY);
+                    ConfirmationToken token = ConfirmationToken.generate();
+                    try {
+                        registry.issueConfirmation(identifiers.nextIdentifier(), account.id(),
+                                token, OutboundMessage.Purpose.PASSWORD_RECOVERY,
+                                recoveryLifetime);
+                    } catch (DuplicateKeyException anotherRequestWonTheRace) {
+                        return;
+                    }
+                    messageDelivery.deliver(new OutboundMessage(account.registeredEmail(),
+                            OutboundMessage.Purpose.PASSWORD_RECOVERY, token.clearValue()));
+                });
     }
 
     /**
@@ -167,12 +203,14 @@ public class AccountLifecycle {
      * quem acabou de se inscrever e nao pode trocar senha de ninguem.
      */
     @Transactional
-    public boolean resetPassword(String presentedToken, String newPassword) {
+    public boolean resetPassword(ApplicationCaller caller, String presentedToken,
+            String newPassword) {
         if (!PasswordPolicy.violationsOf(newPassword).isEmpty()) {
             return false;
         }
         return ConfirmationToken.fromPresentedValue(presentedToken)
-                .flatMap(token -> registry.consume(token, OutboundMessage.Purpose.PASSWORD_RECOVERY))
+                .flatMap(token -> registry.consume(caller.applicationId(), token,
+                        OutboundMessage.Purpose.PASSWORD_RECOVERY))
                 .map(accountId -> {
                     registry.updatePasswordHash(accountId, passwordEncoder.encode(newPassword));
                     registry.invalidatePendingConfirmations(accountId);
@@ -184,13 +222,15 @@ public class AccountLifecycle {
     }
 
     /**
-     * Link desconhecido, usado, vencido e de proposito errado respondem igual, porque
-     * distinguir contaria se o endereco existe e em que estado ele esta.
+     * Link desconhecido, usado, vencido, de proposito errado e **de conta de outra
+     * aplicacao** respondem igual, porque distinguir contaria se o endereco existe, em que
+     * estado ele esta e em qual aplicacao.
      */
     @Transactional
-    public boolean confirmEmail(String presentedToken) {
+    public boolean confirmEmail(ApplicationCaller caller, String presentedToken) {
         return ConfirmationToken.fromPresentedValue(presentedToken)
-                .flatMap(token -> registry.consume(token, OutboundMessage.Purpose.EMAIL_CONFIRMATION))
+                .flatMap(token -> registry.consume(caller.applicationId(), token,
+                        OutboundMessage.Purpose.EMAIL_CONFIRMATION))
                 .map(accountId -> {
                     registry.markEmailConfirmed(accountId);
                     auditTrail.clientCredentialChanged("email_confirmed",

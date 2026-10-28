@@ -32,6 +32,9 @@ class ConstantTimeComparisonGuardTest {
     private static final Path DIGEST_SOURCE =
             Path.of("src/main/java/br/ufpr/tcc/auth/credential/model/OpaqueTokenDigest.java");
 
+    private static final Path SETUP_SOURCE =
+            Path.of("src/main/java/br/ufpr/tcc/auth/administrator/AdministratorAccess.java");
+
     @Test
     @DisplayName("a comparacao de digest usa MessageDigest.isEqual e nao Arrays.equals")
     void digestComparisonUsesConstantTimeComparison() throws IOException {
@@ -40,5 +43,27 @@ class ConstantTimeComparisonGuardTest {
         String comparison = source.substring(beginning, source.indexOf("\n    }", beginning));
 
         assertThat(comparison).contains("MessageDigest.isEqual").doesNotContain("Arrays.equals");
+    }
+
+    /**
+     * O segredo de instalacao e o unico segredo que o chamador apresenta e que era comparado
+     * caractere a caractere.
+     *
+     * Era uma ironia que a banca notaria: a guarda acima protege a comparacao de digest, que
+     * a autenticacao nem usa, porque a busca de token e por igualdade no banco, enquanto a
+     * unica comparacao de segredo feita em memoria ficava sem protecao. Com a comparacao de
+     * tempo constante, o relogio para de dizer quantos caracteres o chamador ja acertou.
+     */
+    @Test
+    @DisplayName("a comparacao do segredo de instalacao e de tempo constante")
+    void setupSecretComparisonUsesConstantTimeComparison() throws IOException {
+        String source = Files.readString(SETUP_SOURCE, StandardCharsets.UTF_8);
+        int beginning = source.indexOf("private boolean secretMatches(");
+        String comparison = source.substring(beginning, source.indexOf("\n    }", beginning));
+
+        assertThat(comparison).as("a comparacao do segredo")
+                .contains("MessageDigest.isEqual");
+        assertThat(source).as("nenhum ponto da classe compara o segredo caractere a caractere")
+                .doesNotContain("setupSecret.equals");
     }
 }

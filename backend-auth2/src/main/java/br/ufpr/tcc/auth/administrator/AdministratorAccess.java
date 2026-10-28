@@ -1,6 +1,9 @@
 package br.ufpr.tcc.auth.administrator;
 
 import br.ufpr.tcc.auth.credential.model.PasswordPolicy;
+import java.nio.charset.StandardCharsets;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
 import br.ufpr.tcc.auth.credential.model.PasswordRequirement;
 import br.ufpr.tcc.auth.authentication.LoginAttemptLedger;
 import br.ufpr.tcc.auth.authentication.LoginAttemptOutcome;
@@ -57,11 +60,22 @@ public class AdministratorAccess {
     /** Resultado da instalacao: ou o administrador nasceu, ou a rota nao existe. */
     public enum SetupOutcome { CREATED, ROUTE_DOES_NOT_EXIST, PASSWORD_REJECTED }
 
+    /**
+     * As duas condicoes sao avaliadas sempre, e a do segredo em tempo constante.
+     *
+     * Avaliar com curto-circuito deixava dois canais de tempo abertos. A comparacao
+     * caractere a caractere parava no primeiro caractere diferente, dizendo quantos o
+     * chamador ja acertou; e a consulta de administrador so acontecia quando o segredo
+     * batia, entao segredo certo custava uma ida ao banco a mais que segredo errado, mesmo
+     * depois da instalacao, quando as duas respostas sao 404. O 404 esconde o estado, o
+     * relogio nao.
+     */
     @Transactional
     public SetupOutcome setupFirstAdministrator(String presentedSecret, String name, String email,
             String password) {
-        if (setupSecret.isBlank() || !setupSecret.equals(presentedSecret)
-                || !registry.noneRegistered()) {
+        boolean secretMatches = secretMatches(presentedSecret);
+        boolean withoutAdministrator = registry.noneRegistered();
+        if (setupSecret.isBlank() || !secretMatches || !withoutAdministrator) {
             return SetupOutcome.ROUTE_DOES_NOT_EXIST;
         }
         Set<PasswordRequirement> violations = PasswordPolicy.violationsOf(password);
@@ -72,6 +86,26 @@ public class AdministratorAccess {
         registry.insert(identifier, name, email, passwordEncoder.encode(password));
         auditTrail.administratorChanged("installed", Long.toString(identifier));
         return SetupOutcome.CREATED;
+    }
+
+    /**
+     * Compara o segredo apresentado com o do ambiente sem que o tempo conte a diferenca.
+     *
+     * O digest entra porque os dois valores tem tamanhos diferentes, e comparar tamanho antes
+     * ja seria um canal: com o resumo, a comparacao sempre percorre o mesmo numero de bytes.
+     */
+    private boolean secretMatches(String presentedSecret) {
+        return MessageDigest.isEqual(digestOf(setupSecret),
+                digestOf(presentedSecret == null ? "" : presentedSecret));
+    }
+
+    private static byte[] digestOf(String value) {
+        try {
+            return MessageDigest.getInstance("SHA-256")
+                    .digest(value.getBytes(StandardCharsets.UTF_8));
+        } catch (NoSuchAlgorithmException absent) {
+            throw new IllegalStateException("SHA-256 precisa existir na plataforma", absent);
+        }
     }
 
     /**
@@ -111,8 +145,17 @@ public class AdministratorAccess {
      * nao exigiria nem estar integrado ao servico. E cada tentativa paga uma verificacao
      * dimensionada para custar caro, o que sem contador transforma adivinhacao de senha em
      * consumo de memoria do processo a pedido de quem chama.
+     *
+     * Esta entrada nao abre transacao, e isso e decisao e nao esquecimento. A verificacao de
+     * senha custa 32 ms medidos, e com um limite transacional em volta dela a conexao do pool
+     * ficava retida por esse tempo inteiro, numa rota aberta, para proteger um par de escritas
+     * que nao precisa de atomicidade: no caminho de recusa so o contador grava, e ele ja e
+     * atomico no proprio comando, com a corrida provada em teste que o chama sem transacao
+     * nenhuma. No caminho de aceite gravam o contador e a sessao, e se a segunda falhasse o
+     * resultado seria um contador zerado sem sessao aberta, que nao da acesso a ninguem. O
+     * pool e o recurso mais escasso do processo, e a entrada de cliente, que e a rota quente,
+     * ja funcionava assim.
      */
-    @Transactional
     public AdministrativeSignIn signIn(String email, String password) {
         String identifier = email == null ? "" : email.trim();
         LoginAttemptOutcome lock =
