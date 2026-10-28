@@ -3,6 +3,7 @@ package br.ufpr.tcc.auth.administrator;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 
+import br.ufpr.tcc.auth.credential.model.ServiceToken;
 import br.ufpr.tcc.auth.shared.database.OracleIntegrationTestBase;
 import java.time.OffsetDateTime;
 import java.util.concurrent.atomic.AtomicLong;
@@ -106,39 +107,58 @@ class AdministrativeLoginLockOutIntegrationTest extends OracleIntegrationTestBas
     }
 
     /**
-     * O contador de administrador nao pode compartilhar espaco com o de cliente. Se
-     * compartilhasse, um cliente de qualquer aplicacao com o mesmo endereco de e-mail de um
-     * administrador poderia tranca lo de fora, e o contrario tambem.
+     * O contador de administrador nao pode compartilhar espaco com o de cliente.
+     *
+     * Se compartilhasse, um cliente de qualquer aplicacao com o mesmo endereco de e-mail de
+     * um administrador poderia tranca lo de fora, e o contrario tambem.
+     *
+     * A versao anterior deste caso conferia que a chave digerida do cliente nao tinha linha
+     * no contador, e nao provava nada: o identificador de aplicacao usado na chave era
+     * inventado dentro do proprio teste e nunca apresentado a producao, entao a contagem era
+     * zero por construcao, em qualquer implementacao. Pior, o auxiliar reimplementava o
+     * algoritmo da chave, e trocar o separador na producao deixava tudo verde porque a copia
+     * mudava junto.
+     *
+     * Entrar pela rota conserta as duas coisas: o cliente entra de verdade depois de o
+     * administrador estar bloqueado, e e a producao que decide a chave.
      */
     @Test
-    @DisplayName("bloquear o administrador nao bloqueia o cliente de mesmo endereco")
-    void administrativeLockOutDoesNotReachTheClientWithTheSameAddress() throws Exception {
+    @DisplayName("bloquear o administrador nao impede o cliente de mesmo endereco de entrar")
+    void lockingTheAdministratorDoesNotStopTheClientWithTheSameAddress() throws Exception {
         long applicationId = NEXT.incrementAndGet();
+        String code = "bloqueio-" + applicationId;
         jdbcClient.sql("INSERT INTO APPLICATION (ID, CODE, NAME, ACTIVE, CREATED_AT, UPDATED_AT)"
                         + " VALUES (:id, :code, :code, TRUE, :now, :now)")
-                .param("id", applicationId).param("code", "bloqueio-" + applicationId)
+                .param("id", applicationId).param("code", code)
                 .param("now", OffsetDateTime.now()).update();
+        ServiceToken token = ServiceToken.generate();
+        jdbcClient.sql("INSERT INTO APPLICATION_TOKEN (ID, APPLICATION_ID, NAME, TOKEN_DIGEST,"
+                        + " CREATED_AT) VALUES (:id, :applicationId, 'token', :digest, :now)")
+                .param("id", NEXT.incrementAndGet()).param("applicationId", applicationId)
+                .param("digest", token.digest().asBytes())
+                .param("now", OffsetDateTime.now()).update();
+        jdbcClient.sql("INSERT INTO CLIENT_ACCOUNT (ID, APPLICATION_ID, NAME, EMAIL,"
+                        + " EMAIL_NORMALIZED, PASSWORD_HASH, EMAIL_CONFIRMED, ACTIVE,"
+                        + " CREATED_AT, UPDATED_AT)"
+                        + " VALUES (:id, :applicationId, 'Cliente de mesmo endereco', :email,"
+                        + " LOWER(:email), :hash, 1, 1, :now, :now)")
+                .param("id", NEXT.incrementAndGet()).param("applicationId", applicationId)
+                .param("email", email).param("hash", passwordEncoder.encode(PASSWORD))
+                .param("now", OffsetDateTime.now()).update();
+
         for (int attempt = 1; attempt <= 5; attempt++) {
             attempt("ErradaTotal999");
         }
+        int administrativeEntry = attempt(PASSWORD).getResponse().getStatus();
+        int clientEntry = mockMvc.perform(post("/api/auth/login")
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + token.clearValue())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"email\":\"" + email + "\",\"password\":\"" + PASSWORD
+                                + "\"}"))
+                .andReturn().getResponse().getStatus();
 
-        int clientFailures = jdbcClient
-                .sql("SELECT COUNT(*) FROM LOGIN_ATTEMPT WHERE ATTEMPT_KEY = :key")
-                .param("key", clientAttemptKey(applicationId, email))
-                .query(Integer.class).single();
-
-        assertThat(clientFailures).as("o contador do cliente daquela aplicacao nao foi tocado")
-                .isZero();
-    }
-
-    private static byte[] clientAttemptKey(long applicationId, String identifier) {
-        try {
-            java.security.MessageDigest digest = java.security.MessageDigest.getInstance("SHA-256");
-            return digest.digest((applicationId + "\u0000"
-                    + identifier.toLowerCase(java.util.Locale.ROOT))
-                    .getBytes(java.nio.charset.StandardCharsets.UTF_8));
-        } catch (java.security.NoSuchAlgorithmException absent) {
-            throw new IllegalStateException("SHA-256 precisa existir na plataforma", absent);
-        }
+        assertThat(administrativeEntry).as("o administrador esta bloqueado").isEqualTo(429);
+        assertThat(clientEntry).as("e o cliente de mesmo endereco entra normalmente")
+                .isEqualTo(200);
     }
 }

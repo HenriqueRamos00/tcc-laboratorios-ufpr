@@ -92,6 +92,12 @@ public class AdministratorLifecycle {
      * desativado ele nao e atendido, mas a linha da sessao continua valida: medido aqui, sem
      * encerrar, reativar devolvia o acesso a quem estava com o token no dia do afastamento,
      * que e justamente o motivo pelo qual se desativa alguem.
+     *
+     * O hash da senha nova e calculado antes da trava de tabela, e a ordem aqui nao e
+     * estetica. A contagem de administrador ativo toma LOCK TABLE IN EXCLUSIVE MODE, e com o
+     * calculo depois dela a transacao ficava segurando a tabela inteira pelos 32 ms medidos
+     * de uma verificacao de senha: todo DML sobre administrador esperava um hash terminar,
+     * por uma razao que nada tem a ver com a trava.
      */
     @Transactional
     public Change update(String identifier, String name, String email, boolean active,
@@ -104,6 +110,7 @@ public class AdministratorLifecycle {
         if (password != null && !PasswordPolicy.violationsOf(password).isEmpty()) {
             return new Change(Change.Outcome.PASSWORD_REJECTED, null);
         }
+        String newPasswordHash = password == null ? null : passwordEncoder.encode(password);
         if (registry.emailBelongsToAnother(email, id)) {
             return new Change(Change.Outcome.EMAIL_ALREADY_REGISTERED, null);
         }
@@ -115,8 +122,8 @@ public class AdministratorLifecycle {
         } catch (DuplicateKeyException addressAlreadyTaken) {
             return new Change(Change.Outcome.EMAIL_ALREADY_REGISTERED, null);
         }
-        if (password != null) {
-            registry.updatePasswordHash(id, passwordEncoder.encode(password));
+        if (newPasswordHash != null) {
+            registry.updatePasswordHash(id, newPasswordHash);
         }
         if (password != null || !active) {
             sessions.revokeAllOf(id);

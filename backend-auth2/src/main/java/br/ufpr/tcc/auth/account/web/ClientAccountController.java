@@ -9,6 +9,7 @@ import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PutMapping;
+import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
@@ -16,6 +17,7 @@ import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Size;
 import org.springframework.http.HttpStatus;
+import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -23,6 +25,7 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RestController;
 
 /** Cadastro de cliente e confirmacao do endereco de e-mail. */
+@SecurityRequirement(name = "credencial-de-aplicacao")
 @RestController
 class ClientAccountController {
 
@@ -35,8 +38,17 @@ class ClientAccountController {
     record CreateClientRequest(
             @NotBlank @Size(max = 150) String name,
             @NotBlank @Email @Size(max = 254) String email,
-            @NotBlank @Size(max = 72) String password,
-            @Pattern(regexp = "CLIENTE", message = "Perfil deve ser CLIENTE") String role,
+            @NotBlank @Size(max = 72)
+            @Schema(format = "password", accessMode = Schema.AccessMode.WRITE_ONLY,
+                    minLength = 8,
+                    description = "Senha, preservando espacos: o servidor nao corta espaco nas pontas,\n"
+                            + " nao muda a caixa e nao remove acentuacao, porque cada uma dessas trocas\n"
+                            + " mudaria a credencial em silencio. O minimo de oito, mais maiuscula,\n"
+                            + " minuscula e digito, e cobrado pelo caso de uso e nao por anotacao.")
+            String password,
+            @Pattern(regexp = "CLIENTE", message = "Perfil deve ser CLIENTE")
+            @Schema(pattern = "^CLIENTE$", description = "Unico perfil aceito hoje.")
+            String role,
             String serviceId) {
 
         @Override
@@ -132,7 +144,14 @@ class ClientAccountController {
         return ResponseEntity.accepted().build();
     }
 
-    record PasswordResetRequest(@NotBlank String token, @NotBlank @Size(max = 72) String password) {
+    record PasswordResetRequest(@NotBlank String token, @NotBlank @Size(max = 72)
+            @Schema(format = "password", accessMode = Schema.AccessMode.WRITE_ONLY,
+                    minLength = 8,
+                    description = "Senha, preservando espacos: o servidor nao corta espaco nas pontas,\n"
+                            + " nao muda a caixa e nao remove acentuacao, porque cada uma dessas trocas\n"
+                            + " mudaria a credencial em silencio. O minimo de oito, mais maiuscula,\n"
+                            + " minuscula e digito, e cobrado pelo caso de uso e nao por anotacao.")
+            String password) {
 
         @Override
         public String toString() {
@@ -141,15 +160,17 @@ class ClientAccountController {
     }
 
     @PostMapping("/api/auth/password-resets")
-    ResponseEntity<Void> resetPassword(@Valid @RequestBody PasswordResetRequest request) {
-        return lifecycle.resetPassword(request.token(), request.password())
+    ResponseEntity<Void> resetPassword(@AuthenticationPrincipal ApplicationCaller caller,
+            @Valid @RequestBody PasswordResetRequest request) {
+        return lifecycle.resetPassword(caller, request.token(), request.password())
                 ? ResponseEntity.noContent().build()
                 : ResponseEntity.badRequest().build();
     }
 
     @PostMapping("/api/auth/confirmations")
-    ResponseEntity<Void> confirm(@Valid @RequestBody ConfirmationRequest request) {
-        return lifecycle.confirmEmail(request.token())
+    ResponseEntity<Void> confirm(@AuthenticationPrincipal ApplicationCaller caller,
+            @Valid @RequestBody ConfirmationRequest request) {
+        return lifecycle.confirmEmail(caller, request.token())
                 ? ResponseEntity.noContent().build()
                 : ResponseEntity.badRequest().build();
     }

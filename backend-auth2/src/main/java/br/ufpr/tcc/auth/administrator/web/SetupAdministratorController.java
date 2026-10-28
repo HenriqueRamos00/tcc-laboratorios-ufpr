@@ -1,6 +1,7 @@
 package br.ufpr.tcc.auth.administrator.web;
 
 import br.ufpr.tcc.auth.administrator.AdministratorAccess;
+import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
@@ -33,7 +34,14 @@ class SetupAdministratorController {
     record SetupRequest(
             @NotBlank @Size(max = 150) String name,
             @NotBlank @Email @Size(max = 254) String email,
-            @NotBlank @Size(max = 72) String password) {
+            @NotBlank @Size(max = 72)
+            @Schema(format = "password", accessMode = Schema.AccessMode.WRITE_ONLY,
+                    minLength = 8,
+                    description = "Senha, preservando espacos: o servidor nao corta espaco nas pontas,\n"
+                            + " nao muda a caixa e nao remove acentuacao, porque cada uma dessas trocas\n"
+                            + " mudaria a credencial em silencio. O minimo de oito, mais maiuscula,\n"
+                            + " minuscula e digito, e cobrado pelo caso de uso e nao por anotacao.")
+            String password) {
 
         @Override
         public String toString() {

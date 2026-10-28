@@ -34,21 +34,20 @@ public class ApplicationRegistry {
     public record RegisteredApplicationView(String id, String name, String code, boolean active) {
     }
 
-    @Transactional
+    /** Desfecho do cadastro de aplicacao, com o conflito de codigo separado do sucesso. */
+    public record Registration(Outcome outcome, RegisteredApplicationView application) {
+
+        public enum Outcome { CREATED, CODE_ALREADY_REGISTERED }
+    }
+
     /**
-     * Desfecho do cadastro de aplicacao.
-     *
      * O codigo e unico no banco, e o segundo cadastro com o mesmo codigo precisa responder
      * conflito. Medido antes desta traducao: a violacao da restricao subia como erro de
      * servidor, que nao esta na matriz de codigos e que no consumidor vira fonte
      * indisponivel. O 409 e aceitavel aqui porque quem chama ja pode ler a lista inteira de
      * aplicacoes na rota ao lado, entao a resposta nao conta nada novo.
      */
-    public record Registration(Outcome outcome, RegisteredApplicationView application) {
-
-        public enum Outcome { CREATED, CODE_ALREADY_REGISTERED }
-    }
-
+    @Transactional
     public Registration register(String name, String code) {
         long id = identifiers.nextIdentifier();
         try {
@@ -151,10 +150,10 @@ public class ApplicationRegistry {
                 .optional();
     }
 
-    @Transactional
     /** Desfecho da alteracao, com o conflito de codigo separado de nao encontrado. */
     public enum UpdateOutcome { CHANGED, NOT_FOUND, CODE_ALREADY_REGISTERED }
 
+    @Transactional
     public UpdateOutcome update(long applicationId, String name, String code, boolean active) {
         boolean changed;
         try {

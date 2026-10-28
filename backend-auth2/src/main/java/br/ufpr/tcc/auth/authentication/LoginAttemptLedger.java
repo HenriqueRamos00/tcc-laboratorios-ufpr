@@ -43,12 +43,26 @@ public class LoginAttemptLedger {
      * Debita primeiro e decide depois. A clausula de bloqueio no proprio WHERE faz o
      * comando nao afetar linha nenhuma quando a conta ja esta trancada, e o numero de
      * linhas afetadas vira a decisao, sem segunda consulta no meio.
+     *
+     * Espera vencida recomeca a contagem, e esse ramo e a diferenca entre a regra do Lactec
+     * e prisao perpetua. Sem ele, so o acerto de senha zerava o contador: a primeira falha
+     * depois da espera levava a contagem de cinco para seis, o limite aparecia estourado
+     * outra vez, e a conta trancava pelo periodo inteiro. Quem nao sabe a senha gastava uma
+     * requisicao por periodo, em vez de cinco, para manter conta alheia fechada; e o titular
+     * que errasse a digitacao uma vez nunca mais sairia do ciclo. Como efeito de borda, o
+     * contador tambem deixa de crescer sem teto: ele passa a viver entre zero e cinco, e
+     * FAILED_ATTEMPTS nao caminha mais para o limite de NUMBER(3), que estouraria como erro
+     * de servidor na rota de login.
      */
     private static final String REGISTER_FAILURE = """
             UPDATE LOGIN_ATTEMPT
-               SET FAILED_ATTEMPTS = FAILED_ATTEMPTS + 1,
+               SET FAILED_ATTEMPTS = CASE
+                       WHEN LOCKED_UNTIL IS NOT NULL AND LOCKED_UNTIL <= SYSTIMESTAMP THEN 1
+                       ELSE FAILED_ATTEMPTS + 1
+                   END,
                    LAST_FAILURE_AT = SYSTIMESTAMP,
                    LOCKED_UNTIL = CASE
+                       WHEN LOCKED_UNTIL IS NOT NULL AND LOCKED_UNTIL <= SYSTIMESTAMP THEN NULL
                        WHEN FAILED_ATTEMPTS + 1 >= :maximumFailures
                        THEN SYSTIMESTAMP + NUMTODSINTERVAL(:cooldownSeconds, 'SECOND')
                        ELSE LOCKED_UNTIL
@@ -108,7 +122,14 @@ public class LoginAttemptLedger {
         return currentOutcome(attemptKey(applicationId, identifier));
     }
 
-    int failedAttemptsOf(long applicationId, String identifier) {
+    /**
+     * Quantas falhas estao debitadas para aquele identificador.
+     *
+     * Publico porque teste de contrato, que vive noutro pacote, precisa afirmar sobre o
+     * contador **pela producao**: a alternativa seria o teste recalcular a chave digerida, e
+     * ai ele passaria a concordar com qualquer mudanca de formato de chave em vez de acusa-la.
+     */
+    public int failedAttemptsOf(long applicationId, String identifier) {
         return jdbcClient.sql("SELECT FAILED_ATTEMPTS FROM LOGIN_ATTEMPT WHERE ATTEMPT_KEY = :attemptKey")
                 .param("attemptKey", attemptKey(applicationId, identifier))
                 .query(Integer.class).optional().orElse(0);

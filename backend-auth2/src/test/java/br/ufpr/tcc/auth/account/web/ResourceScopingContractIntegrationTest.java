@@ -143,26 +143,60 @@ class ResourceScopingContractIntegrationTest extends OracleIntegrationTestBase {
         int removed = mockMvc.perform(delete("/api/users/" + foreignAccount)
                 .header(HttpHeaders.AUTHORIZATION, "Bearer " + first.token()))
                 .andReturn().getResponse().getStatus();
+        int updated = mockMvc.perform(put("/api/users/" + foreignAccount)
+                .header(HttpHeaders.AUTHORIZATION, "Bearer " + first.token())
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("""
+                        {"name":"Renomeada por quem nao e dono","active":false}"""))
+                .andReturn().getResponse().getStatus();
         int invented = mockMvc.perform(get("/api/users/999999999999")
                 .header(HttpHeaders.AUTHORIZATION, "Bearer " + first.token()))
                 .andReturn().getResponse().getStatus();
 
         assertThat(read).isEqualTo(404);
         assertThat(removed).isEqualTo(404);
+        assertThat(updated).as("alterar conta alheia tambem responde inexistente").isEqualTo(404);
         assertThat(invented).as("identificador inventado responde igual").isEqualTo(read);
+        JsonNode untouched = JSON.readTree(mockMvc.perform(get("/api/users/" + foreignAccount)
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + second.token()))
+                .andReturn().getResponse().getContentAsString());
+        assertThat(untouched.get("active").asBoolean())
+                .as("o 404 e recusa, e nao gravacao seguida de 404").isTrue();
+        assertThat(untouched.get("name").asString()).isEqualTo("Pessoa");
     }
 
     @Test
     @DisplayName("o administrador enxerga contas de todas as aplicacoes")
     void administratorSeesAccountsAcrossApplications() throws Exception {
-        createUser(first);
-        createUser(second);
+        String ownAccount = createUser(first);
+        String foreignAccount = createUser(second);
 
         JsonNode listing = JSON.readTree(mockMvc.perform(get("/api/users")
                         .header(HttpHeaders.AUTHORIZATION, "Bearer " + administrativeToken))
                 .andReturn().getResponse().getContentAsString());
 
-        assertThat(listing.size()).isGreaterThanOrEqualTo(2);
+        assertThat(identifiersIn(listing))
+                .as("as duas contas criadas aqui aparecem, e nao um tamanho qualquer")
+                .contains(ownAccount, foreignAccount);
+        assertThat(servicesIn(listing))
+                .as("e elas vem de aplicacoes diferentes")
+                .contains(first.applicationId(), second.applicationId());
+    }
+
+    private static java.util.List<String> identifiersIn(JsonNode listing) {
+        java.util.List<String> identifiers = new java.util.ArrayList<>();
+        for (JsonNode user : listing) {
+            identifiers.add(user.get("id").asString());
+        }
+        return identifiers;
+    }
+
+    private static java.util.Set<String> servicesIn(JsonNode listing) {
+        java.util.Set<String> services = new java.util.HashSet<>();
+        for (JsonNode user : listing) {
+            services.add(user.get("serviceId").asString());
+        }
+        return services;
     }
 
     @Test
@@ -232,7 +266,7 @@ class ResourceScopingContractIntegrationTest extends OracleIntegrationTestBase {
                 .header(HttpHeaders.AUTHORIZATION, "Bearer " + first.token()))
                 .andReturn().getResponse().getStatus();
 
-        assertThat(services).isIn(401, 403);
-        assertThat(admins).isIn(401, 403);
+        assertThat(services).as("credencial de aplicacao em rota administrativa").isEqualTo(403);
+        assertThat(admins).isEqualTo(403);
     }
 }

@@ -3,6 +3,7 @@ package br.ufpr.tcc.auth.shared.security;
 import br.ufpr.tcc.auth.shared.web.ProblemDetailWriter;
 import jakarta.servlet.DispatcherType;
 import org.springframework.context.annotation.Bean;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnWebApplication;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpMethod;
@@ -25,6 +26,7 @@ import org.springframework.security.web.authentication.UsernamePasswordAuthentic
  * padrao com senha gerada no log da subida.
  */
 @Configuration
+@ConditionalOnWebApplication(type = ConditionalOnWebApplication.Type.SERVLET)
 class SecurityConfiguration {
 
     /**
@@ -40,6 +42,9 @@ class SecurityConfiguration {
      *
      * A sonda de prontidao e a de vivacidade ficam abaixo de /health, e e a de prontidao que
      * o healthcheck do contentor consulta.
+     *
+     * O teto de tamanho do corpo e aplicado antes desta cadeia, por filtro proprio: quem chega
+     * com carga grande demais nao deve nem consumir a resolucao de credencial.
      *
      * As duas rotas abertas sao as que existem para entrar, e elas sao liberadas POR VERBO.
      * Isso nao e simetria: liberar o caminho inteiro entrega os outros verbos ao despacho do
@@ -93,6 +98,7 @@ class SecurityConfiguration {
                         .requestMatchers(HttpMethod.POST, "/api/users")
                         .hasAuthority(ServiceTokenAuthenticationFilter.APPLICATION_AUTHORITY)
                         .requestMatchers("/api/auth/login", "/api/auth/recoveries",
+                                "/api/auth/confirmations", "/api/auth/password-resets",
                                 "/api/companies", "/api/companies/**")
                         .hasAuthority(ServiceTokenAuthenticationFilter.APPLICATION_AUTHORITY)
                         .requestMatchers("/api/auth/**", "/api/users", "/api/users/**")

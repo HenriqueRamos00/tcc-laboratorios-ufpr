@@ -1,5 +1,27 @@
 name: backend-auth2
 
+# Tudo o que o contexto da aplicacao cobra na subida, compartilhado entre o migrador e a api.
+# O bloco e um so porque propriedade obrigatoria esquecida em um dos dois servicos vira falha
+# de subida, e manter duas listas iguais a mao e a forma mais facil de isso acontecer.
+x-contexto-da-aplicacao: &contexto-da-aplicacao
+  SPRING_DATASOURCE_URL: ${AUTH_DATASOURCE_URL:?defina AUTH_DATASOURCE_URL no .env}
+  AUTH_SCHEMA: ${AUTH_SCHEMA_OWNER_USERNAME:?defina AUTH_SCHEMA_OWNER_USERNAME no .env}
+  # Segredo de instalacao. Sem ele a rota de cadastro do primeiro administrador responde como
+  # inexistente, inclusive num banco vazio.
+  AUTH_SETUP_SECRET: ${AUTH_SETUP_SECRET:?defina AUTH_SETUP_SECRET no .env}
+  # Servidor de e-mail. Sem SPRING_MAIL_HOST o adaptador SMTP nao entra no contexto e nenhuma
+  # confirmacao sai, entao aqui ele e obrigatorio: este compose e a forma de producao, e subir
+  # sem envio tem de ser escolha escrita, nao esquecimento.
+  SPRING_MAIL_HOST: ${AUTH_MAIL_HOST:?defina AUTH_MAIL_HOST no .env}
+  SPRING_MAIL_PORT: ${AUTH_MAIL_PORT:?defina AUTH_MAIL_PORT no .env}
+  SPRING_MAIL_USERNAME: ${AUTH_MAIL_USERNAME:?defina AUTH_MAIL_USERNAME no .env}
+  SPRING_MAIL_PASSWORD: ${AUTH_MAIL_PASSWORD:?defina AUTH_MAIL_PASSWORD no .env}
+  AUTH_NOTIFICATION_SENDER: ${AUTH_MAIL_SENDER:?defina AUTH_MAIL_SENDER no .env}
+  # O endereco do link e da tela que recebe a pessoa, nao deste servico. O marcador {token} e
+  # obrigatorio, e a aplicacao recusa a subida sem ele.
+  AUTH_NOTIFICATION_CONFIRMATION_LINK: ${AUTH_CONFIRMATION_LINK:?defina AUTH_CONFIRMATION_LINK no .env}
+  AUTH_NOTIFICATION_RECOVERY_LINK: ${AUTH_RECOVERY_LINK:?defina AUTH_RECOVERY_LINK no .env}
+
 services:
   oracle:
     image: container-registry.oracle.com/database/free:23.26.1.0
@@ -23,40 +45,89 @@ services:
       # porque ela ja traz um banco pronto e pula o caminho de criacao.
       - ./docker/oracle/init:/opt/oracle/scripts/startup:ro
     healthcheck:
-      test: ["CMD", "/opt/oracle/checkDBStatus.sh"]
+      # Banco aberto nao e banco provisionado. Medido nesta imagem: o runOracle.sh chama a
+      # mesma sonda em laco e so **depois** dela responder zero executa os scripts de
+      # inicializacao, entao existe uma janela em que o compose libera a api e os usuarios
+      # ainda nao existem. Nesta maquina a janela foi de 850 ms com volume pronto, e num
+      # volume novo ela e muito maior. Pior: o runUserScripts.sh carrega o script com ponto e
+      # ninguem confere o status dele, entao script que falha deixa o contentor sadio com o
+      # banco sem usuario nenhum, e a api cai em laco de reinicio sem nenhum sinal da causa.
+      #
+      # O marcador fecha os dois casos, e ele vive em /tmp de proposito: /tmp nao e volume,
+      # entao ele e reescrito a cada subida, que e o que se quer de uma sonda.
+      test:
+        - CMD-SHELL
+        - /opt/oracle/checkDBStatus.sh && test -f /tmp/auth-schema-users-ready
       interval: 15s
       timeout: 10s
       retries: 40
       start_period: 180s
+    # O mesmo raciocinio de teto e de privilegio que a api declara mais abaixo. Sem politica
+    # de reinicio, o Engine religa a api depois de um reinicio do host e nao religa o banco,
+    # e a api entra em laco: medido, oito reinicios em sessenta segundos com o banco parado,
+    # com o compose mostrando "running" na maior parte do tempo. cap_drop ALL fica de fora
+    # aqui porque a subida do Oracle nao foi medida sem capacidade nenhuma.
+    restart: unless-stopped
+    security_opt:
+      - no-new-privileges:true
+    mem_limit: 4g
+    pids_limit: 2048
 
-  api:
+  # Migracao e passo de publicacao, e nao passo de subida da aplicacao.
+  #
+  # E por isso que a credencial do dono do esquema existe aqui e **nao existe** no servico
+  # api: ela tem CREATE TABLE e cota ilimitada, e uma execucao remota dentro da aplicacao que
+  # a alcancasse anularia a separacao de usuarios que o script de inicializacao monta. Medido
+  # neste ambiente antes da separacao: SPRING_FLYWAY_USER e SPRING_FLYWAY_PASSWORD apareciam
+  # em docker inspect e em /proc/1/environ do contentor da api.
+  #
+  # Disparo unico, sem reinicio: migracao que falha precisa impedir a api de subir, e nao ser
+  # tentada em laco. Medido que o jar serve de migrador: com a cadeia de seguranca condicionada
+  # a contexto web, ele valida as migracoes, aplica o que falta, fecha o pool e encerra sozinho.
+  migrate:
     build: .
+    image: backend-auth2-api
+    restart: "no"
     depends_on:
       oracle:
         condition: service_healthy
     environment:
-      SPRING_DATASOURCE_URL: ${AUTH_DATASOURCE_URL:?defina AUTH_DATASOURCE_URL no .env}
+      <<: *contexto-da-aplicacao
+      SPRING_MAIN_WEB_APPLICATION_TYPE: none
+      SPRING_DATASOURCE_USERNAME: ${AUTH_SCHEMA_OWNER_USERNAME:?defina AUTH_SCHEMA_OWNER_USERNAME no .env}
+      SPRING_DATASOURCE_PASSWORD: ${AUTH_SCHEMA_OWNER_PASSWORD:?defina AUTH_SCHEMA_OWNER_PASSWORD no .env}
+    read_only: true
+    tmpfs:
+      - /tmp:rw,noexec,nosuid,size=64m
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    mem_limit: 768m
+    pids_limit: 256
+
+  api:
+    build: .
+    image: backend-auth2-api
+    depends_on:
+      oracle:
+        condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
+    environment:
+      <<: *contexto-da-aplicacao
       SPRING_DATASOURCE_USERNAME: ${AUTH_DATASOURCE_USERNAME:?defina AUTH_DATASOURCE_USERNAME no .env}
       SPRING_DATASOURCE_PASSWORD: ${AUTH_DATASOURCE_PASSWORD:?defina AUTH_DATASOURCE_PASSWORD no .env}
-      # A migracao roda com o dono do esquema, nunca com o usuario da aplicacao.
-      SPRING_FLYWAY_USER: ${AUTH_SCHEMA_OWNER_USERNAME:?defina AUTH_SCHEMA_OWNER_USERNAME no .env}
-      SPRING_FLYWAY_PASSWORD: ${AUTH_SCHEMA_OWNER_PASSWORD:?defina AUTH_SCHEMA_OWNER_PASSWORD no .env}
-      AUTH_SCHEMA: ${AUTH_SCHEMA_OWNER_USERNAME:?defina AUTH_SCHEMA_OWNER_USERNAME no .env}
-      # Segredo de instalacao. Sem ele a rota de cadastro do primeiro administrador
-      # responde como inexistente, inclusive num banco vazio.
-      AUTH_SETUP_SECRET: ${AUTH_SETUP_SECRET:?defina AUTH_SETUP_SECRET no .env}
-      # Servidor de e-mail. Sem SPRING_MAIL_HOST o adaptador SMTP nao entra no contexto e
-      # nenhuma confirmacao sai, entao aqui ele e obrigatorio: este compose e a forma de
-      # producao, e subir sem envio tem de ser escolha escrita, nao esquecimento.
-      SPRING_MAIL_HOST: ${AUTH_MAIL_HOST:?defina AUTH_MAIL_HOST no .env}
-      SPRING_MAIL_PORT: ${AUTH_MAIL_PORT:?defina AUTH_MAIL_PORT no .env}
-      SPRING_MAIL_USERNAME: ${AUTH_MAIL_USERNAME:?defina AUTH_MAIL_USERNAME no .env}
-      SPRING_MAIL_PASSWORD: ${AUTH_MAIL_PASSWORD:?defina AUTH_MAIL_PASSWORD no .env}
-      AUTH_NOTIFICATION_SENDER: ${AUTH_MAIL_SENDER:?defina AUTH_MAIL_SENDER no .env}
-      # O endereco do link e da tela que recebe a pessoa, nao deste servico. O marcador
-      # {token} e obrigatorio, e a aplicacao recusa a subida sem ele.
-      AUTH_NOTIFICATION_CONFIRMATION_LINK: ${AUTH_CONFIRMATION_LINK:?defina AUTH_CONFIRMATION_LINK no .env}
-      AUTH_NOTIFICATION_RECOVERY_LINK: ${AUTH_RECOVERY_LINK:?defina AUTH_RECOVERY_LINK no .env}
+      # Quem migra e o servico migrate. Desligar o Flyway aqui nao e enfeite: sem a credencial
+      # propria ele cairia no DataSource da aplicacao, e esse usuario nao le a tabela de
+      # historico e so tem CREATE SESSION, entao ele tentaria criar a tabela e a subida
+      # falharia. Trocar um achado de seguranca por indisponibilidade total nao e correcao.
+      SPRING_FLYWAY_ENABLED: "false"
+      # O pool do ambiente publicado acompanha o teto de threads de atendimento, para que
+      # nenhuma thread espere por conexao. O padrao do application.yaml e menor porque a suite
+      # mantem varios contextos vivos no mesmo processo e o Oracle de teste tem limite baixo
+      # de sessao.
+      SPRING_DATASOURCE_HIKARI_MAXIMUM_POOL_SIZE: "24"
     ports:
       - "127.0.0.1:8081:8081"
     # O contentor sobe sem poder escrever no proprio sistema de arquivos e sem
@@ -86,7 +157,11 @@ services:
       options:
         max-size: "10m"
         max-file: "5"
-    stop_grace_period: 30s
+    # A conta precisa sobrar: a fase web do Spring espera ate 15s por requisicao em
+    # andamento, a fila de mensagem espera outros 5s depois dela, e a saida da JVM vem no
+    # fim. Com 30s aqui o pior caso dava exatamente o teto, e nesse instante o Docker manda
+    # SIGKILL: as mensagens pendentes, que so existem em memoria, morreriam com o processo.
+    stop_grace_period: 45s
     restart: unless-stopped
 
 volumes:

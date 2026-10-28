@@ -63,6 +63,29 @@ public abstract class OracleIntegrationTestBase {
     }
 
     /**
+     * Consulta pela conexao do dono do esquema.
+     *
+     * Ela existe porque a lista de concessoes precisa ser conferida pelo lado de quem
+     * concede: o usuario restrito nao enxerga tabela sobre a qual nao tem privilegio, e
+     * seria justo a tabela esquecida que ficaria invisivel na consulta dele.
+     */
+    static List<String> schemaOwnerQuery(String sql) {
+        List<String> rows = new java.util.ArrayList<>();
+        try (Connection connection = DriverManager.getConnection(
+                        ORACLE.getJdbcUrl(), SCHEMA_OWNER_USERNAME, CONTAINER_PASSWORD);
+                Statement statement = connection.createStatement();
+                java.sql.ResultSet results = statement.executeQuery(sql)) {
+            while (results.next()) {
+                rows.add(results.getString(1));
+            }
+        } catch (SQLException failure) {
+            throw new IllegalStateException("Nao foi possivel consultar como dono do esquema",
+                    failure);
+        }
+        return rows;
+    }
+
+    /**
      * Refaz o usuario da aplicacao com os mesmos privilegios que o script de inicializacao
      * do compose concede, porque a imagem cria o usuario dela com direito de criar tabela.
      * Sem isto a suite afirmaria sobre um usuario mais poderoso que o de producao.

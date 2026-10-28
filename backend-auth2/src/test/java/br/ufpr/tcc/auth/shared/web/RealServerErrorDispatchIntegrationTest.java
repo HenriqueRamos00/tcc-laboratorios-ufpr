@@ -12,6 +12,8 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.boot.health.actuate.endpoint.HealthEndpointGroup;
+import org.springframework.boot.health.actuate.endpoint.HealthEndpointGroups;
 import org.springframework.boot.test.web.server.LocalServerPort;
 import org.springframework.context.ApplicationContext;
 import org.springframework.http.HttpHeaders;
@@ -110,6 +112,59 @@ class RealServerErrorDispatchIntegrationTest extends OracleIntegrationTestBase {
         assertThat(status.value()).isEqualTo(400);
     }
 
+    /**
+     * O teto de corpo precisa valer tambem quando o chamador nao declara tamanho.
+     *
+     * O simulador de requisicao nao serve aqui: ele deriva o tamanho do conteudo que recebe,
+     * entao o caminho sem tamanho declarado nao existe nele. Medido na aplicacao no ar antes
+     * desta correcao: o mesmo corpo respondia 413 com Content-Length e 400 com
+     * Transfer-Encoding chunked, depois de ter sido lido e interpretado inteiro, com 8 MB
+     * passando sem teto. Bastava omitir um cabecalho.
+     */
+    @Test
+    @DisplayName("corpo em pedacos, sem tamanho declarado, tambem para no teto")
+    void chunkedBodyWithoutDeclaredLengthAlsoStopsAtTheCeiling() throws Exception {
+        String padding = "A".repeat(200_000);
+        String response = postInChunks("/api/admin/auth/login",
+                "{\"email\":\"sonda@exemplo.invalid\",\"password\":\"" + padding + "\"}");
+
+        assertThat(response).as("o teto nao pode depender do cabecalho escolhido")
+                .startsWith("HTTP/1.1 413");
+    }
+
+    /**
+     * Envia o corpo em pedacos por soquete, que e a unica forma de chegar ao servidor sem
+     * Content-Length. A escrita pode falhar no meio, e isso e o comportamento desejado: o
+     * servidor recusou antes de o envio terminar, e a resposta ja esta na conexao.
+     */
+    private String postInChunks(String path, String body) throws Exception {
+        byte[] content = body.getBytes(java.nio.charset.StandardCharsets.UTF_8);
+        try (java.net.Socket socket = new java.net.Socket("127.0.0.1", port)) {
+            java.io.OutputStream out = socket.getOutputStream();
+            try {
+                out.write(("POST " + path + " HTTP/1.1\r\nHost: 127.0.0.1\r\n"
+                        + "Content-Type: application/json\r\nTransfer-Encoding: chunked\r\n"
+                        + "Connection: close\r\n\r\n")
+                        .getBytes(java.nio.charset.StandardCharsets.US_ASCII));
+                int pieceSize = 8192;
+                for (int offset = 0; offset < content.length; offset += pieceSize) {
+                    int length = Math.min(pieceSize, content.length - offset);
+                    out.write((Integer.toHexString(length) + "\r\n")
+                            .getBytes(java.nio.charset.StandardCharsets.US_ASCII));
+                    out.write(content, offset, length);
+                    out.write("\r\n".getBytes(java.nio.charset.StandardCharsets.US_ASCII));
+                    out.flush();
+                }
+                out.write("0\r\n\r\n".getBytes(java.nio.charset.StandardCharsets.US_ASCII));
+                out.flush();
+            } catch (java.io.IOException refusedBeforeTheEnd) {
+                socket.shutdownOutput();
+            }
+            return new String(socket.getInputStream().readAllBytes(),
+                    java.nio.charset.StandardCharsets.UTF_8);
+        }
+    }
+
     @Test
     @DisplayName("a sonda de prontidao responde sem credencial nenhuma")
     void readinessProbeAnswersWithoutCredential() {
@@ -118,6 +173,26 @@ class RealServerErrorDispatchIntegrationTest extends OracleIntegrationTestBase {
 
         assertThat(status.value())
                 .as("o healthcheck do contentor usa este caminho").isEqualTo(200);
+    }
+
+    /**
+     * A sonda que o contentor consulta precisa falar do banco.
+     *
+     * Medido antes desta configuracao, com o contentor do banco pausado: a prontidao
+     * respondia 200 UP e toda rota de negocio respondia erro. O grupo de prontidao do Boot
+     * nasce apenas com o estado de disponibilidade da aplicacao, e o banco so entra se for
+     * declarado. Como o teste roda com o banco no ar, o que ele cobra e a declaracao: sem
+     * ela, a sonda volta a poder mentir e nenhum caso cai.
+     */
+    @Test
+    @DisplayName("a prontidao inclui o banco, senao ela mente quando o banco sai")
+    void readinessIncludesTheDatabase() {
+        HealthEndpointGroup readiness = context.getBean(HealthEndpointGroups.class)
+                .get("readiness");
+
+        assertThat(readiness).as("o grupo de prontidao precisa existir").isNotNull();
+        assertThat(readiness.isMember("db"))
+                .as("o healthcheck do contentor consulta esta sonda").isTrue();
     }
 
     @Test

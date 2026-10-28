@@ -26,6 +26,16 @@ class LoginAttemptLedgerIntegrationTest extends OracleIntegrationTestBase {
 
     private static final Duration COOLDOWN = Duration.ofMinutes(15);
 
+    /**
+     * Espera de duracao zero, que vence no instante em que e gravada.
+     *
+     * O caminho do bloqueio vencido precisa ser exercitado sem relogio de parede e sem
+     * adiantar a coluna por fora, que seria o teste reimplementando o que a producao faz.
+     * Com espera zero o proprio banco grava um prazo que o comando seguinte ja ve no
+     * passado, e o valor-limite fica exato.
+     */
+    private static final Duration ALREADY_EXPIRED = Duration.ZERO;
+
     @Autowired
     private LoginAttemptLedger ledger;
 
@@ -57,10 +67,45 @@ class LoginAttemptLedgerIntegrationTest extends OracleIntegrationTestBase {
             ledger.registerFailure(1L, identifier, COOLDOWN);
         }
 
-        LoginAttemptOutcome outcome = ledger.registerFailure(1L, identifier, COOLDOWN);
+        LoginAttemptOutcome fifth = ledger.currentOutcome(1L, identifier);
+        LoginAttemptOutcome sixth = ledger.registerFailure(1L, identifier, COOLDOWN);
 
-        assertThat(outcome.locked()).isTrue();
-        assertThat(outcome.retryAfterSeconds()).isBetween(1L, COOLDOWN.toSeconds());
+        assertThat(sixth.locked()).isTrue();
+        assertThat(sixth.retryAfterSeconds()).isBetween(1L, COOLDOWN.toSeconds());
+        assertThat(ledger.failedAttemptsOf(1L, identifier))
+                .as("a tentativa depois do bloqueio nao e debitada").isEqualTo(5);
+        assertThat(sixth.retryAfterSeconds())
+                .as("e nao renova o prazo, senao bater na rota em laco prenderia a conta")
+                .isLessThanOrEqualTo(fifth.retryAfterSeconds());
+    }
+
+    /**
+     * A regra do Lactec diz cinco tentativas e espera configuravel, nao cinco tentativas na
+     * vida. Vencida a espera, a conta volta a ter as cinco: sem recomecar a contagem, a
+     * primeira falha depois do bloqueio leva o contador a seis, o limite e visto como
+     * estourado outra vez, e tranca pelo periodo inteiro. Isso transforma uma requisicao por
+     * periodo, em vez de cinco, na alavanca para manter conta alheia fechada.
+     */
+    @Test
+    @DisplayName("vencida a espera, a contagem recomeca e a conta volta a ter cinco tentativas")
+    void countRestartsWhenTheWaitExpires() {
+        String identifier = uniqueIdentifier();
+        for (int attempt = 1; attempt <= 5; attempt++) {
+            ledger.registerFailure(4L, identifier, ALREADY_EXPIRED);
+        }
+
+        LoginAttemptOutcome firstAfterTheWait = ledger.registerFailure(4L, identifier, COOLDOWN);
+
+        assertThat(firstAfterTheWait.locked())
+                .as("a primeira falha depois da espera nao tranca").isFalse();
+        assertThat(ledger.failedAttemptsOf(4L, identifier))
+                .as("a contagem recomeca do um").isOne();
+        for (int attempt = 2; attempt <= 4; attempt++) {
+            assertThat(ledger.registerFailure(4L, identifier, COOLDOWN).locked())
+                    .as("tentativa " + attempt + " da rodada nova").isFalse();
+        }
+        assertThat(ledger.registerFailure(4L, identifier, COOLDOWN).locked())
+                .as("a quinta da rodada nova tranca de novo").isTrue();
     }
 
     // Sucesso zera o contador: conta pouco usada que erra uma vez por mes nao pode

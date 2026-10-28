@@ -6,6 +6,7 @@ import br.ufpr.tcc.auth.shared.security.ApplicationCaller;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
+import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -22,6 +23,7 @@ import org.springframework.web.bind.annotation.RestController;
  * O 401 daqui sai sem desafio de proposito, e isso e contrato medido no consumidor: com o
  * desafio, senha errada apareceria na tela como falha de infraestrutura.
  */
+@SecurityRequirement(name = "credencial-de-aplicacao")
 @RestController
 class ClientLoginController {
 

@@ -4,6 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 
 import br.ufpr.tcc.auth.credential.model.ServiceToken;
 import br.ufpr.tcc.auth.shared.database.OracleIntegrationTestBase;
@@ -106,6 +107,57 @@ class CompanyContractIntegrationTest extends OracleIntegrationTestBase {
                 .as("outra aplicacao").isEqualTo(201);
         assertThat(createCompany(firstToken, cnpj).getResponse().getStatus())
                 .as("a mesma aplicacao").isEqualTo(409);
+    }
+
+    /**
+     * O cadastro ja recusava CNPJ repetido, e a alteracao nao. Uma requisicao sequencial
+     * basta: a restricao unica do banco recusa a linha, ninguem traduz a recusa, e a resposta
+     * sai como erro de servidor, que nao esta na matriz e que o consumidor le como fonte
+     * indisponivel. Corrigir um CNPJ digitado errado aparecia ao operador como servico fora
+     * do ar.
+     */
+    @Test
+    @DisplayName("mover o CNPJ para um que ja existe na mesma aplicacao responde conflito")
+    void movingTheCnpjOntoAnExistingOneOfTheSameApplicationAnswersAsConflict() throws Exception {
+        String occupied = uniqueCnpj();
+        createCompany(firstToken, occupied);
+        String identifier = JSON.readTree(createCompany(firstToken, uniqueCnpj())
+                .getResponse().getContentAsString()).get("id").asString();
+
+        MvcResult collided = mockMvc.perform(put("/api/companies/" + identifier)
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + firstToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"name\":\"Empresa Exemplo\",\"cnpj\":\"" + occupied + "\"}"))
+                .andReturn();
+
+        assertThat(collided.getResponse().getStatus()).isEqualTo(409);
+        JsonNode unchanged = JSON.readTree(mockMvc.perform(get("/api/companies/" + identifier)
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + firstToken))
+                .andReturn().getResponse().getContentAsString());
+        assertThat(unchanged.get("cnpj").asString())
+                .as("o conflito nao grava metade da alteracao").isNotEqualTo(occupied);
+    }
+
+    @Test
+    @DisplayName("alterar empresa de outra aplicacao responde como inexistente")
+    void updatingACompanyOfAnotherApplicationAnswersAsNotFound() throws Exception {
+        String foreignCnpj = uniqueCnpj();
+        String foreignId = JSON.readTree(createCompany(secondToken, foreignCnpj)
+                .getResponse().getContentAsString()).get("id").asString();
+
+        int updated = mockMvc.perform(put("/api/companies/" + foreignId)
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + firstToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"name\":\"Renomeada por quem nao e dono\",\"cnpj\":\""
+                                + uniqueCnpj() + "\"}"))
+                .andReturn().getResponse().getStatus();
+
+        assertThat(updated).isEqualTo(404);
+        JsonNode untouched = JSON.readTree(mockMvc.perform(get("/api/companies/" + foreignId)
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + secondToken))
+                .andReturn().getResponse().getContentAsString());
+        assertThat(untouched.get("cnpj").asString())
+                .as("o 404 e recusa, nao gravacao seguida de 404").isEqualTo(foreignCnpj);
     }
 
     @Test

@@ -1,8 +1,9 @@
 {
     "openapi": "3.1.0",
     "info": {
-        "title": "OpenAPI definition",
-        "version": "v0"
+        "title": "Servico de autenticacao do Lactec, segunda implementacao",
+        "description": "Autenticacao e autorizacao compartilhada pelas aplicacoes do Lactec.\n\nQuatro pontos do contrato que valem para quase toda rota, ditos uma vez aqui:\n\n1. 401 **sem** `WWW-Authenticate` quer dizer credencial da pessoa recusada;\n401 **com** `WWW-Authenticate` quer dizer que a credencial da aplicacao nao foi\naceita. Sao erros de dono diferente e a tela trata cada um de um jeito.\n2. 429 sempre leva `Retry-After` em segundos inteiros.\n3. Todo identificador viaja como texto, inclusive quando o banco guarda numero:\nnumero de 64 bits perde precisao em JavaScript.\n4. O minimo de oito caracteres da senha e regra de **cadastro**. No login nao\nexiste minimo, de proposito: cobrar ali responderia 400 onde o contrato espera\n401 e entregaria o tamanho da senha a quem sonda.\n",
+        "version": "0.0.1-SNAPSHOT"
     },
     "servers": [
         {
@@ -38,7 +39,12 @@
                             }
                         }
                     }
-                }
+                },
+                "security": [
+                    {
+                        "credencial-de-aplicacao": []
+                    }
+                ]
             },
             "put": {
                 "tags": [
@@ -76,7 +82,12 @@
                             }
                         }
                     }
-                }
+                },
+                "security": [
+                    {
+                        "credencial-de-aplicacao": []
+                    }
+                ]
             },
             "delete": {
                 "tags": [
@@ -97,7 +108,12 @@
                     "200": {
                         "description": "OK"
                     }
-                }
+                },
+                "security": [
+                    {
+                        "credencial-de-aplicacao": []
+                    }
+                ]
             }
         },
         "/api/services/{serviceId}": {
@@ -127,7 +143,12 @@
                             }
                         }
                     }
-                }
+                },
+                "security": [
+                    {
+                        "credencial-administrativa": []
+                    }
+                ]
             },
             "put": {
                 "tags": [
@@ -165,7 +186,12 @@
                             }
                         }
                     }
-                }
+                },
+                "security": [
+                    {
+                        "credencial-administrativa": []
+                    }
+                ]
             },
             "delete": {
                 "tags": [
@@ -186,7 +212,12 @@
                     "200": {
                         "description": "OK"
                     }
-                }
+                },
+                "security": [
+                    {
+                        "credencial-administrativa": []
+                    }
+                ]
             }
         },
         "/api/companies/{id}": {
@@ -216,7 +247,12 @@
                             }
                         }
                     }
-                }
+                },
+                "security": [
+                    {
+                        "credencial-de-aplicacao": []
+                    }
+                ]
             },
             "put": {
                 "tags": [
@@ -254,7 +290,12 @@
                             }
                         }
                     }
-                }
+                },
+                "security": [
+                    {
+                        "credencial-de-aplicacao": []
+                    }
+                ]
             },
             "delete": {
                 "tags": [
@@ -275,7 +316,12 @@
                     "200": {
                         "description": "OK"
                     }
-                }
+                },
+                "security": [
+                    {
+                        "credencial-de-aplicacao": []
+                    }
+                ]
             }
         },
         "/api/admins/{id}": {
@@ -305,7 +351,12 @@
                             }
                         }
                     }
-                }
+                },
+                "security": [
+                    {
+                        "credencial-administrativa": []
+                    }
+                ]
             },
             "put": {
                 "tags": [
@@ -343,7 +394,12 @@
                             }
                         }
                     }
-                }
+                },
+                "security": [
+                    {
+                        "credencial-administrativa": []
+                    }
+                ]
             },
             "delete": {
                 "tags": [
@@ -364,7 +420,12 @@
                     "200": {
                         "description": "OK"
                     }
-                }
+                },
+                "security": [
+                    {
+                        "credencial-administrativa": []
+                    }
+                ]
             }
         },
         "/api/users": {
@@ -387,7 +448,12 @@
                             }
                         }
                     }
-                }
+                },
+                "security": [
+                    {
+                        "credencial-de-aplicacao": []
+                    }
+                ]
             },
             "post": {
                 "tags": [
@@ -408,7 +474,12 @@
                     "200": {
                         "description": "OK"
                     }
-                }
+                },
+                "security": [
+                    {
+                        "credencial-de-aplicacao": []
+                    }
+                ]
             }
         },
         "/api/setup/admin": {
@@ -464,7 +535,12 @@
                             }
                         }
                     }
-                }
+                },
+                "security": [
+                    {
+                        "credencial-administrativa": []
+                    }
+                ]
             },
             "post": {
                 "tags": [
@@ -492,7 +568,12 @@
                             }
                         }
                     }
-                }
+                },
+                "security": [
+                    {
+                        "credencial-administrativa": []
+                    }
+                ]
             }
         },
         "/api/services/{serviceId}/tokens": {
@@ -525,7 +606,12 @@
                             }
                         }
                     }
-                }
+                },
+                "security": [
+                    {
+                        "credencial-administrativa": []
+                    }
+                ]
             },
             "post": {
                 "tags": [
@@ -563,7 +649,12 @@
                             }
                         }
                     }
-                }
+                },
+                "security": [
+                    {
+                        "credencial-administrativa": []
+                    }
+                ]
             }
         },
         "/api/companies": {
@@ -586,7 +677,12 @@
                             }
                         }
                     }
-                }
+                },
+                "security": [
+                    {
+                        "credencial-de-aplicacao": []
+                    }
+                ]
             },
             "post": {
                 "tags": [
@@ -614,7 +710,12 @@
                             }
                         }
                     }
-                }
+                },
+                "security": [
+                    {
+                        "credencial-de-aplicacao": []
+                    }
+                ]
             }
         },
         "/api/auth/recoveries": {
@@ -637,7 +738,12 @@
                     "200": {
                         "description": "OK"
                     }
-                }
+                },
+                "security": [
+                    {
+                        "credencial-de-aplicacao": []
+                    }
+                ]
             }
         },
         "/api/auth/password-resets": {
@@ -660,7 +766,12 @@
                     "200": {
                         "description": "OK"
                     }
-                }
+                },
+                "security": [
+                    {
+                        "credencial-de-aplicacao": []
+                    }
+                ]
             }
         },
         "/api/auth/login": {
@@ -690,7 +801,12 @@
                             }
                         }
                     }
-                }
+                },
+                "security": [
+                    {
+                        "credencial-de-aplicacao": []
+                    }
+                ]
             }
         },
         "/api/auth/confirmations": {
@@ -713,7 +829,12 @@
                     "200": {
                         "description": "OK"
                     }
-                }
+                },
+                "security": [
+                    {
+                        "credencial-de-aplicacao": []
+                    }
+                ]
             }
         },
         "/api/admins": {
@@ -736,7 +857,12 @@
                             }
                         }
                     }
-                }
+                },
+                "security": [
+                    {
+                        "credencial-administrativa": []
+                    }
+                ]
             },
             "post": {
                 "tags": [
@@ -764,7 +890,12 @@
                             }
                         }
                     }
-                }
+                },
+                "security": [
+                    {
+                        "credencial-administrativa": []
+                    }
+                ]
             }
         },
         "/api/admin/auth/login": {
@@ -825,7 +956,12 @@
                     "200": {
                         "description": "OK"
                     }
-                }
+                },
+                "security": [
+                    {
+                        "credencial-administrativa": []
+                    }
+                ]
             }
         }
     },
@@ -886,7 +1022,7 @@
                         "type": "string",
                         "maxLength": 80,
                         "minLength": 0,
-                        "pattern": "[a-z0-9]+(?:-[a-z0-9]+)*"
+                        "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$"
                     },
                     "active": {
                         "type": "boolean"
@@ -926,7 +1062,7 @@
                     "cnpj": {
                         "type": "string",
                         "minLength": 1,
-                        "pattern": "[0-9]{14}"
+                        "pattern": "^[0-9]{14}$"
                     }
                 },
                 "required": [
@@ -970,8 +1106,11 @@
                     },
                     "password": {
                         "type": "string",
+                        "format": "password",
+                        "description": "Senha, preservando espacos: o servidor nao corta espaco nas pontas,\n nao muda a caixa e nao remove acentuacao, porque cada uma dessas trocas\n mudaria a credencial em silencio. O minimo de oito, mais maiuscula,\n minuscula e digito, e cobrado pelo caso de uso e nao por anotacao.",
                         "maxLength": 72,
-                        "minLength": 0
+                        "minLength": 8,
+                        "writeOnly": true
                     }
                 },
                 "required": [
@@ -1013,12 +1152,16 @@
                     },
                     "password": {
                         "type": "string",
+                        "format": "password",
+                        "description": "Senha, preservando espacos: o servidor nao corta espaco nas pontas,\n nao muda a caixa e nao remove acentuacao, porque cada uma dessas trocas\n mudaria a credencial em silencio. O minimo de oito, mais maiuscula,\n minuscula e digito, e cobrado pelo caso de uso e nao por anotacao.",
                         "maxLength": 72,
-                        "minLength": 0
+                        "minLength": 8,
+                        "writeOnly": true
                     },
                     "role": {
                         "type": "string",
-                        "pattern": "CLIENTE"
+                        "description": "Unico perfil aceito hoje.",
+                        "pattern": "^CLIENTE$"
                     },
                     "serviceId": {
                         "type": "string"
@@ -1046,8 +1189,11 @@
                     },
                     "password": {
                         "type": "string",
+                        "format": "password",
+                        "description": "Senha, preservando espacos: o servidor nao corta espaco nas pontas,\n nao muda a caixa e nao remove acentuacao, porque cada uma dessas trocas\n mudaria a credencial em silencio. O minimo de oito, mais maiuscula,\n minuscula e digito, e cobrado pelo caso de uso e nao por anotacao.",
                         "maxLength": 72,
-                        "minLength": 0
+                        "minLength": 8,
+                        "writeOnly": true
                     }
                 },
                 "required": [
@@ -1068,7 +1214,7 @@
                         "type": "string",
                         "maxLength": 80,
                         "minLength": 0,
-                        "pattern": "[a-z0-9]+(?:-[a-z0-9]+)*"
+                        "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$"
                     }
                 },
                 "required": [
@@ -1117,8 +1263,11 @@
                     },
                     "password": {
                         "type": "string",
+                        "format": "password",
+                        "description": "Senha, preservando espacos: o servidor nao corta espaco nas pontas,\n nao muda a caixa e nao remove acentuacao, porque cada uma dessas trocas\n mudaria a credencial em silencio. O minimo de oito, mais maiuscula,\n minuscula e digito, e cobrado pelo caso de uso e nao por anotacao.",
                         "maxLength": 72,
-                        "minLength": 0
+                        "minLength": 8,
+                        "writeOnly": true
                     }
                 },
                 "required": [
@@ -1178,8 +1327,11 @@
                     },
                     "password": {
                         "type": "string",
+                        "format": "password",
+                        "description": "Senha, preservando espacos: o servidor nao corta espaco nas pontas,\n nao muda a caixa e nao remove acentuacao, porque cada uma dessas trocas\n mudaria a credencial em silencio. O minimo de oito, mais maiuscula,\n minuscula e digito, e cobrado pelo caso de uso e nao por anotacao.",
                         "maxLength": 72,
-                        "minLength": 0
+                        "minLength": 8,
+                        "writeOnly": true
                     }
                 },
                 "required": [
@@ -1199,8 +1351,10 @@
                     },
                     "password": {
                         "type": "string",
+                        "format": "password",
                         "maxLength": 72,
-                        "minLength": 0
+                        "minLength": 0,
+                        "writeOnly": true
                     }
                 },
                 "required": [
@@ -1233,6 +1387,20 @@
                         "format": "date-time"
                     }
                 }
+            }
+        },
+        "securitySchemes": {
+            "credencial-administrativa": {
+                "type": "http",
+                "description": "Credencial administrativa, obtida no login administrativo. Formato adm_ seguido de 43 caracteres.",
+                "in": "header",
+                "scheme": "bearer"
+            },
+            "credencial-de-aplicacao": {
+                "type": "http",
+                "description": "Credencial da aplicacao, emitida pelo administrador. Formato svc_ seguido de 43 caracteres.",
+                "in": "header",
+                "scheme": "bearer"
             }
         }
     }

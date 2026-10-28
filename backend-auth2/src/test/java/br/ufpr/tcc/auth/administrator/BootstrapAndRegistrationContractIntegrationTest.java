@@ -80,18 +80,37 @@ class BootstrapAndRegistrationContractIntegrationTest extends OracleIntegrationT
         jdbcClient.sql("DELETE FROM ADMINISTRATOR").update();
     }
 
+    /**
+     * As duas metades da guarda, com a tabela de administradores ainda vazia: segredo ausente
+     * e segredo errado. So a ausencia era exercitada, e segredo errado nunca aparecia em caso
+     * nenhum da suite.
+     */
     @Test
     @Order(1)
-    @DisplayName("sem o segredo de instalacao, a rota de instalacao nao existe")
-    void setupRouteDoesNotExistWithoutTheBootstrapSecret() throws Exception {
-        MvcResult result = mockMvc.perform(post("/api/setup/admin")
+    @DisplayName("sem o segredo, e com o segredo errado, a rota de instalacao nao existe")
+    void setupRouteDoesNotExistWithoutTheRightBootstrapSecret() throws Exception {
+        MvcResult withoutSecret = mockMvc.perform(post("/api/setup/admin")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"name":"Invasor","email":"invasor@exemplo.com",
+                                 "password":"SenhaForte123"}"""))
+                .andReturn();
+        MvcResult withTheWrongSecret = mockMvc.perform(post("/api/setup/admin")
+                        .header("X-Setup-Secret", "segredo-que-nao-e-o-do-ambiente")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
                                 {"name":"Invasor","email":"invasor@exemplo.com",
                                  "password":"SenhaForte123"}"""))
                 .andReturn();
 
-        assertThat(result.getResponse().getStatus()).isEqualTo(404);
+        assertThat(withoutSecret.getResponse().getStatus()).isEqualTo(404);
+        assertThat(withTheWrongSecret.getResponse().getStatus()).isEqualTo(404);
+        assertThat(administratorCount())
+                .as("nenhuma das duas tentativas cadastra administrador").isZero();
+    }
+
+    private long administratorCount() {
+        return jdbcClient.sql("SELECT COUNT(*) FROM ADMINISTRATOR").query(Long.class).single();
     }
 
     @Test
@@ -245,6 +264,11 @@ class BootstrapAndRegistrationContractIntegrationTest extends OracleIntegrationT
                                 {"name":"Escalada","code":"escalada"}"""))
                 .andReturn();
 
-        assertThat(result.getResponse().getStatus()).isIn(401, 403);
+        assertThat(result.getResponse().getStatus())
+                .as("credencial de aplicacao em rota administrativa e recusa de autorizacao")
+                .isEqualTo(403);
+        assertThat(result.getResponse().getHeader(HttpHeaders.WWW_AUTHENTICATE))
+                .as("403 nao desafia, e e nisso que o consumidor separa recusa de indisponivel")
+                .isNull();
     }
 }

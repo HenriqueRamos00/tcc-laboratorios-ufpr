@@ -220,6 +220,17 @@ class AccountLifecycleContractIntegrationTest extends OracleIntegrationTestBase 
      * Medido antes da correcao: campo ausente valia verdadeiro, e um pedido de renomeacao
      * reativava conta desativada em silencio.
      */
+    /**
+     * O corpo manda **apenas** o nome, e isso e o ponto do caso.
+     *
+     * A versao anterior mandava tambem endereco, perfil e identificador da aplicacao, que o
+     * pedido de alteracao nao declara, e com a recusa de campo desconhecido ligada a
+     * desserializacao morria antes da validacao: o 400 vinha de corpo ilegivel e a ausencia da
+     * situacao nunca era avaliada. Medido na aplicacao no ar pelos eventos do log, campo
+     * faltando sozinho registra recusa por validacao, e campo faltando com campo estranho
+     * registra corpo recusado. Com o corpo limpo, apagar a obrigatoriedade da situacao
+     * derruba este caso, que era justamente o que ele existia para impedir.
+     */
     @Test
     @DisplayName("alterar conta sem declarar a situacao e recusado, e nao reativa em silencio")
     void updateWithoutTheSituationIsRefused() throws Exception {
@@ -247,11 +258,19 @@ class AccountLifecycleContractIntegrationTest extends OracleIntegrationTestBase 
                         .header(HttpHeaders.AUTHORIZATION, "Bearer " + applicationToken)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
-                                {"name":"Nome novo","email":"%s","role":"CLIENTE",
-                                 "serviceId":"%s"}""".formatted(email, applicationId)))
+                                {"name":"Nome novo"}"""))
+                .andReturn();
+        MvcResult withTheSituation = mockMvc.perform(put("/api/users/" + accountId)
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + applicationToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"name":"Nome novo","active":false}"""))
                 .andReturn();
 
         assertThat(withoutSituation.getResponse().getStatus()).isEqualTo(400);
+        assertThat(withTheSituation.getResponse().getStatus())
+                .as("o mesmo corpo com a situacao declarada passa, entao o 400 foi por ela")
+                .isEqualTo(200);
         MvcResult afterwards = mockMvc.perform(get("/api/users/" + accountId)
                         .header(HttpHeaders.AUTHORIZATION, "Bearer " + applicationToken))
                 .andReturn();

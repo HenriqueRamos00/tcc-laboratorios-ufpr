@@ -338,6 +338,16 @@ class AdministratorLifecycleContractIntegrationTest extends OracleIntegrationTes
         }
     }
 
+    /**
+     * Desativar precisa ser desligamento, e nao apenas revogacao do token que estava aberto.
+     *
+     * A consulta por e-mail da entrada administrativa seleciona a coluna de situacao mas nao
+     * filtra por ela, entao o unico lugar onde a situacao e avaliada e uma condicao no caso de
+     * uso. Nenhum caso da suite fazia login de administrador desativado, e por isso apagar
+     * essa condicao deixava tudo verde com o afastado recebendo sessao nova de oito horas,
+     * com acesso a cadastrar aplicacao, emitir credencial e ler a lista inteira. E a segunda
+     * metade da historia: a primeira e o token antigo parar de ser atendido.
+     */
     @Test
     @Order(14)
     @DisplayName("com dois ativos, desativar um e permitido e corta o acesso dele na hora")
@@ -368,6 +378,23 @@ class AdministratorLifecycleContractIntegrationTest extends OracleIntegrationTes
         assertThat(statusOfListingWith(secondToken))
                 .as("desativado deixa de ser atendido na hora").isEqualTo(401);
         assertThat(statusOfListingWith(ownerToken)).isEqualTo(200);
+
+        MvcResult signInAfterwards = performSignIn(SECOND_EMAIL, SECOND_PASSWORD);
+
+        assertThat(signInAfterwards.getResponse().getStatus())
+                .as("entrar de novo com a senha certa tambem precisa ser recusado")
+                .isEqualTo(401);
+        assertThat(signInAfterwards.getResponse().getHeader(HttpHeaders.WWW_AUTHENTICATE))
+                .as("recusa de credencial nao desafia").isNull();
+        assertThat(sessionsOf(secondIdentifier))
+                .as("recusa nao abre sessao nova").isZero();
+    }
+
+    /** Sessoes que ainda valem para aquele administrador. */
+    private long sessionsOf(String identifier) {
+        return jdbcClient.sql("SELECT COUNT(*) FROM ADMINISTRATIVE_SESSION"
+                        + " WHERE ADMINISTRATOR_ID = :id AND REVOKED_AT IS NULL")
+                .param("id", Long.parseLong(identifier)).query(Long.class).single();
     }
 
     /**
