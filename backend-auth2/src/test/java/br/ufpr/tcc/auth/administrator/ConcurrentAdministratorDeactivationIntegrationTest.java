@@ -1,5 +1,6 @@
 package br.ufpr.tcc.auth.administrator;
 
+import br.ufpr.tcc.auth.shared.database.DatabaseProbe;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import br.ufpr.tcc.auth.shared.database.OracleIntegrationTestBase;
@@ -12,7 +13,6 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.security.crypto.password.PasswordEncoder;
 
 /**
@@ -41,15 +41,15 @@ class ConcurrentAdministratorDeactivationIntegrationTest extends OracleIntegrati
     private AdministratorLifecycle lifecycle;
 
     @Autowired
-    private JdbcClient jdbcClient;
+    private DatabaseProbe database;
 
     @Autowired
     private PasswordEncoder passwordEncoder;
 
     @BeforeEach
     void seedTwoActiveAdministrators() {
-        jdbcClient.sql("DELETE FROM ADMINISTRATIVE_SESSION").update();
-        jdbcClient.sql("DELETE FROM ADMINISTRATOR").update();
+        database.statement("DELETE FROM ADMINISTRATIVE_SESSION").run();
+        database.statement("DELETE FROM ADMINISTRATOR").run();
         String passwordHash = passwordEncoder.encode(PASSWORD);
         insert(FIRST_IDENTIFIER, FIRST_EMAIL, passwordHash);
         insert(SECOND_IDENTIFIER, SECOND_EMAIL, passwordHash);
@@ -110,16 +110,16 @@ class ConcurrentAdministratorDeactivationIntegrationTest extends OracleIntegrati
     }
 
     private void insert(long id, String email, String passwordHash) {
-        jdbcClient.sql("INSERT INTO ADMINISTRATOR (ID, NAME, EMAIL, EMAIL_NORMALIZED, ACTIVE,"
+        database.statement("INSERT INTO ADMINISTRATOR (ID, NAME, EMAIL, EMAIL_NORMALIZED, ACTIVE,"
                         + " PASSWORD_HASH, CREATED_AT, UPDATED_AT)"
                         + " VALUES (:id, 'Administrador da corrida', :email, :email, TRUE, :hash,"
                         + " :now, :now)")
-                .param("id", id).param("email", email).param("hash", passwordHash)
-                .param("now", OffsetDateTime.now()).update();
+                .with("id", id).with("email", email).with("hash", passwordHash)
+                .with("now", OffsetDateTime.now()).run();
     }
 
     private long activeAdministrators() {
-        return jdbcClient.sql("SELECT COUNT(*) FROM ADMINISTRATOR WHERE ACTIVE = TRUE")
-                .query(Long.class).single();
+        return database.statement("SELECT COUNT(*) FROM ADMINISTRATOR WHERE ACTIVE = TRUE")
+                .count();
     }
 }

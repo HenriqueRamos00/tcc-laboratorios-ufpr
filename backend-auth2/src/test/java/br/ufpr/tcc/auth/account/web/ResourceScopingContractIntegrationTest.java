@@ -7,6 +7,51 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 
 import br.ufpr.tcc.auth.notification.RecordedMessages;
+import br.ufpr.tcc.auth.shared.database.DatabaseProbe;
+import br.ufpr.tcc.auth.shared.database.OracleIntegrationTestBase;
+import java.time.OffsetDateTime;
+import java.util.ArrayList;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Set;
+import java.util.concurrent.atomic.AtomicLong;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Test;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.MediaType;
+import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.test.context.TestPropertySource;
+import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.test.web.servlet.MvcResult;
+import tools.jackson.databind.JsonNode;
+import tools.jackson.databind.json.JsonMapper;
+
+import br.ufpr.tcc.auth.notification.RecordedMessages;
+import br.ufpr.tcc.auth.shared.database.DatabaseProbe;
+import br.ufpr.tcc.auth.shared.database.OracleIntegrationTestBase;
+import java.time.OffsetDateTime;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Set;
+import java.util.concurrent.atomic.AtomicLong;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Test;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.MediaType;
+import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.test.context.TestPropertySource;
+import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.test.web.servlet.MvcResult;
+import tools.jackson.databind.JsonNode;
+import tools.jackson.databind.json.JsonMapper;
+
+import br.ufpr.tcc.auth.notification.RecordedMessages;
 import br.ufpr.tcc.auth.shared.database.OracleIntegrationTestBase;
 import java.time.OffsetDateTime;
 import java.util.concurrent.atomic.AtomicLong;
@@ -17,7 +62,6 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
-import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.test.context.TestPropertySource;
 import org.springframework.test.web.servlet.MockMvc;
@@ -44,7 +88,7 @@ class ResourceScopingContractIntegrationTest extends OracleIntegrationTestBase {
     private MockMvc mockMvc;
 
     @Autowired
-    private JdbcClient jdbcClient;
+    private DatabaseProbe database;
 
     @Autowired
     private PasswordEncoder passwordEncoder;
@@ -64,12 +108,12 @@ class ResourceScopingContractIntegrationTest extends OracleIntegrationTestBase {
     void seed() throws Exception {
         recordedMessages.clear();
         String email = "admin.escopo" + NEXT.incrementAndGet() + "@lactec.exemplo";
-        jdbcClient.sql("INSERT INTO ADMINISTRATOR (ID, NAME, EMAIL, EMAIL_NORMALIZED, ACTIVE,"
+        database.statement("INSERT INTO ADMINISTRATOR (ID, NAME, EMAIL, EMAIL_NORMALIZED, ACTIVE,"
                         + " PASSWORD_HASH, CREATED_AT, UPDATED_AT)"
                         + " VALUES (:id, 'Administrador', :email, :email, TRUE, :hash, :now, :now)")
-                .param("id", NEXT.incrementAndGet()).param("email", email)
-                .param("hash", passwordEncoder.encode(PASSWORD))
-                .param("now", OffsetDateTime.now()).update();
+                .with("id", NEXT.incrementAndGet()).with("email", email)
+                .with("hash", passwordEncoder.encode(PASSWORD))
+                .with("now", OffsetDateTime.now()).run();
         MvcResult signIn = mockMvc.perform(post("/api/admin/auth/login")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"email\":\"" + email + "\",\"password\":\"" + PASSWORD + "\"}"))
@@ -183,16 +227,16 @@ class ResourceScopingContractIntegrationTest extends OracleIntegrationTestBase {
                 .contains(first.applicationId(), second.applicationId());
     }
 
-    private static java.util.List<String> identifiersIn(JsonNode listing) {
-        java.util.List<String> identifiers = new java.util.ArrayList<>();
+    private static List<String> identifiersIn(JsonNode listing) {
+        List<String> identifiers = new ArrayList<>();
         for (JsonNode user : listing) {
             identifiers.add(user.get("id").asString());
         }
         return identifiers;
     }
 
-    private static java.util.Set<String> servicesIn(JsonNode listing) {
-        java.util.Set<String> services = new java.util.HashSet<>();
+    private static Set<String> servicesIn(JsonNode listing) {
+        Set<String> services = new HashSet<>();
         for (JsonNode user : listing) {
             services.add(user.get("serviceId").asString());
         }

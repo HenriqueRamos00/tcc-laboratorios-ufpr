@@ -8,3 +8,12 @@ target/
 .project
 .settings/
 .vscode/
+
+# Registro de processo nao entra no repositorio: ele descreve como o modulo foi
+# construido, inclusive defeitos medidos e dividas abertas, e isso e material de
+# banca e nao documentacao de produto. Num repositorio publico ele serve de mapa
+# para quem quer atacar o servico. Os arquivos vivem fora da arvore do git, em
+# ../../processo-backend-auth2/.
+docs/round-*.md
+docs/restricao-por-regiao.md
+CLAUDE.md

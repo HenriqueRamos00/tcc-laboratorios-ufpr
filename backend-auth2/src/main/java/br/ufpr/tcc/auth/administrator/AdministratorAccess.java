@@ -7,7 +7,6 @@ import java.security.NoSuchAlgorithmException;
 import br.ufpr.tcc.auth.credential.model.PasswordRequirement;
 import br.ufpr.tcc.auth.authentication.LoginAttemptLedger;
 import br.ufpr.tcc.auth.authentication.LoginAttemptOutcome;
-import br.ufpr.tcc.auth.shared.identifier.IdentifierFactory;
 import br.ufpr.tcc.auth.shared.observability.AuditTrail;
 import java.time.Duration;
 import java.util.Optional;
@@ -31,7 +30,6 @@ public class AdministratorAccess {
     private final AdministratorRegistry registry;
     private final AdministrativeSessionDirectory sessions;
     private final PasswordEncoder passwordEncoder;
-    private final IdentifierFactory identifiers;
     private final AuditTrail auditTrail;
     private final LoginAttemptLedger attempts;
     private final Duration loginCooldown;
@@ -40,15 +38,14 @@ public class AdministratorAccess {
     private final String discardedHash;
 
     AdministratorAccess(AdministratorRegistry registry, AdministrativeSessionDirectory sessions,
-            PasswordEncoder passwordEncoder, IdentifierFactory identifiers,
-            AuditTrail auditTrail, LoginAttemptLedger attempts,
+            PasswordEncoder passwordEncoder, AuditTrail auditTrail,
+            LoginAttemptLedger attempts,
             @Value("${auth.login.cooldown:PT15M}") Duration loginCooldown,
             @Value("${auth.setup.secret:}") String setupSecret,
             @Value("${auth.admin.session-lifetime:PT8H}") Duration sessionLifetime) {
         this.registry = registry;
         this.sessions = sessions;
         this.passwordEncoder = passwordEncoder;
-        this.identifiers = identifiers;
         this.auditTrail = auditTrail;
         this.attempts = attempts;
         this.loginCooldown = loginCooldown;
@@ -82,8 +79,7 @@ public class AdministratorAccess {
         if (!violations.isEmpty()) {
             return SetupOutcome.PASSWORD_REJECTED;
         }
-        long identifier = identifiers.nextIdentifier();
-        registry.insert(identifier, name, email, passwordEncoder.encode(password));
+        long identifier = registry.insert(name, email, passwordEncoder.encode(password));
         auditTrail.administratorChanged("installed", Long.toString(identifier));
         return SetupOutcome.CREATED;
     }

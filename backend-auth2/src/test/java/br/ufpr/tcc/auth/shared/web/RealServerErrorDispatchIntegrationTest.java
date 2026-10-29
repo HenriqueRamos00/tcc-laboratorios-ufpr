@@ -3,6 +3,61 @@ package br.ufpr.tcc.auth.shared.web;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import br.ufpr.tcc.auth.credential.model.ServiceToken;
+import br.ufpr.tcc.auth.shared.database.DatabaseProbe;
+import br.ufpr.tcc.auth.shared.database.OracleIntegrationTestBase;
+import java.io.IOException;
+import java.io.OutputStream;
+import java.net.Socket;
+import java.nio.charset.StandardCharsets;
+import java.time.OffsetDateTime;
+import java.util.List;
+import java.util.concurrent.atomic.AtomicLong;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Test;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.health.actuate.endpoint.HealthEndpointGroup;
+import org.springframework.boot.health.actuate.endpoint.HealthEndpointGroups;
+import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.boot.test.web.server.LocalServerPort;
+import org.springframework.context.ApplicationContext;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.HttpMethod;
+import org.springframework.http.HttpStatusCode;
+import org.springframework.http.MediaType;
+import org.springframework.security.core.userdetails.UserDetailsService;
+import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.web.client.RestClient;
+import tools.jackson.databind.json.JsonMapper;
+
+import br.ufpr.tcc.auth.credential.model.ServiceToken;
+import br.ufpr.tcc.auth.shared.database.DatabaseProbe;
+import br.ufpr.tcc.auth.shared.database.OracleIntegrationTestBase;
+import java.io.OutputStream;
+import java.net.Socket;
+import java.nio.charset.StandardCharsets;
+import java.time.OffsetDateTime;
+import java.util.List;
+import java.util.concurrent.atomic.AtomicLong;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Test;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.health.actuate.endpoint.HealthEndpointGroup;
+import org.springframework.boot.health.actuate.endpoint.HealthEndpointGroups;
+import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.boot.test.web.server.LocalServerPort;
+import org.springframework.context.ApplicationContext;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.HttpMethod;
+import org.springframework.http.HttpStatusCode;
+import org.springframework.http.MediaType;
+import org.springframework.security.core.userdetails.UserDetailsService;
+import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.web.client.RestClient;
+import tools.jackson.databind.json.JsonMapper;
+
+import br.ufpr.tcc.auth.credential.model.ServiceToken;
 import br.ufpr.tcc.auth.shared.database.OracleIntegrationTestBase;
 import java.time.OffsetDateTime;
 import java.util.List;
@@ -20,7 +75,6 @@ import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpMethod;
 import org.springframework.http.HttpStatusCode;
 import org.springframework.http.MediaType;
-import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.web.client.RestClient;
@@ -49,7 +103,7 @@ class RealServerErrorDispatchIntegrationTest extends OracleIntegrationTestBase {
     private int port;
 
     @Autowired
-    private JdbcClient jdbcClient;
+    private DatabaseProbe database;
 
     @Autowired
     private PasswordEncoder passwordEncoder;
@@ -65,16 +119,16 @@ class RealServerErrorDispatchIntegrationTest extends OracleIntegrationTestBase {
         client = RestClient.builder().baseUrl("http://127.0.0.1:" + port).build();
         long applicationId = NEXT.incrementAndGet();
         String code = "despacho-" + applicationId;
-        jdbcClient.sql("INSERT INTO APPLICATION (ID, CODE, NAME, ACTIVE, CREATED_AT, UPDATED_AT)"
+        database.statement("INSERT INTO APPLICATION (ID, CODE, NAME, ACTIVE, CREATED_AT, UPDATED_AT)"
                         + " VALUES (:id, :code, :code, TRUE, :now, :now)")
-                .param("id", applicationId).param("code", code)
-                .param("now", OffsetDateTime.now()).update();
+                .with("id", applicationId).with("code", code)
+                .with("now", OffsetDateTime.now()).run();
         ServiceToken token = ServiceToken.generate();
-        jdbcClient.sql("INSERT INTO APPLICATION_TOKEN (ID, APPLICATION_ID, NAME, TOKEN_DIGEST,"
+        database.statement("INSERT INTO APPLICATION_TOKEN (ID, APPLICATION_ID, NAME, TOKEN_DIGEST,"
                         + " CREATED_AT) VALUES (:id, :applicationId, 'token', :digest, :now)")
-                .param("id", NEXT.incrementAndGet()).param("applicationId", applicationId)
-                .param("digest", token.digest().asBytes())
-                .param("now", OffsetDateTime.now()).update();
+                .with("id", NEXT.incrementAndGet()).with("applicationId", applicationId)
+                .with("digest", token.digest().asBytes())
+                .with("now", OffsetDateTime.now()).run();
         applicationToken = token.clearValue();
     }
 
@@ -138,30 +192,30 @@ class RealServerErrorDispatchIntegrationTest extends OracleIntegrationTestBase {
      * servidor recusou antes de o envio terminar, e a resposta ja esta na conexao.
      */
     private String postInChunks(String path, String body) throws Exception {
-        byte[] content = body.getBytes(java.nio.charset.StandardCharsets.UTF_8);
-        try (java.net.Socket socket = new java.net.Socket("127.0.0.1", port)) {
-            java.io.OutputStream out = socket.getOutputStream();
+        byte[] content = body.getBytes(StandardCharsets.UTF_8);
+        try (Socket socket = new Socket("127.0.0.1", port)) {
+            OutputStream out = socket.getOutputStream();
             try {
                 out.write(("POST " + path + " HTTP/1.1\r\nHost: 127.0.0.1\r\n"
                         + "Content-Type: application/json\r\nTransfer-Encoding: chunked\r\n"
                         + "Connection: close\r\n\r\n")
-                        .getBytes(java.nio.charset.StandardCharsets.US_ASCII));
+                        .getBytes(StandardCharsets.US_ASCII));
                 int pieceSize = 8192;
                 for (int offset = 0; offset < content.length; offset += pieceSize) {
                     int length = Math.min(pieceSize, content.length - offset);
                     out.write((Integer.toHexString(length) + "\r\n")
-                            .getBytes(java.nio.charset.StandardCharsets.US_ASCII));
+                            .getBytes(StandardCharsets.US_ASCII));
                     out.write(content, offset, length);
-                    out.write("\r\n".getBytes(java.nio.charset.StandardCharsets.US_ASCII));
+                    out.write("\r\n".getBytes(StandardCharsets.US_ASCII));
                     out.flush();
                 }
-                out.write("0\r\n\r\n".getBytes(java.nio.charset.StandardCharsets.US_ASCII));
+                out.write("0\r\n\r\n".getBytes(StandardCharsets.US_ASCII));
                 out.flush();
-            } catch (java.io.IOException refusedBeforeTheEnd) {
+            } catch (IOException refusedBeforeTheEnd) {
                 socket.shutdownOutput();
             }
             return new String(socket.getInputStream().readAllBytes(),
-                    java.nio.charset.StandardCharsets.UTF_8);
+                    StandardCharsets.UTF_8);
         }
     }
 
@@ -235,13 +289,13 @@ class RealServerErrorDispatchIntegrationTest extends OracleIntegrationTestBase {
     private String administrativeToken() {
         long administratorId = NEXT.incrementAndGet();
         String email = "despacho." + administratorId + "@lactec.exemplo";
-        jdbcClient.sql("INSERT INTO ADMINISTRATOR (ID, NAME, EMAIL, EMAIL_NORMALIZED, ACTIVE,"
+        database.statement("INSERT INTO ADMINISTRATOR (ID, NAME, EMAIL, EMAIL_NORMALIZED, ACTIVE,"
                         + " PASSWORD_HASH, CREATED_AT, UPDATED_AT)"
                         + " VALUES (:id, 'Administrador do despacho', :email, :email, TRUE,"
                         + " :hash, :now, :now)")
-                .param("id", administratorId).param("email", email)
-                .param("hash", passwordEncoder.encode(ADMINISTRATOR_PASSWORD))
-                .param("now", OffsetDateTime.now()).update();
+                .with("id", administratorId).with("email", email)
+                .with("hash", passwordEncoder.encode(ADMINISTRATOR_PASSWORD))
+                .with("now", OffsetDateTime.now()).run();
         String body = client.post().uri("/api/admin/auth/login")
                 .contentType(MediaType.APPLICATION_JSON)
                 .body("{\"email\":\"" + email + "\",\"password\":\"" + ADMINISTRATOR_PASSWORD

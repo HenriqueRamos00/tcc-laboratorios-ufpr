@@ -4,11 +4,18 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatExceptionOfType;
 
 import java.time.OffsetDateTime;
+import java.util.Locale;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.dao.DataIntegrityViolationException;
-import org.springframework.jdbc.core.simple.JdbcClient;
+import org.springframework.transaction.annotation.Transactional;
+
+import java.time.OffsetDateTime;
+import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Test;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.transaction.annotation.Transactional;
 
 /**
@@ -24,35 +31,35 @@ import org.springframework.transaction.annotation.Transactional;
 class SchemaConstraintsIntegrationTest extends OracleIntegrationTestBase {
 
     @Autowired
-    private JdbcClient jdbcClient;
+    private DatabaseProbe database;
 
     private void insertApplication(long id, String code) {
-        jdbcClient.sql("INSERT INTO " + SCHEMA_PREFIX + "APPLICATION"
+        database.statement("INSERT INTO " + SCHEMA_PREFIX + "APPLICATION"
                         + " (ID, CODE, NAME, ACTIVE, CREATED_AT, UPDATED_AT)"
                         + " VALUES (:id, :code, :name, TRUE, :now, :now)")
-                .param("id", id).param("code", code).param("name", "Aplicacao " + code)
-                .param("now", OffsetDateTime.now()).update();
+                .with("id", id).with("code", code).with("name", "Aplicacao " + code)
+                .with("now", OffsetDateTime.now()).run();
     }
 
     private void insertCompany(long id, long applicationId, String cnpj) {
-        jdbcClient.sql("INSERT INTO " + SCHEMA_PREFIX + "COMPANY"
+        database.statement("INSERT INTO " + SCHEMA_PREFIX + "COMPANY"
                         + " (ID, APPLICATION_ID, NAME, CNPJ, CREATED_AT, UPDATED_AT)"
                         + " VALUES (:id, :applicationId, :name, :cnpj, :now, :now)")
-                .param("id", id).param("applicationId", applicationId)
-                .param("name", "Empresa " + id).param("cnpj", cnpj)
-                .param("now", OffsetDateTime.now()).update();
+                .with("id", id).with("applicationId", applicationId)
+                .with("name", "Empresa " + id).with("cnpj", cnpj)
+                .with("now", OffsetDateTime.now()).run();
     }
 
     private void insertAccount(long id, long applicationId, Long companyId, String name, String email) {
-        jdbcClient.sql("INSERT INTO " + SCHEMA_PREFIX + "CLIENT_ACCOUNT"
+        database.statement("INSERT INTO " + SCHEMA_PREFIX + "CLIENT_ACCOUNT"
                         + " (ID, APPLICATION_ID, COMPANY_ID, NAME, EMAIL, EMAIL_NORMALIZED,"
                         + " PASSWORD_HASH, CREATED_AT, UPDATED_AT)"
                         + " VALUES (:id, :applicationId, :companyId, :name, :email, :normalized,"
                         + " '{argon2}forma-guardada-de-teste', :now, :now)")
-                .param("id", id).param("applicationId", applicationId).param("companyId", companyId)
-                .param("name", name).param("email", email)
-                .param("normalized", email.toLowerCase(java.util.Locale.ROOT))
-                .param("now", OffsetDateTime.now()).update();
+                .with("id", id).with("applicationId", applicationId).with("companyId", companyId)
+                .with("name", name).with("email", email)
+                .with("normalized", email.toLowerCase(Locale.ROOT))
+                .with("now", OffsetDateTime.now()).run();
     }
 
     // Unicidade global faria o cadastro da aplicacao B recusar um e-mail por causa da
@@ -80,9 +87,9 @@ class SchemaConstraintsIntegrationTest extends OracleIntegrationTestBase {
 
         insertAccount(2004L, 1003L, null, name, "acentuado@exemplo.com");
 
-        Long storedLength = jdbcClient.sql("SELECT LENGTH(NAME) FROM " + SCHEMA_PREFIX
+        Long storedLength = database.statement("SELECT LENGTH(NAME) FROM " + SCHEMA_PREFIX
                         + "CLIENT_ACCOUNT WHERE ID = :id")
-                .param("id", 2004L).query(Long.class).single();
+                .with("id", 2004L).count();
         assertThat(storedLength).isEqualTo(150L);
     }
 
@@ -132,13 +139,13 @@ class SchemaConstraintsIntegrationTest extends OracleIntegrationTestBase {
     @Test
     @DisplayName("codigo com acento e recusado mesmo com outra ordenacao na sessao")
     void accentedCodeIsRejectedEvenUnderAnotherCollation() {
-        jdbcClient.sql("ALTER SESSION SET NLS_SORT = XSPANISH").update();
+        database.statement("ALTER SESSION SET NLS_SORT = XSPANISH").run();
         try {
             assertThatExceptionOfType(DataIntegrityViolationException.class)
                     .isThrownBy(() -> insertApplication(1010L, "portal-çweb"))
                     .withMessageContaining("CK_APPLICATION_CODE_FORMAT");
         } finally {
-            jdbcClient.sql("ALTER SESSION SET NLS_SORT = BINARY").update();
+            database.statement("ALTER SESSION SET NLS_SORT = BINARY").run();
         }
     }
 
@@ -148,12 +155,12 @@ class SchemaConstraintsIntegrationTest extends OracleIntegrationTestBase {
         insertApplication(1009L, "portal-normalizacao");
 
         assertThatExceptionOfType(DataIntegrityViolationException.class)
-                .isThrownBy(() -> jdbcClient.sql("INSERT INTO " + SCHEMA_PREFIX + "CLIENT_ACCOUNT"
+                .isThrownBy(() -> database.statement("INSERT INTO " + SCHEMA_PREFIX + "CLIENT_ACCOUNT"
                                 + " (ID, APPLICATION_ID, NAME, EMAIL, EMAIL_NORMALIZED,"
                                 + " PASSWORD_HASH, CREATED_AT, UPDATED_AT)"
                                 + " VALUES (2006, 1009, 'Torta', 'Pessoa@Exemplo.Com',"
                                 + " 'Pessoa@Exemplo.Com', '{argon2}forma', :now, :now)")
-                        .param("now", OffsetDateTime.now()).update())
+                        .with("now", OffsetDateTime.now()).run())
                 .withMessageContaining("CK_CLIENT_ACCOUNT_EMAIL_LOWER");
     }
 }

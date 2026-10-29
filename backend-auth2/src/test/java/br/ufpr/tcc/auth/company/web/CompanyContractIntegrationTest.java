@@ -1,5 +1,6 @@
 package br.ufpr.tcc.auth.company.web;
 
+import br.ufpr.tcc.auth.shared.database.DatabaseProbe;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
@@ -17,7 +18,6 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
-import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.MvcResult;
 import tools.jackson.databind.JsonNode;
@@ -40,21 +40,21 @@ class CompanyContractIntegrationTest extends OracleIntegrationTestBase {
     private MockMvc mockMvc;
 
     @Autowired
-    private JdbcClient jdbcClient;
+    private DatabaseProbe database;
 
     private String firstToken;
     private String secondToken;
 
     private String tenantToken(String code) {
         long id = NEXT.incrementAndGet();
-        jdbcClient.sql("INSERT INTO APPLICATION (ID, CODE, NAME, ACTIVE, CREATED_AT, UPDATED_AT)"
+        database.statement("INSERT INTO APPLICATION (ID, CODE, NAME, ACTIVE, CREATED_AT, UPDATED_AT)"
                         + " VALUES (:id, :code, :code, TRUE, :now, :now)")
-                .param("id", id).param("code", code).param("now", OffsetDateTime.now()).update();
+                .with("id", id).with("code", code).with("now", OffsetDateTime.now()).run();
         ServiceToken token = ServiceToken.generate();
-        jdbcClient.sql("INSERT INTO APPLICATION_TOKEN (ID, APPLICATION_ID, NAME, TOKEN_DIGEST,"
+        database.statement("INSERT INTO APPLICATION_TOKEN (ID, APPLICATION_ID, NAME, TOKEN_DIGEST,"
                         + " CREATED_AT) VALUES (:id, :applicationId, 'token', :digest, :now)")
-                .param("id", NEXT.incrementAndGet()).param("applicationId", id)
-                .param("digest", token.digest().asBytes()).param("now", OffsetDateTime.now()).update();
+                .with("id", NEXT.incrementAndGet()).with("applicationId", id)
+                .with("digest", token.digest().asBytes()).with("now", OffsetDateTime.now()).run();
         return token.clearValue();
     }
 

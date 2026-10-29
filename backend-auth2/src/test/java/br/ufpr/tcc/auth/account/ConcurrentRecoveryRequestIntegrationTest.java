@@ -1,5 +1,6 @@
 package br.ufpr.tcc.auth.account;
 
+import br.ufpr.tcc.auth.shared.database.DatabaseProbe;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import br.ufpr.tcc.auth.shared.database.OracleIntegrationTestBase;
@@ -15,7 +16,6 @@ import java.util.concurrent.atomic.AtomicLong;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.test.context.TestPropertySource;
 
 /**
@@ -42,17 +42,17 @@ class ConcurrentRecoveryRequestIntegrationTest extends OracleIntegrationTestBase
     private AccountLifecycle lifecycle;
 
     @Autowired
-    private JdbcClient jdbcClient;
+    private DatabaseProbe database;
 
     @Test
     @DisplayName("dois pedidos simultaneos de recuperacao deixam um unico link vivo")
     void twoSimultaneousRecoveryRequestsLeaveOnlyOneLivingLink() throws Exception {
         long applicationId = NEXT.incrementAndGet();
         String code = "corrida-recuperacao-" + applicationId;
-        jdbcClient.sql("INSERT INTO APPLICATION (ID, CODE, NAME, ACTIVE, CREATED_AT, UPDATED_AT)"
+        database.statement("INSERT INTO APPLICATION (ID, CODE, NAME, ACTIVE, CREATED_AT, UPDATED_AT)"
                         + " VALUES (:id, :code, :code, TRUE, :now, :now)")
-                .param("id", applicationId).param("code", code)
-                .param("now", OffsetDateTime.now()).update();
+                .with("id", applicationId).with("code", code)
+                .with("now", OffsetDateTime.now()).run();
         ApplicationCaller caller = new ApplicationCaller(applicationId, code);
         String email = "corrida" + NEXT.incrementAndGet() + "@exemplo.com";
         lifecycle.register(caller, Long.toString(applicationId), "Pessoa", email,
@@ -79,13 +79,13 @@ class ConcurrentRecoveryRequestIntegrationTest extends OracleIntegrationTestBase
     }
 
     private long livingLinksOf(String email, String purpose) {
-        return jdbcClient.sql("SELECT COUNT(*) FROM ACCOUNT_CONFIRMATION confirmation"
+        return database.statement("SELECT COUNT(*) FROM ACCOUNT_CONFIRMATION confirmation"
                         + " JOIN CLIENT_ACCOUNT account"
                         + " ON account.ID = confirmation.CLIENT_ACCOUNT_ID"
                         + " WHERE account.EMAIL_NORMALIZED = LOWER(:email)"
                         + " AND confirmation.PURPOSE = :purpose"
                         + " AND confirmation.USED_AT IS NULL")
-                .param("email", email).param("purpose", purpose)
-                .query(Long.class).single();
+                .with("email", email).with("purpose", purpose)
+                .count();
     }
 }

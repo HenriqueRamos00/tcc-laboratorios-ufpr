@@ -5,6 +5,7 @@ import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.security.SecureRandom;
 import java.util.Base64;
+import java.util.Optional;
 import java.util.regex.Pattern;
 
 /**
@@ -42,11 +43,11 @@ public final class AdministrativeToken {
     }
 
     /** Devolve vazio para valor malformado, em vez de estourar: recusa e recusa. */
-    public static java.util.Optional<AdministrativeToken> fromPresentedValue(String presentedValue) {
+    public static Optional<AdministrativeToken> fromPresentedValue(String presentedValue) {
         if (presentedValue == null || !FORMAT.matcher(presentedValue).matches()) {
-            return java.util.Optional.empty();
+            return Optional.empty();
         }
-        return java.util.Optional.of(new AdministrativeToken(presentedValue));
+        return Optional.of(new AdministrativeToken(presentedValue));
     }
 
     public String clearValue() {

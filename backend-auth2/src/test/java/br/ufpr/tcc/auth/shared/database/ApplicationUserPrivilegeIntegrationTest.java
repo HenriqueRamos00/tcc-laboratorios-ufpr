@@ -3,11 +3,16 @@ package br.ufpr.tcc.auth.shared.database;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatExceptionOfType;
 
+import java.util.List;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.dao.DataAccessException;
-import org.springframework.jdbc.core.simple.JdbcClient;
+
+import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Test;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.dao.DataAccessException;
 
 /**
  * Prova que o usuario que a aplicacao usa em tempo de execucao nao pode alterar o esquema.
@@ -23,13 +28,13 @@ import org.springframework.jdbc.core.simple.JdbcClient;
 class ApplicationUserPrivilegeIntegrationTest extends OracleIntegrationTestBase {
 
     @Autowired
-    private JdbcClient jdbcClient;
+    private DatabaseProbe database;
 
     @Test
     @DisplayName("o usuario da aplicacao nao cria tabela")
     void applicationUserCannotCreateTable() {
         assertThatExceptionOfType(DataAccessException.class)
-                .isThrownBy(() -> jdbcClient.sql("CREATE TABLE INTRUSO (ID NUMBER(19))").update())
+                .isThrownBy(() -> database.statement("CREATE TABLE INTRUSO (ID NUMBER(19))").run())
                 .withStackTraceContaining("ORA-01031");
     }
 
@@ -37,7 +42,7 @@ class ApplicationUserPrivilegeIntegrationTest extends OracleIntegrationTestBase 
     @DisplayName("o usuario da aplicacao nao derruba tabela do dono do esquema")
     void applicationUserCannotDropTheOwnerTable() {
         assertThatExceptionOfType(DataAccessException.class)
-                .isThrownBy(() -> jdbcClient.sql("DROP TABLE " + SCHEMA_PREFIX + "APPLICATION").update())
+                .isThrownBy(() -> database.statement("DROP TABLE " + SCHEMA_PREFIX + "APPLICATION").run())
                 .withStackTraceContaining("ORA-01031");
     }
 
@@ -53,15 +58,15 @@ class ApplicationUserPrivilegeIntegrationTest extends OracleIntegrationTestBase 
     @Test
     @DisplayName("o usuario da aplicacao tem apenas entrada de sessao e o papel de leitura e escrita")
     void applicationUserHasNothingBeyondTheDeclaredPrivileges() {
-        java.util.List<String> systemPrivileges = jdbcClient
-                .sql("SELECT PRIVILEGE FROM USER_SYS_PRIVS ORDER BY PRIVILEGE")
-                .query(String.class).list();
-        java.util.List<String> roles = jdbcClient
-                .sql("SELECT GRANTED_ROLE FROM USER_ROLE_PRIVS ORDER BY GRANTED_ROLE")
-                .query(String.class).list();
-        java.util.List<String> directTablePrivileges = jdbcClient
-                .sql("SELECT PRIVILEGE FROM USER_TAB_PRIVS WHERE GRANTEE = USER")
-                .query(String.class).list();
+        List<String> systemPrivileges = database
+                .statement("SELECT PRIVILEGE FROM USER_SYS_PRIVS ORDER BY PRIVILEGE")
+                .values(String.class);
+        List<String> roles = database
+                .statement("SELECT GRANTED_ROLE FROM USER_ROLE_PRIVS ORDER BY GRANTED_ROLE")
+                .values(String.class);
+        List<String> directTablePrivileges = database
+                .statement("SELECT PRIVILEGE FROM USER_TAB_PRIVS WHERE GRANTEE = USER")
+                .values(String.class);
 
         assertThat(systemPrivileges).containsExactly("CREATE SESSION");
         assertThat(roles).containsExactly("AUTH_READWRITE");
@@ -78,7 +83,7 @@ class ApplicationUserPrivilegeIntegrationTest extends OracleIntegrationTestBase 
     @Test
     @DisplayName("toda tabela do dono concede as quatro operacoes ao papel da aplicacao")
     void everyOwnerTableGrantsTheFourOperationsToTheRole() {
-        java.util.List<String> withoutTheFullGrant = schemaOwnerQuery("""
+        List<String> withoutTheFullGrant = schemaOwnerQuery("""
                 SELECT owned.TABLE_NAME
                   FROM USER_TABLES owned
                  WHERE owned.TABLE_NAME <> 'flyway_schema_history'
@@ -97,8 +102,8 @@ class ApplicationUserPrivilegeIntegrationTest extends OracleIntegrationTestBase 
     @Test
     @DisplayName("o usuario da aplicacao le e grava nas tabelas do esquema")
     void applicationUserReadsAndWritesTheSchema() {
-        Long rows = jdbcClient.sql("SELECT COUNT(*) FROM " + SCHEMA_PREFIX + "ADMINISTRATOR")
-                .query(Long.class).single();
+        Long rows = database.statement("SELECT COUNT(*) FROM " + SCHEMA_PREFIX + "ADMINISTRATOR")
+                .count();
 
         assertThat(rows).isNotNull();
     }

@@ -1,5 +1,6 @@
 package br.ufpr.tcc.auth.administrator;
 
+import br.ufpr.tcc.auth.shared.database.DatabaseProbe;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 
@@ -14,7 +15,6 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
-import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.MvcResult;
@@ -41,7 +41,7 @@ class AdministrativeLoginLockOutIntegrationTest extends OracleIntegrationTestBas
     private MockMvc mockMvc;
 
     @Autowired
-    private JdbcClient jdbcClient;
+    private DatabaseProbe database;
 
     @Autowired
     private PasswordEncoder passwordEncoder;
@@ -52,13 +52,13 @@ class AdministrativeLoginLockOutIntegrationTest extends OracleIntegrationTestBas
     void seedAdministrator() {
         long identifier = NEXT.incrementAndGet();
         email = "bloqueio." + identifier + "@lactec.exemplo";
-        jdbcClient.sql("INSERT INTO ADMINISTRATOR (ID, NAME, EMAIL, EMAIL_NORMALIZED, ACTIVE,"
+        database.statement("INSERT INTO ADMINISTRATOR (ID, NAME, EMAIL, EMAIL_NORMALIZED, ACTIVE,"
                         + " PASSWORD_HASH, CREATED_AT, UPDATED_AT)"
                         + " VALUES (:id, 'Administrador do bloqueio', :email, LOWER(:email), TRUE,"
                         + " :hash, :now, :now)")
-                .param("id", identifier).param("email", email)
-                .param("hash", passwordEncoder.encode(PASSWORD))
-                .param("now", OffsetDateTime.now()).update();
+                .with("id", identifier).with("email", email)
+                .with("hash", passwordEncoder.encode(PASSWORD))
+                .with("now", OffsetDateTime.now()).run();
     }
 
     private MvcResult attempt(String password) throws Exception {
@@ -127,24 +127,24 @@ class AdministrativeLoginLockOutIntegrationTest extends OracleIntegrationTestBas
     void lockingTheAdministratorDoesNotStopTheClientWithTheSameAddress() throws Exception {
         long applicationId = NEXT.incrementAndGet();
         String code = "bloqueio-" + applicationId;
-        jdbcClient.sql("INSERT INTO APPLICATION (ID, CODE, NAME, ACTIVE, CREATED_AT, UPDATED_AT)"
+        database.statement("INSERT INTO APPLICATION (ID, CODE, NAME, ACTIVE, CREATED_AT, UPDATED_AT)"
                         + " VALUES (:id, :code, :code, TRUE, :now, :now)")
-                .param("id", applicationId).param("code", code)
-                .param("now", OffsetDateTime.now()).update();
+                .with("id", applicationId).with("code", code)
+                .with("now", OffsetDateTime.now()).run();
         ServiceToken token = ServiceToken.generate();
-        jdbcClient.sql("INSERT INTO APPLICATION_TOKEN (ID, APPLICATION_ID, NAME, TOKEN_DIGEST,"
+        database.statement("INSERT INTO APPLICATION_TOKEN (ID, APPLICATION_ID, NAME, TOKEN_DIGEST,"
                         + " CREATED_AT) VALUES (:id, :applicationId, 'token', :digest, :now)")
-                .param("id", NEXT.incrementAndGet()).param("applicationId", applicationId)
-                .param("digest", token.digest().asBytes())
-                .param("now", OffsetDateTime.now()).update();
-        jdbcClient.sql("INSERT INTO CLIENT_ACCOUNT (ID, APPLICATION_ID, NAME, EMAIL,"
+                .with("id", NEXT.incrementAndGet()).with("applicationId", applicationId)
+                .with("digest", token.digest().asBytes())
+                .with("now", OffsetDateTime.now()).run();
+        database.statement("INSERT INTO CLIENT_ACCOUNT (ID, APPLICATION_ID, NAME, EMAIL,"
                         + " EMAIL_NORMALIZED, PASSWORD_HASH, EMAIL_CONFIRMED, ACTIVE,"
                         + " CREATED_AT, UPDATED_AT)"
                         + " VALUES (:id, :applicationId, 'Cliente de mesmo endereco', :email,"
                         + " LOWER(:email), :hash, 1, 1, :now, :now)")
-                .param("id", NEXT.incrementAndGet()).param("applicationId", applicationId)
-                .param("email", email).param("hash", passwordEncoder.encode(PASSWORD))
-                .param("now", OffsetDateTime.now()).update();
+                .with("id", NEXT.incrementAndGet()).with("applicationId", applicationId)
+                .with("email", email).with("hash", passwordEncoder.encode(PASSWORD))
+                .with("now", OffsetDateTime.now()).run();
 
         for (int attempt = 1; attempt <= 5; attempt++) {
             attempt("ErradaTotal999");

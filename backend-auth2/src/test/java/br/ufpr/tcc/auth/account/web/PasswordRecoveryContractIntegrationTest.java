@@ -6,6 +6,25 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import br.ufpr.tcc.auth.credential.model.ConfirmationToken;
 import br.ufpr.tcc.auth.credential.model.ServiceToken;
 import br.ufpr.tcc.auth.notification.RecordedMessages;
+import br.ufpr.tcc.auth.shared.database.DatabaseProbe;
+import br.ufpr.tcc.auth.shared.database.OracleIntegrationTestBase;
+import java.time.OffsetDateTime;
+import java.util.Locale;
+import java.util.concurrent.atomic.AtomicLong;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Test;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.MediaType;
+import org.springframework.test.context.TestPropertySource;
+import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.test.web.servlet.MvcResult;
+
+import br.ufpr.tcc.auth.credential.model.ConfirmationToken;
+import br.ufpr.tcc.auth.credential.model.ServiceToken;
+import br.ufpr.tcc.auth.notification.RecordedMessages;
 import br.ufpr.tcc.auth.shared.database.OracleIntegrationTestBase;
 import java.time.OffsetDateTime;
 import java.util.concurrent.atomic.AtomicLong;
@@ -16,7 +35,6 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
-import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.test.context.TestPropertySource;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.MvcResult;
@@ -41,7 +59,7 @@ class PasswordRecoveryContractIntegrationTest extends OracleIntegrationTestBase 
     private MockMvc mockMvc;
 
     @Autowired
-    private JdbcClient jdbcClient;
+    private DatabaseProbe database;
 
     @Autowired
     private RecordedMessages recordedMessages;
@@ -54,14 +72,14 @@ class PasswordRecoveryContractIntegrationTest extends OracleIntegrationTestBase 
         recordedMessages.clear();
         long id = NEXT_ID.incrementAndGet();
         String code = "recuperacao-" + id;
-        jdbcClient.sql("INSERT INTO APPLICATION (ID, CODE, NAME, ACTIVE, CREATED_AT, UPDATED_AT)"
+        database.statement("INSERT INTO APPLICATION (ID, CODE, NAME, ACTIVE, CREATED_AT, UPDATED_AT)"
                         + " VALUES (:id, :code, :code, TRUE, :now, :now)")
-                .param("id", id).param("code", code).param("now", OffsetDateTime.now()).update();
+                .with("id", id).with("code", code).with("now", OffsetDateTime.now()).run();
         ServiceToken token = ServiceToken.generate();
-        jdbcClient.sql("INSERT INTO APPLICATION_TOKEN (ID, APPLICATION_ID, NAME, TOKEN_DIGEST,"
+        database.statement("INSERT INTO APPLICATION_TOKEN (ID, APPLICATION_ID, NAME, TOKEN_DIGEST,"
                         + " CREATED_AT) VALUES (:id, :applicationId, 'token', :digest, :now)")
-                .param("id", NEXT_ID.incrementAndGet()).param("applicationId", id)
-                .param("digest", token.digest().asBytes()).param("now", OffsetDateTime.now()).update();
+                .with("id", NEXT_ID.incrementAndGet()).with("applicationId", id)
+                .with("digest", token.digest().asBytes()).with("now", OffsetDateTime.now()).run();
         applicationToken = token.clearValue();
         applicationId = Long.toString(id);
     }
@@ -148,11 +166,11 @@ class PasswordRecoveryContractIntegrationTest extends OracleIntegrationTestBase 
         String registered = registerConfirmedAccount();
 
         send("/api/auth/recoveries",
-                "{\"email\":\"" + registered.toUpperCase(java.util.Locale.ROOT) + "\"}");
+                "{\"email\":\"" + registered.toUpperCase(Locale.ROOT) + "\"}");
 
         assertThat(recordedMessages.lastTokenFor(registered))
                 .as("a mensagem saiu para o endereco cadastrado").isNotNull();
-        assertThat(recordedMessages.lastTokenFor(registered.toUpperCase(java.util.Locale.ROOT)))
+        assertThat(recordedMessages.lastTokenFor(registered.toUpperCase(Locale.ROOT)))
                 .as("e nao para a grafia que o pedido trouxe").isNull();
     }
 
@@ -193,31 +211,31 @@ class PasswordRecoveryContractIntegrationTest extends OracleIntegrationTestBase 
 
     private String registerAnotherApplication() {
         long id = NEXT_ID.incrementAndGet();
-        jdbcClient.sql("INSERT INTO APPLICATION (ID, CODE, NAME, ACTIVE, CREATED_AT, UPDATED_AT)"
+        database.statement("INSERT INTO APPLICATION (ID, CODE, NAME, ACTIVE, CREATED_AT, UPDATED_AT)"
                         + " VALUES (:id, :code, :code, TRUE, :now, :now)")
-                .param("id", id).param("code", "outra-recuperacao-" + id)
-                .param("now", OffsetDateTime.now()).update();
+                .with("id", id).with("code", "outra-recuperacao-" + id)
+                .with("now", OffsetDateTime.now()).run();
         ServiceToken token = ServiceToken.generate();
-        jdbcClient.sql("INSERT INTO APPLICATION_TOKEN (ID, APPLICATION_ID, NAME, TOKEN_DIGEST,"
+        database.statement("INSERT INTO APPLICATION_TOKEN (ID, APPLICATION_ID, NAME, TOKEN_DIGEST,"
                         + " CREATED_AT) VALUES (:id, :applicationId, 'token', :digest, :now)")
-                .param("id", NEXT_ID.incrementAndGet()).param("applicationId", id)
-                .param("digest", token.digest().asBytes())
-                .param("now", OffsetDateTime.now()).update();
+                .with("id", NEXT_ID.incrementAndGet()).with("applicationId", id)
+                .with("digest", token.digest().asBytes())
+                .with("now", OffsetDateTime.now()).run();
         return token.clearValue();
     }
 
     private int pendingRecoveryLinksOf(String email) {
-        return jdbcClient.sql("SELECT COUNT(*) FROM ACCOUNT_CONFIRMATION confirmation"
+        return database.statement("SELECT COUNT(*) FROM ACCOUNT_CONFIRMATION confirmation"
                         + " JOIN CLIENT_ACCOUNT account ON account.ID"
                         + " = confirmation.CLIENT_ACCOUNT_ID"
                         + " WHERE account.EMAIL_NORMALIZED = LOWER(:email)"
                         + " AND confirmation.PURPOSE = 'PASSWORD_RECOVERY'"
                         + " AND confirmation.USED_AT IS NULL")
-                .param("email", email).query(Integer.class).single();
+                .with("email", email).value(Integer.class);
     }
 
     private long linkLifetimeInMinutesOf(String email, String purpose) {
-        return jdbcClient.sql("SELECT ROUND((CAST(confirmation.EXPIRES_AT AS DATE)"
+        return database.statement("SELECT ROUND((CAST(confirmation.EXPIRES_AT AS DATE)"
                         + " - CAST(confirmation.CREATED_AT AS DATE)) * 1440)"
                         + " FROM ACCOUNT_CONFIRMATION confirmation"
                         + " JOIN CLIENT_ACCOUNT account ON account.ID"
@@ -225,7 +243,7 @@ class PasswordRecoveryContractIntegrationTest extends OracleIntegrationTestBase 
                         + " WHERE account.EMAIL_NORMALIZED = LOWER(:email)"
                         + " AND confirmation.PURPOSE = :purpose"
                         + " FETCH FIRST 1 ROWS ONLY")
-                .param("email", email).param("purpose", purpose).query(Long.class).single();
+                .with("email", email).with("purpose", purpose).count();
     }
 
     /**
@@ -288,12 +306,12 @@ class PasswordRecoveryContractIntegrationTest extends OracleIntegrationTestBase 
      * recuar a coluna exercita exatamente a condicao da consulta de consumo.
      */
     private void pushExpirationToThePast(String email, String purpose) {
-        jdbcClient.sql("UPDATE ACCOUNT_CONFIRMATION SET EXPIRES_AT = SYSTIMESTAMP"
+        database.statement("UPDATE ACCOUNT_CONFIRMATION SET EXPIRES_AT = SYSTIMESTAMP"
                         + " - INTERVAL '1' MINUTE"
                         + " WHERE USED_AT IS NULL AND PURPOSE = :purpose"
                         + " AND CLIENT_ACCOUNT_ID IN (SELECT ID FROM CLIENT_ACCOUNT"
                         + " WHERE EMAIL_NORMALIZED = LOWER(:email))")
-                .param("email", email).param("purpose", purpose).update();
+                .with("email", email).with("purpose", purpose).run();
     }
 
     @Test

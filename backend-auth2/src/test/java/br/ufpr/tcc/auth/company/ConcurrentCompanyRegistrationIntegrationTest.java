@@ -1,5 +1,6 @@
 package br.ufpr.tcc.auth.company;
 
+import br.ufpr.tcc.auth.shared.database.DatabaseProbe;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import br.ufpr.tcc.auth.shared.database.OracleIntegrationTestBase;
@@ -14,7 +15,6 @@ import java.util.concurrent.atomic.AtomicLong;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.jdbc.core.simple.JdbcClient;
 
 /**
  * Dois cadastros simultaneos do mesmo CNPJ na mesma aplicacao.
@@ -37,17 +37,17 @@ class ConcurrentCompanyRegistrationIntegrationTest extends OracleIntegrationTest
     private CompanyRegistry registry;
 
     @Autowired
-    private JdbcClient jdbcClient;
+    private DatabaseProbe database;
 
     @Test
     @DisplayName("dois cadastros simultaneos do mesmo CNPJ: um cria, o outro responde conflito")
     void twoSimultaneousRegistrationsOfTheSameCnpj() throws Exception {
         long applicationId = NEXT.incrementAndGet();
         String code = "corrida-empresa-" + applicationId;
-        jdbcClient.sql("INSERT INTO APPLICATION (ID, CODE, NAME, ACTIVE, CREATED_AT, UPDATED_AT)"
+        database.statement("INSERT INTO APPLICATION (ID, CODE, NAME, ACTIVE, CREATED_AT, UPDATED_AT)"
                         + " VALUES (:id, :code, :code, TRUE, :now, :now)")
-                .param("id", applicationId).param("code", code)
-                .param("now", OffsetDateTime.now()).update();
+                .with("id", applicationId).with("code", code)
+                .with("now", OffsetDateTime.now()).run();
         String cnpj = String.format("%014d", NEXT.incrementAndGet());
 
         int threads = 2;
@@ -74,9 +74,9 @@ class ConcurrentCompanyRegistrationIntegrationTest extends OracleIntegrationTest
     }
 
     private long companiesWith(long applicationId, String cnpj) {
-        return jdbcClient.sql("SELECT COUNT(*) FROM COMPANY"
+        return database.statement("SELECT COUNT(*) FROM COMPANY"
                         + " WHERE APPLICATION_ID = :applicationId AND CNPJ = :cnpj")
-                .param("applicationId", applicationId).param("cnpj", cnpj)
-                .query(Long.class).single();
+                .with("applicationId", applicationId).with("cnpj", cnpj)
+                .count();
     }
 }

@@ -1,5 +1,6 @@
 package br.ufpr.tcc.auth.notification;
 
+import br.ufpr.tcc.auth.shared.database.DatabaseProbe;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import br.ufpr.tcc.auth.credential.model.ServiceToken;
@@ -15,7 +16,6 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.web.server.LocalServerPort;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
-import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.test.context.TestPropertySource;
 import org.springframework.web.client.RestClient;
 import tools.jackson.databind.JsonNode;
@@ -50,7 +50,7 @@ class MailDeliveryFailureIntegrationTest extends OracleIntegrationTestBase {
     private int port;
 
     @Autowired
-    private JdbcClient jdbcClient;
+    private DatabaseProbe database;
 
     private RestClient client;
     private String applicationToken;
@@ -61,16 +61,16 @@ class MailDeliveryFailureIntegrationTest extends OracleIntegrationTestBase {
         client = RestClient.builder().baseUrl("http://127.0.0.1:" + port).build();
         long identifier = NEXT.incrementAndGet();
         applicationId = Long.toString(identifier);
-        jdbcClient.sql("INSERT INTO APPLICATION (ID, CODE, NAME, ACTIVE, CREATED_AT, UPDATED_AT)"
+        database.statement("INSERT INTO APPLICATION (ID, CODE, NAME, ACTIVE, CREATED_AT, UPDATED_AT)"
                         + " VALUES (:id, :code, :code, TRUE, :now, :now)")
-                .param("id", identifier).param("code", "envio-" + identifier)
-                .param("now", OffsetDateTime.now()).update();
+                .with("id", identifier).with("code", "envio-" + identifier)
+                .with("now", OffsetDateTime.now()).run();
         ServiceToken token = ServiceToken.generate();
-        jdbcClient.sql("INSERT INTO APPLICATION_TOKEN (ID, APPLICATION_ID, NAME, TOKEN_DIGEST,"
+        database.statement("INSERT INTO APPLICATION_TOKEN (ID, APPLICATION_ID, NAME, TOKEN_DIGEST,"
                         + " CREATED_AT) VALUES (:id, :applicationId, 'token', :digest, :now)")
-                .param("id", NEXT.incrementAndGet()).param("applicationId", identifier)
-                .param("digest", token.digest().asBytes())
-                .param("now", OffsetDateTime.now()).update();
+                .with("id", NEXT.incrementAndGet()).with("applicationId", identifier)
+                .with("digest", token.digest().asBytes())
+                .with("now", OffsetDateTime.now()).run();
         applicationToken = token.clearValue();
     }
 
@@ -128,17 +128,17 @@ class MailDeliveryFailureIntegrationTest extends OracleIntegrationTestBase {
     }
 
     private long accountsWith(String email) {
-        return jdbcClient.sql("SELECT COUNT(*) FROM CLIENT_ACCOUNT"
+        return database.statement("SELECT COUNT(*) FROM CLIENT_ACCOUNT"
                         + " WHERE EMAIL_NORMALIZED = LOWER(:email)")
-                .param("email", email).query(Long.class).single();
+                .with("email", email).count();
     }
 
     private long pendingConfirmationsFor(String email) {
-        return jdbcClient.sql("SELECT COUNT(*) FROM ACCOUNT_CONFIRMATION confirmation"
+        return database.statement("SELECT COUNT(*) FROM ACCOUNT_CONFIRMATION confirmation"
                         + " JOIN CLIENT_ACCOUNT account ON account.ID"
                         + " = confirmation.CLIENT_ACCOUNT_ID"
                         + " WHERE account.EMAIL_NORMALIZED = LOWER(:email)")
-                .param("email", email).query(Long.class).single();
+                .with("email", email).count();
     }
 
     /**

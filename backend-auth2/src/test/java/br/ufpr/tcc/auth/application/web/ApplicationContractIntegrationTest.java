@@ -1,5 +1,6 @@
 package br.ufpr.tcc.auth.application.web;
 
+import br.ufpr.tcc.auth.shared.database.DatabaseProbe;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
@@ -16,7 +17,6 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
-import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.MvcResult;
@@ -42,7 +42,7 @@ class ApplicationContractIntegrationTest extends OracleIntegrationTestBase {
     private MockMvc mockMvc;
 
     @Autowired
-    private JdbcClient jdbcClient;
+    private DatabaseProbe database;
 
     @Autowired
     private PasswordEncoder passwordEncoder;
@@ -54,13 +54,13 @@ class ApplicationContractIntegrationTest extends OracleIntegrationTestBase {
     void seedAdministrator() throws Exception {
         long identifier = NEXT.incrementAndGet();
         String email = "cadastro." + identifier + "@lactec.exemplo";
-        jdbcClient.sql("INSERT INTO ADMINISTRATOR (ID, NAME, EMAIL, EMAIL_NORMALIZED, ACTIVE,"
+        database.statement("INSERT INTO ADMINISTRATOR (ID, NAME, EMAIL, EMAIL_NORMALIZED, ACTIVE,"
                         + " PASSWORD_HASH, CREATED_AT, UPDATED_AT)"
                         + " VALUES (:id, 'Administrador', :email, LOWER(:email), TRUE, :hash,"
                         + " :now, :now)")
-                .param("id", identifier).param("email", email)
-                .param("hash", passwordEncoder.encode(ADMINISTRATOR_PASSWORD))
-                .param("now", OffsetDateTime.now()).update();
+                .with("id", identifier).with("email", email)
+                .with("hash", passwordEncoder.encode(ADMINISTRATOR_PASSWORD))
+                .with("now", OffsetDateTime.now()).run();
         MvcResult signIn = mockMvc.perform(post("/api/admin/auth/login")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"email\":\"" + email + "\",\"password\":\""
