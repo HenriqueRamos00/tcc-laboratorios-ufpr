@@ -1,5 +1,6 @@
 package br.ufpr.tcc.auth.shared.observability;
 
+import br.ufpr.tcc.auth.shared.database.DatabaseProbe;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
@@ -24,7 +25,6 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
-import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.MvcResult;
@@ -52,7 +52,7 @@ class AuditTrailWiringIntegrationTest extends OracleIntegrationTestBase {
     private MockMvc mockMvc;
 
     @Autowired
-    private JdbcClient jdbcClient;
+    private DatabaseProbe database;
 
     @Autowired
     private PasswordEncoder passwordEncoder;
@@ -73,13 +73,13 @@ class AuditTrailWiringIntegrationTest extends OracleIntegrationTestBase {
 
         long administratorId = NEXT.incrementAndGet();
         String administratorEmail = "auditoria." + administratorId + "@lactec.exemplo";
-        jdbcClient.sql("INSERT INTO ADMINISTRATOR (ID, NAME, EMAIL, EMAIL_NORMALIZED, ACTIVE,"
+        database.statement("INSERT INTO ADMINISTRATOR (ID, NAME, EMAIL, EMAIL_NORMALIZED, ACTIVE,"
                         + " PASSWORD_HASH, CREATED_AT, UPDATED_AT)"
                         + " VALUES (:id, 'Administrador da auditoria', :email, LOWER(:email),"
                         + " TRUE, :hash, :now, :now)")
-                .param("id", administratorId).param("email", administratorEmail)
-                .param("hash", passwordEncoder.encode(ADMINISTRATOR_PASSWORD))
-                .param("now", OffsetDateTime.now()).update();
+                .with("id", administratorId).with("email", administratorEmail)
+                .with("hash", passwordEncoder.encode(ADMINISTRATOR_PASSWORD))
+                .with("now", OffsetDateTime.now()).run();
         MvcResult signIn = mockMvc.perform(post("/api/admin/auth/login")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"email\":\"" + administratorEmail + "\",\"password\":\""
@@ -90,16 +90,16 @@ class AuditTrailWiringIntegrationTest extends OracleIntegrationTestBase {
 
         long application = NEXT.incrementAndGet();
         applicationId = Long.toString(application);
-        jdbcClient.sql("INSERT INTO APPLICATION (ID, CODE, NAME, ACTIVE, CREATED_AT, UPDATED_AT)"
+        database.statement("INSERT INTO APPLICATION (ID, CODE, NAME, ACTIVE, CREATED_AT, UPDATED_AT)"
                         + " VALUES (:id, :code, :code, TRUE, :now, :now)")
-                .param("id", application).param("code", "auditoria-" + application)
-                .param("now", OffsetDateTime.now()).update();
+                .with("id", application).with("code", "auditoria-" + application)
+                .with("now", OffsetDateTime.now()).run();
         ServiceToken token = ServiceToken.generate();
-        jdbcClient.sql("INSERT INTO APPLICATION_TOKEN (ID, APPLICATION_ID, NAME, TOKEN_DIGEST,"
+        database.statement("INSERT INTO APPLICATION_TOKEN (ID, APPLICATION_ID, NAME, TOKEN_DIGEST,"
                         + " CREATED_AT) VALUES (:id, :applicationId, 'token', :digest, :now)")
-                .param("id", NEXT.incrementAndGet()).param("applicationId", application)
-                .param("digest", token.digest().asBytes())
-                .param("now", OffsetDateTime.now()).update();
+                .with("id", NEXT.incrementAndGet()).with("applicationId", application)
+                .with("digest", token.digest().asBytes())
+                .with("now", OffsetDateTime.now()).run();
         applicationToken = token.clearValue();
         clientEmail = "cliente." + NEXT.incrementAndGet() + "@lactec.exemplo";
     }
@@ -357,9 +357,9 @@ class AuditTrailWiringIntegrationTest extends OracleIntegrationTestBase {
     }
 
     private String accountIdentifierOf(String email) {
-        return Long.toString(jdbcClient.sql("SELECT ID FROM CLIENT_ACCOUNT"
+        return Long.toString(database.statement("SELECT ID FROM CLIENT_ACCOUNT"
                         + " WHERE EMAIL_NORMALIZED = LOWER(:email)")
-                .param("email", email).query(Long.class).single());
+                .with("email", email).count());
     }
 
     /**
@@ -374,17 +374,17 @@ class AuditTrailWiringIntegrationTest extends OracleIntegrationTestBase {
      * exatamente assim que a restricao nova apareceu, recusando a segunda insercao.
      */
     private String confirmationTokenOf(String accountId) {
-        jdbcClient.sql("UPDATE ACCOUNT_CONFIRMATION SET USED_AT = SYSTIMESTAMP"
+        database.statement("UPDATE ACCOUNT_CONFIRMATION SET USED_AT = SYSTIMESTAMP"
                         + " WHERE CLIENT_ACCOUNT_ID = :accountId AND USED_AT IS NULL")
-                .param("accountId", Long.parseLong(accountId)).update();
+                .with("accountId", Long.parseLong(accountId)).run();
         ConfirmationToken token = ConfirmationToken.generate();
-        jdbcClient.sql("INSERT INTO ACCOUNT_CONFIRMATION (ID, CLIENT_ACCOUNT_ID, TOKEN_DIGEST,"
+        database.statement("INSERT INTO ACCOUNT_CONFIRMATION (ID, CLIENT_ACCOUNT_ID, TOKEN_DIGEST,"
                         + " PURPOSE, CREATED_AT, EXPIRES_AT)"
                         + " VALUES (:id, :accountId, :digest, 'EMAIL_CONFIRMATION', :now,"
                         + " :expiresAt)")
-                .param("id", NEXT.incrementAndGet()).param("accountId", Long.parseLong(accountId))
-                .param("digest", token.digest().asBytes()).param("now", OffsetDateTime.now())
-                .param("expiresAt", OffsetDateTime.now().plusHours(1)).update();
+                .with("id", NEXT.incrementAndGet()).with("accountId", Long.parseLong(accountId))
+                .with("digest", token.digest().asBytes()).with("now", OffsetDateTime.now())
+                .with("expiresAt", OffsetDateTime.now().plusHours(1)).run();
         return token.clearValue();
     }
 

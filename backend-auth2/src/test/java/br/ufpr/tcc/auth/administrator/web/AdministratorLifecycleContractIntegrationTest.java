@@ -1,5 +1,6 @@
 package br.ufpr.tcc.auth.administrator.web;
 
+import br.ufpr.tcc.auth.shared.database.DatabaseProbe;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
@@ -21,7 +22,6 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
-import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.RequestBuilder;
@@ -57,7 +57,7 @@ class AdministratorLifecycleContractIntegrationTest extends OracleIntegrationTes
     private MockMvc mockMvc;
 
     @Autowired
-    private JdbcClient jdbcClient;
+    private DatabaseProbe database;
 
     @Autowired
     private PasswordEncoder passwordEncoder;
@@ -70,15 +70,15 @@ class AdministratorLifecycleContractIntegrationTest extends OracleIntegrationTes
 
     @BeforeAll
     void seedTheSingleOwner() throws Exception {
-        jdbcClient.sql("DELETE FROM ADMINISTRATIVE_SESSION").update();
-        jdbcClient.sql("DELETE FROM ADMINISTRATOR").update();
-        jdbcClient.sql("INSERT INTO ADMINISTRATOR (ID, NAME, EMAIL, EMAIL_NORMALIZED, ACTIVE,"
+        database.statement("DELETE FROM ADMINISTRATIVE_SESSION").run();
+        database.statement("DELETE FROM ADMINISTRATOR").run();
+        database.statement("INSERT INTO ADMINISTRATOR (ID, NAME, EMAIL, EMAIL_NORMALIZED, ACTIVE,"
                         + " PASSWORD_HASH, CREATED_AT, UPDATED_AT)"
                         + " VALUES (:id, 'Dono do cadastro', :email, :email, TRUE, :hash, :now,"
                         + " :now)")
-                .param("id", 900_001L).param("email", OWNER_EMAIL)
-                .param("hash", passwordEncoder.encode(OWNER_PASSWORD))
-                .param("now", OffsetDateTime.now()).update();
+                .with("id", 900_001L).with("email", OWNER_EMAIL)
+                .with("hash", passwordEncoder.encode(OWNER_PASSWORD))
+                .with("now", OffsetDateTime.now()).run();
         ownerIdentifier = "900001";
         ownerToken = signIn(OWNER_EMAIL, OWNER_PASSWORD);
     }
@@ -220,8 +220,8 @@ class AdministratorLifecycleContractIntegrationTest extends OracleIntegrationTes
     @Order(8)
     @DisplayName("desativar o unico administrador ativo e recusado")
     void deactivatingTheOnlyActiveAdministratorIsRefused() throws Exception {
-        jdbcClient.sql("UPDATE ADMINISTRATOR SET ACTIVE = FALSE WHERE ID <> :owner")
-                .param("owner", Long.parseLong(ownerIdentifier)).update();
+        database.statement("UPDATE ADMINISTRATOR SET ACTIVE = FALSE WHERE ID <> :owner")
+                .with("owner", Long.parseLong(ownerIdentifier)).run();
 
         MvcResult refused = mockMvc.perform(put("/api/admins/" + ownerIdentifier)
                         .header(HttpHeaders.AUTHORIZATION, "Bearer " + ownerToken)
@@ -257,9 +257,9 @@ class AdministratorLifecycleContractIntegrationTest extends OracleIntegrationTes
 
         assertThat(removed.getResponse().getStatus()).isEqualTo(204);
         assertThat(statusOfReadingOf(invitedIdentifier)).isEqualTo(404);
-        Long remainingSessions = jdbcClient
-                .sql("SELECT COUNT(*) FROM ADMINISTRATIVE_SESSION WHERE ADMINISTRATOR_ID = :id")
-                .param("id", Long.parseLong(invitedIdentifier)).query(Long.class).single();
+        Long remainingSessions = database
+                .statement("SELECT COUNT(*) FROM ADMINISTRATIVE_SESSION WHERE ADMINISTRATOR_ID = :id")
+                .with("id", Long.parseLong(invitedIdentifier)).count();
         assertThat(remainingSessions).isZero();
     }
 
@@ -392,9 +392,9 @@ class AdministratorLifecycleContractIntegrationTest extends OracleIntegrationTes
 
     /** Sessoes que ainda valem para aquele administrador. */
     private long sessionsOf(String identifier) {
-        return jdbcClient.sql("SELECT COUNT(*) FROM ADMINISTRATIVE_SESSION"
+        return database.statement("SELECT COUNT(*) FROM ADMINISTRATIVE_SESSION"
                         + " WHERE ADMINISTRATOR_ID = :id AND REVOKED_AT IS NULL")
-                .param("id", Long.parseLong(identifier)).query(Long.class).single();
+                .with("id", Long.parseLong(identifier)).count();
     }
 
     /**
@@ -451,8 +451,8 @@ class AdministratorLifecycleContractIntegrationTest extends OracleIntegrationTes
         String freshToken = signIn(SECOND_EMAIL, SECOND_PASSWORD);
         assertThat(statusOfListingWith(freshToken)).isEqualTo(200);
 
-        jdbcClient.sql("UPDATE ADMINISTRATOR SET ACTIVE = FALSE WHERE ID = :id")
-                .param("id", Long.parseLong(secondIdentifier)).update();
+        database.statement("UPDATE ADMINISTRATOR SET ACTIVE = FALSE WHERE ID = :id")
+                .with("id", Long.parseLong(secondIdentifier)).run();
 
         MvcResult afterwards = mockMvc.perform(get("/api/admins")
                         .header(HttpHeaders.AUTHORIZATION, "Bearer " + freshToken))

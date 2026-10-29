@@ -1,5 +1,6 @@
 package br.ufpr.tcc.auth.account;
 
+import br.ufpr.tcc.auth.shared.database.DatabaseProbe;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import br.ufpr.tcc.auth.notification.RecordedMessages;
@@ -16,7 +17,6 @@ import java.util.concurrent.atomic.AtomicLong;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.test.context.TestPropertySource;
 
 /**
@@ -40,16 +40,16 @@ class ConcurrentConfirmationIntegrationTest extends OracleIntegrationTestBase {
     private RecordedMessages recordedMessages;
 
     @Autowired
-    private JdbcClient jdbcClient;
+    private DatabaseProbe database;
 
     @Test
     @DisplayName("duas confirmacoes simultaneas do mesmo link, so uma vence")
     void twoSimultaneousConfirmationsOfTheSameLinkLeaveOnlyOneWinner() throws Exception {
         long applicationId = NEXT_ID.incrementAndGet();
-        jdbcClient.sql("INSERT INTO APPLICATION (ID, CODE, NAME, ACTIVE, CREATED_AT, UPDATED_AT)"
+        database.statement("INSERT INTO APPLICATION (ID, CODE, NAME, ACTIVE, CREATED_AT, UPDATED_AT)"
                         + " VALUES (:id, :code, :code, TRUE, :now, :now)")
-                .param("id", applicationId).param("code", "corrida-" + applicationId)
-                .param("now", OffsetDateTime.now()).update();
+                .with("id", applicationId).with("code", "corrida-" + applicationId)
+                .with("now", OffsetDateTime.now()).run();
         String email = "pessoa" + NEXT_ID.incrementAndGet() + "@exemplo.com";
         ApplicationCaller caller = new ApplicationCaller(applicationId,
                 "corrida-" + applicationId);

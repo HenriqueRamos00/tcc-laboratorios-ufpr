@@ -1,5 +1,6 @@
 package br.ufpr.tcc.auth.shared.web;
 
+import br.ufpr.tcc.auth.shared.database.DatabaseProbe;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 
@@ -21,7 +22,6 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
-import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.MvcResult;
 
@@ -49,7 +49,7 @@ class ValidationFailureDoesNotLeakIntegrationTest extends OracleIntegrationTestB
     private MockMvc mockMvc;
 
     @Autowired
-    private JdbcClient jdbcClient;
+    private DatabaseProbe database;
 
     private final ListAppender<ILoggingEvent> everything = new ListAppender<>();
     private Logger rootLogger;
@@ -67,16 +67,16 @@ class ValidationFailureDoesNotLeakIntegrationTest extends OracleIntegrationTestB
 
         long identifier = NEXT.incrementAndGet();
         applicationId = Long.toString(identifier);
-        jdbcClient.sql("INSERT INTO APPLICATION (ID, CODE, NAME, ACTIVE, CREATED_AT, UPDATED_AT)"
+        database.statement("INSERT INTO APPLICATION (ID, CODE, NAME, ACTIVE, CREATED_AT, UPDATED_AT)"
                         + " VALUES (:id, :code, :code, TRUE, :now, :now)")
-                .param("id", identifier).param("code", "validacao-" + identifier)
-                .param("now", OffsetDateTime.now()).update();
+                .with("id", identifier).with("code", "validacao-" + identifier)
+                .with("now", OffsetDateTime.now()).run();
         ServiceToken token = ServiceToken.generate();
-        jdbcClient.sql("INSERT INTO APPLICATION_TOKEN (ID, APPLICATION_ID, NAME, TOKEN_DIGEST,"
+        database.statement("INSERT INTO APPLICATION_TOKEN (ID, APPLICATION_ID, NAME, TOKEN_DIGEST,"
                         + " CREATED_AT) VALUES (:id, :applicationId, 'token', :digest, :now)")
-                .param("id", NEXT.incrementAndGet()).param("applicationId", identifier)
-                .param("digest", token.digest().asBytes())
-                .param("now", OffsetDateTime.now()).update();
+                .with("id", NEXT.incrementAndGet()).with("applicationId", identifier)
+                .with("digest", token.digest().asBytes())
+                .with("now", OffsetDateTime.now()).run();
         applicationToken = token.clearValue();
     }
 

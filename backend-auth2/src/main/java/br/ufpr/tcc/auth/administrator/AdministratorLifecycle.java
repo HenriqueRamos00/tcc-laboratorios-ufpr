@@ -1,13 +1,13 @@
 package br.ufpr.tcc.auth.administrator;
 
 import br.ufpr.tcc.auth.credential.model.PasswordPolicy;
-import br.ufpr.tcc.auth.shared.identifier.IdentifierFactory;
 import br.ufpr.tcc.auth.shared.observability.AuditTrail;
 import java.util.Optional;
-import org.springframework.dao.DuplicateKeyException;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionTemplate;
 
 /**
  * Cadastro de administrador depois da instalacao: criar, atualizar e excluir.
@@ -19,6 +19,12 @@ import org.springframework.transaction.annotation.Transactional;
  * A regra que atravessa as tres operacoes e uma so: o servico nunca pode ficar sem nenhum
  * administrador ativo. Desativar o ultimo tranca todo mundo fora de forma definitiva, porque
  * a rota de instalacao conta linha na tabela e a linha desativada continua contando.
+ *
+ * Cadastro e alteracao abrem a transacao pelo modelo e nao pela anotacao, porque as duas
+ * disputam a restricao unica do endereco e precisam traduzir a recusa dela para conflito. A
+ * recusa chega como excecao de integridade e o provedor ja marcou a transacao para desfazer,
+ * entao tratar isso dentro dela faria o commit falhar com erro de servidor onde o contrato
+ * promete 409.
  */
 @Service
 public class AdministratorLifecycle {
@@ -26,17 +32,17 @@ public class AdministratorLifecycle {
     private final AdministratorRegistry registry;
     private final AdministrativeSessionDirectory sessions;
     private final PasswordEncoder passwordEncoder;
-    private final IdentifierFactory identifiers;
     private final AuditTrail auditTrail;
+    private final TransactionTemplate transactions;
 
     AdministratorLifecycle(AdministratorRegistry registry, AdministrativeSessionDirectory sessions,
-            PasswordEncoder passwordEncoder, IdentifierFactory identifiers,
-            AuditTrail auditTrail) {
+            PasswordEncoder passwordEncoder, AuditTrail auditTrail,
+            TransactionTemplate transactions) {
         this.registry = registry;
         this.sessions = sessions;
         this.passwordEncoder = passwordEncoder;
-        this.identifiers = identifiers;
         this.auditTrail = auditTrail;
+        this.transactions = transactions;
     }
 
     /**
@@ -54,23 +60,24 @@ public class AdministratorLifecycle {
      * e a restricao; sem traduzir essa falha o desfecho seria erro de servidor no lugar do
      * conflito que a matriz manda.
      */
-    @Transactional
     public Registration register(String name, String email, String password) {
         if (!PasswordPolicy.violationsOf(password).isEmpty()) {
             return new Registration(Registration.Outcome.PASSWORD_REJECTED, null);
         }
-        if (registry.findByEmail(email).isPresent()) {
-            return new Registration(Registration.Outcome.EMAIL_ALREADY_REGISTERED, null);
-        }
-        long identifier = identifiers.nextIdentifier();
+        String passwordHash = passwordEncoder.encode(password);
         try {
-            registry.insert(identifier, name, email, passwordEncoder.encode(password));
-        } catch (DuplicateKeyException addressAlreadyTaken) {
+            return transactions.execute(status -> {
+                if (registry.findByEmail(email).isPresent()) {
+                    return new Registration(Registration.Outcome.EMAIL_ALREADY_REGISTERED, null);
+                }
+                long identifier = registry.insert(name, email, passwordHash);
+                auditTrail.administratorChanged("created", Long.toString(identifier));
+                return new Registration(Registration.Outcome.CREATED,
+                        new AdministratorSummary(Long.toString(identifier), name, email, true));
+            });
+        } catch (DataIntegrityViolationException addressAlreadyTaken) {
             return new Registration(Registration.Outcome.EMAIL_ALREADY_REGISTERED, null);
         }
-        auditTrail.administratorChanged("created", Long.toString(identifier));
-        return new Registration(Registration.Outcome.CREATED,
-                new AdministratorSummary(Long.toString(identifier), name, email, true));
     }
 
     /** Desfecho da atualizacao, com o administrador como ele ficou. */
@@ -93,17 +100,16 @@ public class AdministratorLifecycle {
      * encerrar, reativar devolvia o acesso a quem estava com o token no dia do afastamento,
      * que e justamente o motivo pelo qual se desativa alguem.
      *
-     * O hash da senha nova e calculado antes da trava de tabela, e a ordem aqui nao e
+     * O hash da senha nova e calculado antes de a transacao abrir, e a ordem aqui nao e
      * estetica. A contagem de administrador ativo toma LOCK TABLE IN EXCLUSIVE MODE, e com o
      * calculo depois dela a transacao ficava segurando a tabela inteira pelos 32 ms medidos
      * de uma verificacao de senha: todo DML sobre administrador esperava um hash terminar,
      * por uma razao que nada tem a ver com a trava.
      */
-    @Transactional
     public Change update(String identifier, String name, String email, boolean active,
             String password) {
         Optional<Long> parsed = AdministratorRegistry.identifierOf(identifier);
-        if (parsed.isEmpty() || registry.findById(parsed.get()).isEmpty()) {
+        if (parsed.isEmpty()) {
             return new Change(Change.Outcome.NOT_FOUND, null);
         }
         long id = parsed.get();
@@ -111,17 +117,33 @@ public class AdministratorLifecycle {
             return new Change(Change.Outcome.PASSWORD_REJECTED, null);
         }
         String newPasswordHash = password == null ? null : passwordEncoder.encode(password);
+        try {
+            return transactions.execute(
+                    status -> change(id, name, email, active, password, newPasswordHash));
+        } catch (DataIntegrityViolationException addressAlreadyTaken) {
+            return new Change(Change.Outcome.EMAIL_ALREADY_REGISTERED, null);
+        }
+    }
+
+    /**
+     * Desativar encerra as sessoes abertas, e nao apenas deixa de resolver o token enquanto a
+     * situacao estiver desligada. A consulta de sessao exige administrador ativo, entao
+     * desativado ele nao e atendido, mas a linha da sessao continua valida: medido aqui, sem
+     * encerrar, reativar devolvia o acesso a quem estava com o token no dia do afastamento,
+     * que e justamente o motivo pelo qual se desativa alguem.
+     */
+    private Change change(long id, String name, String email, boolean active, String password,
+            String newPasswordHash) {
+        if (registry.findById(id).isEmpty()) {
+            return new Change(Change.Outcome.NOT_FOUND, null);
+        }
         if (registry.emailBelongsToAnother(email, id)) {
             return new Change(Change.Outcome.EMAIL_ALREADY_REGISTERED, null);
         }
         if (!active && registry.activeCountOtherThanUnderLock(id) == 0L) {
             return new Change(Change.Outcome.LAST_ACTIVE_ADMINISTRATOR, null);
         }
-        try {
-            registry.update(id, name, email, active);
-        } catch (DuplicateKeyException addressAlreadyTaken) {
-            return new Change(Change.Outcome.EMAIL_ALREADY_REGISTERED, null);
-        }
+        registry.update(id, name, email, active);
         if (newPasswordHash != null) {
             registry.updatePasswordHash(id, newPasswordHash);
         }

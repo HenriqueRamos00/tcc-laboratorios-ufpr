@@ -5,6 +5,32 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.junit.jupiter.api.Assertions.assertTimeoutPreemptively;
 
 import br.ufpr.tcc.auth.notification.MessageDeliveryFailedException.Reason;
+import java.io.BufferedReader;
+import java.io.IOException;
+import java.io.InputStreamReader;
+import java.io.PrintWriter;
+import java.net.ServerSocket;
+import java.net.Socket;
+import java.time.Duration;
+import java.util.Locale;
+import java.util.Properties;
+import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Test;
+import org.springframework.mail.javamail.JavaMailSenderImpl;
+
+import br.ufpr.tcc.auth.notification.MessageDeliveryFailedException.Reason;
+import java.io.BufferedReader;
+import java.io.IOException;
+import java.io.InputStreamReader;
+import java.net.ServerSocket;
+import java.net.Socket;
+import java.time.Duration;
+import java.util.Properties;
+import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Test;
+import org.springframework.mail.javamail.JavaMailSenderImpl;
+
+import br.ufpr.tcc.auth.notification.MessageDeliveryFailedException.Reason;
 import java.io.IOException;
 import java.net.ServerSocket;
 import java.time.Duration;
@@ -103,19 +129,19 @@ class SmtpMessageTransportTest {
      * um servidor de e-mail de desenvolvimento se comporta.
      */
     private static void speakPlainSmtp(ServerSocket server) {
-        try (java.net.Socket client = server.accept();
-                java.io.BufferedReader incoming = new java.io.BufferedReader(
-                        new java.io.InputStreamReader(client.getInputStream()));
-                java.io.PrintWriter outgoing =
-                        new java.io.PrintWriter(client.getOutputStream(), true)) {
+        try (Socket client = server.accept();
+                BufferedReader incoming = new BufferedReader(
+                        new InputStreamReader(client.getInputStream()));
+                PrintWriter outgoing =
+                        new PrintWriter(client.getOutputStream(), true)) {
             outgoing.print("220 servidor-de-teste\r\n");
             outgoing.flush();
             String line = incoming.readLine();
             while (line != null) {
-                if (line.toUpperCase(java.util.Locale.ROOT).startsWith("EHLO")) {
+                if (line.toUpperCase(Locale.ROOT).startsWith("EHLO")) {
                     outgoing.print("250-servidor-de-teste\r\n250 SIZE 10240000\r\n");
                     outgoing.flush();
-                } else if (line.toUpperCase(java.util.Locale.ROOT).startsWith("QUIT")) {
+                } else if (line.toUpperCase(Locale.ROOT).startsWith("QUIT")) {
                     outgoing.print("221 tchau\r\n");
                     outgoing.flush();
                     return;
@@ -234,17 +260,17 @@ class SmtpMessageTransportTest {
 
     /** Servidor minimo que completa a conversa e guarda o que recebeu. */
     private static void completeSmtpConversation(ServerSocket server, StringBuilder received) {
-        try (java.net.Socket client = server.accept();
-                java.io.BufferedReader incoming = new java.io.BufferedReader(
-                        new java.io.InputStreamReader(client.getInputStream()));
-                java.io.PrintWriter outgoing =
-                        new java.io.PrintWriter(client.getOutputStream(), true)) {
+        try (Socket client = server.accept();
+                BufferedReader incoming = new BufferedReader(
+                        new InputStreamReader(client.getInputStream()));
+                PrintWriter outgoing =
+                        new PrintWriter(client.getOutputStream(), true)) {
             outgoing.print("220 servidor-de-teste\r\n");
             outgoing.flush();
             String line = incoming.readLine();
             while (line != null) {
                 received.append(line).append('\n');
-                String command = line.toUpperCase(java.util.Locale.ROOT);
+                String command = line.toUpperCase(Locale.ROOT);
                 if (command.startsWith("EHLO") || command.startsWith("HELO")) {
                     outgoing.print("250-servidor-de-teste\r\n250 SIZE 10240000\r\n");
                 } else if (command.startsWith("DATA")) {

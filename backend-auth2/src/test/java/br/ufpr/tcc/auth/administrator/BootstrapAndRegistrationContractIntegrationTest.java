@@ -3,6 +3,29 @@ package br.ufpr.tcc.auth.administrator;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 
+import br.ufpr.tcc.auth.shared.database.DatabaseProbe;
+import br.ufpr.tcc.auth.shared.database.OracleIntegrationTestBase;
+import ch.qos.logback.classic.Level;
+import ch.qos.logback.classic.LoggerContext;
+import ch.qos.logback.classic.spi.ILoggingEvent;
+import ch.qos.logback.core.read.ListAppender;
+import java.util.List;
+import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.MethodOrderer;
+import org.junit.jupiter.api.Order;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.TestMethodOrder;
+import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.MediaType;
+import org.springframework.test.context.TestPropertySource;
+import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.test.web.servlet.MvcResult;
+import tools.jackson.databind.JsonNode;
+import tools.jackson.databind.json.JsonMapper;
+
 import br.ufpr.tcc.auth.shared.database.OracleIntegrationTestBase;
 import ch.qos.logback.classic.Level;
 import ch.qos.logback.classic.LoggerContext;
@@ -48,7 +71,7 @@ class BootstrapAndRegistrationContractIntegrationTest extends OracleIntegrationT
     private MockMvc mockMvc;
 
     @Autowired
-    private org.springframework.jdbc.core.simple.JdbcClient jdbcClient;
+    private DatabaseProbe database;
 
     /**
      * Esta classe e a unica que exercita a rota de instalacao, e a rota so responde
@@ -66,7 +89,7 @@ class BootstrapAndRegistrationContractIntegrationTest extends OracleIntegrationT
         logger.setLevel(Level.INFO);
     }
 
-    private java.util.List<String> auditedEvents() {
+    private List<String> auditedEvents() {
         return auditLines.list.stream()
                 .flatMap(event -> event.getKeyValuePairs().stream())
                 .filter(pair -> "event".equals(pair.key))
@@ -76,8 +99,8 @@ class BootstrapAndRegistrationContractIntegrationTest extends OracleIntegrationT
 
     @org.junit.jupiter.api.BeforeAll
     void clearAdministrators() {
-        jdbcClient.sql("DELETE FROM ADMINISTRATIVE_SESSION").update();
-        jdbcClient.sql("DELETE FROM ADMINISTRATOR").update();
+        database.statement("DELETE FROM ADMINISTRATIVE_SESSION").run();
+        database.statement("DELETE FROM ADMINISTRATOR").run();
     }
 
     /**
@@ -110,7 +133,7 @@ class BootstrapAndRegistrationContractIntegrationTest extends OracleIntegrationT
     }
 
     private long administratorCount() {
-        return jdbcClient.sql("SELECT COUNT(*) FROM ADMINISTRATOR").query(Long.class).single();
+        return database.statement("SELECT COUNT(*) FROM ADMINISTRATOR").count();
     }
 
     @Test

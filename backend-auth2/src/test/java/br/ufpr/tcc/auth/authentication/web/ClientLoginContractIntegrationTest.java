@@ -1,5 +1,6 @@
 package br.ufpr.tcc.auth.authentication.web;
 
+import br.ufpr.tcc.auth.shared.database.DatabaseProbe;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
@@ -15,7 +16,6 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
-import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.MvcResult;
@@ -39,7 +39,7 @@ class ClientLoginContractIntegrationTest extends OracleIntegrationTestBase {
     private MockMvc mockMvc;
 
     @Autowired
-    private JdbcClient jdbcClient;
+    private DatabaseProbe database;
 
     @Autowired
     private PasswordEncoder passwordEncoder;
@@ -52,24 +52,24 @@ class ClientLoginContractIntegrationTest extends OracleIntegrationTestBase {
 
     private Registered registerApplicationWithAccount(String code, boolean confirmed, boolean active) {
         long applicationId = NEXT_ID.incrementAndGet();
-        jdbcClient.sql("INSERT INTO APPLICATION (ID, CODE, NAME, ACTIVE, CREATED_AT, UPDATED_AT)"
+        database.statement("INSERT INTO APPLICATION (ID, CODE, NAME, ACTIVE, CREATED_AT, UPDATED_AT)"
                         + " VALUES (:id, :code, :code, TRUE, :now, :now)")
-                .param("id", applicationId).param("code", code)
-                .param("now", OffsetDateTime.now()).update();
+                .with("id", applicationId).with("code", code)
+                .with("now", OffsetDateTime.now()).run();
         ServiceToken token = ServiceToken.generate();
-        jdbcClient.sql("INSERT INTO APPLICATION_TOKEN (ID, APPLICATION_ID, NAME, TOKEN_DIGEST,"
+        database.statement("INSERT INTO APPLICATION_TOKEN (ID, APPLICATION_ID, NAME, TOKEN_DIGEST,"
                         + " CREATED_AT) VALUES (:id, :applicationId, 'token', :digest, :now)")
-                .param("id", NEXT_ID.incrementAndGet()).param("applicationId", applicationId)
-                .param("digest", token.digest().asBytes()).param("now", OffsetDateTime.now()).update();
+                .with("id", NEXT_ID.incrementAndGet()).with("applicationId", applicationId)
+                .with("digest", token.digest().asBytes()).with("now", OffsetDateTime.now()).run();
         String email = "pessoa" + NEXT_ID.incrementAndGet() + "@exemplo.com";
-        jdbcClient.sql("INSERT INTO CLIENT_ACCOUNT (ID, APPLICATION_ID, NAME, EMAIL, EMAIL_NORMALIZED,"
+        database.statement("INSERT INTO CLIENT_ACCOUNT (ID, APPLICATION_ID, NAME, EMAIL, EMAIL_NORMALIZED,"
                         + " PASSWORD_HASH, EMAIL_CONFIRMED, ACTIVE, CREATED_AT, UPDATED_AT)"
                         + " VALUES (:id, :applicationId, 'Pessoa de Teste', :email, :email, :hash,"
                         + " :confirmed, :active, :now, :now)")
-                .param("id", NEXT_ID.incrementAndGet()).param("applicationId", applicationId)
-                .param("email", email).param("hash", passwordEncoder.encode(GOOD_PASSWORD))
-                .param("confirmed", confirmed ? 1 : 0).param("active", active ? 1 : 0)
-                .param("now", OffsetDateTime.now()).update();
+                .with("id", NEXT_ID.incrementAndGet()).with("applicationId", applicationId)
+                .with("email", email).with("hash", passwordEncoder.encode(GOOD_PASSWORD))
+                .with("confirmed", confirmed ? 1 : 0).with("active", active ? 1 : 0)
+                .with("now", OffsetDateTime.now()).run();
         return new Registered(token.clearValue(), code, email);
     }
 
@@ -265,8 +265,8 @@ class ClientLoginContractIntegrationTest extends OracleIntegrationTestBase {
      * exatamente o defeito encontrado no caso irmao da entrada administrativa.
      */
     private int attemptsOf(Registered registered) {
-        long applicationId = jdbcClient.sql("SELECT ID FROM APPLICATION WHERE CODE = :code")
-                .param("code", registered.applicationCode()).query(Long.class).single();
+        long applicationId = database.statement("SELECT ID FROM APPLICATION WHERE CODE = :code")
+                .with("code", registered.applicationCode()).count();
         return ledger.failedAttemptsOf(applicationId, registered.email());
     }
 

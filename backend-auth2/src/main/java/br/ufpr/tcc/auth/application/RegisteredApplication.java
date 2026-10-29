@@ -44,4 +44,37 @@ class RegisteredApplication {
 
     protected RegisteredApplication() {
     }
+
+    /**
+     * Aplicacao nova nasce ativa. O identificador fica nulo de proposito, para o gerador do
+     * Hibernate atribui-lo antes do INSERT: instancia que ja chega com identificador faz o
+     * save() do Spring Data trata-la como registro existente e cair em merge(), que emite um
+     * SELECT antes de cada INSERT.
+     */
+    static RegisteredApplication registered(String name, String code) {
+        RegisteredApplication application = new RegisteredApplication();
+        OffsetDateTime now = OffsetDateTime.now();
+        application.name = name;
+        application.code = code;
+        application.active = true;
+        application.createdAt = now;
+        application.updatedAt = now;
+        return application;
+    }
+
+    long id() {
+        return id;
+    }
+
+    String code() {
+        return code;
+    }
+
+    String name() {
+        return name;
+    }
+
+    boolean active() {
+        return active;
+    }
 }

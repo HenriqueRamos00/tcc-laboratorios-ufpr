@@ -2,13 +2,16 @@ package br.ufpr.tcc.auth.shared.database;
 
 import java.sql.Connection;
 import java.sql.DriverManager;
+import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
+import java.util.ArrayList;
 import java.util.List;
 import org.junit.jupiter.api.Tag;
 import org.springframework.boot.jdbc.autoconfigure.JdbcConnectionDetails;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.testcontainers.service.connection.ServiceConnection;
+import org.springframework.context.annotation.Import;
 import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
 import org.testcontainers.oracle.OracleContainer;
@@ -30,6 +33,7 @@ import org.testcontainers.utility.DockerImageName;
  */
 @SpringBootTest
 @Tag("integration")
+@Import(DatabaseProbe.class)
 public abstract class OracleIntegrationTestBase {
 
     static final String SCHEMA_OWNER_USERNAME = "auth_owner";
@@ -68,13 +72,18 @@ public abstract class OracleIntegrationTestBase {
      * Ela existe porque a lista de concessoes precisa ser conferida pelo lado de quem
      * concede: o usuario restrito nao enxerga tabela sobre a qual nao tem privilegio, e
      * seria justo a tabela esquecida que ficaria invisivel na consulta dele.
+     *
+     * Este e o unico acesso ao banco do modulo que nao passa pelo JPA, e nao pode passar:
+     * ele abre conexao com **outra credencial**, a do dono do esquema, e a unidade de
+     * persistencia da aplicacao tem a credencial restrita. Mesmo motivo vale para a
+     * preparacao dos usuarios logo abaixo, que roda antes de existir contexto de aplicacao.
      */
     static List<String> schemaOwnerQuery(String sql) {
-        List<String> rows = new java.util.ArrayList<>();
+        List<String> rows = new ArrayList<>();
         try (Connection connection = DriverManager.getConnection(
                         ORACLE.getJdbcUrl(), SCHEMA_OWNER_USERNAME, CONTAINER_PASSWORD);
                 Statement statement = connection.createStatement();
-                java.sql.ResultSet results = statement.executeQuery(sql)) {
+                ResultSet results = statement.executeQuery(sql)) {
             while (results.next()) {
                 rows.add(results.getString(1));
             }

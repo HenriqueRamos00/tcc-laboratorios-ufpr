@@ -1,5 +1,6 @@
 package br.ufpr.tcc.auth.account;
 
+import br.ufpr.tcc.auth.shared.database.DatabaseProbe;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import br.ufpr.tcc.auth.shared.security.ApplicationCaller;
@@ -15,7 +16,6 @@ import br.ufpr.tcc.auth.shared.database.OracleIntegrationTestBase;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.jdbc.core.simple.JdbcClient;
 
 /**
  * Dois cadastros simultaneos do mesmo endereco na mesma aplicacao.
@@ -36,17 +36,17 @@ class ConcurrentAccountRegistrationIntegrationTest extends OracleIntegrationTest
     private AccountLifecycle lifecycle;
 
     @Autowired
-    private JdbcClient jdbcClient;
+    private DatabaseProbe database;
 
     @Test
     @DisplayName("dois cadastros simultaneos do mesmo endereco: um cria, o outro responde conflito")
     void twoSimultaneousRegistrationsOfTheSameAddress() throws Exception {
         long applicationId = NEXT.incrementAndGet();
         String code = "corrida-cadastro-" + applicationId;
-        jdbcClient.sql("INSERT INTO APPLICATION (ID, CODE, NAME, ACTIVE, CREATED_AT, UPDATED_AT)"
+        database.statement("INSERT INTO APPLICATION (ID, CODE, NAME, ACTIVE, CREATED_AT, UPDATED_AT)"
                         + " VALUES (:id, :code, :code, TRUE, :now, :now)")
-                .param("id", applicationId).param("code", code)
-                .param("now", OffsetDateTime.now()).update();
+                .with("id", applicationId).with("code", code)
+                .with("now", OffsetDateTime.now()).run();
         ApplicationCaller caller = new ApplicationCaller(applicationId, code);
         String email = "corrida" + NEXT.incrementAndGet() + "@exemplo.com";
 
@@ -75,10 +75,10 @@ class ConcurrentAccountRegistrationIntegrationTest extends OracleIntegrationTest
     }
 
     private long accountsWith(long applicationId, String email) {
-        return jdbcClient.sql("SELECT COUNT(*) FROM CLIENT_ACCOUNT"
+        return database.statement("SELECT COUNT(*) FROM CLIENT_ACCOUNT"
                         + " WHERE APPLICATION_ID = :applicationId"
                         + " AND EMAIL_NORMALIZED = LOWER(:email)")
-                .param("applicationId", applicationId).param("email", email)
-                .query(Long.class).single();
+                .with("applicationId", applicationId).with("email", email)
+                .count();
     }
 }

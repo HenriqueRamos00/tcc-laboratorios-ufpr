@@ -20,9 +20,9 @@ idempotente que roda a cada subida.
 A sonda certa para saber que esta pronto e `GET http://localhost:8081/health/readiness`,
 que e a mesma que o healthcheck do contentor consulta. **A raiz `GET /health` agrega tambem
 o envio de e-mail**, e com o disjuntor do envio aberto ela responde
-`{"status":"OUT_OF_SERVICE"}`, sempre com HTTP 200. Medido nesta maquina: com o servidor de
-e-mail recusando a conexao, tres tentativas abrem o disjuntor e a raiz muda de corpo
-enquanto a prontidao segue `{"status":"UP"}`.
+`{"status":"OUT_OF_SERVICE"}`, sempre com HTTP 200. Com o servidor de e-mail recusando
+conexao, o disjuntor abre e a raiz muda de corpo enquanto a prontidao segue `{"status":"UP"}`:
+quem automatiza alarme consulta a prontidao, e quem quer saber do envio consulta a raiz.
 
 ## Testar
 
@@ -47,10 +47,11 @@ Para rodar so o que nao precisa de banco, acrescente `-DexcludedGroups=integrati
 | `docs/registrar-aplicacao.md` | quem administra: cadastrar aplicacao e emitir token |
 | `docs/consumir-a-api.md` | quem integra: apresentar credencial e ler cada desfecho |
 | `docs/openapi.json` | quem integra: o contrato em OpenAPI, gerado pela propria aplicacao |
-| `docs/restricao-por-regiao.md` | a analise do requisito 8, a decisao e as perguntas abertas |
-| `docs/round-1-levantamento.md` | o levantamento de boas praticas e os fatos medidos |
-| `docs/round-2-decisoes.md` | a apuracao das decisoes em disputa, com o porque de cada uma |
-| `docs/round-3-execucao.md` | a evidencia de cada fatia, incluindo o que nao foi provado |
+
+Estes tres descrevem **como o servico funciona e como consumi-lo**, que e o que um
+integrador precisa. O registro de construcao do modulo, com o levantamento, a apuracao
+das decisoes e as revisoes, nao mora aqui: ele e material de banca, nao documentacao de
+produto, e num repositorio publico ele vira mapa para quem quer atacar o servico.
 
 As regras de estilo, de teste e de arquitetura estao no `CLAUDE.md` deste diretorio.
 
@@ -85,8 +86,7 @@ curl -fsS -H "Authorization: Bearer $TOKEN" http://localhost:8081/v3/api-docs \
 docker compose down --remove-orphans && docker compose up -d
 ```
 
-Tres pontos do procedimento que nao sao obvios, e os tres foram medidos ao gerar o arquivo que
-esta versionado:
+Tres pontos do procedimento que nao sao obvios:
 
 - **`/v3/api-docs` tambem e rota fechada.** A cadeia nega tudo o que nao esta liberado
   nominalmente, e a documentacao gerada nao esta. Sem token a chamada volta 401 com desafio,
@@ -126,39 +126,32 @@ esta versionado:
 | POST | `/api/auth/password-resets` | aplicacao, pelo mesmo motivo da confirmacao |
 
 As rotas marcadas como "aplicacao" recusam credencial administrativa na propria cadeia, com
-403. Isso e correcao de um defeito medido: enquanto a cadeia so exigia credencial valida,
-token administrativo chegava ao tratador, o chamador tipado como aplicacao vinha nulo e cinco
-rotas respondiam 500 com pilha no log.
+403: a cadeia exige o tipo de credencial da rota, e nao apenas uma credencial valida.
 
 Excluir aplicacao e desativacao logica: a linha fica, o acesso cai no mesmo instante, e a
 trilha de auditoria continua explicavel.
 
-**A situacao e obrigatoria nas tres rotas de alteracao**, e isso tambem corrige defeito
-medido: enquanto o campo era opcional em aplicacao e em conta de cliente, ausente valia
-verdadeiro, e um pedido enviado para corrigir o nome reativava em silencio o registro que
-alguem tinha desativado. Hoje corpo sem `active` responde 400 nas tres.
+**A situacao e obrigatoria nas tres rotas de alteracao.** Corpo sem `active` responde 400
+nas tres, porque campo de situacao ausente nao pode valer verdadeiro por omissao: um pedido
+enviado para corrigir o nome nao reativa o que alguem desativou.
 
 **Campo que a rota nao honra responde 400, e nao e ignorado.** A desserializacao recusa
-propriedade desconhecida, porque aceitar e descartar ensina ao chamador que o campo existe:
-era o que a alteracao de conta fazia com endereco, perfil e aplicacao.
+propriedade desconhecida, porque aceitar e descartar ensina ao chamador que o campo existe.
 
 Codigo de aplicacao repetido responde 409, e endereco de cliente repetido tambem, inclusive
-quando os dois cadastros chegam ao mesmo tempo e quem recusa e a restricao do banco. Antes os
-dois subiam como erro de servidor, que nao esta na matriz de codigos.
+quando os dois cadastros chegam ao mesmo tempo: quem recusa o segundo e a restricao unica do
+banco, e a recusa e traduzida para conflito.
 
-**Corpo acima de 32 KB responde 413, recusado antes de ser lido.** O maior pedido legitimo
-deste servico tem menos de mil bytes, e sem teto o corpo era lido inteiro para a memoria antes
-de a validacao recusar o campo por tamanho.
+**Corpo acima de 32 KB responde 413, recusado antes de ser lido**, nos dois caminhos, com
+tamanho declarado e em pedacos. O maior pedido legitimo deste servico tem menos de mil bytes.
 
-**Falta de capacidade responde 503 com `Retry-After`.** Medido numa rajada de 400 logins com
-200 em paralelo: antes do teto de threads e desta traducao, uma requisicao saia como erro de
-servidor por tempo limite de conexao. Depois, as 400 responderam 401, sem erro no log, sem
-reinicio e com a prontidao em 200.
+**Falta de capacidade responde 503 com `Retry-After`**, tanto para fila de atendimento cheia
+quanto para banco fora de alcance, e a sonda de prontidao inclui o banco.
 
-**O teto de threads de atendimento e 24, e o numero vem de uma conta.** Cada verificacao de
-senha aloca 7 MiB por desenho, o contentor tem 768 MiB e a heap fica em 75% disso: com as 200
-threads do padrao, uma rajada de 200 logins pediria 1,4 GiB so de hash e o processo sairia por
-falta de memoria, em laco de reinicio. Vinte e quatro pedem 168 MiB no pico.
+**O teto de threads de atendimento e o tamanho do pool de conexao sao declarados, e nao
+herdados do padrao do servidor.** Os valores vivem no `application.yaml` e no `compose.yaml`,
+dimensionados contra o teto de memoria do contentor, e a justificativa de cada numero fica no
+comentario ao lado dele.
 
 Administrador e o contrario: a exclusao apaga a linha, porque o cadastro de administrador
 e pequeno e revisado por gente. O que nao se permite e ficar sem nenhum administrador

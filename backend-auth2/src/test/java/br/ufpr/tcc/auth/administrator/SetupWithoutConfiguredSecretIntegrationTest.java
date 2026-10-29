@@ -1,5 +1,6 @@
 package br.ufpr.tcc.auth.administrator;
 
+import br.ufpr.tcc.auth.shared.database.DatabaseProbe;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 
@@ -10,7 +11,6 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.http.MediaType;
-import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.test.web.servlet.MvcResult;
 
 /**
@@ -38,12 +38,12 @@ class SetupWithoutConfiguredSecretIntegrationTest extends OracleIntegrationTestB
     private org.springframework.test.web.servlet.MockMvc mockMvc;
 
     @Autowired
-    private JdbcClient jdbcClient;
+    private DatabaseProbe database;
 
     @BeforeEach
     void clearAdministrators() {
-        jdbcClient.sql("DELETE FROM ADMINISTRATIVE_SESSION").update();
-        jdbcClient.sql("DELETE FROM ADMINISTRATOR").update();
+        database.statement("DELETE FROM ADMINISTRATIVE_SESSION").run();
+        database.statement("DELETE FROM ADMINISTRATOR").run();
     }
 
     @Test
@@ -74,6 +74,6 @@ class SetupWithoutConfiguredSecretIntegrationTest extends OracleIntegrationTestB
     }
 
     private long administratorCount() {
-        return jdbcClient.sql("SELECT COUNT(*) FROM ADMINISTRATOR").query(Long.class).single();
+        return database.statement("SELECT COUNT(*) FROM ADMINISTRATOR").count();
     }
 }

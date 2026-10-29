@@ -1,14 +1,15 @@
 package br.ufpr.tcc.auth.application;
 
 import br.ufpr.tcc.auth.credential.model.ServiceToken;
-import br.ufpr.tcc.auth.shared.identifier.IdentifierFactory;
 import br.ufpr.tcc.auth.shared.observability.AuditTrail;
-import org.springframework.dao.DuplicateKeyException;
 import java.time.Duration;
 import java.time.OffsetDateTime;
-import org.springframework.jdbc.core.simple.JdbcClient;
+import java.util.List;
+import java.util.Optional;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionTemplate;
 
 /**
  * Cadastro de aplicacoes e emissao dos tokens delas.
@@ -16,19 +17,28 @@ import org.springframework.transaction.annotation.Transactional;
  * O token emitido volta em claro uma unica vez, no corpo da resposta da emissao. O que
  * fica guardado e o digest: quem perder o valor pede outro, e ninguem, nem o
  * administrador, consegue recuperar o anterior.
+ *
+ * Cadastro e alteracao abrem a transacao pelo modelo e nao pela anotacao, porque as duas
+ * disputam a restricao unica do codigo e precisam traduzir a recusa dela para conflito. A
+ * recusa chega como excecao de integridade e o provedor ja marcou a transacao para desfazer,
+ * entao tratar isso dentro dela faria o commit falhar com erro de servidor onde o contrato
+ * promete 409.
  */
 @Service
 public class ApplicationRegistry {
 
-    private final JdbcClient jdbcClient;
-    private final IdentifierFactory identifiers;
+    private final RegisteredApplicationRepository applications;
+    private final ApplicationTokenRepository tokens;
     private final AuditTrail auditTrail;
+    private final TransactionTemplate transactions;
 
-    ApplicationRegistry(JdbcClient jdbcClient, IdentifierFactory identifiers,
-            AuditTrail auditTrail) {
-        this.jdbcClient = jdbcClient;
-        this.identifiers = identifiers;
+    ApplicationRegistry(RegisteredApplicationRepository applications,
+            ApplicationTokenRepository tokens, AuditTrail auditTrail,
+            TransactionTemplate transactions) {
+        this.applications = applications;
+        this.tokens = tokens;
         this.auditTrail = auditTrail;
+        this.transactions = transactions;
     }
 
     public record RegisteredApplicationView(String id, String name, String code, boolean active) {
@@ -40,6 +50,11 @@ public class ApplicationRegistry {
         public enum Outcome { CREATED, CODE_ALREADY_REGISTERED }
     }
 
+    private static RegisteredApplicationView toView(RegisteredApplication application) {
+        return new RegisteredApplicationView(Long.toString(application.id()), application.name(),
+                application.code(), application.active());
+    }
+
     /**
      * O codigo e unico no banco, e o segundo cadastro com o mesmo codigo precisa responder
      * conflito. Medido antes desta traducao: a violacao da restricao subia como erro de
@@ -47,20 +62,17 @@ public class ApplicationRegistry {
      * indisponivel. O 409 e aceitavel aqui porque quem chama ja pode ler a lista inteira de
      * aplicacoes na rota ao lado, entao a resposta nao conta nada novo.
      */
-    @Transactional
     public Registration register(String name, String code) {
-        long id = identifiers.nextIdentifier();
         try {
-            jdbcClient.sql("INSERT INTO APPLICATION (ID, CODE, NAME, ACTIVE, CREATED_AT,"
-                            + " UPDATED_AT) VALUES (:id, :code, :name, TRUE, :now, :now)")
-                    .param("id", id).param("code", code).param("name", name)
-                    .param("now", OffsetDateTime.now()).update();
-        } catch (DuplicateKeyException codeAlreadyRegistered) {
+            return transactions.execute(status -> {
+                RegisteredApplication registered = applications
+                        .saveAndFlush(RegisteredApplication.registered(name, code));
+                auditTrail.applicationChanged("registered", Long.toString(registered.id()));
+                return new Registration(Registration.Outcome.CREATED, toView(registered));
+            });
+        } catch (DataIntegrityViolationException codeAlreadyRegistered) {
             return new Registration(Registration.Outcome.CODE_ALREADY_REGISTERED, null);
         }
-        auditTrail.applicationChanged("registered", Long.toString(id));
-        return new Registration(Registration.Outcome.CREATED,
-                new RegisteredApplicationView(Long.toString(id), name, code, true));
     }
 
     public record IssuedTokenView(String accessToken, String id, String name, String serviceId,
@@ -70,19 +82,12 @@ public class ApplicationRegistry {
     @Transactional
     public IssuedTokenView issueToken(long applicationId, String name, Duration lifetime) {
         ServiceToken token = ServiceToken.generate();
-        long id = identifiers.nextIdentifier();
-        OffsetDateTime now = OffsetDateTime.now();
-        OffsetDateTime expiresAt = lifetime == null ? null : now.plus(lifetime);
-        jdbcClient.sql("INSERT INTO APPLICATION_TOKEN (ID, APPLICATION_ID, NAME, TOKEN_DIGEST,"
-                        + " CREATED_AT, EXPIRES_AT) VALUES (:id, :applicationId, :name, :digest,"
-                        + " :now, :expiresAt)")
-                .param("id", id).param("applicationId", applicationId).param("name", name)
-                .param("digest", token.digest().asBytes()).param("now", now)
-                .param("expiresAt", expiresAt).update();
+        ApplicationToken issued = tokens
+                .saveAndFlush(ApplicationToken.issuedFor(applicationId, name, token, lifetime));
         auditTrail.applicationTokenChanged("issued", Long.toString(applicationId),
-                Long.toString(id));
-        return new IssuedTokenView(token.clearValue(), Long.toString(id), name,
-                Long.toString(applicationId), now, expiresAt);
+                Long.toString(issued.id()));
+        return new IssuedTokenView(token.clearValue(), Long.toString(issued.id()), name,
+                Long.toString(applicationId), issued.createdAt(), issued.expiresAt());
     }
 
     /** Metadado do token. O segredo nao aparece aqui, porque ele nao existe mais guardado. */
@@ -90,18 +95,12 @@ public class ApplicationRegistry {
             OffsetDateTime expiresAt, OffsetDateTime revokedAt) {
     }
 
-    public java.util.List<TokenView> listTokens(long applicationId) {
-        return jdbcClient.sql("SELECT ID, NAME, APPLICATION_ID, CREATED_AT, EXPIRES_AT, REVOKED_AT"
-                        + " FROM APPLICATION_TOKEN WHERE APPLICATION_ID = :applicationId"
-                        + " ORDER BY CREATED_AT DESC")
-                .param("applicationId", applicationId)
-                .query((resultSet, rowNumber) -> new TokenView(
-                        Long.toString(resultSet.getLong("ID")), resultSet.getString("NAME"),
-                        Long.toString(resultSet.getLong("APPLICATION_ID")),
-                        resultSet.getObject("CREATED_AT", OffsetDateTime.class),
-                        resultSet.getObject("EXPIRES_AT", OffsetDateTime.class),
-                        resultSet.getObject("REVOKED_AT", OffsetDateTime.class)))
-                .list();
+    public List<TokenView> listTokens(long applicationId) {
+        return tokens.findByApplicationIdOrderByCreatedAtDesc(applicationId).stream()
+                .map(token -> new TokenView(Long.toString(token.id()), token.name(),
+                        Long.toString(token.applicationId()), token.createdAt(),
+                        token.expiresAt(), token.revokedAt()))
+                .toList();
     }
 
     /**
@@ -110,65 +109,43 @@ public class ApplicationRegistry {
      * A existencia e conferida com o escopo junto, entao token de outra aplicacao e token
      * inventado produzem a mesma resposta: 403 ali confirmaria que o token existe em
      * algum lugar.
-     *
-     * A marcacao so acontece se ainda nao tiver acontecido, para preservar o instante da
-     * primeira revogacao, mas a resposta e a mesma nas duas chamadas: revogar o que ja
-     * esta revogado e pedir o estado que ja vale.
      */
     @Transactional
     public boolean revokeToken(long applicationId, long tokenId) {
-        boolean belongsToApplication = jdbcClient.sql("SELECT COUNT(*) FROM APPLICATION_TOKEN"
-                        + " WHERE ID = :tokenId AND APPLICATION_ID = :applicationId")
-                .param("tokenId", tokenId).param("applicationId", applicationId)
-                .query(Long.class).single() > 0L;
-        if (!belongsToApplication) {
+        if (tokens.countByIdAndApplicationId(tokenId, applicationId) == 0L) {
             return false;
         }
-        jdbcClient.sql("UPDATE APPLICATION_TOKEN SET REVOKED_AT = SYSTIMESTAMP"
-                        + " WHERE ID = :tokenId AND APPLICATION_ID = :applicationId"
-                        + " AND REVOKED_AT IS NULL")
-                .param("tokenId", tokenId).param("applicationId", applicationId).update();
+        tokens.revokeWithinApplication(tokenId, applicationId);
         auditTrail.applicationTokenChanged("revoked", Long.toString(applicationId),
                 Long.toString(tokenId));
         return true;
     }
 
-    public java.util.List<RegisteredApplicationView> list() {
-        return jdbcClient.sql("SELECT ID, NAME, CODE, ACTIVE FROM APPLICATION ORDER BY CREATED_AT DESC")
-                .query((resultSet, rowNumber) -> new RegisteredApplicationView(
-                        Long.toString(resultSet.getLong("ID")), resultSet.getString("NAME"),
-                        resultSet.getString("CODE"), resultSet.getBoolean("ACTIVE")))
-                .list();
+    public List<RegisteredApplicationView> list() {
+        return applications.findByOrderByCreatedAtDesc().stream()
+                .map(ApplicationRegistry::toView).toList();
     }
 
-    public java.util.Optional<RegisteredApplicationView> find(long applicationId) {
-        return jdbcClient.sql("SELECT ID, NAME, CODE, ACTIVE FROM APPLICATION WHERE ID = :id")
-                .param("id", applicationId)
-                .query((resultSet, rowNumber) -> new RegisteredApplicationView(
-                        Long.toString(resultSet.getLong("ID")), resultSet.getString("NAME"),
-                        resultSet.getString("CODE"), resultSet.getBoolean("ACTIVE")))
-                .optional();
+    public Optional<RegisteredApplicationView> find(long applicationId) {
+        return applications.findById(applicationId).map(ApplicationRegistry::toView);
     }
 
     /** Desfecho da alteracao, com o conflito de codigo separado de nao encontrado. */
     public enum UpdateOutcome { CHANGED, NOT_FOUND, CODE_ALREADY_REGISTERED }
 
-    @Transactional
     public UpdateOutcome update(long applicationId, String name, String code, boolean active) {
-        boolean changed;
         try {
-            changed = jdbcClient.sql("UPDATE APPLICATION SET NAME = :name, CODE = :code,"
-                            + " ACTIVE = :active, UPDATED_AT = :now WHERE ID = :id")
-                    .param("id", applicationId).param("name", name).param("code", code)
-                    .param("active", active).param("now", OffsetDateTime.now()).update() == 1;
-        } catch (DuplicateKeyException codeAlreadyRegistered) {
+            return transactions.execute(status -> {
+                if (applications.updateById(applicationId, name, code, active,
+                        OffsetDateTime.now()) != 1) {
+                    return UpdateOutcome.NOT_FOUND;
+                }
+                auditTrail.applicationChanged("changed", Long.toString(applicationId));
+                return UpdateOutcome.CHANGED;
+            });
+        } catch (DataIntegrityViolationException codeAlreadyRegistered) {
             return UpdateOutcome.CODE_ALREADY_REGISTERED;
         }
-        if (!changed) {
-            return UpdateOutcome.NOT_FOUND;
-        }
-        auditTrail.applicationChanged("changed", Long.toString(applicationId));
-        return UpdateOutcome.CHANGED;
     }
 
     /**
@@ -180,9 +157,7 @@ public class ApplicationRegistry {
      */
     @Transactional
     public boolean deactivate(long applicationId) {
-        boolean deactivated = jdbcClient.sql("UPDATE APPLICATION SET ACTIVE = FALSE,"
-                        + " UPDATED_AT = :now WHERE ID = :id")
-                .param("id", applicationId).param("now", OffsetDateTime.now()).update() == 1;
+        boolean deactivated = applications.deactivateById(applicationId, OffsetDateTime.now()) == 1;
         if (deactivated) {
             auditTrail.applicationChanged("deactivated", Long.toString(applicationId));
         }
@@ -190,7 +165,6 @@ public class ApplicationRegistry {
     }
 
     public boolean exists(long applicationId) {
-        return jdbcClient.sql("SELECT COUNT(*) FROM APPLICATION WHERE ID = :id")
-                .param("id", applicationId).query(Long.class).single() > 0L;
+        return applications.existsById(applicationId);
     }
 }

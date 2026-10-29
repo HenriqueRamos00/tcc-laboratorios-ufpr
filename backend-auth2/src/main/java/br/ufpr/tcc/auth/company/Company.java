@@ -43,4 +43,37 @@ class Company {
 
     protected Company() {
     }
+
+    /**
+     * O identificador fica nulo de proposito, para o gerador do Hibernate atribui-lo antes
+     * do INSERT. Instancia que ja chega com identificador faz o save() do Spring Data
+     * trata-la como registro existente e cair em merge(), que emite um SELECT antes de cada
+     * INSERT.
+     */
+    static Company registeredIn(long applicationId, String name, String cnpj) {
+        Company company = new Company();
+        OffsetDateTime now = OffsetDateTime.now();
+        company.applicationId = applicationId;
+        company.name = name;
+        company.cnpj = cnpj;
+        company.createdAt = now;
+        company.updatedAt = now;
+        return company;
+    }
+
+    long id() {
+        return id;
+    }
+
+    long applicationId() {
+        return applicationId;
+    }
+
+    String name() {
+        return name;
+    }
+
+    String cnpj() {
+        return cnpj;
+    }
 }

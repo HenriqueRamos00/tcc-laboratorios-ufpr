@@ -2,6 +2,19 @@ package br.ufpr.tcc.auth.authentication;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import br.ufpr.tcc.auth.shared.database.DatabaseProbe;
+import br.ufpr.tcc.auth.shared.database.OracleIntegrationTestBase;
+import br.ufpr.tcc.auth.shared.security.ApplicationCaller;
+import java.time.OffsetDateTime;
+import java.util.Locale;
+import java.util.concurrent.atomic.AtomicLong;
+import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Test;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.transaction.annotation.Propagation;
+import org.springframework.transaction.annotation.Transactional;
+
 import br.ufpr.tcc.auth.shared.database.OracleIntegrationTestBase;
 import br.ufpr.tcc.auth.shared.security.ApplicationCaller;
 import java.time.OffsetDateTime;
@@ -9,7 +22,6 @@ import java.util.concurrent.atomic.AtomicLong;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
@@ -35,31 +47,31 @@ class AuthenticateClientIntegrationTest extends OracleIntegrationTestBase {
     private AuthenticateClient authenticateClient;
 
     @Autowired
-    private JdbcClient jdbcClient;
+    private DatabaseProbe database;
 
     @Autowired
     private PasswordEncoder passwordEncoder;
 
     private ApplicationCaller application(String code) {
         long id = NEXT_ID.incrementAndGet();
-        jdbcClient.sql("INSERT INTO APPLICATION (ID, CODE, NAME, ACTIVE, CREATED_AT, UPDATED_AT)"
+        database.statement("INSERT INTO APPLICATION (ID, CODE, NAME, ACTIVE, CREATED_AT, UPDATED_AT)"
                         + " VALUES (:id, :code, :name, TRUE, :now, :now)")
-                .param("id", id).param("code", code).param("name", code)
-                .param("now", OffsetDateTime.now()).update();
+                .with("id", id).with("code", code).with("name", code)
+                .with("now", OffsetDateTime.now()).run();
         return new ApplicationCaller(id, code);
     }
 
     private String account(ApplicationCaller caller, String email, boolean confirmed, boolean active) {
-        jdbcClient.sql("INSERT INTO CLIENT_ACCOUNT (ID, APPLICATION_ID, NAME, EMAIL, EMAIL_NORMALIZED,"
+        database.statement("INSERT INTO CLIENT_ACCOUNT (ID, APPLICATION_ID, NAME, EMAIL, EMAIL_NORMALIZED,"
                         + " PASSWORD_HASH, EMAIL_CONFIRMED, ACTIVE, CREATED_AT, UPDATED_AT)"
                         + " VALUES (:id, :applicationId, :name, :email, :normalized, :hash,"
                         + " :confirmed, :active, :now, :now)")
-                .param("id", NEXT_ID.incrementAndGet()).param("applicationId", caller.applicationId())
-                .param("name", "Pessoa de Teste").param("email", email)
-                .param("normalized", email.toLowerCase(java.util.Locale.ROOT))
-                .param("hash", passwordEncoder.encode(GOOD_PASSWORD))
-                .param("confirmed", confirmed ? 1 : 0).param("active", active ? 1 : 0)
-                .param("now", OffsetDateTime.now()).update();
+                .with("id", NEXT_ID.incrementAndGet()).with("applicationId", caller.applicationId())
+                .with("name", "Pessoa de Teste").with("email", email)
+                .with("normalized", email.toLowerCase(Locale.ROOT))
+                .with("hash", passwordEncoder.encode(GOOD_PASSWORD))
+                .with("confirmed", confirmed ? 1 : 0).with("active", active ? 1 : 0)
+                .with("now", OffsetDateTime.now()).run();
         return email;
     }
 
