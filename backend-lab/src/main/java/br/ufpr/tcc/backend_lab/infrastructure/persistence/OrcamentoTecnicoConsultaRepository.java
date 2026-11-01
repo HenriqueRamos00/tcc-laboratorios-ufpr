@@ -1,7 +1,7 @@
 package br.ufpr.tcc.backend_lab.infrastructure.persistence;
 
 import br.ufpr.tcc.backend_lab.domain.model.enums.StatusOrcamentoTecnico;
-import br.ufpr.tcc.backend_lab.domain.model.enums.StatusExecucaoEnsaio;
+import br.ufpr.tcc.backend_lab.domain.model.enums.StatusEnsaio;
 
 import lombok.RequiredArgsConstructor;
 
@@ -138,10 +138,10 @@ public class OrcamentoTecnicoConsultaRepository {
                 .addValue("status", status, Types.VARCHAR)
                 .addValue("inicio", inicio, Types.TIMESTAMP_WITH_TIMEZONE)
                 .addValue("fimExclusivo", fimExclusivo, Types.TIMESTAMP_WITH_TIMEZONE)
-                .addValue("cancelledState", StatusExecucaoEnsaio.CANCELLED.name())
-                .addValue("reportPublishedState", StatusExecucaoEnsaio.REPORT_PUBLISHED.name())
-                .addValue("incompleteState", StatusExecucaoEnsaio.INCOMPLETE.name())
-                .addValue("completeState", StatusExecucaoEnsaio.COMPLETE.name())
+                .addValue("cancelledState", StatusEnsaio.CANCELLED.codigo())
+                .addValue("reportPublishedState", StatusEnsaio.REPORT_PUBLISHED.codigo())
+                .addValue("incompleteState", StatusEnsaio.INCOMPLETE.codigo())
+                .addValue("completeState", StatusEnsaio.COMPLETE.codigo())
                 .addValue("summaryCancelled", StatusOrcamentoTecnico.CANCELLED.codigo())
                 .addValue("summaryReportPublished", StatusOrcamentoTecnico.REPORT_PUBLISHED.codigo())
                 .addValue("summaryIncomplete", StatusOrcamentoTecnico.INCOMPLETE.codigo())

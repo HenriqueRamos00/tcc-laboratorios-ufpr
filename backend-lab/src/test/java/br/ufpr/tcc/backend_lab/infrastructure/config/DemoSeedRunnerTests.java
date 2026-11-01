@@ -230,7 +230,7 @@ class DemoSeedRunnerTests {
                 jdbc.queryForObject(
                         "SELECT report_reference FROM execucoes_ensaios "
                                 + "WHERE orcamento_id = (SELECT id FROM orcamentos WHERE code = ?) "
-                                + "AND status = 'REPORT_PUBLISHED'",
+                                + "AND status = 'report-published'",
                         String.class,
                         "DEMO-SEED-2026-005"));
         assertEquals(

@@ -27,7 +27,7 @@ import br.ufpr.tcc.backend_lab.domain.repository.ExecucaoEnsaioRepository;
 import br.ufpr.tcc.backend_lab.domain.repository.EmpresaRepository;
 import br.ufpr.tcc.backend_lab.domain.repository.OrcamentoRepository;
 import br.ufpr.tcc.backend_lab.domain.repository.UsuarioRepository;
-import br.ufpr.tcc.backend_lab.domain.model.enums.StatusExecucaoEnsaio;
+import br.ufpr.tcc.backend_lab.domain.model.enums.StatusEnsaio;
 import br.ufpr.tcc.backend_lab.infrastructure.security.JwtService;
 
 import com.fasterxml.jackson.databind.JsonNode;
@@ -422,7 +422,7 @@ class OrcamentoControllerTests {
     void validaFiltroDeStatusTecnico() throws Exception {
         criarExecucao(
                 orcamentoMaisNovo,
-                StatusExecucaoEnsaio.REPORT_PUBLISHED,
+                StatusEnsaio.REPORT_PUBLISHED,
                 "LAUDO-VALIDADO",
                 OffsetDateTime.parse("2026-10-16T10:00:00Z"));
 
@@ -459,7 +459,7 @@ class OrcamentoControllerTests {
         adicionarItemProposto(orcamentoMaisNovo);
         criarExecucao(
                 orcamentoMaisNovo,
-                StatusExecucaoEnsaio.REPORT_PUBLISHED,
+                StatusEnsaio.REPORT_PUBLISHED,
                 "LAUDO-DETALHE",
                 OffsetDateTime.parse("2026-10-16T10:00:00Z"));
 
@@ -536,13 +536,13 @@ class OrcamentoControllerTests {
     @Test
     @DisplayName("resume execução ativa, cancelamentos e evidência de publicação antes da paginação")
     void agregaStatusTecnicoEFiltraAntesDaPaginacao() throws Exception {
-        criarExecucao(orcamentoMaisNovo, StatusExecucaoEnsaio.REPORT_PUBLISHED,
+        criarExecucao(orcamentoMaisNovo, StatusEnsaio.REPORT_PUBLISHED,
                 "LAUDO-MAIS-NOVO", OffsetDateTime.parse("2026-10-16T10:00:00Z"));
-        criarExecucao(orcamentoMaisNovo, StatusExecucaoEnsaio.CANCELLED, null, null);
-        criarExecucao(orcamentoMesmoDia, StatusExecucaoEnsaio.INCOMPLETE, null, null);
-        criarExecucao(orcamentoMesmoDia, StatusExecucaoEnsaio.COMPLETE, null, null);
-        criarExecucao(orcamentoAntigo, StatusExecucaoEnsaio.COMPLETE, null, null);
-        criarExecucao(orcamentoAntigo, StatusExecucaoEnsaio.CANCELLED, null, null);
+        criarExecucao(orcamentoMaisNovo, StatusEnsaio.CANCELLED, null, null);
+        criarExecucao(orcamentoMesmoDia, StatusEnsaio.INCOMPLETE, null, null);
+        criarExecucao(orcamentoMesmoDia, StatusEnsaio.COMPLETE, null, null);
+        criarExecucao(orcamentoAntigo, StatusEnsaio.COMPLETE, null, null);
+        criarExecucao(orcamentoAntigo, StatusEnsaio.CANCELLED, null, null);
 
         Orcamento finalizado =
                 criarOrcamento(
@@ -552,8 +552,8 @@ class OrcamentoControllerTests {
                         "Descrição finalizada",
                         StatusComercialOrcamento.PENDING_ACCEPTANCE,
                         OffsetDateTime.parse("2026-10-08T10:00:00Z"));
-        criarExecucao(finalizado, StatusExecucaoEnsaio.FINALIZED, null, null);
-        criarExecucao(finalizado, StatusExecucaoEnsaio.DRAFTING_REPORT, null, null);
+        criarExecucao(finalizado, StatusEnsaio.FINALIZED, null, null);
+        criarExecucao(finalizado, StatusEnsaio.DRAFTING_REPORT, null, null);
 
         Orcamento cancelado =
                 criarOrcamento(
@@ -563,8 +563,8 @@ class OrcamentoControllerTests {
                         "Descrição cancelada",
                         StatusComercialOrcamento.PENDING_ACCEPTANCE,
                         OffsetDateTime.parse("2026-10-07T10:00:00Z"));
-        criarExecucao(cancelado, StatusExecucaoEnsaio.CANCELLED, null, null);
-        criarExecucao(cancelado, StatusExecucaoEnsaio.CANCELLED, null, null);
+        criarExecucao(cancelado, StatusEnsaio.CANCELLED, null, null);
+        criarExecucao(cancelado, StatusEnsaio.CANCELLED, null, null);
 
         Orcamento evidenciasIncompletas =
                 criarOrcamento(
@@ -576,7 +576,7 @@ class OrcamentoControllerTests {
                         OffsetDateTime.parse("2026-10-20T10:00:00Z"));
         criarExecucao(
                 evidenciasIncompletas,
-                StatusExecucaoEnsaio.REPORT_PUBLISHED,
+                StatusEnsaio.REPORT_PUBLISHED,
                 "   ",
                 OffsetDateTime.parse("2026-10-20T10:00:00Z"));
 
@@ -972,7 +972,7 @@ class OrcamentoControllerTests {
 
     private ExecucaoEnsaio criarExecucao(
             Orcamento orcamento,
-            StatusExecucaoEnsaio status,
+            StatusEnsaio status,
             String reportReference,
             OffsetDateTime publishedAt) {
         ExecucaoEnsaio execucao = new ExecucaoEnsaio();

@@ -299,3 +299,7 @@ Quatro propostas não têm laboratório, escopo, contato próprio ou itens, para
 As contas adicionadas usam a senha de desenvolvimento `Demo@12345`. Exemplos: `demo.tecnico.helena@example.test` e `demo.cliente.mariana@example.test`. Contas Lactec novas usam a senha `lactec`; senhas de contas existentes não são redefinidas. A senha de administrador é definida separadamente pelas variáveis `AUTH_SEED_ADMIN_*`.
 
 O seed fica desativado por padrão e deve ser usado apenas no desenvolvimento local. Cada versão aplicada é registrada em `demo_seed_runs`, na mesma transação dos dados e do PDF. Reiniciar o backend não reaplica versões já registradas, preservando edições e exclusões. A carga também corrige os status antigos de quatro propostas de demonstração, conferindo o código e o valor anterior antes de alterá-los. Não há sincronização com outras fontes.
+
+### Status técnico de execução
+
+`execucoes_ensaios.status` persiste os sete códigos técnicos do Apêndice E (`incomplete`, `complete`, `validated`, `finalized`, `drafting-report`, `report-published`, `cancelled`). A aplicação converte os códigos estritamente; valor desconhecido causa erro de leitura, sem status substituto.
