@@ -10,6 +10,7 @@ import br.ufpr.tcc.backend_lab.domain.model.entity.DocumentoOrcamento;
 import br.ufpr.tcc.backend_lab.domain.model.entity.Empresa;
 import br.ufpr.tcc.backend_lab.domain.model.entity.Orcamento;
 import br.ufpr.tcc.backend_lab.domain.model.enums.StatusComercialOrcamento;
+import br.ufpr.tcc.backend_lab.domain.model.enums.EtapaAcompanhamentoOrcamento;
 import br.ufpr.tcc.backend_lab.domain.repository.DocumentoOrcamentoRepository;
 import br.ufpr.tcc.backend_lab.domain.repository.EmpresaRepository;
 import br.ufpr.tcc.backend_lab.domain.repository.OrcamentoRepository;
@@ -27,8 +28,6 @@ import java.time.OffsetDateTime;
 @Service
 @RequiredArgsConstructor
 public class CreateOrcamentoUseCase {
-    private static final String ETAPA_INICIAL = "Negociação";
-
     private final EmpresaRepository empresaRepository;
     private final OrcamentoRepository orcamentoRepository;
     private final DocumentoOrcamentoRepository documentoOrcamentoRepository;
@@ -61,7 +60,7 @@ public class CreateOrcamentoUseCase {
         orcamento.setExternalContactName(request.externalContactName());
         orcamento.setExternalContactEmail(request.externalContactEmail());
         orcamento.setStatus(StatusComercialOrcamento.PENDING_ACCEPTANCE);
-        orcamento.setStage(ETAPA_INICIAL);
+        orcamento.setStage(EtapaAcompanhamentoOrcamento.NEGOCIACAO.texto());
         orcamento.setTotalPrice(totalPrice);
         orcamento.setCreatedDate(OffsetDateTime.now());
         mapeadorItensOrcamento.substituirItens(orcamento, request.items());

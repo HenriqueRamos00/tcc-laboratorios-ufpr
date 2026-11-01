@@ -171,6 +171,12 @@ Para criar o administrador inicial, preencha `AUTH_SEED_ADMIN_*` no arquivo `.en
 
 Sem autenticação válida, a API retorna 401. Técnicos autenticados recebem 403. Tokens de clientes são recusados pelo filtro de autenticação nas rotas internas e recebem 401.
 
+### Consulta de orçamentos do cliente
+
+`GET /api/client/quotes` lista os orçamentos das empresas ativas vinculadas ao cliente autenticado. `GET /api/client/quotes/{id}` consulta um orçamento e `GET /api/client/quotes/{id}/document` retorna o PDF anexado ou gera um PDF a partir dos dados persistidos quando não há anexo. A autorização considera os vínculos atuais do cliente antes de consultar ou gerar o documento; orçamento de empresa sem vínculo retorna 403 e orçamento inexistente retorna 404.
+
+As respostas de lista e detalhe preservam o status comercial (`PendingAcceptance`, `InProgress`, `Finished`, `Refused` ou `Cancelled`) e retornam `stage` como texto não nulo, no vocabulário já reconhecido pelo Portal do Cliente. As etapas e aliases são definidos por `EtapaAcompanhamentoOrcamento`; a escrita rejeita etapas vazias ou desconhecidas. Sem ensaios, mantém-se a etapa persistida válida, mesmo que o status comercial mude. Recusa e cancelamento comerciais prevalecem com `Fechado recusado Lactec` e `Cancelado`. Com ensaios, o acompanhamento usa o menor avanço dos ativos; cancelados são desconsiderados quando há ativos, e todos cancelados apresentam `Cancelado`. O cadastro já inicia o acompanhamento em `Em execução`, mantendo o status interno `incomplete`; editar um ensaio não reinicia sua etapa. O cálculo não aceita comercialmente a proposta nem modifica o orçamento durante consultas. `Finalizado` não significa relatório publicado; execuções publicadas precisam de referência de laudo e data persistidas. A disponibilização dos laudos e as ações de transição HU26 permanecem próprias. A listagem consulta os estados necessários dos ensaios em lote, sem carregar medições ou PDFs. A leitura do documento não grava o PDF gerado nem altera o orçamento.
+
 ## Execução local
 
 Inicie um PostgreSQL local com um banco chamado `backend_lab` e configure as variáveis de conexão. Em seguida, execute:
@@ -248,13 +254,13 @@ O Portal Interno consome diretamente `/api/companies` e `/api/clients` no Spring
 
 `POST /api/auth/login` autentica somente CLIENTE ativo. O login interno continua exclusivo ADMIN/TECNICO. Ambos emitem tokens com o mesmo formato; cada família de rotas verifica o perfil permitido e a situação atual do usuário. A resposta pública usa IDs string em login e gestão; as entidades Java mantêm chaves numéricas internamente, e os endpoints de técnicos preservam IDs numéricos.
 
-O Portal do Cliente acessa a API C#. No modo `backend-lab`, o C# encaminha o login para esta API Spring; os adapters de orçamentos e documentos ainda não estão implementados. Para entrar nesse modo, use uma conta de cliente ativa cadastrada no Backend Lab.
+O Portal do Cliente acessa a API C#. No modo `backend-lab`, o C# encaminha o login para `/api/auth/login` e consulta os orçamentos em `/api/client/quotes`, `/api/client/quotes/{id}` e `/api/client/quotes/{id}/document`, adaptando as respostas Spring ao contrato já consumido pelo portal. Para entrar nesse modo, use uma conta de cliente ativa cadastrada no Backend Lab.
 
-As consultas privadas `/api/client/quotes`, `/{id}` e `/{id}/document` conferem usuário, vínculos e situação das empresas atuais. O PDF está em tabela separada e seus bytes são consultados somente após a autorização. Empresa sem vínculo ativo retorna 403; orçamento/arquivo inexistente retorna 404. Cliente ativo sem empresas ativas pode autenticar e recebe lista vazia. Remover vínculo ou desativar usuário/empresa afeta o token anterior na próxima requisição.
+As consultas privadas `/api/client/quotes`, `/{id}` e `/{id}/document` conferem usuário, vínculos e situação das empresas atuais. Os bytes de um PDF anexado são consultados somente após a autorização; sem anexo, o endpoint do cliente gera o documento a partir do orçamento autorizado. Empresa sem vínculo ativo retorna 403 e orçamento inexistente retorna 404. Cliente ativo sem empresas ativas pode autenticar e recebe lista vazia. Remover vínculo ou desativar usuário/empresa afeta o token anterior na próxima requisição. Na rota administrativa `/api/quotes/{id}/document`, documento não anexado continua retornando 404.
 
 ### Consulta e manutenção administrativa de orçamentos
 
-As rotas administrativas de `/api/quotes` são exclusivas de ADMIN. O parâmetro opcional `status` da listagem aceita somente os códigos comerciais `PendingAcceptance`, `InProgress`, `Finished`, `Refused` e `Cancelled`, definidos por `StatusComercialOrcamento`; valor desconhecido retorna 400. A atualização também exige um código comercial. O campo de etapa permanece textual e separado do status.
+As rotas administrativas de `/api/quotes` são exclusivas de ADMIN. O parâmetro opcional `status` da listagem aceita somente os códigos comerciais `PendingAcceptance`, `InProgress`, `Finished`, `Refused` e `Cancelled`, definidos por `StatusComercialOrcamento`; valor desconhecido retorna 400. A atualização também exige um código comercial. O campo de etapa permanece textual no contrato, validado pelo conjunto de etapas de acompanhamento e separado do status comercial.
 
 `GET /api/quotes` pesquisa parcialmente por código, nome, descrição ou razão social da empresa. A paginação começa em 1, usa `pageSize=20` por padrão e aceita de 1 a 100 itens por página. A resposta contém `items`, `page`, `pageSize` e `totalItems`, ordenada por data de criação decrescente e ID decrescente como desempate. Cada item contém `id`, `code`, `name`, `status`, `stage`, `description`, `companyName`, `externalContactName`, `externalContactEmail`, `totalPrice`, `createdDate` e `hasDocument`. A listagem não carrega os itens de serviço nem os bytes do PDF.
 
@@ -290,7 +296,7 @@ O status técnico acompanha o andamento das execuções vinculadas à proposta. 
 | `report-published` | Todas as execuções ativas estão publicadas, com referência de relatório preenchida e data em `publishedAt`. |
 | `cancelled` | Todas as execuções foram canceladas. |
 
-Sem execuções, `technicalStatus` é nulo. Uma execução marcada como publicada sem referência ou data do relatório ainda conta como `validated`.
+Sem execuções, `technicalStatus` é nulo. Uma execução marcada como publicada precisa ter referência e data do relatório; sem esses dados, a consulta falha em vez de classificá-la como validada.
 
 Os itens do orçamento descrevem os serviços propostos; as execuções registram seu andamento técnico separadamente. Cada execução pode guardar a referência e a data de publicação de um relatório. O cadastro completo de laudos e seu histórico ainda não estão implementados.
 
@@ -301,16 +307,16 @@ Limites: empresa - razão social 200, endereço 255, cidade 120, UF brasileira c
 Para carregar os exemplos, configure `DEMO_SEED_ENABLED=true` e reinicie o Backend Lab. Em um banco vazio, o seed cria:
 
 - 6 empresas, 6 técnicos e 7 clientes;
-- 26 orçamentos com os cinco status comerciais e 44 itens de serviço;
-- 17 execuções com exemplos de resultados, pendências, cancelamentos, validação e publicação;
-- 13 amostras vinculadas aos orçamentos e dois instrumentos laboratoriais;
-- um PDF de exemplo na proposta Lactec.
+- 42 orçamentos com os cinco status comerciais e 60 itens de serviço;
+- 23 execuções com exemplos de resultados, pendências, cancelamentos, validação e publicação;
+- 21 amostras vinculadas aos orçamentos e dois instrumentos laboratoriais;
+- 14 PDFs de proposta, incluindo um documento Lactec e 13 propostas geradas e persistidas para os exemplos do acompanhamento do cliente.
 
-Quatro propostas não têm laboratório, escopo, contato próprio ou itens, para demonstrar a consulta de registros antigos. As execuções têm andamento próprio, separado do status comercial. As contas e empresas são fictícias; os CNPJs passam pela validação e os novos e-mails usam `example.test`.
+Quatro propostas não têm laboratório, escopo, contato próprio ou itens, para demonstrar a consulta de registros antigos. A carteira `DEMO-PIPE-2026` cobre todas as etapas apresentadas no Portal do Cliente, além de cancelamento e recusa, e está ligada às duas empresas ativas da conta `demo.cliente.mariana@example.test`. A interface só apresenta a proposta a partir de `Em negociação`; os PDFs persistidos no seed começam nessa etapa. As execuções têm andamento próprio, separado do status comercial; o exemplo publicado possui referência e data do laudo, mas o arquivo do laudo ainda não é armazenado pelo sistema. As contas e empresas são fictícias; os CNPJs passam pela validação e os novos e-mails usam `example.test`.
 
 As contas adicionadas usam a senha de desenvolvimento `Demo@12345`. Exemplos: `demo.tecnico.helena@example.test` e `demo.cliente.mariana@example.test`. Contas Lactec novas usam a senha `lactec`; senhas de contas existentes não são redefinidas. A senha de administrador é definida separadamente pelas variáveis `AUTH_SEED_ADMIN_*`.
 
-O seed fica desativado por padrão e deve ser usado apenas no desenvolvimento local. Cada versão aplicada é registrada em `demo_seed_runs`, na mesma transação dos dados e do PDF. Reiniciar o backend não reaplica versões já registradas, preservando edições e exclusões. A carga também corrige os status antigos de quatro propostas de demonstração, conferindo o código e o valor anterior antes de alterá-los. Não há sincronização com outras fontes.
+O seed fica desativado por padrão e deve ser usado apenas no desenvolvimento local. Cada versão aplicada é registrada em `demo_seed_runs`, na mesma transação dos dados e dos documentos. Reiniciar o backend não reaplica versões já registradas, preservando edições e exclusões. A carga também corrige os status antigos de quatro propostas de demonstração, conferindo o código e o valor anterior antes de alterá-los. Não há sincronização com outras fontes.
 
 ### Status técnico de execução
 

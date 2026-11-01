@@ -1,7 +1,6 @@
 using System.Text.Json;
 using System.Text.Json.Serialization;
 
-using Portal.Adapters.Quotes;
 using Portal.Adapters.Salesforce;
 using Portal.Api.Configuration;
 using Portal.Api.Authentication;
@@ -50,12 +49,6 @@ builder.Services.AddScoped<IForConsultingLabResults, LabResultsConsultation>();
 
 builder.Services.AddPortalDataSource(builder.Configuration);
 
-// A proposta escrita a mao continua valendo; o orcamento sem arquivo recebe a pagina
-// gerada a partir dele mesmo, para o botao de baixar nunca cair no vazio na demonstracao.
-builder.Services.AddScoped<IQuoteDocumentRepository>(services =>
-    new GeneratedQuoteDocumentRepository(
-        services.GetRequiredService<IQuoteRepository>(),
-        new LocalQuoteDocumentRepository()));
 builder.Services.AddLabTestRepository(builder.Configuration);
 builder.Services.AddSingleton(
     builder.Configuration.GetSection(SalesforceOptions.SectionName).Get<SalesforceOptions>() ?? new SalesforceOptions());

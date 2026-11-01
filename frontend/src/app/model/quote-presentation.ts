@@ -11,6 +11,7 @@ export interface DisplayedQuote {
   readonly id: string;
   readonly code: string;
   readonly proposalName: string;
+  readonly description: string;
   readonly company: string;
   readonly externalContact: string;
   readonly createdAt: string;
@@ -136,6 +137,7 @@ export function toDisplayedQuote(quote: Quote): DisplayedQuote {
     id: quote.id?.trim() || '',
     code: quote.code?.trim() || FIELD_PLACEHOLDER,
     proposalName: quote.name?.trim() || FIELD_PLACEHOLDER,
+    description: quote.description?.trim() || '',
     company: quote.companyName?.trim() || FIELD_PLACEHOLDER,
     externalContact: resolveExternalContact(quote),
     createdAt: readableCreatedDate(quote.createdDate),

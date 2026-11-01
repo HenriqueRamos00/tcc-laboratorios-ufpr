@@ -96,7 +96,7 @@ class OrcamentoAtomicidadeTests {
             assertEquals(codigoOriginal, persistido.getCode());
             assertEquals("Nome anterior", persistido.getName());
             assertEquals(StatusComercialOrcamento.PENDING_ACCEPTANCE, persistido.getStatus());
-            assertEquals("Etapa anterior", persistido.getStage());
+            assertEquals("Protocolado", persistido.getStage());
             assertEquals(1, persistido.getItems().size());
             assertEquals("Ensaio anterior", persistido.getItems().getFirst().getTestType());
             assertArrayEquals(
@@ -142,7 +142,7 @@ class OrcamentoAtomicidadeTests {
         orcamento.setName("Nome anterior");
         orcamento.setDescription("Descrição anterior");
         orcamento.setStatus(StatusComercialOrcamento.PENDING_ACCEPTANCE);
-        orcamento.setStage("Etapa anterior");
+        orcamento.setStage("Protocolado");
         orcamento.setTotalPrice(new BigDecimal("12.00"));
         orcamento.setCreatedDate(OffsetDateTime.now().minusDays(2));
 

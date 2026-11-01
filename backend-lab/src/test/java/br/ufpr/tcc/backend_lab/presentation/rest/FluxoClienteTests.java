@@ -1,11 +1,13 @@
 package br.ufpr.tcc.backend_lab.presentation.rest;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -26,18 +28,26 @@ import br.ufpr.tcc.backend_lab.domain.exception.CredenciaisInvalidasException;
 import br.ufpr.tcc.backend_lab.domain.exception.EmailJaCadastradoException;
 import br.ufpr.tcc.backend_lab.domain.exception.RegraNegocioException;
 import br.ufpr.tcc.backend_lab.domain.model.entity.Cliente;
+import br.ufpr.tcc.backend_lab.domain.model.entity.Amostra;
+import br.ufpr.tcc.backend_lab.domain.model.entity.ExecucaoEnsaio;
 import br.ufpr.tcc.backend_lab.domain.model.entity.DocumentoOrcamento;
 import br.ufpr.tcc.backend_lab.domain.model.entity.Empresa;
 import br.ufpr.tcc.backend_lab.domain.model.entity.Orcamento;
 import br.ufpr.tcc.backend_lab.domain.model.entity.PerfilUsuario;
 import br.ufpr.tcc.backend_lab.domain.model.entity.Usuario;
 import br.ufpr.tcc.backend_lab.domain.model.enums.StatusComercialOrcamento;
+import br.ufpr.tcc.backend_lab.domain.model.enums.StatusEnsaio;
+import br.ufpr.tcc.backend_lab.domain.model.enums.EtapaAcompanhamentoOrcamento;
 import br.ufpr.tcc.backend_lab.domain.repository.ClienteRepository;
+import br.ufpr.tcc.backend_lab.domain.repository.AmostraRepository;
+import br.ufpr.tcc.backend_lab.domain.repository.ExecucaoEnsaioRepository;
 import br.ufpr.tcc.backend_lab.domain.repository.DocumentoOrcamentoRepository;
 import br.ufpr.tcc.backend_lab.domain.repository.EmpresaRepository;
 import br.ufpr.tcc.backend_lab.domain.repository.OrcamentoRepository;
 import br.ufpr.tcc.backend_lab.domain.repository.UsuarioRepository;
 import br.ufpr.tcc.backend_lab.infrastructure.security.JwtService;
+
+import jakarta.persistence.EntityManager;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -45,12 +55,18 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.http.MediaType;
+import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.transaction.annotation.Transactional;
 
+import com.lowagie.text.pdf.PdfReader;
+import com.lowagie.text.pdf.parser.PdfTextExtractor;
+
 import java.math.BigDecimal;
 import java.time.OffsetDateTime;
+import java.time.LocalDate;
+import java.util.UUID;
 import java.util.List;
 
 @SpringBootTest
@@ -62,6 +78,8 @@ class FluxoClienteTests {
     @Autowired EmpresaRepository empresas;
     @Autowired ClienteRepository clientes;
     @Autowired OrcamentoRepository orcamentos;
+    @Autowired AmostraRepository amostras;
+    @Autowired ExecucaoEnsaioRepository ensaios;
     @Autowired DocumentoOrcamentoRepository documentos;
     @Autowired CreateEmpresaUseCase criarEmpresa;
     @Autowired CreateClienteUseCase criarCliente;
@@ -72,6 +90,8 @@ class FluxoClienteTests {
     @Autowired LoginUseCase loginInterno;
     @Autowired JwtService jwtService;
     @Autowired PasswordEncoder passwordEncoder;
+    @Autowired JdbcTemplate jdbcTemplate;
+    @Autowired EntityManager entityManager;
     Empresa empresaA, empresaB, empresaSemVinculo;
     Cliente clienteA;
     Orcamento orcamentoA, orcamentoB, orcamentoSemVinculo;
@@ -99,6 +119,9 @@ class FluxoClienteTests {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.length()").value(1))
                 .andExpect(jsonPath("$[0].code").value("QA"))
+                .andExpect(jsonPath("$[0].stage").value("Negociação"))
+                .andExpect(jsonPath("$[0].status").value("PendingAcceptance"))
+                .andExpect(jsonPath("$[0].hasDocument").doesNotExist())
                 .andExpect(jsonPath("$[0].opportunityId").doesNotExist());
     }
 
@@ -108,6 +131,9 @@ class FluxoClienteTests {
                         get("/api/client/quotes/{id}", orcamentoA.getId())
                                 .header("Authorization", tokenClienteA))
                 .andExpect(status().isOk())
+                .andExpect(jsonPath("$.stage").value("Negociação"))
+                .andExpect(jsonPath("$.status").value("PendingAcceptance"))
+                .andExpect(jsonPath("$.hasDocument").doesNotExist())
                 .andExpect(jsonPath("$.opportunityId").doesNotExist());
         mockMvc.perform(
                         get("/api/client/quotes/{id}/document", orcamentoA.getId())
@@ -115,6 +141,219 @@ class FluxoClienteTests {
                 .andExpect(status().isOk())
                 .andExpect(content().contentType(MediaType.APPLICATION_PDF))
                 .andExpect(content().bytes("%PDF-1.4 demo".getBytes()));
+    }
+
+    @Test
+    void geraPdfLegivelComDadosReaisELeituraNaoAlteraOrcamento() throws Exception {
+        documentos.deleteById(orcamentoA.getId());
+        documentos.flush();
+        String descricaoLonga =
+                ("Análise físico-química da amostra, medição e avaliação do material. ").repeat(25)
+                        + "MARCADOR FINAL DA DESCRIÇÃO";
+        orcamentoA.setName("Análise de óleo isolante - proposta especial");
+        orcamentoA.setDescription(descricaoLonga);
+        orcamentoA.setScope("Caracterização e ensaios laboratoriais com conclusão técnica.");
+        orcamentoA.setTotalPrice(new BigDecimal("12345.67"));
+        orcamentos.saveAndFlush(orcamentoA);
+        var dataCriacao = orcamentoA.getCreatedDate();
+        var statusComercial = orcamentoA.getStatus();
+        var etapaPersistida = orcamentoA.getStage();
+
+        var resposta = mockMvc.perform(
+                        get("/api/client/quotes/{id}/document", orcamentoA.getId())
+                                .header("Authorization", tokenClienteA))
+                .andExpect(status().isOk())
+                .andExpect(content().contentType(MediaType.APPLICATION_PDF))
+                .andReturn();
+        byte[] bytes = resposta.getResponse().getContentAsByteArray();
+        assertTrue(bytes.length > 500);
+        assertTrue(new String(bytes, 0, 8).startsWith("%PDF-"));
+        try (var reader = new PdfReader(bytes)) {
+            String texto = new PdfTextExtractor(reader).getTextFromPage(1);
+            assertTrue(texto.contains("Proposta comercial"));
+            assertTrue(texto.contains("Análise de óleo isolante"));
+            assertTrue(texto.contains("Análise físico-química"));
+            assertTrue(texto.contains("MARCADOR FINAL DA DESCRIÇÃO"));
+            assertTrue(texto.contains("12.345,67"));
+        }
+
+        var persistido = orcamentos.findById(orcamentoA.getId()).orElseThrow();
+        assertEquals(dataCriacao, persistido.getCreatedDate());
+        assertEquals(statusComercial, persistido.getStatus());
+        assertEquals(etapaPersistida, persistido.getStage());
+        assertEquals(descricaoLonga, persistido.getDescription());
+        assertFalse(documentos.existsById(orcamentoA.getId()));
+    }
+
+    @Test
+    void traduzStatusComercialSemAlterarStatusPersistido() throws Exception {
+        var casos = List.of(
+                new StatusEsperado(StatusComercialOrcamento.PENDING_ACCEPTANCE, "Negociação"),
+                new StatusEsperado(
+                        StatusComercialOrcamento.REFUSED, "Fechado recusado Lactec"),
+                new StatusEsperado(StatusComercialOrcamento.CANCELLED, "Cancelado"));
+
+        for (var caso : casos) {
+            orcamentoA.setStatus(caso.status());
+            orcamentoA.setStage("Em negociação");
+            orcamentos.saveAndFlush(orcamentoA);
+
+            mockMvc.perform(
+                            get("/api/client/quotes/{id}", orcamentoA.getId())
+                                    .header("Authorization", tokenClienteA))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.status").value(caso.status().codigo()))
+                    .andExpect(jsonPath("$.stage").value(caso.stage()));
+            var persistido = orcamentos.findById(orcamentoA.getId()).orElseThrow();
+            assertEquals(caso.status(), persistido.getStatus());
+            assertEquals("Em negociação", persistido.getStage());
+        }
+    }
+
+    @Test
+    void rejeitaGravacaoDeEtapaDesconhecida() {
+        orcamentoA.setStage("Etapa desconhecida");
+        RuntimeException falha = assertThrows(RuntimeException.class,
+                () -> orcamentos.saveAndFlush(orcamentoA));
+        Throwable causa = falha;
+        while (causa.getCause() != null) causa = causa.getCause();
+        assertTrue(causa instanceof IllegalArgumentException);
+        assertEquals("Etapa de acompanhamento desconhecida", causa.getMessage());
+    }
+
+    @Test
+    void preservaEtapasReconhecidasMesmoQuandoStatusComercialMuda() throws Exception {
+        var etapas = List.of(
+                new EtapaEsperada("Aprovado pelo Cliente", "Aprovado pelo cliente"),
+                new EtapaEsperada("Aguardando entrega da amostra", "Aguardando entrega da amostra"),
+                new EtapaEsperada("Recebido", "Recebido"),
+                new EtapaEsperada("Fechado ganho", "Recebido"),
+                new EtapaEsperada("Protocolado", "Protocolado"),
+                new EtapaEsperada("Em execução", "Em execução"),
+                new EtapaEsperada("Completo", "Completo"),
+                new EtapaEsperada("Validado", "Validado"),
+                new EtapaEsperada("Finalizado", "Finalizado"),
+                new EtapaEsperada("Elaborando relatório", "Elaborando relatório"),
+                new EtapaEsperada("Relatório publicado", "Relatório publicado"));
+
+        var statusEmAndamentoOuEncerrado =
+                List.of(StatusComercialOrcamento.IN_PROGRESS, StatusComercialOrcamento.FINISHED);
+        for (var statusComercial : statusEmAndamentoOuEncerrado) {
+            for (var etapa : etapas) {
+                orcamentoA.setStatus(statusComercial);
+                orcamentoA.setStage(etapa.persistida());
+                orcamentos.saveAndFlush(orcamentoA);
+
+                mockMvc.perform(
+                                get("/api/client/quotes/{id}", orcamentoA.getId())
+                                        .header("Authorization", tokenClienteA))
+                        .andExpect(status().isOk())
+                        .andExpect(jsonPath("$.stage").value(etapa.exibida()));
+            }
+
+            for (var etapa :
+                    List.of(
+                            "Qualificação",
+                            "Em análise pela área",
+                            "Elaborando proposta",
+                            "Em negociação")) {
+                orcamentoA.setStage(etapa);
+                orcamentos.saveAndFlush(orcamentoA);
+                mockMvc.perform(
+                                get("/api/client/quotes/{id}", orcamentoA.getId())
+                                        .header("Authorization", tokenClienteA))
+                        .andExpect(status().isOk())
+                        .andExpect(jsonPath("$.stage").value(
+                                EtapaAcompanhamentoOrcamento.deTexto(etapa).texto()));
+            }
+        }
+    }
+
+    @Test
+    void criarEnsaioIniciaAcompanhamentoEEditarNaoReiniciaNemAceitaProposta() throws Exception {
+        String dados = """
+                {"newSample":{"quoteId":"%s","code":"A-INICIO","description":"Amostra"},
+                 "type":"Análise de teste","analysisType":"chromatography",
+                 "method":"Método","standard":"Norma","scheduledDate":"2026-11-01",
+                 "responsibleId":"%s","equipmentIds":[],"measurements":[]}
+                """.formatted(orcamentoA.getId(), tecnico.getId());
+        String tokenTecnico = "Bearer " + loginInterno.execute(
+                new LoginRequest(tecnico.getEmail(), " senha ")).accessToken();
+        mockMvc.perform(post("/api/tests")
+                        .header("Authorization", tokenTecnico)
+                        .contentType(MediaType.APPLICATION_JSON).content(dados))
+                .andExpect(status().isCreated());
+        var execucao = ensaios.findAll().stream()
+                .filter(item -> item.getOrcamento().getId().equals(orcamentoA.getId()))
+                .findFirst().orElseThrow();
+        mockMvc.perform(get("/api/client/quotes/{id}", orcamentoA.getId())
+                        .header("Authorization", tokenClienteA))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.stage").value("Em execução"))
+                .andExpect(jsonPath("$.status").value("PendingAcceptance"));
+
+        execucao.setStatus(StatusEnsaio.VALIDATED);
+        ensaios.saveAndFlush(execucao);
+        String edicao = """
+                {"sampleId":"%s","type":"Análise revisada","analysisType":"chromatography",
+                 "method":"Método","standard":"Norma","scheduledDate":"2026-11-01",
+                 "responsibleId":"%s","equipmentIds":[],"measurements":[],"version":%s}
+                """.formatted(execucao.getAmostra().getId(), tecnico.getId(), execucao.getVersion());
+        mockMvc.perform(put("/api/tests/{id}", execucao.getId())
+                        .header("Authorization", tokenTecnico)
+                        .contentType(MediaType.APPLICATION_JSON).content(edicao))
+                .andExpect(status().isOk());
+        mockMvc.perform(get("/api/client/quotes/{id}", orcamentoA.getId())
+                        .header("Authorization", tokenClienteA))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.stage").value("Validado"))
+                .andExpect(jsonPath("$.status").value("PendingAcceptance"));
+    }
+
+    @Test
+    void listaEDetalheUsamMenorEtapaAtivaSemMisturarOrcamentos() throws Exception {
+        var incompleto = criarExecucao(orcamentoA, StatusEnsaio.INCOMPLETE);
+        criarExecucao(orcamentoA, StatusEnsaio.FINALIZED);
+        criarExecucao(orcamentoA, StatusEnsaio.CANCELLED);
+        criarExecucao(orcamentoB, StatusEnsaio.COMPLETE);
+        for (var statusEnsaio : List.of(StatusEnsaio.INCOMPLETE, StatusEnsaio.COMPLETE)) {
+            incompleto.setStatus(statusEnsaio);
+            ensaios.saveAndFlush(incompleto);
+            String esperada = statusEnsaio == StatusEnsaio.INCOMPLETE ? "Em execução" : "Completo";
+            mockMvc.perform(get("/api/client/quotes").header("Authorization", tokenClienteA))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.length()").value(1))
+                    .andExpect(jsonPath("$[0].stage").value(esperada));
+            mockMvc.perform(get("/api/client/quotes/{id}", orcamentoA.getId())
+                            .header("Authorization", tokenClienteA))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.stage").value(esperada));
+        }
+    }
+
+    @Test
+    void todasExecucoesCanceladasApresentamCanceladoSemAlterarComercial() throws Exception {
+        criarExecucao(orcamentoA, StatusEnsaio.CANCELLED);
+        mockMvc.perform(get("/api/client/quotes/{id}", orcamentoA.getId())
+                        .header("Authorization", tokenClienteA))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.stage").value("Cancelado"))
+                .andExpect(jsonPath("$.status").value("PendingAcceptance"));
+    }
+
+    @Test
+    void contratoDeClienteNaoExpoeDisponibilidadeDeAnexoPersistido() throws Exception {
+        documentos.deleteById(orcamentoA.getId());
+        documentos.flush();
+
+        mockMvc.perform(get("/api/client/quotes").header("Authorization", tokenClienteA))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$[0].hasDocument").doesNotExist());
+        mockMvc.perform(
+                        get("/api/client/quotes/{id}", orcamentoA.getId())
+                                .header("Authorization", tokenClienteA))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.hasDocument").doesNotExist());
     }
 
     @Test
@@ -144,12 +383,44 @@ class FluxoClienteTests {
         mockMvc.perform(get("/api/client/quotes").header("Authorization", tokenClienteA))
                 .andExpect(jsonPath("$.length()").value(2));
         mockMvc.perform(
+                        get("/api/client/quotes/{id}", orcamentoB.getId())
+                                .header("Authorization", tokenClienteA))
+                .andExpect(status().isOk());
+        mockMvc.perform(
+                        get("/api/client/quotes/{id}/document", orcamentoB.getId())
+                                .header("Authorization", tokenClienteA))
+                .andExpect(status().isOk());
+        mockMvc.perform(
                         get("/api/client/quotes/{id}", orcamentoSemVinculo.getId())
                                 .header("Authorization", tokenClienteA))
                 .andExpect(status().isForbidden());
         editarCliente.execute(clienteA.getId(), dadosAtualizacaoCliente(List.of(empresaA.getId()), null));
         mockMvc.perform(
                         get("/api/client/quotes/{id}", orcamentoB.getId())
+                                .header("Authorization", tokenClienteA))
+                .andExpect(status().isForbidden());
+        mockMvc.perform(get("/api/client/quotes").header("Authorization", tokenClienteA))
+                .andExpect(jsonPath("$.length()").value(1));
+        mockMvc.perform(
+                        get("/api/client/quotes/{id}/document", orcamentoB.getId())
+                                .header("Authorization", tokenClienteA))
+                .andExpect(status().isForbidden());
+    }
+
+    @Test
+    void clienteSemVinculosRecebeListaVaziaSemAcessoDiretoAoOrcamento() throws Exception {
+        jdbcTemplate.update("DELETE FROM cliente_empresas WHERE cliente_id = ?", clienteA.getId());
+        entityManager.clear();
+
+        mockMvc.perform(get("/api/client/quotes").header("Authorization", tokenClienteA))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.length()").value(0));
+        mockMvc.perform(
+                        get("/api/client/quotes/{id}", orcamentoA.getId())
+                                .header("Authorization", tokenClienteA))
+                .andExpect(status().isForbidden());
+        mockMvc.perform(
+                        get("/api/client/quotes/{id}/document", orcamentoA.getId())
                                 .header("Authorization", tokenClienteA))
                 .andExpect(status().isForbidden());
     }
@@ -164,6 +435,10 @@ class FluxoClienteTests {
         mockMvc.perform(get("/api/client/quotes").header("Authorization", tokenClienteA))
                 .andExpect(jsonPath("$.length()").value(0));
         mockMvc.perform(
+                        get("/api/client/quotes/{id}", orcamentoA.getId())
+                                .header("Authorization", tokenClienteA))
+                .andExpect(status().isForbidden());
+        mockMvc.perform(
                         get("/api/client/quotes/{id}/document", orcamentoA.getId())
                                 .header("Authorization", tokenClienteA))
                 .andExpect(status().isForbidden());
@@ -176,6 +451,14 @@ class FluxoClienteTests {
                 CredenciaisInvalidasException.class,
                 () -> loginCliente.execute(new LoginRequest("cliente-a@example.test", " senha ")));
         mockMvc.perform(get("/api/client/quotes").header("Authorization", tokenClienteA))
+                .andExpect(status().isUnauthorized());
+        mockMvc.perform(
+                        get("/api/client/quotes/{id}", orcamentoA.getId())
+                                .header("Authorization", tokenClienteA))
+                .andExpect(status().isUnauthorized());
+        mockMvc.perform(
+                        get("/api/client/quotes/{id}/document", orcamentoA.getId())
+                                .header("Authorization", tokenClienteA))
                 .andExpect(status().isUnauthorized());
     }
 
@@ -405,4 +688,26 @@ class FluxoClienteTests {
         documentos.saveAndFlush(documento);
         return orcamento;
     }
+
+    private ExecucaoEnsaio criarExecucao(Orcamento orcamento, StatusEnsaio status) {
+        var amostra = new Amostra();
+        amostra.setCodigo("A-" + UUID.randomUUID());
+        amostra.setDescricao("Amostra do acompanhamento");
+        amostra.setOrcamento(orcamento);
+        amostras.saveAndFlush(amostra);
+        var execucao = new ExecucaoEnsaio();
+        execucao.setOrcamento(orcamento);
+        execucao.setAmostra(amostra);
+        execucao.setResponsavel(tecnico);
+        execucao.setTipo("Análise");
+        execucao.setMetodo("Método");
+        execucao.setNorma("Norma");
+        execucao.setDataAgendada(LocalDate.of(2026, 11, 1));
+        execucao.setStatus(status);
+        return ensaios.saveAndFlush(execucao);
+    }
+
+    private record StatusEsperado(StatusComercialOrcamento status, String stage) {}
+
+    private record EtapaEsperada(String persistida, String exibida) {}
 }

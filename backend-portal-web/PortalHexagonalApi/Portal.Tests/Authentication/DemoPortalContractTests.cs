@@ -36,9 +36,16 @@ public sealed class DemoPortalContractTests
         using var pdf = await client.GetAsync($"/api/quotes/{ownQuote}/document");
         Assert.Equal(HttpStatusCode.OK, pdf.StatusCode);
         Assert.Equal("application/pdf", pdf.Content.Headers.ContentType!.MediaType);
-        string document = Encoding.Latin1.GetString(await pdf.Content.ReadAsByteArrayAsync());
+        byte[] documentBytes = await pdf.Content.ReadAsByteArrayAsync();
+        if (ownQuote == "quote-3")
+        {
+            byte[] persistedDocument = await File.ReadAllBytesAsync(
+                Path.Combine(AppContext.BaseDirectory, "Documents", "quote-3.pdf"));
+            Assert.Equal(persistedDocument, documentBytes);
+        }
+        string document = Encoding.Latin1.GetString(documentBytes);
         Assert.StartsWith("%PDF-", document);
-        Assert.Contains(company, document);
+        if (ownQuote != "quote-3") Assert.Contains(company, document);
 
         JsonArray equipment = (await client.GetFromJsonAsync<JsonArray>("/api/equipments"))!;
         Assert.Equal(equipmentCount, equipment.Count);

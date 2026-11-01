@@ -263,6 +263,24 @@ describe('QuoteListComponent, reconhecimento da etapa', () => {
   });
 });
 
+describe('QuoteListComponent, pesquisa por descrição', () => {
+  it('encontra uma proposta pelo texto da descrição sem diferenciar maiúsculas', () => {
+    const propostaComDescricao = {
+      ...orcamentoComEtapa(1, 'Negociação'),
+      description: 'Análise de óleo isolante por cromatografia',
+    };
+    const outraProposta = {
+      ...orcamentoComEtapa(2, 'Negociação'),
+      description: 'Ensaio de tração em compósito',
+    };
+    const { componente } = montarListagem([propostaComDescricao, outraProposta]);
+
+    componente.onSearchInput('CROMATOGRAFIA');
+
+    expect(componente.visibleQuotes().map((quote) => quote.id)).toEqual(['quote-1']);
+  });
+});
+
 describe('QuoteListComponent, o botão de ir ao orçamento', () => {
   // O botão existe para levar o cliente até onde a ação mora. Testar que ele
   // aparece não prova que ele chega lá: o modal devolve uma palavra e a
