@@ -93,6 +93,14 @@ export const routes: Routes = [
     data: { role: 'TECNICO' },
     children: [
       {
+        path: 'orcamentos',
+        loadComponent: () =>
+          import('@/app/pages/tecnico/orcamentos/orcamentos.component').then(
+            (module) => module.OrcamentosTecnicosComponent,
+          ),
+        title: 'Pesquisar Orçamentos - Portal Interno Lactec',
+      },
+      {
         path: '',
         pathMatch: 'full',
         loadComponent: () =>

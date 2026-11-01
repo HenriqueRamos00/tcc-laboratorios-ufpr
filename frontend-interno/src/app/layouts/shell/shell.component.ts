@@ -44,7 +44,7 @@ const ADMIN_NAV: readonly NavItem[] = [
 
 const TECHNICIAN_NAV: readonly NavItem[] = [
   { label: 'Dashboard', path: '/tecnico', icon: 'dashboard', exact: true },
-  { label: 'Pesquisar Ensaios e Amostras', path: '/tecnico/ensaios-amostras', icon: 'search', exact: false },
+  { label: 'Orçamentos', path: '/tecnico/orcamentos', icon: 'description', exact: false },
   { label: 'Manter Ensaio', path: '/tecnico/ensaios', icon: 'science', exact: false },
   { label: 'Resultados', path: '/tecnico/resultados', icon: 'fact_check', exact: false },
   { label: 'Pesquisar Relatório', path: '/tecnico/relatorios', icon: 'description', exact: false },

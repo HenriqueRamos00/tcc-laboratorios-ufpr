@@ -21,6 +21,7 @@ import br.ufpr.tcc.backend_lab.domain.model.entity.Orcamento;
 import br.ufpr.tcc.backend_lab.domain.model.entity.Usuario;
 import br.ufpr.tcc.backend_lab.domain.model.entity.TipoEquipamento;
 import br.ufpr.tcc.backend_lab.domain.model.enums.StatusComercialOrcamento;
+import br.ufpr.tcc.backend_lab.domain.model.enums.StatusEnsaio;
 import br.ufpr.tcc.backend_lab.domain.repository.AmostraRepository;
 import br.ufpr.tcc.backend_lab.domain.repository.EmpresaRepository;
 import br.ufpr.tcc.backend_lab.domain.repository.EquipamentoRepository;
@@ -171,6 +172,43 @@ class EnsaioControllerTests {
                 .andExpect(jsonPath("$.measurements.length()").value(5))
                 .andExpect(jsonPath("$.measurements[*].code").value(
                         contains("zero", "nd", "np", "texto", "gas")));
+    }
+
+    @Test
+    void consultaTecnicaRefleteEnsaioCriadoEPreservaPublicacaoAoEditar() throws Exception {
+        String token = bearer(tecnico);
+        Long quoteId = amostra.getOrcamento().getId();
+        var criado = mockMvc.perform(post(PATH).header("Authorization", token)
+                        .contentType(MediaType.APPLICATION_JSON).content(corpo("", MEDICOES)))
+                .andExpect(status().isCreated()).andReturn();
+        String id = json(criado.getResponse().getContentAsString(), "id");
+
+        mockMvc.perform(get("/api/technician/quotes").param("search", "TEST-HU25-001")
+                        .param("status", "incomplete").header("Authorization", token))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.totalItems").value(1))
+                .andExpect(jsonPath("$.items[0].technicalStatus").value("incomplete"));
+
+        ExecucaoEnsaio ensaio = ensaios.findById(Long.valueOf(id)).orElseThrow();
+        OffsetDateTime publicadoEm = OffsetDateTime.parse("2026-10-31T12:00:00Z");
+        ensaio.setStatus(StatusEnsaio.REPORT_PUBLISHED);
+        ensaio.setReportReference("LAUDO-INTEGRACAO-001");
+        ensaio.setPublishedAt(publicadoEm);
+        ensaio = ensaios.saveAndFlush(ensaio);
+        String versao = "\"version\":" + ensaio.getVersion() + ",";
+        mockMvc.perform(put(PATH + "/" + id).header("Authorization", token)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(corpo(versao, MEDICOES.replace("0,01%", "0,02%"))))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.status").value("report-published"));
+
+        mockMvc.perform(get("/api/technician/quotes/" + quoteId).header("Authorization", token))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.technicalStatus").value("report-published"));
+        ExecucaoEnsaio atualizado = ensaios.findById(Long.valueOf(id)).orElseThrow();
+        assertEquals("LAUDO-INTEGRACAO-001", atualizado.getReportReference());
+        assertEquals(publicadoEm.toInstant(), atualizado.getPublishedAt().toInstant());
+        assertEquals(1, ensaios.count());
     }
 
     @Test

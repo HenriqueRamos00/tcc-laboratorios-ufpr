@@ -43,10 +43,10 @@ class DemoSeedRunnerTests {
         assertEquals(44, contar("itens_orcamento"));
         assertEquals(10, contar("cliente_empresas"));
         assertEquals(1, contar("documentos_orcamentos"));
-        assertEquals(2, contar("demo_seed_runs"));
-        assertEquals(3, contar("amostras"));
+        assertEquals(3, contar("demo_seed_runs"));
+        assertEquals(13, contar("amostras"));
         assertEquals(2, contar("instrumentos_laboratoriais"));
-        assertEquals(3, contar("execucoes_ensaios"));
+        assertEquals(17, contar("execucoes_ensaios"));
         assertEquals(18, contar("medicoes_ensaios"));
         assertEquals(4, jdbc.queryForObject("SELECT COUNT(DISTINCT tipo_resultado) FROM medicoes_ensaios", Integer.class));
         assertEquals(1, jdbc.queryForObject("SELECT COUNT(*) FROM equipamentos WHERE tag='DEMO-TR-HU25-01' AND numero_serie='111.594/1'", Integer.class));
@@ -167,6 +167,8 @@ class DemoSeedRunnerTests {
                 clienteId,
                 empresaId);
         jdbc.update("DELETE FROM itens_orcamento WHERE orcamento_id = ?", quoteId);
+        jdbc.update("DELETE FROM execucoes_ensaios WHERE orcamento_id = ?", quoteId);
+        jdbc.update("DELETE FROM amostras WHERE orcamento_id = ?", quoteId);
         jdbc.update("DELETE FROM orcamentos WHERE id = ?", quoteId);
 
         runner.run(new DefaultApplicationArguments(new String[0]));
@@ -206,7 +208,7 @@ class DemoSeedRunnerTests {
         assertEquals(25, contar("orcamentos"));
         assertEquals(42, contar("itens_orcamento"));
         assertEquals(9, contar("cliente_empresas"));
-        assertEquals(1, contar("demo_seed_runs"));
+        assertEquals(2, contar("demo_seed_runs"));
         assertEquals(
                 0,
                 jdbc.queryForObject(
@@ -216,12 +218,28 @@ class DemoSeedRunnerTests {
                         empresaId));
 
         jdbc.execute("ALTER TABLE demo_seed_runs DROP CONSTRAINT ck_demo_seed_runs_fail");
+        jdbc.update(
+                "UPDATE execucoes_ensaios SET report_reference = ? "
+                        + "WHERE orcamento_id = (SELECT id FROM orcamentos WHERE code = ?)",
+                "LAUDO-DEMO-MANTIDO",
+                "DEMO-SEED-2026-005");
+        jdbc.update(
+                "DELETE FROM demo_seed_runs WHERE seed_key = 'development-technical-executions-v1'");
         runner.run(new DefaultApplicationArguments(new String[0]));
 
         assertEquals(26, contar("orcamentos"));
         assertEquals(44, contar("itens_orcamento"));
         assertEquals(9, contar("cliente_empresas"));
-        assertEquals(2, contar("demo_seed_runs"));
+        assertEquals(3, contar("demo_seed_runs"));
+        assertEquals(17, contar("execucoes_ensaios"));
+        assertEquals(
+                "LAUDO-DEMO-MANTIDO",
+                jdbc.queryForObject(
+                        "SELECT report_reference FROM execucoes_ensaios "
+                                + "WHERE orcamento_id = (SELECT id FROM orcamentos WHERE code = ?) "
+                                + "AND status = 'report-published'",
+                        String.class,
+                        "DEMO-SEED-2026-005"));
         assertEquals(
                 0,
                 jdbc.queryForObject(
