@@ -42,6 +42,15 @@ export interface QuoteReference {
   companyName: string;
 }
 
+export interface NewSampleRequest {
+  quoteId: string;
+  code: string;
+  description: string;
+  analyzedEquipmentId: string | null;
+}
+
+export type MeasurementResultKind = MeasurementResult['kind'];
+
 export interface AnalyzedEquipmentReference {
   id: string;
   tag: string;
@@ -96,7 +105,8 @@ export interface TestDetail extends TestSummary {
 }
 
 export interface TestRequest {
-  sampleId: string;
+  sampleId: string | null;
+  newSample: NewSampleRequest | null;
   type: string;
   analysisType: AnalysisType;
   method: string;

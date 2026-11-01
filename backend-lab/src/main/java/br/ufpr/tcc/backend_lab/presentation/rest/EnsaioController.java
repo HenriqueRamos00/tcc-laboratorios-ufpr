@@ -6,7 +6,9 @@ import br.ufpr.tcc.backend_lab.application.usecase.AtualizarEnsaioUseCase;
 import br.ufpr.tcc.backend_lab.application.usecase.CriarEnsaioUseCase;
 import br.ufpr.tcc.backend_lab.application.usecase.ListarAmostrasEnsaioUseCase;
 import br.ufpr.tcc.backend_lab.application.usecase.ListarEnsaiosUseCase;
+import br.ufpr.tcc.backend_lab.application.usecase.ListarEquipamentosAnalisadosEnsaioUseCase;
 import br.ufpr.tcc.backend_lab.application.usecase.ListarInstrumentosEnsaioUseCase;
+import br.ufpr.tcc.backend_lab.application.usecase.ListarOrcamentosReferenciaEnsaioUseCase;
 import br.ufpr.tcc.backend_lab.application.usecase.ListarTecnicosEnsaioUseCase;
 import br.ufpr.tcc.backend_lab.application.usecase.ObterEnsaioUseCase;
 import br.ufpr.tcc.backend_lab.application.usecase.TemplateMedicaoUseCase;
@@ -30,6 +32,8 @@ public class EnsaioController {
     private final CriarEnsaioUseCase criarEnsaio;
     private final AtualizarEnsaioUseCase atualizarEnsaio;
     private final ListarAmostrasEnsaioUseCase listarAmostras;
+    private final ListarOrcamentosReferenciaEnsaioUseCase listarOrcamentos;
+    private final ListarEquipamentosAnalisadosEnsaioUseCase listarEquipamentosAnalisados;
     private final ListarTecnicosEnsaioUseCase listarTecnicos;
     private final ListarInstrumentosEnsaioUseCase listarInstrumentos;
     private final TemplateMedicaoUseCase templates;
@@ -37,12 +41,16 @@ public class EnsaioController {
     public EnsaioController(ListarEnsaiosUseCase listarEnsaios, ObterEnsaioUseCase obterEnsaio,
             CriarEnsaioUseCase criarEnsaio, AtualizarEnsaioUseCase atualizarEnsaio,
             ListarAmostrasEnsaioUseCase listarAmostras, ListarTecnicosEnsaioUseCase listarTecnicos,
-            ListarInstrumentosEnsaioUseCase listarInstrumentos, TemplateMedicaoUseCase templates) {
+            ListarInstrumentosEnsaioUseCase listarInstrumentos, TemplateMedicaoUseCase templates,
+            ListarOrcamentosReferenciaEnsaioUseCase listarOrcamentos,
+            ListarEquipamentosAnalisadosEnsaioUseCase listarEquipamentosAnalisados) {
         this.listarEnsaios = listarEnsaios;
         this.obterEnsaio = obterEnsaio;
         this.criarEnsaio = criarEnsaio;
         this.atualizarEnsaio = atualizarEnsaio;
         this.listarAmostras = listarAmostras;
+        this.listarOrcamentos = listarOrcamentos;
+        this.listarEquipamentosAnalisados = listarEquipamentosAnalisados;
         this.listarTecnicos = listarTecnicos;
         this.listarInstrumentos = listarInstrumentos;
         this.templates = templates;
@@ -69,9 +77,24 @@ public class EnsaioController {
     }
 
     @GetMapping("/references/samples")
-    public EnsaioDtos.Pagina<EnsaioDtos.AmostraRef> amostras(@RequestParam(required=false) String search,
+    public EnsaioDtos.Pagina<EnsaioDtos.AmostraRef> amostras(@RequestParam(required=false) String quoteId,
+            @RequestParam(required=false) String search,
             @RequestParam(defaultValue="1") int page, @RequestParam(defaultValue="20") int pageSize) {
-        return listarAmostras.executar(search, page, pageSize);
+        return listarAmostras.executar(quoteId, search, page, pageSize);
+    }
+
+    @GetMapping("/references/quotes")
+    public EnsaioDtos.Pagina<EnsaioDtos.OrcamentoRef> orcamentos(
+            @RequestParam(required=false) String search,
+            @RequestParam(defaultValue="1") int page, @RequestParam(defaultValue="20") int pageSize) {
+        return listarOrcamentos.executar(search, page, pageSize);
+    }
+
+    @GetMapping("/references/analyzed-equipment")
+    public EnsaioDtos.Pagina<EnsaioDtos.EquipamentoAnalisado> equipamentosAnalisados(
+            @RequestParam String quoteId, @RequestParam(required=false) String search,
+            @RequestParam(defaultValue="1") int page, @RequestParam(defaultValue="20") int pageSize) {
+        return listarEquipamentosAnalisados.executar(quoteId, search, page, pageSize);
     }
 
     @GetMapping("/references/technicians")

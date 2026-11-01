@@ -4,6 +4,7 @@ import br.ufpr.tcc.backend_lab.domain.exception.CredenciaisInvalidasException;
 import br.ufpr.tcc.backend_lab.domain.exception.DadosEnsaioInvalidosException;
 import br.ufpr.tcc.backend_lab.domain.exception.EnsaioNaoEncontradoException;
 import br.ufpr.tcc.backend_lab.domain.exception.ConflitoEdicaoEnsaioException;
+import br.ufpr.tcc.backend_lab.domain.exception.ConflitoIdentificacaoAmostraException;
 import br.ufpr.tcc.backend_lab.domain.exception.DocumentoOrcamentoMuitoGrandeException;
 import br.ufpr.tcc.backend_lab.domain.exception.EmailJaCadastradoException;
 import br.ufpr.tcc.backend_lab.domain.exception.RegraNegocioException;
@@ -34,7 +35,8 @@ public class GlobalExceptionHandler {
 
     @ExceptionHandler({ObjectOptimisticLockingFailureException.class, OptimisticLockException.class})
     public ResponseEntity<ApiErrorResponse> handleEdicaoConcorrente(RuntimeException exception) {
-        return ResponseEntity.status(HttpStatus.CONFLICT).body(new ApiErrorResponse("O ensaio foi alterado por outra sessão"));
+        return ResponseEntity.status(HttpStatus.CONFLICT)
+                .body(new ApiErrorResponse("O ensaio foi alterado por outra sessão", "test-version-conflict"));
     }
 
     @ExceptionHandler(DataAccessException.class)
@@ -55,7 +57,14 @@ public class GlobalExceptionHandler {
 
     @ExceptionHandler(ConflitoEdicaoEnsaioException.class)
     public ResponseEntity<ApiErrorResponse> handleConflitoEnsaio(ConflitoEdicaoEnsaioException exception) {
-        return ResponseEntity.status(HttpStatus.CONFLICT).body(new ApiErrorResponse(exception.getMessage()));
+        return ResponseEntity.status(HttpStatus.CONFLICT)
+                .body(new ApiErrorResponse(exception.getMessage(), "test-version-conflict"));
+    }
+
+    @ExceptionHandler(ConflitoIdentificacaoAmostraException.class)
+    public ResponseEntity<ApiErrorResponse> handleConflitoAmostra(ConflitoIdentificacaoAmostraException exception) {
+        return ResponseEntity.status(HttpStatus.CONFLICT)
+                .body(new ApiErrorResponse(exception.getMessage(), "sample-code-conflict"));
     }
 
     @ExceptionHandler(RegraNegocioException.class)
@@ -93,6 +102,10 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(DataIntegrityViolationException.class)
     public ResponseEntity<ApiErrorResponse> handleViolacaoIntegridade(
             DataIntegrityViolationException exception) {
+        if (ViolacaoUnicidade.codigoAmostra(exception)) {
+            return ResponseEntity.status(HttpStatus.CONFLICT)
+                    .body(new ApiErrorResponse("O código da amostra já está cadastrado", "sample-code-conflict"));
+        }
         if (ViolacaoUnicidade.email(exception)) {
             return ResponseEntity.status(HttpStatus.CONFLICT)
                     .body(new ApiErrorResponse("E-mail já cadastrado"));

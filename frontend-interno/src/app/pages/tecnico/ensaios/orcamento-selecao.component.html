@@ -1,0 +1,36 @@
+<app-dialog-shell title="Selecionar orçamento" subtitle="Pesquise pelo código, nome ou empresa." [lateral]="true">
+  <label for="quote-search" class="text-sm font-medium">Pesquisar orçamento</label>
+  <div class="input-field">
+    <mat-icon class="input-field__icon" aria-hidden="true">search</mat-icon>
+    <input id="quote-search" type="search" [formControl]="search" class="input-field__input" placeholder="Código, nome ou empresa" autocomplete="off" />
+    <span class="flex h-5 w-5 shrink-0 items-center justify-center" aria-hidden="true">@if (loading()) { <mat-spinner diameter="18" /> }</span>
+  </div>
+  <div class="min-h-6 text-sm text-lactec-muted" role="status" aria-live="polite">
+    @if (loading()) { Buscando orçamentos… }
+    @else if (error()) { Não foi possível consultar os orçamentos. }
+    @else { {{ total() }} orçamento(s) encontrado(s) }
+  </div>
+  @if (error()) { <button mat-stroked-button type="button" (click)="retry()">Tentar novamente</button> }
+  @else if (!loading() && !items().length) { <p class="text-sm text-lactec-muted">Nenhum orçamento corresponde à busca.</p> }
+  @else {
+    <ul class="m-0 list-none divide-y divide-lactec-line p-0" aria-label="Orçamentos disponíveis" [attr.aria-busy]="loading()">
+      @for (quote of items(); track quote.id) {
+        <li>
+          <button type="button" class="flex w-full items-center gap-3 rounded-lg px-3 py-4 text-left hover:bg-lactec-line-soft focus-visible:outline focus-visible:outline-2 focus-visible:outline-lactec-primary disabled:opacity-50"
+            [disabled]="loading()" (click)="select(quote)">
+            <span class="min-w-0 flex-1 break-words"><strong class="block font-mono text-sm">{{ quote.code }}</strong><span class="block text-sm text-lactec-muted">{{ quote.companyName }}</span></span>
+            @if (quote.id === current?.id) { <mat-icon aria-label="Orçamento atual">check</mat-icon> }
+            @else { <mat-icon aria-hidden="true">chevron_right</mat-icon> }
+          </button>
+        </li>
+      }
+    </ul>
+  }
+  <div dialog-footer class="flex w-full flex-wrap items-center justify-between gap-2">
+    <span class="text-xs text-lactec-muted">Página {{ page() }} de {{ pages }}</span>
+    <div class="flex gap-1">
+      <button mat-button type="button" [disabled]="loading() || error() || page() <= 1" (click)="setPage(page() - 1)">Anterior</button>
+      <button mat-button type="button" [disabled]="loading() || error() || page() >= pages" (click)="setPage(page() + 1)">Próxima</button>
+    </div>
+  </div>
+</app-dialog-shell>

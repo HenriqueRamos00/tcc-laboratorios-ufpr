@@ -1,14 +1,12 @@
-import {
-  ComponentFixture,
-  TestBed,
-  fakeAsync,
-  tick,
-} from '@angular/core/testing';
+import { By } from '@angular/platform-browser';
+import { MatSelect, MatSelectChange } from '@angular/material/select';
+import { HttpErrorResponse } from '@angular/common/http';
+import { ComponentFixture, fakeAsync, TestBed, tick } from '@angular/core/testing';
 import { provideRouter, Router } from '@angular/router';
 import { of, Subject, throwError } from 'rxjs';
-import { HttpErrorResponse } from '@angular/common/http';
 import {
   MeasurementTemplate,
+  QuoteReference,
   SampleReference,
   TestDetail,
 } from '@/app/model/ensaio';
@@ -16,37 +14,28 @@ import { AppDialogService } from '@/app/services/app-dialog.service';
 import { EnsaiosService } from '@/app/services/ensaios.service';
 import { EnsaioFormComponent } from './ensaio-form.component';
 
+const quote: QuoteReference = {
+  id: '8',
+  code: 'HU25-001',
+  companyId: '4',
+  companyName: 'Empresa de demonstração',
+};
 const sample: SampleReference = {
   id: '31',
   code: 'A-HU25-0001/2026',
   description: 'Óleo do transformador TR-01',
-  quote: {
-    id: '8',
-    code: 'DEMO-HU25-001',
-    companyId: '4',
-    companyName: 'Empresa de demonstração',
-  },
+  quote,
   analyzedEquipment: null,
 };
 const saved: TestDetail = {
   id: '42',
   code: 'E-42/2026',
   sample: { id: sample.id, code: sample.code, description: sample.description },
-  quote: {
-    id: '8',
-    code: 'DEMO-HU25-001',
-    companyId: '4',
-    companyName: 'Empresa de demonstração',
-  },
+  quote,
   type: 'Físico-químico',
   analysisType: 'physical-chemical',
   scheduledDate: '2026-10-26',
-  responsible: {
-    id: '7',
-    name: 'Técnica responsável',
-    unit: 'Laboratório',
-    active: true,
-  },
+  responsible: { id: '7', name: 'Técnica responsável', unit: 'Laboratório', active: true },
   status: 'incomplete',
   version: 0,
   method: 'Método de ensaio',
@@ -68,114 +57,94 @@ describe('Formulário de ensaio', () => {
 
   beforeEach(async () => {
     service = jasmine.createSpyObj<EnsaiosService>('EnsaiosService', [
-      'samples',
-      'technicians',
-      'instruments',
-      'get',
-      'template',
-      'create',
-      'update',
+      'quotes', 'samples', 'analyzedEquipment', 'technicians', 'instruments',
+      'get', 'template', 'create', 'update',
     ]);
-    service.samples.and.returnValue(
-      of({ items: [sample], page: 1, pageSize: 20, totalItems: 1 }),
-    );
-    service.technicians.and.returnValue(
-      of([
-        {
-          id: '7',
-          name: 'Técnica responsável',
-          unit: 'Laboratório',
-          active: true,
-        },
-      ]),
-    );
+    service.quotes.and.returnValue(of({ items: [quote], page: 1, pageSize: 20, totalItems: 1 }));
+    service.samples.and.returnValue(of({ items: [sample], page: 1, pageSize: 20, totalItems: 1 }));
+    service.analyzedEquipment.and.returnValue(of({ items: [], page: 1, pageSize: 20, totalItems: 0 }));
+    service.technicians.and.returnValue(of([
+      { id: '7', name: 'Técnica responsável', unit: 'Laboratório', active: true },
+    ]));
     service.instruments.and.returnValue(of([]));
     service.get.and.returnValue(of(saved));
-    const physicalMeasurements = [
-      [
-        'neutralizacao',
-        'Índice de neutralização',
-        'mg KOH/g óleo',
-        'NBR 14248',
-      ],
-      ['agua', 'Teor de água', 'ppm m/m', 'NBR 10710'],
-      ['densidade', 'Densidade a 20/4 °C', 'g/mL', 'NBR 14065'],
-      ['fator-potencia', 'Fator de potência a 100 °C', '%', 'NBR 12133'],
-      ['rigidez', 'Rigidez dielétrica - Colota', 'kV', 'NBR/IEC 60156'],
-      ['tensao-interfacial', 'Tensão interfacial', 'dina/cm', 'NBR 6234'],
-    ].map(([code, name, unit, method]) => ({
-      code,
-      name,
-      unit,
-      method,
-      referenceLimit: null,
-    }));
-    const chromatographyMeasurements = [
-      ['h2', 'Hidrogênio'],
-      ['o2', 'Oxigênio'],
-      ['n2', 'Nitrogênio'],
-      ['ch4', 'Metano'],
-      ['co', 'Monóxido de carbono'],
-      ['co2', 'Dióxido de carbono'],
-      ['c2h4', 'Etileno'],
-      ['c2h6', 'Etano'],
-      ['c2h2', 'Acetileno'],
-      ['combustiveis', 'Total de gases combustíveis'],
-      ['gases', 'Total de gases'],
-    ].map(([code, name]) => ({
-      code,
-      name,
-      unit: 'ppm',
-      method: null,
-      referenceLimit: null,
-    }));
-    service.template.and.callFake((type) =>
-      of({
-        analysisType: type,
-        measurements:
-          type === 'chromatography'
-            ? chromatographyMeasurements
-            : physicalMeasurements,
-      }),
-    );
+    const measurements: MeasurementTemplate[] = [
+      { code: 'agua', name: 'Teor de água', unit: 'ppm', method: 'NBR 10710', referenceLimit: null },
+      { code: 'densidade', name: 'Densidade', unit: 'g/mL', method: null, referenceLimit: null },
+    ];
+    service.template.and.returnValue(of({ analysisType: 'physical-chemical', measurements }));
     service.create.and.returnValue(of(saved));
+    service.update.and.returnValue(of(saved));
+
     await TestBed.configureTestingModule({
       imports: [EnsaioFormComponent],
       providers: [
         provideRouter([]),
         { provide: EnsaiosService, useValue: service },
-        {
-          provide: AppDialogService,
-          useValue: jasmine.createSpyObj('AppDialogService', ['open']),
-        },
+        { provide: AppDialogService, useValue: jasmine.createSpyObj('AppDialogService', ['open', 'openLateral']) },
       ],
     }).compileComponents();
     router = TestBed.inject(Router) as jasmine.SpyObj<Router>;
-    dialog = TestBed.inject(
-      AppDialogService,
-    ) as jasmine.SpyObj<AppDialogService>;
+    dialog = TestBed.inject(AppDialogService) as jasmine.SpyObj<AppDialogService>;
     dialog.open.and.returnValue({ afterClosed: () => of(false) } as never);
     spyOn(router, 'navigate').and.resolveTo(true);
     fixture = TestBed.createComponent(EnsaioFormComponent);
     component = fixture.componentInstance;
     fixture.detectChanges();
+    await fixture.whenStable();
+    fixture.detectChanges();
   });
 
-  it('preserva o texto técnico e envia referências por ID ao criar', fakeAsync(() => {
-    component.sampleSearch.setValue('amostra');
-    tick(300);
-    const resultInput = (
-      fixture.nativeElement as HTMLElement
-    ).querySelector<HTMLInputElement>('input[formControlName="resultInput"]');
-    expect(resultInput).not.toBeNull();
-    resultInput!.value = '0,01%';
-    resultInput!.dispatchEvent(new Event('input'));
+  it('abre a pesquisa de orçamento no painel e mantém o contexto ao cancelar', () => {
+    prepareExistingSample();
+    dialog.openLateral.and.returnValue({ afterClosed: () => of(undefined) } as never);
+    component.openQuoteChooser();
+    expect(dialog.openLateral).toHaveBeenCalled();
+    expect(component.selectedQuote()).toEqual(quote);
+    expect(component.selectedSample?.id).toBe(sample.id);
+    expect(service.quotes).not.toHaveBeenCalled();
+  });
+
+  it('confirma a troca de orçamento antes de descartar a identificação nova', () => {
+    prepareNewSample();
+    const otherQuote = { ...quote, id: '99' };
+    dialog.openLateral.and.returnValue({ afterClosed: () => of(otherQuote) } as never);
+    component.openQuoteChooser();
+    expect(component.selectedQuote()).toEqual(quote);
+    expect(component.form.controls.newSampleCode.value).toBe('A-HU25-NOVA/2026');
+    dialog.open.and.returnValue({ afterClosed: () => of(true) } as never);
+    component.openQuoteChooser();
+    expect(component.selectedQuote()).toEqual(otherQuote);
+    expect(component.form.controls.newSampleCode.value).toBe('');
+    expect(component.form.controls.sampleId.value).toBeNull();
+  });
+
+  it('mostra Novo ensaio sem expor código ou placeholder na criação', () => {
+    const heading = fixture.nativeElement.querySelector('header h1') as HTMLElement;
+
+    expect(heading.textContent).toContain('Novo ensaio');
+    expect(heading.textContent).not.toContain(saved.code);
+    expect(fixture.nativeElement.textContent).not.toContain('Gerado após salvar');
+    expect(fixture.nativeElement.textContent).not.toContain('Código do ensaio');
+  });
+
+  it('mostra o código em badge junto ao título na edição', () => {
+    component.editId.set(saved.id);
+    component.detail.set(saved);
     fixture.detectChanges();
-    expect(component.measurements.at(0).get('resultInput')?.value).toBe(
-      '0,01%',
-    );
-    component.samples.set([sample]);
-    component.sampleTotal.set(1);
+    const heading = fixture.nativeElement.querySelector('header h1') as HTMLElement;
+
+    expect(heading.textContent).toContain('Editar ensaio');
+    expect(heading.textContent).toContain('Código do ensaio:');
+    expect(heading.textContent).toContain(saved.code);
+    expect(heading.querySelector('.font-mono')?.textContent).toContain(saved.code);
+  });
+
+  function prepareExistingSample(): void {
+    component.selectedQuote.set(quote);
+    component.identificationMode.set('existing');
+    component.currentSample.set(sample);
+    component.sampleChooserOpen.set(false);
     component.form.patchValue({
       sampleId: sample.id,
       type: 'Físico-químico',
@@ -184,152 +153,184 @@ describe('Formulário de ensaio', () => {
       standard: 'Norma técnica',
       scheduledDate: '2026-10-26',
       responsibleId: '7',
-      reportText: 'Observação técnica\n  segunda linha  ',
+      reportText: '',
     });
-    expect(component.hasReferences).toBeTrue();
-    expect(component.form.valid).toBeTrue();
+  }
+
+  function prepareNewSample(): void {
+    component.selectedQuote.set(quote);
+    component.identificationMode.set('new');
+    component.sampleChooserOpen.set(false);
+    component.form.patchValue({
+      sampleId: null,
+      newSampleCode: 'A-HU25-NOVA/2026',
+      newSampleDescription: 'Óleo do transformador TR-02',
+      analyzedEquipmentId: null,
+      type: 'Cromatografia',
+      analysisType: 'physical-chemical',
+      method: 'Método de ensaio',
+      standard: 'Norma técnica',
+      scheduledDate: '2026-10-26',
+      responsibleId: '7',
+      reportText: '',
+    });
+    component.confirmedNewSampleCode.set('A-HU25-NOVA/2026');
+  }
+
+  it('envia a amostra existente escolhida e preserva ND como texto', () => {
+    prepareExistingSample();
+    const row = component.measurements.at(0);
+    row.get('resultKind')?.setValue('text');
+    row.get('resultInput')?.setValue('ND');
     component.save();
 
     expect(service.create).toHaveBeenCalled();
     const request = service.create.calls.mostRecent().args[0];
-    expect(request).toEqual(
-      jasmine.objectContaining({
-        sampleId: '31',
-        responsibleId: '7',
-        reportText: 'Observação técnica\n  segunda linha  ',
-      }),
-    );
-    expect(request.measurements).toHaveSize(6);
-    expect(request.measurements).toContain(
-      jasmine.objectContaining({
-        code: 'neutralizacao',
-        result: { kind: 'text', text: '0,01%' },
-      }),
-    );
-  }));
-
-  it('renderiza as seis linhas físico-químicas e as onze cromatográficas no formulário', () => {
-    expect(component.rows.length).toBe(6);
-    expect(
-      (fixture.nativeElement as HTMLElement).querySelectorAll('tbody tr')
-        .length,
-    ).toBe(6);
-
-    component.changeAnalysisType('chromatography');
-    fixture.detectChanges();
-
-    expect(component.rows.length).toBe(11);
-    expect(
-      (fixture.nativeElement as HTMLElement).querySelectorAll('tbody tr')
-        .length,
-    ).toBe(11);
+    expect(request.sampleId).toBe(sample.id);
+    expect(request.newSample).toBeNull();
+    expect(request.measurements[0].result).toEqual({ kind: 'text', text: 'ND' });
+    expect(request.measurements[1].result).toEqual({ kind: 'not-performed' });
   });
 
-  it('preserva linhas editadas quando a troca de modelo é cancelada', () => {
+  it('permite o primeiro ensaio sem amostras ou instrumentos cadastrados', () => {
+    prepareNewSample();
+    component.samples.set([]);
+    component.sampleTotal.set(0);
+    component.instruments.set([]);
+    component.save();
+
+    expect(service.create).toHaveBeenCalled();
+    expect(service.create.calls.mostRecent().args[0]).toEqual(jasmine.objectContaining({
+      sampleId: null,
+      newSample: {
+        quoteId: quote.id,
+        code: 'A-HU25-NOVA/2026',
+        description: 'Óleo do transformador TR-02',
+        analyzedEquipmentId: null,
+      },
+      equipmentIds: [],
+    }));
+  });
+
+  it('exige confirmação explícita antes de enviar uma identificação nova', () => {
+    prepareNewSample();
+    component.confirmedNewSampleCode.set(null);
+    component.save();
+
+    expect(service.create).not.toHaveBeenCalled();
+    expect(component.saveError()).toContain('confirme a identificação');
+  });
+
+  it('bloqueia os campos durante o envio e libera após a confirmação do servidor', () => {
+    prepareExistingSample();
+    const response = new Subject<TestDetail>();
+    service.create.and.returnValue(response);
+    component.save();
+    fixture.detectChanges();
+
+    expect(component.saving()).toBeTrue();
+    expect(component.form.disabled).toBeTrue();
+    expect(component.canDeactivate()).toBeFalse();
+    expect((fixture.nativeElement as HTMLElement).textContent).toContain('Salvando');
+
+    response.next(saved);
+    response.complete();
+    fixture.detectChanges();
+    expect(component.saving()).toBeFalse();
+    expect(component.form.enabled).toBeTrue();
+    expect(component.saveSuccess()).toBeTrue();
+    expect(component.canDeactivate()).toBeTrue();
+    expect(router.navigate).toHaveBeenCalledWith(
+      ['/tecnico/ensaios', saved.id, 'editar'],
+      jasmine.objectContaining({
+        replaceUrl: true,
+        state: { testSavedConfirmation: true },
+      }),
+    );
+  });
+
+  it('mantém a confirmação de criação após abrir a edição do ensaio salvo', () => {
+    spyOn(router, 'getCurrentNavigation').and.returnValue({
+      extras: { state: { testSavedConfirmation: true } },
+    } as never);
+
+    const redirectedFixture = TestBed.createComponent(EnsaioFormComponent);
+
+    expect(redirectedFixture.componentInstance.saveSuccess()).toBeTrue();
+    redirectedFixture.destroy();
+  });
+
+  it('distingue conflito de código de amostra e mantém o preenchimento', () => {
+    prepareNewSample();
+    service.create.and.returnValue(throwError(() => new HttpErrorResponse({
+      status: 409,
+      error: { code: 'sample-code-conflict', message: 'Conflito' },
+    })));
+    component.save();
+
+    expect(component.conflictType()).toBe('sample');
+    expect(component.saveError()).toContain('código de amostra');
+    expect(component.form.controls.newSampleCode.value).toBe('A-HU25-NOVA/2026');
+    expect(component.form.controls.newSampleDescription.value).toBe('Óleo do transformador TR-02');
+  });
+
+  it('atualiza a busca por referência após conflito mesmo com o termo inalterado', fakeAsync(() => {
+    prepareNewSample();
+    const code = component.form.controls.newSampleCode.value;
+    component.onNewSampleCodeChanged(code);
+    tick(300);
+    service.samples.calls.reset();
+
+    component.openSampleSearchAfterConflict();
+
+    expect(component.identificationMode()).toBe('existing');
+    expect(component.sampleSearch.value).toBe(code);
+    expect(service.samples).toHaveBeenCalledWith(quote.id, code, 1, 20);
+  }));
+
+  it('distingue conflito de versão e conserva a edição local', () => {
+    prepareExistingSample();
+    component.editId.set(saved.id);
+    component.detail.set(saved);
+    component.form.controls.type.setValue('Alteração ainda não salva');
+    service.update.and.returnValue(throwError(() => new HttpErrorResponse({
+      status: 409,
+      error: { code: 'test-version-conflict', message: 'Conflito' },
+    })));
+    component.save();
+
+    expect(component.conflictType()).toBe('version');
+    expect(component.form.controls.type.value).toBe('Alteração ainda não salva');
+  });
+
+  it('preserva as linhas quando o modelo de resultados é alterado e cancelado', () => {
     component.measurements.at(0).get('method')?.setValue('Método alterado');
     component.measurements.markAsDirty();
     component.form.controls.analysisType.setValue('chromatography');
     component.changeAnalysisType('chromatography');
 
     expect(dialog.open).toHaveBeenCalled();
-    expect(component.form.controls.analysisType.value).toBe(
-      'physical-chemical',
-    );
-    expect(component.measurements.length).toBe(6);
-    expect(component.measurements.at(0).get('method')?.value).toBe(
-      'Método alterado',
-    );
+    expect(component.form.controls.analysisType.value).toBe('physical-chemical');
+    expect(component.measurements.at(0).get('method')?.value).toBe('Método alterado');
   });
 
-  it('preserva os dados digitados quando a API informa conflito de versão', fakeAsync(() => {
-    component.samples.set([sample]);
-    component.sampleTotal.set(1);
-    component.detail.set(saved);
-    component.editId.set(saved.id);
-    component.form.patchValue({
-      sampleId: sample.id,
-      type: 'Alteração ainda não salva',
-      method: 'Método de ensaio',
-      standard: 'Norma técnica',
-      scheduledDate: '2026-10-26',
-      responsibleId: '7',
-      analysisClassification: null,
-      reportText: 'Rascunho local',
-    });
-    service.update.and.returnValue(
-      throwError(() => new HttpErrorResponse({ status: 409 })),
-    );
+  it('restaura o seletor de resultado e preserva o texto ao cancelar a troca', () => {
+    component.changeResultKind(0, 'text');
+    component.measurements.at(0).get('resultInput')?.setValue('12,30');
+    fixture.detectChanges();
+    const selector = fixture.debugElement.query(By.css('td mat-select')).componentInstance as MatSelect;
+    selector.value = 'quantity';
+    selector.selectionChange.emit(new MatSelectChange(selector, 'quantity'));
+    fixture.detectChanges();
+    expect(selector.value).toBe('text');
+    expect(component.measurements.at(0).get('resultInput')?.value).toBe('12,30');
+    expect(fixture.nativeElement.querySelector('td textarea')).not.toBeNull();
+  });
 
-    component.save();
-
-    expect(component.conflict()).toBeTrue();
-    expect(component.form.controls.type.value).toBe(
-      'Alteração ainda não salva',
-    );
-    expect(component.form.controls.reportText.value).toBe('Rascunho local');
-  }));
-
-  it('foca o primeiro campo obrigatório quando a validação falha', fakeAsync(() => {
-    component.sampleSearch.setValue('amostra');
-    tick(300);
-    component.save();
-    expect(document.activeElement).toBe(
-      fixture.nativeElement.querySelector('#sample-id'),
-    );
-  }));
-
-  it('impede sair da tela durante o envio e libera a navegação depois', () => {
+  it('impede sair da tela enquanto o envio está pendente', () => {
     component.saving.set(true);
     expect(component.canDeactivate()).toBeFalse();
     component.saving.set(false);
     expect(component.canDeactivate()).toBeTrue();
-  });
-
-  it('cancela o modelo pendente ao voltar para o formato já carregado', () => {
-    const response = new Subject<{
-      analysisType: string;
-      measurements: MeasurementTemplate[];
-    }>();
-    service.template.and.returnValue(response);
-
-    component.changeAnalysisType('chromatography');
-    expect(component.templateLoading()).toBeTrue();
-
-    component.changeAnalysisType('physical-chemical');
-    response.next({ analysisType: 'chromatography', measurements: [] });
-    response.complete();
-    fixture.detectChanges();
-
-    expect(component.templateLoading()).toBeFalse();
-    expect(component.form.controls.analysisType.value).toBe(
-      'physical-chemical',
-    );
-    expect(component.rows.length).toBe(6);
-    expect(fixture.nativeElement.querySelectorAll('tbody tr').length).toBe(6);
-  });
-
-  it('aguarda o modelo de resultados antes de enviar um formulário válido', () => {
-    const response = new Subject<{
-      analysisType: string;
-      measurements: MeasurementTemplate[];
-    }>();
-    service.template.and.returnValue(response);
-    component.samples.set([sample]);
-    component.sampleTotal.set(1);
-    component.form.patchValue({
-      sampleId: sample.id,
-      type: 'Cromatografia',
-      method: 'Método de ensaio',
-      standard: 'Norma técnica',
-      scheduledDate: '2026-10-26',
-      responsibleId: '7',
-    });
-    component.changeAnalysisType('chromatography');
-
-    component.save();
-
-    expect(service.create).not.toHaveBeenCalled();
-    expect(component.saveError()).toContain('Aguarde o carregamento');
-    response.complete();
   });
 });

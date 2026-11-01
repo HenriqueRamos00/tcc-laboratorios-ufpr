@@ -10,11 +10,11 @@ import {
 
 describe('Apresentação de ensaios', () => {
   it('preserva a precisão de quantidades e aceita vírgula decimal', () => {
-    expect(resultFromInput('0,00000120')).toEqual({
+    expect(resultFromInput('0,00000120', 'quantity')).toEqual({
       kind: 'quantity',
       value: '0.00000120',
     });
-    expect(resultFromInput('+001,20')).toEqual({
+    expect(resultFromInput('+001,20', 'quantity')).toEqual({
       kind: 'quantity',
       value: '1.20',
     });
@@ -22,10 +22,14 @@ describe('Apresentação de ensaios', () => {
       '12,3000',
     );
   });
-  it('mantém ND, ausência e texto como resultados distintos', () => {
-    expect(resultFromInput('ND')).toEqual({ kind: 'not-detected' });
-    expect(resultFromInput('')).toEqual({ kind: 'not-performed' });
-    expect(resultFromInput('0,01%')).toEqual({ kind: 'text', text: '0,01%' });
+  it('preserva o tipo informado para ND textual, números como texto e quantidades', () => {
+    expect(resultFromInput('ND', 'text')).toEqual({ kind: 'text', text: 'ND' });
+    expect(resultFromInput('12,30', 'text')).toEqual({ kind: 'text', text: '12,30' });
+    expect(resultFromInput('0,01%', 'text')).toEqual({ kind: 'text', text: '0,01%' });
+    expect(resultFromInput('12,30', 'quantity')).toEqual({ kind: 'quantity', value: '12.30' });
+    expect(resultFromInput('', 'not-detected')).toEqual({ kind: 'not-detected' });
+    expect(resultFromInput('', 'not-performed')).toEqual({ kind: 'not-performed' });
+    expect(resultToInput({ kind: 'text', text: '  ND\n 12,30 ' })).toBe('  ND\n 12,30 ');
   });
   it('valida a precisão decimal do contrato sem coerção numérica', () => {
     expect(isValidQuantityInput('1234567890123456,12345678')).toBeTrue();

@@ -5,6 +5,7 @@ import java.util.List;
 
 public record EnsaioRequest(
         String sampleId,
+        NewSampleRequest newSample,
         String type,
         String analysisType,
         String method,
@@ -16,6 +17,12 @@ public record EnsaioRequest(
         String reportText,
         List<MeasurementRequest> measurements,
         Long version) {
+
+    public record NewSampleRequest(
+            String quoteId,
+            String code,
+            String description,
+            String analyzedEquipmentId) { }
 
     public record MeasurementRequest(
             String code,

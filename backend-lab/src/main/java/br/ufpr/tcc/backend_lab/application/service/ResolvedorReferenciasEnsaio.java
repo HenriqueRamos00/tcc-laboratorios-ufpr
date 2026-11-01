@@ -8,7 +8,6 @@ import br.ufpr.tcc.backend_lab.domain.model.entity.Equipamento;
 import br.ufpr.tcc.backend_lab.domain.model.entity.InstrumentoLaboratorial;
 import br.ufpr.tcc.backend_lab.domain.model.entity.PerfilUsuario;
 import br.ufpr.tcc.backend_lab.domain.model.entity.Usuario;
-import br.ufpr.tcc.backend_lab.domain.repository.AmostraRepository;
 import br.ufpr.tcc.backend_lab.domain.repository.EquipamentoRepository;
 import br.ufpr.tcc.backend_lab.domain.repository.InstrumentoLaboratorialRepository;
 import br.ufpr.tcc.backend_lab.domain.repository.UsuarioRepository;
@@ -21,22 +20,21 @@ import org.springframework.stereotype.Component;
 @Component
 public class ResolvedorReferenciasEnsaio {
     private static final Pattern ID_POSITIVO = Pattern.compile("[1-9][0-9]*");
-    private final AmostraRepository amostras;
+    private final ResolvedorAmostraEnsaio amostraEnsaio;
     private final UsuarioRepository usuarios;
     private final InstrumentoLaboratorialRepository instrumentos;
     private final EquipamentoRepository equipamentos;
 
-    public ResolvedorReferenciasEnsaio(AmostraRepository amostras, UsuarioRepository usuarios,
+    public ResolvedorReferenciasEnsaio(ResolvedorAmostraEnsaio amostraEnsaio, UsuarioRepository usuarios,
             InstrumentoLaboratorialRepository instrumentos, EquipamentoRepository equipamentos) {
-        this.amostras = amostras;
+        this.amostraEnsaio = amostraEnsaio;
         this.usuarios = usuarios;
         this.instrumentos = instrumentos;
         this.equipamentos = equipamentos;
     }
 
     public Referencias resolver(EnsaioRequest request, Usuario responsavelAnterior) {
-        Amostra amostra = amostras.findById(id(request.sampleId()))
-                .orElseThrow(() -> new EnsaioNaoEncontradoException("Amostra não encontrada"));
+        Amostra amostra = amostraEnsaio.resolver(request);
         validarEmpresaDoEquipamento(amostra);
         Usuario responsavel = usuarios.findById(id(request.responsibleId()))
                 .orElseThrow(() -> new EnsaioNaoEncontradoException("Técnico não encontrado"));

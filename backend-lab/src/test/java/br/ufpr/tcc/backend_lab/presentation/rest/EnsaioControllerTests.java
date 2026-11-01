@@ -12,14 +12,18 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 import br.ufpr.tcc.backend_lab.domain.model.entity.Amostra;
 import br.ufpr.tcc.backend_lab.domain.model.entity.Empresa;
+import br.ufpr.tcc.backend_lab.domain.model.entity.Equipamento;
 import br.ufpr.tcc.backend_lab.domain.model.entity.ExecucaoEnsaio;
 import br.ufpr.tcc.backend_lab.domain.model.entity.InstrumentoLaboratorial;
 import br.ufpr.tcc.backend_lab.domain.model.entity.PerfilUsuario;
+import br.ufpr.tcc.backend_lab.domain.model.entity.NivelRisco;
 import br.ufpr.tcc.backend_lab.domain.model.entity.Orcamento;
 import br.ufpr.tcc.backend_lab.domain.model.entity.Usuario;
+import br.ufpr.tcc.backend_lab.domain.model.entity.TipoEquipamento;
 import br.ufpr.tcc.backend_lab.domain.model.enums.StatusComercialOrcamento;
 import br.ufpr.tcc.backend_lab.domain.repository.AmostraRepository;
 import br.ufpr.tcc.backend_lab.domain.repository.EmpresaRepository;
+import br.ufpr.tcc.backend_lab.domain.repository.EquipamentoRepository;
 import br.ufpr.tcc.backend_lab.domain.repository.ExecucaoEnsaioRepository;
 import br.ufpr.tcc.backend_lab.domain.repository.InstrumentoLaboratorialRepository;
 import br.ufpr.tcc.backend_lab.domain.repository.OrcamentoRepository;
@@ -50,6 +54,7 @@ class EnsaioControllerTests {
     @Autowired private MockMvc mockMvc;
     @Autowired private UsuarioRepository usuarios;
     @Autowired private EmpresaRepository empresas;
+    @Autowired private EquipamentoRepository equipamentos;
     @Autowired private OrcamentoRepository orcamentos;
     @Autowired private AmostraRepository amostras;
     @Autowired private InstrumentoLaboratorialRepository instrumentos;
@@ -65,6 +70,7 @@ class EnsaioControllerTests {
     void prepararReferencias() {
         ensaios.deleteAll();
         amostras.deleteAll();
+        equipamentos.deleteAll();
         instrumentos.deleteAll();
         orcamentos.deleteAll();
         usuarios.deleteAll();
@@ -157,7 +163,8 @@ class EnsaioControllerTests {
                 .andExpect(jsonPath("$.version").value(greaterThan((int) version)));
         mockMvc.perform(put(PATH + "/" + id).header("Authorization", token)
                         .contentType(MediaType.APPLICATION_JSON).content(update))
-                .andExpect(status().isConflict());
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.code").value("test-version-conflict"));
         mockMvc.perform(get(PATH + "/" + id).header("Authorization", token))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.equipment.length()").value(2))
@@ -180,15 +187,71 @@ class EnsaioControllerTests {
                 .andExpect(status().isUnauthorized());
         mockMvc.perform(get(PATH + "/references/samples").header("Authorization", bearer(admin)))
                 .andExpect(status().isForbidden());
+        mockMvc.perform(get(PATH + "/references/quotes").header("Authorization", bearer(admin)))
+                .andExpect(status().isForbidden());
         mockMvc.perform(get(PATH + "/references/samples").header("Authorization", bearer(tecnico)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.items[0].quote.companyId").isString());
+        mockMvc.perform(get(PATH + "/references/quotes").param("search", "TEST-HU25")
+                        .header("Authorization", bearer(tecnico)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.items[0].code").value("TEST-HU25-001"))
+                .andExpect(jsonPath("$.items[0].companyName").value("Empresa de ensaio"))
+                .andExpect(jsonPath("$.items[0].totalPrice").doesNotExist())
+                .andExpect(jsonPath("$.items[0].externalContactEmail").doesNotExist());
+        mockMvc.perform(get(PATH + "/references/samples").param("quoteId", "999999")
+                        .header("Authorization", bearer(tecnico)))
+                .andExpect(status().isNotFound());
+        mockMvc.perform(get(PATH + "/references/analyzed-equipment").param("quoteId", "x")
+                        .header("Authorization", bearer(tecnico)))
+                .andExpect(status().isBadRequest());
+        mockMvc.perform(get(PATH + "/references/analyzed-equipment")
+                        .param("quoteId", amostra.getOrcamento().getId().toString())
+                        .header("Authorization", bearer(tecnico)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.totalItems").value(0));
         mockMvc.perform(get(PATH + "/references/technicians").header("Authorization", bearer(tecnico)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$[0].unit").value("DOLEO"));
         mockMvc.perform(get(PATH + "/measurement-templates/chromatography").header("Authorization", bearer(tecnico)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.measurements.length()").value(11));
+    }
+
+    @Test
+    void filtraAmostrasPorOrcamentoAntesDaPaginacao() throws Exception {
+        Orcamento outro = new Orcamento();
+        outro.setEmpresa(amostra.getOrcamento().getEmpresa());
+        outro.setCode("TEST-HU25-002");
+        outro.setName("Segunda proposta");
+        outro.setStatus(StatusComercialOrcamento.PENDING_ACCEPTANCE);
+        outro.setStage("Negociação");
+        outro.setDescription("Outra proposta usada no teste");
+        outro.setTotalPrice(new BigDecimal("200.00"));
+        outro.setCreatedDate(OffsetDateTime.now());
+        outro = orcamentos.saveAndFlush(outro);
+        Amostra outraAmostra = new Amostra();
+        outraAmostra.setCodigo("A-TEST-002/2026");
+        outraAmostra.setDescricao("Outra amostra");
+        outraAmostra.setOrcamento(outro);
+        amostras.saveAndFlush(outraAmostra);
+
+        String token = bearer(tecnico);
+        mockMvc.perform(get(PATH + "/references/samples")
+                        .param("quoteId", amostra.getOrcamento().getId().toString())
+                        .header("Authorization", token))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.totalItems").value(1))
+                .andExpect(jsonPath("$.items[0].code").value(amostra.getCodigo()));
+        mockMvc.perform(get(PATH + "/references/samples")
+                        .param("quoteId", outro.getId().toString())
+                        .header("Authorization", token))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.totalItems").value(1))
+                .andExpect(jsonPath("$.items[0].code").value("A-TEST-002/2026"));
+        mockMvc.perform(get(PATH + "/references/samples").header("Authorization", token))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.totalItems").value(2));
     }
 
     @Test
@@ -210,8 +273,128 @@ class EnsaioControllerTests {
                 .andExpect(status().isBadRequest());
     }
 
+    @Test
+    void criaNovaAmostraJuntoComEnsaioEPermiteReutilizarReferencia() throws Exception {
+        String token = bearer(tecnico);
+        String request = corpoNova("  A-HU25-NOVA/2026  ", null, MEDICOES);
+        var created = mockMvc.perform(post(PATH).header("Authorization", token)
+                        .contentType(MediaType.APPLICATION_JSON).content(request))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.sample.code").value("A-HU25-NOVA/2026"))
+                .andExpect(jsonPath("$.sample.description").value("Óleo de transformador"))
+                .andExpect(jsonPath("$.quote.id").value(amostra.getOrcamento().getId().toString()))
+                .andReturn();
+        assertEquals(2, amostras.count());
+
+        String sampleId = json(created.getResponse().getContentAsString(), "sample.id");
+        mockMvc.perform(post(PATH).header("Authorization", token)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(corpo(sampleId, "\"version\":null,", MEDICOES)))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.sample.id").value(sampleId));
+        assertEquals(2, amostras.count());
+        assertEquals(2, ensaios.count());
+    }
+
+    @Test
+    void rejeitaAlternativasAmbiguasEConflitoDeCodigoSemGravacaoParcial() throws Exception {
+        String token = bearer(tecnico);
+        mockMvc.perform(post(PATH).header("Authorization", token)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(corpo(null, "\"version\":null,", MEDICOES)))
+                .andExpect(status().isBadRequest());
+        String ambas = corpo(amostra.getId().toString(), "\"version\":null,", MEDICOES)
+                .replace("\"type\":", "\"newSample\":{\"quoteId\":\""
+                        + amostra.getOrcamento().getId() + "\",\"code\":\"A-AMBIGUA\","
+                        + "\"description\":\"Descrição\",\"analyzedEquipmentId\":null},\"type\":");
+        mockMvc.perform(post(PATH).header("Authorization", token)
+                        .contentType(MediaType.APPLICATION_JSON).content(ambas))
+                .andExpect(status().isBadRequest());
+
+        String nova = corpoNova("A-HU25-DUPLICADA/2026", null, MEDICOES);
+        mockMvc.perform(post(PATH).header("Authorization", token)
+                        .contentType(MediaType.APPLICATION_JSON).content(nova))
+                .andExpect(status().isCreated());
+        mockMvc.perform(post(PATH).header("Authorization", token)
+                        .contentType(MediaType.APPLICATION_JSON).content(nova))
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.code").value("sample-code-conflict"))
+                .andExpect(jsonPath("$.message").isString());
+        assertEquals(2, amostras.count());
+        assertEquals(1, ensaios.count());
+    }
+
+    @Test
+    void versaoObsoletaNaoCriaIdentificacaoNova() throws Exception {
+        String token = bearer(tecnico);
+        var created = mockMvc.perform(post(PATH).header("Authorization", token)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(corpo("\"version\":null,", MEDICOES)))
+                .andExpect(status().isCreated()).andReturn();
+        String id = json(created.getResponse().getContentAsString(), "id");
+        String stale = corpoNova("A-HU25-SEM-ORFA/2026", "\"version\":0,", MEDICOES);
+        mockMvc.perform(put(PATH + "/" + id).header("Authorization", token)
+                        .contentType(MediaType.APPLICATION_JSON).content(stale))
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.code").value("test-version-conflict"));
+        assertEquals(1, amostras.count());
+        assertEquals(1, ensaios.count());
+    }
+
+    @Test
+    void pesquisaEquipamentosPelaEmpresaERecusaVinculoIncompativel() throws Exception {
+        Empresa empresaDaOutraProposta = new Empresa();
+        empresaDaOutraProposta.setLegalName("Outra empresa de ensaio");
+        empresaDaOutraProposta.setCnpj("22333444000181");
+        empresaDaOutraProposta.setAddress("Rua de teste, 2");
+        empresaDaOutraProposta.setCity("Curitiba");
+        empresaDaOutraProposta.setState("PR");
+        empresaDaOutraProposta.setContactName("Outro contato");
+        empresaDaOutraProposta.setContactPhone("41999999998");
+        empresaDaOutraProposta.setContactEmail("outro@example.test");
+        empresaDaOutraProposta = empresas.saveAndFlush(empresaDaOutraProposta);
+        Equipamento proprio = salvarEquipamento(amostra.getOrcamento().getEmpresa(), "SERIE-HU25-1");
+        Equipamento estrangeiro = salvarEquipamento(empresaDaOutraProposta, "SERIE-HU25-2");
+        String token = bearer(tecnico);
+        String quoteId = amostra.getOrcamento().getId().toString();
+
+        mockMvc.perform(get(PATH + "/references/analyzed-equipment")
+                        .param("quoteId", quoteId).param("search", "TR-HU25")
+                        .header("Authorization", token))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.totalItems").value(1))
+                .andExpect(jsonPath("$.items[0].id").value(proprio.getId().toString()))
+                .andExpect(jsonPath("$.items[0].tag").value("TR-HU25"))
+                .andExpect(jsonPath("$.items[0].companyId").doesNotExist());
+
+        String request = corpoNova("A-HU25-EQUIPAMENTO-INVALIDO", null, MEDICOES,
+                estrangeiro.getId().toString());
+        mockMvc.perform(post(PATH).header("Authorization", token)
+                        .contentType(MediaType.APPLICATION_JSON).content(request))
+                .andExpect(status().isBadRequest());
+        assertEquals(1, amostras.count());
+        assertEquals(0, ensaios.count());
+    }
+
+    @Test
+    void desfazAmostraNovaSeUmaReferenciaPosteriorFalhar() throws Exception {
+        String request = corpoNova("A-HU25-ROLLBACK", null, MEDICOES)
+                .replace("\"responsibleId\":\"" + tecnico.getId() + "\"",
+                        "\"responsibleId\":\"999999\"");
+        mockMvc.perform(post(PATH).header("Authorization", bearer(tecnico))
+                        .contentType(MediaType.APPLICATION_JSON).content(request))
+                .andExpect(status().isNotFound());
+        assertEquals(1, amostras.count());
+        assertEquals(0, ensaios.count());
+    }
+
     private String corpo(String versionField, String measurements) {
-        return "{\"sampleId\":\"" + amostra.getId() + "\",\"type\":\"Análise de teste\","
+        return corpo(amostra.getId().toString(), versionField, measurements);
+    }
+
+    private String corpo(String sampleId, String versionField, String measurements) {
+        String sample = sampleId == null ? "null" : "\"" + sampleId + "\"";
+        return "{\"sampleId\":" + sample + ",\"type\":\"Análise de teste\","
                 + "\"analysisType\":\"chromatography\",\"method\":\"Método\",\"standard\":\"Norma\","
                 + "\"scheduledDate\":\"2026-10-26\",\"responsibleId\":\"" + tecnico.getId() + "\","
                 + "\"equipmentIds\":[\"" + instrumento.getId() + "\",\"" + instrumentoSecundario.getId()
@@ -219,9 +402,42 @@ class EnsaioControllerTests {
                 + "\"reportText\":\"Rascunho\", " + versionField + measurements + "}";
     }
 
+    private String corpoNova(String codigo, String versionField, String measurements) {
+        return corpoNova(codigo, versionField, measurements, null);
+    }
+
+    private String corpoNova(String codigo, String versionField, String measurements,
+            String analyzedEquipmentId) {
+        String version = versionField == null ? "\"version\":null," : versionField;
+        String equipamento = analyzedEquipmentId == null ? "null" : "\"" + analyzedEquipmentId + "\"";
+        return "{\"sampleId\":null,\"newSample\":{\"quoteId\":\""
+                + amostra.getOrcamento().getId() + "\",\"code\":\"" + codigo
+                + "\",\"description\":\"Óleo de transformador\",\"analyzedEquipmentId\":" + equipamento + "},"
+                + "\"type\":\"Análise de teste\",\"analysisType\":\"chromatography\","
+                + "\"method\":\"Método\",\"standard\":\"Norma\",\"scheduledDate\":\"2026-10-26\","
+                + "\"responsibleId\":\"" + tecnico.getId() + "\",\"equipmentIds\":[\""
+                + instrumento.getId() + "\",\"" + instrumentoSecundario.getId()
+                + "\"],\"analysisClassification\":null,\"reportText\":\"Rascunho\","
+                + version + measurements + "}";
+    }
+
+    private Equipamento salvarEquipamento(Empresa empresa, String numeroSerie) {
+        Equipamento equipamento = new Equipamento();
+        equipamento.setNumeroSerie(numeroSerie);
+        equipamento.setTag("TR-HU25");
+        equipamento.setTipo(TipoEquipamento.TRANSFORMADOR);
+        equipamento.setSubestacao("SE-HU25");
+        equipamento.setTensaoPrimaria(new BigDecimal("13.800"));
+        equipamento.setEmpresa(empresa);
+        equipamento.setNivelRisco(NivelRisco.SAUDAVEL);
+        return equipamentos.saveAndFlush(equipamento);
+    }
+
     private String bearer(Usuario usuario) { return "Bearer " + jwtService.generateToken(usuario); }
 
     private String json(String body, String key) throws Exception {
-        return JsonMapper.builder().build().readTree(body).get(key).asString();
+        var node = JsonMapper.builder().build().readTree(body);
+        for (String part : key.split("\\.")) node = node.get(part);
+        return node.asString();
     }
 }

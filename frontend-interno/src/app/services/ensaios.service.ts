@@ -6,7 +6,9 @@ import {
   InstrumentReference,
   MeasurementTemplate,
   Page,
+  QuoteReference,
   SampleReference,
+  AnalyzedEquipmentReference,
   TechnicianReference,
   TestDetail,
   TestRequest,
@@ -38,14 +40,40 @@ export class EnsaiosService {
     );
   }
   samples(
+    quoteId: string | null,
     search = '',
     page = 1,
-    pageSize = 100,
+    pageSize = 20,
   ): Observable<Page<SampleReference>> {
     let params = new HttpParams().set('page', page).set('pageSize', pageSize);
+    if (quoteId) params = params.set('quoteId', quoteId);
     if (search.trim()) params = params.set('search', search.trim());
     return this.http.get<Page<SampleReference>>(
       `${this.endpoint}/references/samples`,
+      { params },
+    );
+  }
+  quotes(search = '', page = 1, pageSize = 20): Observable<Page<QuoteReference>> {
+    let params = new HttpParams().set('page', page).set('pageSize', pageSize);
+    if (search.trim()) params = params.set('search', search.trim());
+    return this.http.get<Page<QuoteReference>>(
+      `${this.endpoint}/references/quotes`,
+      { params },
+    );
+  }
+  analyzedEquipment(
+    quoteId: string,
+    search = '',
+    page = 1,
+    pageSize = 20,
+  ): Observable<Page<AnalyzedEquipmentReference>> {
+    let params = new HttpParams()
+      .set('quoteId', quoteId)
+      .set('page', page)
+      .set('pageSize', pageSize);
+    if (search.trim()) params = params.set('search', search.trim());
+    return this.http.get<Page<AnalyzedEquipmentReference>>(
+      `${this.endpoint}/references/analyzed-equipment`,
       { params },
     );
   }

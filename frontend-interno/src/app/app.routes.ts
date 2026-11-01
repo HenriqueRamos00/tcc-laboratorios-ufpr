@@ -154,7 +154,7 @@ export const routes: Routes = [
           import('@/app/pages/tecnico/ensaios/ensaio-form.component').then(
             (module) => module.EnsaioFormComponent,
           ),
-        title: 'Cadastrar ensaio - Portal Interno Lactec',
+        title: 'Novo ensaio - Portal Interno Lactec',
       },
       {
         path: 'ensaios/:id/editar',

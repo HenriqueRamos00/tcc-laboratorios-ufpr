@@ -1,579 +1,299 @@
-<nav
-  class="mb-2 flex flex-wrap items-center gap-1 text-sm"
-  aria-label="Trilha de navegação"
->
-  <a routerLink="/tecnico">Painel técnico</a
-  ><mat-icon class="icone-16" aria-hidden="true">chevron_right</mat-icon
-  ><a routerLink="/tecnico/ensaios">Ensaios</a
-  ><mat-icon class="icone-16" aria-hidden="true">chevron_right</mat-icon
-  ><span aria-current="page">{{
-    editId() ? "Editar ensaio" : "Cadastrar ensaio"
-  }}</span>
+<nav class="mb-2 flex flex-wrap items-center gap-1 text-sm" aria-label="Trilha de navegação">
+  <a routerLink="/tecnico">Painel técnico</a>
+  <mat-icon class="icone-16" aria-hidden="true">chevron_right</mat-icon>
+  <a routerLink="/tecnico/ensaios">Ensaios</a>
+  <mat-icon class="icone-16" aria-hidden="true">chevron_right</mat-icon>
+  <span aria-current="page">{{ editId() ? "Editar ensaio" : "Novo ensaio" }}</span>
 </nav>
+
 <header class="mb-6">
-  <h1 class="m-0 text-2xl font-semibold text-lactec-ink md:text-3xl">
-    {{ editId() ? "Editar ensaio" : "Cadastrar ensaio" }}
+  <h1 class="m-0 flex flex-wrap items-center justify-start gap-x-3 gap-y-2 text-2xl font-semibold text-lactec-ink md:text-3xl">
+    <span>{{ editId() ? "Editar ensaio" : "Novo ensaio" }}</span>
+    @if (editId() && detail()?.code; as code) {
+      <span class="inline-flex max-w-full min-w-0 break-words rounded-md border border-lactec-line bg-lactec-line-soft px-2.5 py-1 font-mono text-sm font-medium leading-5 text-lactec-muted">
+        <span class="sr-only">Código do ensaio: </span>{{ code }}
+      </span>
+    }
   </h1>
-  <p class="mt-1 text-sm text-lactec-muted">
-    Registre os dados da análise e seus resultados.
-  </p>
+  <p class="mt-1 text-sm text-lactec-muted">Registre os dados da análise e seus resultados.</p>
 </header>
-@if (loading() && !detail()) {
-  <div class="flex min-h-48 items-center justify-center gap-3" role="status">
-    <mat-spinner diameter="24" />Carregando ensaio e referências…
+
+@if (detailLoading() && !detail()) {
+  <div class="flex min-h-48 items-center justify-center gap-3" role="status" aria-live="polite">
+    <mat-spinner diameter="24" />Carregando ensaio…
   </div>
-} @else if (referenceError()) {
-  <section
-    class="rounded-2xl border border-red-200 bg-white p-8 text-center"
-    role="alert"
-  >
-    <h2>Não foi possível carregar os dados necessários</h2>
-    <p>
-      {{
-        sampleError()
-          ? "Sua conta não tem acesso aos dados necessários."
-          : "Não foi possível carregar o ensaio e os dados de seleção. Verifique sua conexão e tente novamente."
-      }}
-    </p>
-    <button mat-stroked-button (click)="retry()">Tentar novamente</button>
-  </section>
-} @else if (editId() && !detail() && !loading()) {
+} @else if (editId() && !detail()) {
   <section role="alert" class="rounded-xl border border-red-200 bg-white p-6">
-    Ensaio não encontrado ou indisponível.
-    <button mat-button (click)="retry()">Tentar novamente</button>
+    <h2 class="m-0 text-lg font-semibold">
+      @if (detailErrorStatus() === 403) { Acesso não autorizado }
+      @else if (detailErrorStatus() === 404) { Ensaio não encontrado }
+      @else { Não foi possível carregar o ensaio }
+    </h2>
+    <p class="my-3 text-sm text-lactec-muted">
+      @if (detailErrorStatus() === 403) { Sua conta não tem acesso a este ensaio. }
+      @else if (detailErrorStatus() === 404) { O ensaio solicitado não está disponível. }
+      @else { Confira sua conexão e tente novamente. }
+    </p>
+    @if (detailErrorStatus() !== 403 && detailErrorStatus() !== 404) {
+      <button mat-stroked-button type="button" (click)="retryDetail()">Tentar novamente</button>
+    }
   </section>
 } @else {
-  <form [formGroup]="form" (ngSubmit)="save()" class="space-y-6" novalidate>
+  <form [formGroup]="form" (ngSubmit)="save()" class="ensaio-form space-y-6" novalidate [attr.aria-busy]="saving() || detailLoading()">
     @if (saveError()) {
-      <div
-        class="rounded-xl border p-4 text-sm"
-        [class.border-red-300]="!saveError().includes('sucesso')"
-        [class.bg-red-50]="!saveError().includes('sucesso')"
-        role="alert"
-      >
+      <div class="rounded-xl border border-red-300 bg-red-50 p-4 text-sm text-red-900" role="alert">
         {{ saveError() }}
-        @if (conflict()) {
-          <button
-            mat-stroked-button
-            type="button"
-            class="ml-3"
-            (click)="reloadCurrent()"
-          >
+        @if (conflictType() === "version") {
+          <button mat-stroked-button type="button" class="ml-3" [disabled]="formLocked" (click)="reloadCurrent()">
             Recarregar versão atual
           </button>
         }
+        @if (conflictType() === "sample") {
+          <button mat-stroked-button type="button" class="ml-3" [disabled]="formLocked" (click)="openSampleSearchAfterConflict()">
+            Pesquisar amostras
+          </button>
+        }
       </div>
     }
-    @if (sampleTotal() === 0 && !selectedSample) {
-      <div
-        class="rounded-xl border border-amber-300 bg-amber-50 p-4"
-        role="status"
-      >
-        @if (sampleSearch.value.trim()) {
-          Nenhuma amostra corresponde à busca. Limpe o filtro para consultar
-          outras amostras.
+    @if (saveSuccess()) {
+      <div class="rounded-xl border border-emerald-300 bg-emerald-50 p-4 text-sm text-emerald-900" role="status" aria-live="polite">
+        Ensaio salvo com sucesso.
+      </div>
+    }
+
+    <section class="ensaio-section" aria-labelledby="context-heading">
+      <h2 id="context-heading" class="section-title">Orçamento e amostra</h2>
+      <div class="quote-summary">
+        <div class="min-w-0">
+          <span class="field-caption">Orçamento</span>
+          @if (selectedQuote(); as quote) {
+            <strong class="block break-words font-mono text-sm">{{ quote.code }}</strong>
+            <span class="block break-words text-sm text-lactec-muted">{{ quote.companyName }}</span>
+          } @else { <p class="m-0 text-sm text-lactec-muted">Selecione o orçamento deste ensaio.</p> }
+        </div>
+        <button id="quote-selector" mat-stroked-button type="button" [disabled]="formLocked" (click)="openQuoteChooser()">
+          <mat-icon>search</mat-icon>{{ selectedQuote() ? 'Trocar orçamento' : 'Selecionar orçamento' }}
+        </button>
+      </div>
+
+      <div class="mt-6" [attr.aria-busy]="sampleLoading()">
+        <div class="mb-3 flex flex-wrap items-center justify-between gap-2">
+          <h3 class="m-0 text-base font-semibold">Identificação da amostra</h3>
+          @if (selectedQuote() && identificationMode() && !sampleChooserOpen()) {
+            <button mat-button type="button" [disabled]="formLocked" (click)="toggleSampleChooser()">Alterar identificação</button>
+          }
+        </div>
+        @if (!selectedQuote()) {
+          <p class="m-0 text-sm text-lactec-muted">Escolha um orçamento para identificar a amostra.</p>
+        } @else if (identificationMode() && !sampleChooserOpen()) {
+          <div class="sample-summary">
+            <mat-icon class="shrink-0 text-lactec-primary-dark" aria-hidden="true">check_circle_outline</mat-icon>
+            <div class="min-w-0">
+              <strong class="block break-words font-mono text-sm">{{ identificationMode() === 'existing' ? selectedSample?.code : form.controls.newSampleCode.value }}</strong>
+              <p class="m-0 break-words text-sm">{{ identificationMode() === 'existing' ? selectedSample?.description : form.controls.newSampleDescription.value }}</p>
+              @if (currentAnalyzedEquipment(); as equipment) { <span class="block text-xs text-lactec-muted">Equipamento: {{ equipment.tag }}</span> }
+              @if (identificationMode() === 'new') { <span class="block text-xs text-lactec-muted">Será salva junto com o ensaio.</span> }
+            </div>
+          </div>
         } @else {
-          Nenhuma amostra está disponível para vincular a este ensaio.
-        }
-      </div>
-    }
-    @if (!technicians().length) {
-      <div
-        class="rounded-xl border border-amber-300 bg-amber-50 p-4"
-        role="status"
-      >
-        Nenhum responsável está disponível para este ensaio. Solicite ao
-        laboratório que disponibilize um técnico ativo.
-      </div>
-    }
-    <section class="rounded-2xl border border-lactec-line bg-white p-5 md:p-7">
-      <h2 class="mb-5 text-lg font-semibold">Dados do ensaio</h2>
-      <div class="grid min-w-0 grid-cols-1 gap-4 md:grid-cols-2">
-        <label class="grid min-w-0 gap-1 text-sm font-medium"
-          >Código do ensaio<input
-            readonly
-            [value]="detail()?.code ?? 'Gerado após salvar'"
-            class="h-11 min-w-0 w-full rounded-lg border border-lactec-line bg-slate-50 px-3 font-mono"
-        /></label>
-        <div class="grid min-w-0 gap-2 text-sm font-medium md:col-span-2">
-          <label for="sample-search">Buscar amostra</label>
-          <input
-            id="sample-search"
-            [formControl]="sampleSearch"
-            type="search"
-            placeholder="Código, descrição, proposta ou empresa"
-            class="h-10 min-w-0 w-full rounded-lg border border-lactec-line px-3 font-normal"
-          />
-          <label for="sample-id">Amostra</label>
-          <select
-            id="sample-id"
-            formControlName="sampleId"
-            (change)="selectSample($any($event.target).value)"
-            class="h-11 min-w-0 w-full rounded-lg border border-lactec-line bg-white px-3 font-normal"
-            [attr.aria-invalid]="
-              form.controls.sampleId.invalid && form.controls.sampleId.touched
-            "
-            aria-describedby="sample-error"
-          >
-            <option value="">Selecione uma amostra</option>
-            @if (
-              selectedSampleIsOutsidePage && selectedSample;
-              as currentSample
-            ) {
-              <option [value]="currentSample.id">
-                {{ currentSample.code }} - {{ currentSample.description }} ({{
-                  currentSample.quote.code
-                }}, {{ currentSample.quote.companyName }})
-              </option>
-            }
-            @for (sample of samples(); track sample.id) {
-              <option [value]="sample.id">
-                {{ sample.code }} - {{ sample.description }} ({{
-                  sample.quote.code
-                }}, {{ sample.quote.companyName }})
-              </option>
-            }
-          </select>
-          @if (
-            form.controls.sampleId.invalid && form.controls.sampleId.touched
-          ) {
-            <small id="sample-error" class="font-normal text-red-700"
-              >Selecione uma amostra existente.</small
-            >
-          }
-        </div>
-        @if (sampleFetchError()) {
-          <div class="md:col-span-2 text-sm text-red-700" role="alert">
-            Falha ao buscar amostras.
-            <button
-              mat-button
-              type="button"
-              (click)="setSamplePage(samplePage())"
-            >
-              Tentar novamente
-            </button>
+          <div class="identification-switch" role="group" aria-label="Forma de identificação da amostra">
+            <button type="button" [disabled]="formLocked" [attr.aria-pressed]="identificationMode() !== 'new'" (click)="chooseExistingMode()">Amostra existente</button>
+            <button type="button" [disabled]="formLocked" [attr.aria-pressed]="identificationMode() === 'new'" (click)="chooseNewMode()">Nova identificação</button>
           </div>
-        } @else if (sampleLoading()) {
-          <p class="md:col-span-2 text-sm" role="status">Buscando amostras…</p>
-        } @else if (sampleTotal() > 20) {
-          <div
-            class="md:col-span-2 flex flex-wrap items-center justify-between gap-2 text-sm"
-          >
-            <span
-              >Página {{ samplePage() }} de {{ samplePages }} -
-              {{ sampleTotal() }} amostras</span
-            ><span
-              ><button
-                mat-button
-                type="button"
-                [disabled]="samplePage() <= 1"
-                (click)="setSamplePage(samplePage() - 1)"
-              >
-                Anterior</button
-              ><button
-                mat-button
-                type="button"
-                [disabled]="samplePage() >= samplePages"
-                (click)="setSamplePage(samplePage() + 1)"
-              >
-                Próxima
-              </button></span
-            >
-          </div>
-        }
-        @if (selectedSample; as sample) {
-          <p
-            class="m-0 min-w-0 break-words text-sm text-lactec-muted md:col-span-2"
-          >
-            <strong class="text-lactec-ink">{{ sample.code }}</strong> -
-            {{ sample.description }}
-            <span class="block"
-              >{{ sample.quote.code }} - {{ sample.quote.companyName }}</span
-            >
-          </p>
-        }
-        <div
-          class="min-w-0 break-words md:col-span-2 rounded-lg bg-slate-50 p-3 text-sm"
-        >
-          <strong>Equipamento analisado:</strong>
-          @if (selectedSample; as sample) {
-            {{ sample.analyzedEquipment?.tag ?? "Não associado"
-            }}{{
-              sample.analyzedEquipment?.serialNumber
-                ? " - " + sample.analyzedEquipment?.serialNumber
-                : ""
-            }}
+          @if (identificationMode() !== 'new') {
+            <app-reference-search class="mt-4" fieldId="sample-search" label="Pesquisar amostra" placeholder="Código ou descrição"
+              [control]="sampleSearch" [options]="sampleOptions" [locked]="formLocked" [loading]="sampleLoading()" [error]="sampleError()"
+              [page]="samplePage()" [pages]="samplePages" (pageChanged)="setSamplePage($event)" (retry)="retrySamples()"
+              (selected)="selectSampleOption($event)" hint="Selecione uma amostra deste orçamento."
+              emptyText="Nenhuma amostra encontrada. Você pode informar uma nova identificação." />
           } @else {
-            Selecione uma amostra para ver o contexto.
+            <div class="mt-4 grid min-w-0 grid-cols-1 gap-x-4 md:grid-cols-2">
+              <app-reference-search fieldId="new-sample-code" label="Código de identificação" placeholder="Ex.: A-1409/2026"
+                [control]="form.controls.newSampleCode" [options]="sampleOptions" [locked]="formLocked" [loading]="sampleLoading()" [error]="sampleError()"
+                [page]="samplePage()" [pages]="samplePages" [maxlength]="80" [monospace]="true" [openOnInput]="false"
+                (termChanged)="onNewSampleCodeChanged($event)" (pageChanged)="setSamplePage($event)" (retry)="retrySamples()"
+                (selected)="selectSampleOption($event)" [hint]="exactSampleCodeExists ? 'Código encontrado. Abra as opções para selecionar a amostra.' : 'Até 80 caracteres.'"
+                emptyText="Nenhuma correspondência neste orçamento." />
+              <label for="new-sample-description" class="field-label">
+                Descrição
+                <input id="new-sample-description" formControlName="newSampleDescription" maxlength="255" class="ensaio-input" placeholder="Material e origem da amostra" />
+                <small class="field-hint">Até 255 caracteres.</small>
+              </label>
+              <div class="md:col-span-2">
+                <app-reference-search fieldId="analyzed-equipment-search" label="Equipamento analisado (opcional)" placeholder="TAG ou número de série"
+                  [control]="equipmentSearch" [options]="analyzedEquipmentOptions" [locked]="formLocked" [loading]="equipmentLoading()" [error]="equipmentError()"
+                  [page]="equipmentPage()" [pages]="equipmentPages" (pageChanged)="setEquipmentPage($event)" (retry)="retryAnalyzedEquipment()"
+                  (selected)="selectEquipmentOption($event)" hint="A amostra pode ficar sem equipamento associado." />
+                @if (currentAnalyzedEquipment(); as equipment) {
+                  <div class="mb-3 flex flex-wrap items-center gap-2 text-sm">
+                    <span class="break-words">Selecionado: {{ equipment.tag }}</span>
+                    <button mat-button type="button" [disabled]="formLocked || equipmentLoading() || equipmentError()" (click)="clearAnalyzedEquipment()">Remover associação</button>
+                  </div>
+                }
+              </div>
+            </div>
+            <div class="flex flex-wrap items-center gap-3">
+              <button mat-stroked-button type="button" [disabled]="formLocked || !canConfirmNewSample" (click)="confirmNewSample()">Usar esta identificação</button>
+              <span class="text-xs text-lactec-muted">Será salva junto com o ensaio.</span>
+            </div>
           }
-        </div>
-        <label class="grid min-w-0 gap-1 text-sm font-medium"
-          >Tipo de análise<input
-            id="analysis-type-name"
-            formControlName="type"
-            maxlength="200"
-            class="h-11 min-w-0 w-full rounded-lg border border-lactec-line px-3"
-            [attr.aria-invalid]="
-              form.controls.type.invalid && form.controls.type.touched
-            "
-            aria-describedby="type-error"
-          />
-          @if (form.controls.type.invalid && form.controls.type.touched) {
-            <small id="type-error" class="font-normal text-red-700"
-              >Informe um tipo com até 200 caracteres.</small
-            >
-          }
-        </label>
-        <label class="grid min-w-0 gap-1 text-sm font-medium"
-          >Formato dos resultados<select
-            formControlName="analysisType"
-            class="h-11 min-w-0 w-full rounded-lg border border-lactec-line bg-white px-3"
-            (change)="changeAnalysisType($any($event.target).value)"
-          >
-            @for (type of analysisTypes; track type.label) {
-              <option [value]="type.value">{{ type.label }}</option>
-            }
-          </select></label
-        >
-        <label class="grid min-w-0 gap-1 text-sm font-medium"
-          >Método<input
-            id="analysis-method"
-            formControlName="method"
-            maxlength="255"
-            class="h-11 min-w-0 w-full rounded-lg border border-lactec-line px-3"
-            [attr.aria-invalid]="
-              form.controls.method.invalid && form.controls.method.touched
-            "
-            aria-describedby="method-error"
-          />
-          @if (form.controls.method.invalid && form.controls.method.touched) {
-            <small id="method-error" class="font-normal text-red-700"
-              >Informe o método com até 255 caracteres.</small
-            >
-          }</label
-        ><label class="grid min-w-0 gap-1 text-sm font-medium"
-          >Norma<input
-            id="analysis-standard"
-            formControlName="standard"
-            maxlength="255"
-            class="h-11 min-w-0 w-full rounded-lg border border-lactec-line px-3"
-            [attr.aria-invalid]="
-              form.controls.standard.invalid && form.controls.standard.touched
-            "
-            aria-describedby="standard-error"
-          />
-          @if (
-            form.controls.standard.invalid && form.controls.standard.touched
-          ) {
-            <small id="standard-error" class="font-normal text-red-700"
-              >Informe a norma com até 255 caracteres.</small
-            >
-          }
-        </label>
-        <label class="grid min-w-0 gap-1 text-sm font-medium"
-          >Data de agendamento<input
-            id="scheduled-date"
-            type="date"
-            formControlName="scheduledDate"
-            class="h-11 min-w-0 w-full rounded-lg border border-lactec-line px-3"
-            [attr.aria-invalid]="
-              form.controls.scheduledDate.invalid &&
-              form.controls.scheduledDate.touched
-            "
-            aria-describedby="scheduled-date-error"
-          />
-          @if (
-            form.controls.scheduledDate.invalid &&
-            form.controls.scheduledDate.touched
-          ) {
-            <small id="scheduled-date-error" class="font-normal text-red-700"
-              >Informe uma data de agendamento válida.</small
-            >
-          }
-        </label>
-        <label class="grid min-w-0 gap-1 text-sm font-medium"
-          >Responsável<select
-            id="responsible-id"
-            formControlName="responsibleId"
-            class="h-11 min-w-0 w-full rounded-lg border border-lactec-line bg-white px-3"
-            [attr.aria-invalid]="
-              form.controls.responsibleId.invalid &&
-              form.controls.responsibleId.touched
-            "
-            aria-describedby="responsible-error"
-          >
-            <option value="">Selecione um técnico</option>
-            @for (person of technicians(); track person.id) {
-              <option [value]="person.id">
-                {{ person.name }}{{ person.unit ? " - " + person.unit : "" }}
-              </option>
-            }
-            @if (detail()?.responsible && !detail()?.responsible?.active) {
-              <option [value]="detail()!.responsible.id">
-                {{ detail()!.responsible.name }} (inativo - responsável atual)
-              </option>
-            }
-          </select>
-          @if (
-            form.controls.responsibleId.invalid &&
-            form.controls.responsibleId.touched
-          ) {
-            <small id="responsible-error" class="font-normal text-red-700"
-              >Selecione um responsável.</small
-            >
-          }
-        </label>
-        <div class="grid min-w-0 gap-1 text-sm font-medium md:col-span-2">
-          <span
-            >Instrumentos laboratoriais utilizados
-            <span class="font-normal text-lactec-muted">(opcional)</span></span
-          >
-          <div
-            class="grid min-w-0 grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-3"
-          >
-            @for (instrument of instruments(); track instrument.id) {
-              <label
-                class="flex min-w-0 items-start gap-2 rounded-lg border border-lactec-line p-3 font-normal"
-                ><input
-                  type="checkbox"
-                  [checked]="
-                    form.controls.equipmentIds.value?.includes(instrument.id)
-                  "
-                  (change)="
-                    toggleInstrument(instrument.id, $any($event.target).checked)
-                  "
-                /><span class="min-w-0 break-words"
-                  ><strong>{{ instrument.inventoryNumber }}</strong> -
-                  {{ instrument.name
-                  }}<span class="block text-xs text-lactec-muted"
-                    >Certificado:
-                    {{ instrument.calibrationCertificate ?? "Não informado" }};
-                    validade:
-                    {{
-                      instrument.calibrationValidUntil
-                        ? formatDate(instrument.calibrationValidUntil)
-                        : "Não informado"
-                    }}</span
-                  ></span
-                ></label
-              >
-            } @empty {
-              <p class="text-sm text-lactec-muted">
-                Nenhum instrumento disponível.
-              </p>
-            }
-          </div>
-        </div>
-        <label class="grid min-w-0 gap-1 text-sm font-medium"
-          >Classificação da análise<select
-            formControlName="analysisClassification"
-            class="h-11 min-w-0 w-full rounded-lg border border-lactec-line bg-white px-3"
-          >
-            @for (item of classifications; track item.label) {
-              <option [ngValue]="item.value">{{ item.label }}</option>
-            }
-          </select></label
-        >
-        @if (detail()) {
-          <label class="grid min-w-0 gap-1 text-sm font-medium"
-            >Estado do processo
-            <input
-              readonly
-              [value]="processStatusLabel(detail()!.status)"
-              class="h-11 min-w-0 w-full rounded-lg border border-lactec-line bg-slate-50 px-3"
-          /></label>
         }
       </div>
     </section>
-    <section class="rounded-2xl border border-lactec-line bg-white p-5 md:p-7">
+
+    <section class="ensaio-section" aria-labelledby="analysis-heading">
+      <h2 id="analysis-heading" class="section-title">Dados do ensaio</h2>
+      <div class="grid min-w-0 grid-cols-1 gap-4 md:grid-cols-2">
+        <label class="grid min-w-0 gap-1 text-sm font-medium">
+          Tipo de análise
+          <input id="analysis-type-name" formControlName="type" maxlength="200" class="h-11 min-w-0 w-full rounded-lg border border-lactec-line px-3" [attr.aria-invalid]="form.controls.type.invalid && form.controls.type.touched" aria-describedby="type-error" />
+          @if (form.controls.type.invalid && form.controls.type.touched) { <small id="type-error" class="font-normal text-red-700">Informe um tipo com até 200 caracteres.</small> }
+        </label>
+        <label class="grid min-w-0 gap-1 text-sm font-medium">
+          <span id="result-format-label">Formato dos resultados</span>
+          <mat-select aria-labelledby="result-format-label" formControlName="analysisType" class="h-11 min-w-0 w-full rounded-lg border border-lactec-line bg-white px-3" (selectionChange)="changeAnalysisType($event.value)">
+            @for (type of analysisTypes; track type.label) { <mat-option [value]="type.value">{{ type.label }}</mat-option> }
+          </mat-select>
+        </label>
+        <label class="grid min-w-0 gap-1 text-sm font-medium">
+          Método
+          <input id="analysis-method" formControlName="method" maxlength="255" class="h-11 min-w-0 w-full rounded-lg border border-lactec-line px-3" [attr.aria-invalid]="form.controls.method.invalid && form.controls.method.touched" aria-describedby="method-error" />
+          @if (form.controls.method.invalid && form.controls.method.touched) { <small id="method-error" class="font-normal text-red-700">Informe o método com até 255 caracteres.</small> }
+        </label>
+        <label class="grid min-w-0 gap-1 text-sm font-medium">
+          Norma
+          <input id="analysis-standard" formControlName="standard" maxlength="255" class="h-11 min-w-0 w-full rounded-lg border border-lactec-line px-3" [attr.aria-invalid]="form.controls.standard.invalid && form.controls.standard.touched" aria-describedby="standard-error" />
+          @if (form.controls.standard.invalid && form.controls.standard.touched) { <small id="standard-error" class="font-normal text-red-700">Informe a norma com até 255 caracteres.</small> }
+        </label>
+        <label class="grid min-w-0 gap-1 text-sm font-medium">
+          Data de agendamento
+          <input id="scheduled-date" type="date" formControlName="scheduledDate" class="h-11 min-w-0 w-full rounded-lg border border-lactec-line px-3" [attr.aria-invalid]="form.controls.scheduledDate.invalid && form.controls.scheduledDate.touched" aria-describedby="scheduled-date-error" />
+          @if (form.controls.scheduledDate.invalid && form.controls.scheduledDate.touched) { <small id="scheduled-date-error" class="font-normal text-red-700">Informe uma data de agendamento válida.</small> }
+        </label>
+        <label class="grid min-w-0 gap-1 text-sm font-medium">
+          <span id="responsible-label">Responsável</span>
+          <mat-select aria-labelledby="responsible-label" id="responsible-id" formControlName="responsibleId" class="h-11 min-w-0 w-full rounded-lg border border-lactec-line bg-white px-3" [attr.aria-invalid]="form.controls.responsibleId.invalid && form.controls.responsibleId.touched" aria-describedby="responsible-error">
+            <mat-option value="">Selecione um técnico</mat-option>
+            @for (person of technicians(); track person.id) { <mat-option [value]="person.id">{{ person.name }}{{ person.unit ? " - " + person.unit : "" }}</mat-option> }
+            @if (detail()?.responsible && !detail()?.responsible?.active) { <mat-option [value]="detail()!.responsible.id">{{ detail()!.responsible.name }} (inativo - responsável atual)</mat-option> }
+          </mat-select>
+          @if (techniciansLoading()) { <small class="font-normal text-lactec-muted" role="status">Carregando responsáveis…</small> }
+          @else if (techniciansError()) { <small class="font-normal text-red-700" role="alert">Não foi possível carregar os responsáveis. <button mat-button type="button" [disabled]="formLocked" (click)="retryTechnicians()">Tentar novamente</button></small> }
+          @else if (!technicians().length && !detail()?.responsible) { <small class="font-normal text-lactec-muted" role="status">Nenhum responsável ativo está disponível.</small> }
+          @if (form.controls.responsibleId.invalid && form.controls.responsibleId.touched) { <small id="responsible-error" class="font-normal text-red-700">Selecione um responsável.</small> }
+        </label>
+
+        <div class="grid min-w-0 gap-2 text-sm font-medium md:col-span-2" [attr.aria-busy]="instrumentsLoading()">
+          <span>Instrumentos laboratoriais utilizados <span class="font-normal text-lactec-muted">(opcional)</span></span>
+          @if (instrumentsLoading()) {
+            <p class="m-0 flex items-center gap-2 text-sm text-lactec-muted" role="status"><mat-spinner diameter="18" />Carregando instrumentos…</p>
+          } @else if (instrumentsError()) {
+            <p class="m-0 text-sm text-red-700" role="alert">Não foi possível carregar os instrumentos. A seleção atual foi preservada e está bloqueada até recuperar a consulta.
+              <button mat-button type="button" [disabled]="formLocked" (click)="retryInstruments()">Tentar novamente</button>
+            </p>
+          } @else if (!instrumentOptions.length) {
+            <p class="m-0 text-sm text-lactec-muted" role="status">Nenhum instrumento disponível. O ensaio pode ser salvo sem instrumentos.</p>
+          } @else {
+            <div class="grid min-w-0 grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-3">
+              @for (instrument of instrumentOptions; track instrument.id) {
+                <label class="flex min-w-0 items-start gap-2 rounded-lg border border-lactec-line p-3 font-normal">
+                  <input type="checkbox" [checked]="form.controls.equipmentIds.value?.includes(instrument.id)" (change)="toggleInstrument(instrument.id, $any($event.target).checked)" [disabled]="formLocked || instrumentsLoading() || instrumentsError()" />
+                  <span class="min-w-0 break-words"><strong>{{ instrument.inventoryNumber }}</strong> - {{ instrument.name }}
+                    <span class="block text-xs text-lactec-muted">Certificado: {{ instrument.calibrationCertificate ?? "Não informado" }}; validade: {{ instrument.calibrationValidUntil ? formatDate(instrument.calibrationValidUntil) : "Não informado" }}</span>
+                  </span>
+                </label>
+              }
+            </div>
+          }
+        </div>
+
+        <label class="grid min-w-0 gap-1 text-sm font-medium">
+          <span id="classification-label">Classificação da análise</span>
+          <mat-select aria-labelledby="classification-label" placeholder="Não classificada" formControlName="analysisClassification" class="h-11 min-w-0 w-full rounded-lg border border-lactec-line bg-white px-3">
+            @for (item of classifications; track item.label) { <mat-option [value]="item.value">{{ item.label }}</mat-option> }
+          </mat-select>
+        </label>
+        @if (detail()) {
+          <label class="grid min-w-0 gap-1 text-sm font-medium">Estado do processo
+            <input readonly [value]="processStatusLabel(detail()!.status)" class="h-11 min-w-0 w-full rounded-lg border border-lactec-line bg-slate-50 px-3" />
+          </label>
+        }
+      </div>
+    </section>
+
+    <section class="ensaio-section">
       <div class="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <h2 class="m-0 text-lg font-semibold">
-            Resultados
-            {{
-              form.controls.analysisType.value === "chromatography"
-                ? "cromatográficos"
-                : form.controls.analysisType.value === "physical-chemical"
-                  ? "físico-químicos"
-                  : "da análise"
-            }}
-          </h2>
-          <p class="mt-1 text-sm text-lactec-muted">
-            Use vírgula para decimais. Informe ND, deixe vazio para não
-            realizado ou digite um resultado textual.
-          </p>
+          <h2 class="m-0 text-lg font-semibold">Resultados {{ form.controls.analysisType.value === "chromatography" ? "cromatográficos" : form.controls.analysisType.value === "physical-chemical" ? "físico-químicos" : "da análise" }}</h2>
+          <p class="mt-1 text-sm text-lactec-muted">Informe os valores e o tipo de resultado de cada medição.</p>
         </div>
         @if (form.controls.analysisType.value === "other") {
-          <button
-            mat-stroked-button
-            type="button"
-            (click)="addGenericMeasurement()"
-            [disabled]="rows.length >= 100"
-          >
-            <mat-icon>add</mat-icon>Adicionar linha
-          </button>
+          <button mat-stroked-button type="button" (click)="addGenericMeasurement()" [disabled]="formLocked || rows.length >= 100"><mat-icon>add</mat-icon>Adicionar linha</button>
         }
       </div>
-      @if (templateLoading()) {
-        <p role="status">Carregando modelo de medições…</p>
-      }
+      @if (templateLoading()) { <p class="flex items-center gap-2" role="status" aria-live="polite"><mat-spinner diameter="18" />Carregando modelo de medições…</p> }
       @if (templateError()) {
-        <div
-          role="alert"
-          class="mt-3 rounded-lg border border-red-200 p-3 text-sm"
-        >
-          Não foi possível carregar o modelo de medições.
-          <button mat-button type="button" (click)="retryTemplate()">
-            Tentar novamente
-          </button>
+        <div role="alert" class="mt-3 rounded-lg border border-red-200 p-3 text-sm">Não foi possível carregar o modelo de medições.
+          <button mat-button type="button" [disabled]="formLocked" (click)="retryTemplate()">Tentar novamente</button>
         </div>
       }
-      @if (form.controls.analysisType.value === "other" && !rows.length) {
-        <p class="mt-4 rounded-lg bg-slate-50 p-4 text-sm">
-          Adicione linhas de medição para o formato escolhido.
-        </p>
-      }
+      @if (form.controls.analysisType.value === "other" && !rows.length) { <p class="mt-4 rounded-lg bg-slate-50 p-4 text-sm">Adicione linhas de medição para o formato escolhido.</p> }
       @if (!templateLoading() && !templateError()) {
-        <div
-          class="mt-4 overflow-x-auto rounded-lg border border-lactec-line"
-          tabindex="0"
-          role="region"
-          aria-label="Resultados; role horizontalmente para ver as colunas"
-        >
-          <table class="w-full min-w-[900px] text-left text-sm">
-            <thead class="bg-lactec-line-soft">
-              <tr>
-                <th class="p-3">Medição</th>
-                <th class="p-3">Método</th>
-                <th class="p-3">Referência</th>
-                <th class="p-3">Resultado</th>
-                <th class="p-3">Ação</th>
-              </tr>
-            </thead>
-            <tbody formArrayName="measurements">
-              @for (row of rows.controls; track row; let i = $index) {
-                <tr [formGroupName]="i" class="border-t border-lactec-line">
-                  <td class="p-2">
-                    @if (form.controls.analysisType.value === "other") {
-                      <input
-                        [id]="'measurement-name-' + i"
-                        formControlName="name"
-                        maxlength="200"
-                        class="w-52 rounded border border-lactec-line p-2"
-                        [attr.aria-invalid]="
-                          row.get('name')?.invalid && row.get('name')?.touched
-                        "
-                        [attr.aria-label]="'Nome da medição ' + (i + 1)"
-                      />
-                    } @else {
-                      <span class="block w-52 break-words p-2">{{
-                        row.get("name")?.value
-                      }}</span>
-                    }
-                    @if (row.get("name")?.invalid && row.get("name")?.touched) {
-                      <small class="block text-red-700"
-                        >Informe o nome da medição.</small
-                      >
-                    }
-                    @if (form.controls.analysisType.value === "other") {
-                      <label class="mt-1 block text-xs text-lactec-muted">
-                        Unidade
-                        <input
-                          formControlName="unit"
-                          maxlength="40"
-                          class="mt-1 block w-52 rounded border border-lactec-line p-2 text-sm"
-                          [attr.aria-label]="'Unidade da medição ' + (i + 1)"
-                        />
-                      </label>
-                    } @else {
-                      <span class="mt-1 block text-xs text-lactec-muted">{{
-                        row.get("unit")?.value || "Sem unidade"
-                      }}</span>
-                    }
-                  </td>
-                  <td class="p-2">
-                    <input
-                      formControlName="method"
-                      aria-label="Método da medição"
-                      class="w-40 rounded border border-lactec-line p-2"
-                    />
-                  </td>
-                  <td class="p-2">
-                    <input
-                      formControlName="referenceLimit"
-                      aria-label="Referência da medição"
-                      class="w-52 rounded border border-lactec-line p-2"
-                    />
-                  </td>
-                  <td class="p-2">
-                    <input
-                      formControlName="resultInput"
-                      [attr.aria-label]="
-                        'Resultado de ' + row.get('name')?.value
-                      "
-                      class="w-40 rounded border border-lactec-line p-2"
-                      placeholder="Valor, ND ou texto"
-                    />
-                  </td>
-                  <td class="p-2">
-                    @if (form.controls.analysisType.value === "other") {
-                      <button
-                        mat-icon-button
-                        type="button"
-                        (click)="removeMeasurement(i)"
-                        [attr.aria-label]="
-                          'Remover medição ' + (row.get('name')?.value || i + 1)
-                        "
-                      >
-                        <mat-icon>delete_outline</mat-icon>
-                      </button>
-                    }
-                  </td>
-                </tr>
-              }
-            </tbody>
-          </table>
-        </div>
+        <fieldset class="m-0 min-w-0 border-0 p-0" [disabled]="formLocked" aria-label="Linhas e resultados do ensaio">
+          <div class="mt-4 overflow-x-auto rounded-lg border border-lactec-line" tabindex="0" role="region" aria-label="Resultados; role horizontalmente para ver as colunas">
+            <table class="w-full min-w-[760px] text-left text-sm">
+              <thead class="bg-lactec-line-soft"><tr><th class="p-3">Medição</th><th class="p-3">Método</th><th class="p-3">Referência</th><th class="p-3">Tipo de resultado</th><th class="p-3">Resultado</th>@if (form.controls.analysisType.value === "other") { <th class="p-3">Ação</th> }</tr></thead>
+              <tbody formArrayName="measurements">
+                @for (row of rows.controls; track row; let i = $index) {
+                  <tr [formGroupName]="i" class="border-t border-lactec-line">
+                    <td class="p-2">
+                      @if (form.controls.analysisType.value === "other") {
+                        <input [id]="'measurement-name-' + i" formControlName="name" maxlength="200" class="w-40 rounded border border-lactec-line p-2" [attr.aria-invalid]="row.get('name')?.invalid && row.get('name')?.touched" [attr.aria-label]="'Nome da medição ' + (i + 1)" />
+                      } @else { <span class="block w-40 break-words p-2">{{ row.get("name")?.value }}</span> }
+                      @if (row.get("name")?.invalid && row.get("name")?.touched) { <small class="block text-red-700">Informe o nome da medição.</small> }
+                      @if (form.controls.analysisType.value === "other") {
+                        <label class="mt-1 block text-xs text-lactec-muted">Unidade<input formControlName="unit" maxlength="40" class="mt-1 block w-40 rounded border border-lactec-line p-2 text-sm" [attr.aria-label]="'Unidade da medição ' + (i + 1)" /></label>
+                      } @else { <span class="mt-1 block text-xs text-lactec-muted">{{ row.get("unit")?.value || "Sem unidade" }}</span> }
+                    </td>
+                    <td class="p-2"><input formControlName="method" [attr.aria-label]="'Método da medição ' + (i + 1)" class="w-40 rounded border border-lactec-line p-2" /></td>
+                    <td class="p-2"><input formControlName="referenceLimit" [attr.aria-label]="'Referência da medição ' + (i + 1)" class="w-40 rounded border border-lactec-line p-2" /></td>
+                    <td class="p-2">
+                      <mat-select [value]="row.get('resultKind')?.value" [disabled]="formLocked" (selectionChange)="requestResultKindChange(i, $event)" [attr.aria-label]="'Tipo de resultado de ' + row.get('name')?.value" class="w-40 rounded border border-lactec-line bg-white p-2">
+                        <mat-option value="quantity">Quantidade</mat-option><mat-option value="not-detected">Não detectado (ND)</mat-option><mat-option value="not-performed">Não realizado</mat-option><mat-option value="text">Texto</mat-option>
+                      </mat-select>
+                    </td>
+                    <td class="p-2">
+                      @if (row.get("resultKind")?.value === "quantity") {
+                        <input formControlName="resultInput" inputmode="decimal" [attr.aria-label]="'Quantidade de ' + row.get('name')?.value" class="w-40 rounded border border-lactec-line p-2" placeholder="Ex.: 12,30" />
+                        @if (row.get("resultInput")?.invalid && row.get("resultInput")?.touched) { <small class="block max-w-40 text-red-700">Informe uma quantidade com até 16 dígitos inteiros e 8 casas decimais.</small> }
+                      } @else if (row.get("resultKind")?.value === "text") {
+                        <textarea formControlName="resultInput" rows="2" maxlength="2000" [attr.aria-label]="'Texto do resultado de ' + row.get('name')?.value" class="w-44 rounded border border-lactec-line p-2" placeholder="Informe o resultado textual"></textarea>
+                        @if (row.get("resultInput")?.invalid && row.get("resultInput")?.touched) { <small class="block max-w-44 text-red-700">Informe texto com até 2000 caracteres. Espaços e quebras serão preservados.</small> }
+                      } @else if (row.get("resultKind")?.value === "not-detected") { <span class="block p-2">Não detectado (ND)</span> }
+                      @else { <span class="block p-2">Não realizado</span> }
+                    </td>
+                    @if (form.controls.analysisType.value === "other") { <td class="p-2">
+                      <button mat-icon-button type="button" (click)="removeMeasurement(i)" [attr.aria-label]="'Remover medição ' + (row.get('name')?.value || i + 1)"><mat-icon>delete_outline</mat-icon></button>
+                    </td> }
+                  </tr>
+                }
+              </tbody>
+            </table>
+          </div>
+        </fieldset>
       }
+
+      <label class="mt-6 grid min-w-0 gap-2 text-sm font-medium">Texto técnico do laudo - rascunho
+        <textarea id="report-text" formControlName="reportText" rows="5" maxlength="10000" [attr.aria-invalid]="form.controls.reportText.invalid && form.controls.reportText.touched" aria-describedby="report-text-error" class="w-full resize-y rounded-lg border border-lactec-line p-3" placeholder="Registre observações técnicas ainda não publicadas."></textarea>
+        <span id="report-text-error" class="font-normal text-lactec-muted">{{ form.controls.reportText.invalid ? "O texto aceita até 10000 caracteres." : "Não é um laudo assinado ou publicado." }}</span>
+      </label>
     </section>
-    <section class="rounded-2xl border border-lactec-line bg-white p-5 md:p-7">
-      <label class="grid min-w-0 gap-2 text-sm font-medium"
-        >Texto técnico do laudo - rascunho<textarea
-          id="report-text"
-          formControlName="reportText"
-          rows="5"
-          maxlength="10000"
-          [attr.aria-invalid]="
-            form.controls.reportText.invalid && form.controls.reportText.touched
-          "
-          aria-describedby="report-text-error"
-          class="w-full resize-y rounded-lg border border-lactec-line p-3"
-          placeholder="Registre observações técnicas ainda não publicadas."
-        ></textarea
-        ><span id="report-text-error" class="font-normal text-lactec-muted">{{
-          form.controls.reportText.invalid
-            ? "O texto aceita até 10000 caracteres."
-            : "Não é um laudo assinado ou publicado."
-        }}</span></label
-      >
-    </section>
+
     <footer class="flex flex-wrap justify-between gap-3 pb-4">
-      <button
-        mat-stroked-button
-        type="button"
-        [disabled]="saving()"
-        (click)="cancel()"
-      >
-        Cancelar</button
-      ><button
-        mat-flat-button
-        type="submit"
-        [disabled]="
-          saving() || loading() || templateLoading() || !hasReferences
-        "
-      >
-        <mat-icon>{{ saving() ? "hourglass_top" : "save" }}</mat-icon
-        >{{ saving() ? "Salvando…" : "Salvar" }}
+      <button mat-button type="button" (click)="cancel()" [disabled]="saving()">Cancelar</button>
+      <button mat-flat-button type="submit" [disabled]="saving() || detailLoading() || templateLoading()">
+        @if (saving()) { <mat-spinner diameter="18" />Salvando… }
+        @else { Salvar ensaio }
       </button>
     </footer>
   </form>

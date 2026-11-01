@@ -3,6 +3,7 @@ import {
   AnalysisType,
   Measurement,
   MeasurementResult,
+  MeasurementResultKind,
   MeasurementTemplate,
   ProcessStatus,
 } from './ensaio';
@@ -44,15 +45,19 @@ export function classificationLabel(value: AnalysisClassification): string {
 }
 export function resultToInput(result: MeasurementResult): string {
   if (result.kind === 'quantity') return result.value.replace('.', ',');
-  if (result.kind === 'not-detected') return 'ND';
-  if (result.kind === 'not-performed') return '';
-  return result.text;
+  if (result.kind === 'text') return result.text;
+  return '';
 }
-export function resultFromInput(raw: string): MeasurementResult {
+export function resultFromInput(
+  raw: string,
+  kind: MeasurementResultKind,
+): MeasurementResult {
   const value = raw.trim();
-  if (!value) return { kind: 'not-performed' };
-  if (/^nd$/i.test(value)) return { kind: 'not-detected' };
-  if (/^[+-]?\d+(?:[,.]\d+)?$/.test(value)) {
+  if (kind === 'not-detected') return { kind };
+  if (kind === 'not-performed') return { kind };
+  if (kind === 'quantity') {
+    if (!/^[+-]?\d+(?:[,.]\d+)?$/.test(value))
+      return { kind, value: raw };
     const sign = value.startsWith('-') ? '-' : '';
     const unsigned = value.replace(/^[+-]/, '').replace(',', '.');
     const [integerPart, decimalPart] = unsigned.split('.');
@@ -81,6 +86,10 @@ export function isValidQuantityInput(raw: string): boolean {
   const [integerPart, decimalPart = ''] = unsigned.split(/[,.]/);
   const significantInteger = integerPart.replace(/^0+(?=\d)/, '');
   return significantInteger.length <= 16 && decimalPart.length <= 8;
+}
+
+export function measurementResultKind(result: MeasurementResult): MeasurementResultKind {
+  return result.kind;
 }
 
 export function formatCivilDate(value: string): string {

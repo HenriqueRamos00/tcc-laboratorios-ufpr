@@ -8,6 +8,7 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.EntityGraph;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 
 import java.math.BigDecimal;
 import java.util.List;
@@ -57,6 +58,22 @@ public interface OrcamentoRepository extends JpaRepository<Orcamento, Long> {
                     """)
     Page<Orcamento> pesquisarInternos(
             String busca, StatusComercialOrcamento status, Pageable pageable);
+
+    @EntityGraph(attributePaths = "empresa")
+    @Query(value = """
+            select orcamento from Orcamento orcamento
+            where (:busca is null
+                or lower(orcamento.code) like :busca escape '!'
+                or lower(orcamento.name) like :busca escape '!'
+                or lower(orcamento.empresa.legalName) like :busca escape '!')
+            """, countQuery = """
+            select count(orcamento) from Orcamento orcamento
+            where (:busca is null
+                or lower(orcamento.code) like :busca escape '!'
+                or lower(orcamento.name) like :busca escape '!'
+                or lower(orcamento.empresa.legalName) like :busca escape '!')
+            """)
+    Page<Orcamento> pesquisarReferenciasEnsaio(@Param("busca") String busca, Pageable pageable);
 
     @Query(
             """
