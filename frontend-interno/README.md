@@ -90,7 +90,7 @@ As páginas **Empresas** (`/admin/empresas`) e **Clientes** (`/admin/clientes`) 
 
 O cadastro de cliente exige senha inicial e pelo menos uma empresa ativa; a edição pode omitir a senha para preservá-la e substituir os vínculos. Vínculos anteriores com empresas inativas são mostrados para preservar o histórico, mas não autorizam acesso. Desativar um cliente bloqueia seu login e os tokens já emitidos na próxima requisição.
 
-Os formulários e painéis seguem os protótipos HU17-20 e reutilizam os componentes de diálogo/confirmador e o tema do Portal Interno. A seleção plural por checkboxes substitui as linhas com botão de adicionar do protótipo HU20. Cargo permanece na tabela/formulário conforme os critérios textuais.
+Os formulários seguem os protótipos das HUs 17 a 20 e usam os componentes de painel, confirmação e o tema do Portal Interno. No cadastro de cliente, as empresas são selecionadas por caixas de seleção, em vez das linhas com botão de adicionar da HU20. O campo Cargo aparece na tabela e no formulário, como pedem os critérios dessa HU.
 
 CNPJ suporta formato numérico de 14 dígitos ou máscara, com validação dos dígitos verificadores. E-mail/CNPJ duplicados geram mensagem de conflito. Cancelar ou fechar o painel sem salvar conserva os dados. Carregamento, erro da API e ausência de resultados têm estados separados.
 
@@ -98,8 +98,16 @@ CNPJ suporta formato numérico de 14 dígitos ou máscara, com validação dos d
 
 A página **Orçamentos** (`/admin/orcamentos`) consulta diretamente a API Spring e lista os registros persistidos em páginas. A busca considera código da proposta, nome, descrição e empresa. O filtro usa os cinco códigos comerciais definidos em `orcamento-presentation.ts`; a seleção envia o código exato, e **Todos os status** omite o parâmetro. O backend valida os códigos recebidos. Os códigos recebem rótulos em português; um valor inesperado é exibido literalmente com estilo neutro.
 
-A tabela mostra proposta, empresa, nome e descrição, data, valor e status. O código da proposta abre os detalhes; as ações da linha permitem editar e baixar o PDF disponível. A paginação de servidor usa 20 itens por padrão e opções de 10, 20, 50 ou 100 itens. Após cadastro, a lista retorna à primeira página; após edição, mantém a página e os filtros selecionados.
+A tabela mostra proposta, empresa, nome e descrição, data, valor e status. Ao lado do código, há um botão para copiar o número da proposta. Na coluna de ações, a lupa abre os detalhes; os demais botões permitem editar e baixar o PDF, quando disponível. A paginação usa 20 itens por padrão e oferece opções de 10, 20, 50 ou 100 itens. Após um cadastro, a lista volta à primeira página; após uma edição, mantém a página e os filtros.
 
 O formulário lateral de criação e edição exige uma empresa ativa para novos registros e mantém o vínculo original durante a edição mesmo quando a empresa está inativa. O laboratório é informado como texto livre. Nome e e-mail do contato começam com os dados da empresa e podem ser ajustados para a proposta. Itens de serviço são editáveis em cartões compactos; subtotais e total são somente leitura e calculados a partir de quantidade e preço unitário, sem impostos ou descontos. O envio é bloqueado quando um valor não pode ser representado com precisão segura em centavos. A criação inicia com status **Pendente de Aceite**; na edição, somente os cinco status comerciais podem ser salvos. A etapa continua sob responsabilidade do sistema.
 
-Um PDF pode ser enviado na criação ou na edição, com limite de 50 MiB. Na edição, manter o campo de arquivo vazio preserva o documento existente; enviar outro PDF o substitui. O detalhe apresenta laboratório, escopo, contato e itens retornados pela API e identifica dados ausentes nos orçamentos legados. Para manter a tabela legível, a proposta abre o detalhe diretamente e as ações ficam limitadas a editar e, quando disponível, baixar o PDF. Os itens aparecem como cartões no painel lateral para evitar uma tabela larga em telas estreitas.
+Um PDF pode ser enviado no cadastro ou na edição, com limite de 50 MiB. Na edição, deixar o campo de arquivo vazio mantém o documento atual; enviar outro PDF o substitui. O painel de detalhes mostra laboratório, escopo, contato e itens de serviço, indicando os campos sem informação nos registros antigos. Os itens aparecem em cartões para facilitar a leitura em telas estreitas.
+
+## Consulta técnica de orçamentos
+
+Em **Orçamentos** (`/tecnico/orcamentos`), o técnico pode pesquisar pelo código, nome da proposta ou empresa e filtrar por período de criação e status técnico. Os resultados são paginados pela API. É possível informar só a data inicial ou só a final; os dias selecionados são incluídos por inteiro, no fuso `America/Sao_Paulo`, também usado para exibir a data de criação.
+
+O botão **Abrir** mostra os dados técnicos e os serviços propostos em um painel lateral. A API usa respostas próprias para o técnico, sem valores, contatos comerciais, etapa, status comercial ou PDF. A tela permite apenas consulta.
+
+O status reflete o andamento das execuções: **Incompleto**, **Completo**, **Validado** ou **Publicado**. Execuções canceladas ficam fora do cálculo quando há outras ativas; se todas estiverem canceladas, aparece **Cancelado**. Sem execuções, aparece **Não informado**. Esses dois últimos rótulos usam estilo neutro. O status comercial da proposta não interfere nesse cálculo.

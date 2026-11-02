@@ -49,7 +49,9 @@ WHERE lower(trim(u.email)) = 'lactec@lactec.com'
   AND u.nome = 'Cliente Lactec'
   AND NOT EXISTS (SELECT 1 FROM clientes c WHERE c.usuario_id = u.id);
 
--- Senha compartilhada apenas pelas contas novas desta base: Demo@12345.
+-- Senha inicial dos técnicos e clientes de demonstração (@example.test): Demo@12345.
+-- Exemplo de login: demo.tecnico.helena@example.test / Demo@12345.
+-- As senhas de contas existentes não são alteradas.
 INSERT INTO usuarios (
     nome, email, email_normalizado, senha_hash, perfil, ativo, unidade, especialidade
 )
