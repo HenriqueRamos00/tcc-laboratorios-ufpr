@@ -2,10 +2,13 @@ package br.ufpr.tcc.backend_lab.application.usecase;
 
 import br.ufpr.tcc.backend_lab.application.dto.response.OrcamentoResponse;
 import br.ufpr.tcc.backend_lab.application.service.AcessoClienteAtual;
+import br.ufpr.tcc.backend_lab.application.service.AcompanhamentoOrcamentosCliente;
 import br.ufpr.tcc.backend_lab.domain.exception.RegraNegocioException;
 import br.ufpr.tcc.backend_lab.domain.repository.OrcamentoRepository;
 
 import lombok.RequiredArgsConstructor;
+
+import java.util.List;
 
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -15,6 +18,7 @@ import org.springframework.transaction.annotation.Transactional;
 public class GetOrcamentoClienteUseCase {
     private final OrcamentoRepository orcamentoRepository;
     private final AcessoClienteAtual acessoClienteAtual;
+    private final AcompanhamentoOrcamentosCliente acompanhamento;
 
     @Transactional(readOnly = true)
     public OrcamentoResponse execute(Long usuarioId, Long orcamentoId) {
@@ -28,6 +32,7 @@ public class GetOrcamentoClienteUseCase {
                                                 "Orçamento não encontrado"));
         acessoClienteAtual.autorizar(cliente, orcamento);
 
-        return OrcamentoResponse.from(orcamento);
+        return OrcamentoResponse.from(orcamento,
+                acompanhamento.resolver(List.of(orcamento)).get(orcamento.getId()));
     }
 }

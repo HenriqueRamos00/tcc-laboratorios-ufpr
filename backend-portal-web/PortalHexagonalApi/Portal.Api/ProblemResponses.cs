@@ -113,6 +113,24 @@ internal static class ProblemResponses
             "A fonte de orcamentos nao respondeu a esta consulta.");
     }
 
+    public static IActionResult QuoteAuthenticationRequired(this ControllerBase controller)
+    {
+        return controller.AsProblem(
+            StatusCodes.Status401Unauthorized,
+            "quote-authentication-required",
+            "Autenticação necessária.",
+            "Entre novamente para consultar os orçamentos.");
+    }
+
+    public static IActionResult QuoteAccessForbidden(this ControllerBase controller)
+    {
+        return controller.AsProblem(
+            StatusCodes.Status403Forbidden,
+            "quote-access-forbidden",
+            "Acesso ao orçamento proibido.",
+            "O usuário autenticado não tem acesso a este orçamento.");
+    }
+
     /// <summary>
     /// Separada da fonte indisponivel porque manda procurar em outro lugar: aqui a consulta
     /// respondeu e foi o arquivo do documento que nao pode ser lido.

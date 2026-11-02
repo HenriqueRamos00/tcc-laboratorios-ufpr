@@ -11,9 +11,12 @@ import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.OneToMany;
 import jakarta.persistence.OrderBy;
+import jakarta.persistence.PrePersist;
+import jakarta.persistence.PreUpdate;
 import jakarta.persistence.Table;
 
 import br.ufpr.tcc.backend_lab.domain.model.enums.StatusComercialOrcamento;
+import br.ufpr.tcc.backend_lab.domain.model.enums.EtapaAcompanhamentoOrcamento;
 
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -74,4 +77,10 @@ public class Orcamento {
     @OneToMany(mappedBy = "orcamento", cascade = CascadeType.ALL, orphanRemoval = true)
     @OrderBy("position ASC")
     private List<OrcamentoItem> items = new ArrayList<>();
+
+    @PrePersist
+    @PreUpdate
+    void validarEtapa() {
+        EtapaAcompanhamentoOrcamento.deTexto(stage);
+    }
 }

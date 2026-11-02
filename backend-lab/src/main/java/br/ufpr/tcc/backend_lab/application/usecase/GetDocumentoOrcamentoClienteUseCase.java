@@ -1,6 +1,7 @@
 package br.ufpr.tcc.backend_lab.application.usecase;
 
 import br.ufpr.tcc.backend_lab.application.service.AcessoClienteAtual;
+import br.ufpr.tcc.backend_lab.application.service.GeradorDocumentoOrcamento;
 import br.ufpr.tcc.backend_lab.domain.exception.RegraNegocioException;
 import br.ufpr.tcc.backend_lab.domain.repository.DocumentoOrcamentoRepository;
 import br.ufpr.tcc.backend_lab.domain.repository.OrcamentoRepository;
@@ -16,6 +17,7 @@ public class GetDocumentoOrcamentoClienteUseCase {
     private final DocumentoOrcamentoRepository documentoOrcamentoRepository;
     private final OrcamentoRepository orcamentoRepository;
     private final AcessoClienteAtual acessoClienteAtual;
+    private final GeradorDocumentoOrcamento geradorDocumentoOrcamento;
 
     @Transactional(readOnly = true)
     public byte[] execute(Long usuarioId, Long orcamentoId) {
@@ -30,10 +32,7 @@ public class GetDocumentoOrcamentoClienteUseCase {
         acessoClienteAtual.autorizar(cliente, orcamento);
         return documentoOrcamentoRepository
                 .findById(orcamentoId)
-                .orElseThrow(
-                        () ->
-                                RegraNegocioException.naoEncontrado(
-                                        "Documento não disponível para este orçamento"))
-                .getContent();
+                .map(documento -> documento.getContent())
+                .orElseGet(() -> geradorDocumentoOrcamento.gerar(orcamento));
     }
 }

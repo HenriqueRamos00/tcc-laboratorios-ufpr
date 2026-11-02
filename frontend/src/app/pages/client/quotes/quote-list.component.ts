@@ -127,6 +127,7 @@ export class QuoteListComponent {
       return (
         quote.code.toLowerCase().includes(term) ||
         quote.proposalName.toLowerCase().includes(term) ||
+        quote.description.toLowerCase().includes(term) ||
         quote.company.toLowerCase().includes(term) ||
         quote.externalContact.toLowerCase().includes(term)
       );

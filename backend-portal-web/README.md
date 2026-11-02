@@ -86,7 +86,7 @@ Há duas fontes, selecionadas exclusivamente por `Portal__DataSource` na inicial
 
 | Fonte | Autenticação | Sessão do navegador |
 | --- | --- | --- |
-| `backend-lab` | `BackendLab__BaseUrl` → Spring Backend Lab | Token Spring preservado pelo C#; comportamento existente das demais rotas mantido |
+| `backend-lab` | `BackendLab__BaseUrl` → Spring Backend Lab | Token Spring preservado; orçamentos e documentos consultados pelos adapters C# |
 | `lactec` | `BackendAuth__BaseUrl` → Spring Backend Auth independente | JWT HS256 emitido e validado pela API C# |
 
 `lactec` é o modo Backend Auth. Não existe terceira fonte `backend-auth`, seleção por
@@ -135,8 +135,26 @@ No modo `lactec`, todas as rotas `/api/**` e `GET /auth/me` exigem
 audiência, validade sem tolerância extra, identidade, fonte, serviço e papel.
 `GET /auth/me` devolve o mesmo `user` usando os claims, sem consultar o Backend Auth.
 Login, OpenAPI e preflight CORS são públicos. No modo `backend-lab`, `/auth/me`
-retorna 501 e as demais rotas conservam a autorização anterior. O OpenAPI descreve
-o Bearer quando `lactec` está ativo.
+retorna 501 e as consultas de orçamento encaminham o Bearer Spring à origem. As demais
+rotas mantêm suas integrações existentes. O OpenAPI descreve o Bearer quando `lactec`
+está ativo.
+
+No modo `backend-lab`, as rotas C# `/api/quotes`, `/api/quotes/{id}` e
+`/api/quotes/{id}/document` adaptam, respectivamente, `GET /api/client/quotes` e suas
+rotas de detalhe e documento no Spring. As três exigem um Bearer sintaticamente válido
+antes de executar a consulta. Cada chamada encaminha somente o Bearer da requisição
+atual; o C# não interpreta claims desse token. O Spring verifica perfil,
+cliente, empresa e vínculos ativos a cada leitura. IDs continuam strings nos contratos
+públicos; a origem Spring usa identificadores numéricos positivos. `opportunityId` é
+uma string vazia quando não há equivalente na origem, os contatos nulos são expostos
+como strings vazias. `stage` é um texto obrigatório e não vazio preparado pelo Spring;
+resposta sem etapa válida no contrato de transporte resulta em 502, sem inventar progresso.
+
+No modo `backend-lab`, a origem Spring fornece o PDF anexado ou gera a representação
+do orçamento quando não há anexo. O C# apenas transporta os bytes. Falha de origem,
+timeout ou resposta inválida retorna 502; 401, 403 e orçamento inexistente permanecem
+distintos. Falhas nessa fonte não consultam Salesforce, fixtures ou PDFs gerados.
+Lactec mantém Salesforce, documentos locais e geração de proposta existentes.
 
 A sessão dura 900 segundos por padrão. Alterações de senha, empresas, estado da
 conta, serviço ou token de serviço só afetam JWTs já emitidos quando expiram.
@@ -210,8 +228,10 @@ dos tokens do portal e do Backend Auth. Falhas de configuração, conexão, time
 ou resposta da origem retornam 502 sem expor seu corpo. Angular mostra o erro;
 nenhum dado de demonstração substitui uma consulta recusada ou indisponível.
 
-O modo `backend-lab` conserva o adapter de demonstração existente no C#. A mudança
-não implementa sua integração de orçamentos nem altera o módulo Backend Lab.
+No modo `backend-lab`, os orçamentos sempre vêm do Spring pelos adapters C#, mesmo
+com `Portal__UseDemoData=true`; essa opção não seleciona fixtures nem documentos
+substitutos para essa fonte. A demonstração do Salesforce e seus documentos locais
+permanece restrita ao modo `lactec`.
 
 ### Demonstração com duas contas
 

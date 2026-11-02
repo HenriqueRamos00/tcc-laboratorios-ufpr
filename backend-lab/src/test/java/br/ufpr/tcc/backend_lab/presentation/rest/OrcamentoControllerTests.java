@@ -787,7 +787,7 @@ class OrcamentoControllerTests {
     @Test
     @DisplayName("atualiza orçamento preservando etapa, data e documento quando omitido")
     void atualizaOrcamentoSemDocumentoPreservaMetadados() throws Exception {
-        String etapa = "Aguardando análise técnica";
+        String etapa = "Protocolado";
         orcamentoMaisNovo.setStage(etapa);
         orcamentos.saveAndFlush(orcamentoMaisNovo);
         byte[] pdfAntes = documentos.findById(orcamentoMaisNovo.getId()).orElseThrow().getContent();
@@ -955,7 +955,7 @@ class OrcamentoControllerTests {
         orcamento.setCode(code);
         orcamento.setName(name);
         orcamento.setStatus(status);
-        orcamento.setStage(status.codigo());
+        orcamento.setStage("Negociação");
         orcamento.setDescription(description);
         orcamento.setTotalPrice(new BigDecimal("12500.00"));
         orcamento.setCreatedDate(createdDate);

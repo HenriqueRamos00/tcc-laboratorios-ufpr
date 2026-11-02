@@ -1,5 +1,5 @@
 -- Execuções de demonstração para testar os status técnicos dos orçamentos.
--- Uma execução publicada sem data deve aparecer como Validado na consulta.
+-- Execuções publicadas precisam de referência e data do laudo.
 INSERT INTO amostras (codigo, descricao, orcamento_id)
 SELECT 'A-TEC-' || o.code, 'Amostra demonstrativa da consulta técnica', o.id
 FROM orcamentos o
@@ -24,7 +24,7 @@ FROM (VALUES
     ('DEMO-SEED-2026-004', 'finalized', NULL, NULL),
     ('DEMO-SEED-2026-004', 'drafting-report', NULL, NULL),
     ('DEMO-SEED-2026-005', 'report-published', 'LAUDO-DEMO-2026-005-A', TIMESTAMP WITH TIME ZONE '2026-10-17 11:00:00-03:00'),
-    ('DEMO-SEED-2026-006', 'report-published', 'LAUDO-DEMO-2026-006-A', NULL),
+    ('DEMO-SEED-2026-006', 'validated', NULL, NULL),
     ('DEMO-SEED-2026-007', 'complete', NULL, NULL),
     ('DEMO-SEED-2026-007', 'cancelled', NULL, NULL),
     ('DEMO-SEED-2026-008', 'cancelled', NULL, NULL),

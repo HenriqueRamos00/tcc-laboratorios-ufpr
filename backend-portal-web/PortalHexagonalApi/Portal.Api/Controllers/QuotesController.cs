@@ -28,6 +28,8 @@ public sealed class QuotesController : ControllerBase
 
     [HttpGet]
     [ProducesResponseType(typeof(IReadOnlyList<Quote>), StatusCodes.Status200OK)]
+    [ProducesResponseType<ProblemDetails>(StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType<ProblemDetails>(StatusCodes.Status403Forbidden)]
     [ProducesResponseType(StatusCodes.Status502BadGateway)]
     public Task<IActionResult> GetQuotes(CancellationToken cancellationToken)
     {
@@ -41,7 +43,10 @@ public sealed class QuotesController : ControllerBase
 
     [HttpGet("{id}")]
     [ProducesResponseType(typeof(Quote), StatusCodes.Status200OK)]
+    [ProducesResponseType<ProblemDetails>(StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType<ProblemDetails>(StatusCodes.Status403Forbidden)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
+    [ProducesResponseType<ProblemDetails>(StatusCodes.Status502BadGateway)]
     public Task<IActionResult> GetQuoteById(string id, CancellationToken cancellationToken)
     {
         return AnswerAsync(async () =>
@@ -54,6 +59,8 @@ public sealed class QuotesController : ControllerBase
 
     [HttpGet("{id}/document")]
     [ProducesResponseType(typeof(FileContentResult), StatusCodes.Status200OK, "application/pdf")]
+    [ProducesResponseType<ProblemDetails>(StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType<ProblemDetails>(StatusCodes.Status403Forbidden)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     [ProducesResponseType(StatusCodes.Status502BadGateway)]
     public Task<IActionResult> GetDocument(string id, CancellationToken cancellationToken)
@@ -79,6 +86,15 @@ public sealed class QuotesController : ControllerBase
         {
             return await answer();
         }
+        catch (QuoteAuthenticationRequiredException)
+        {
+            Response.Headers["WWW-Authenticate"] = "Bearer";
+            return this.QuoteAuthenticationRequired();
+        }
+        catch (QuoteAccessForbiddenException)
+        {
+            return this.QuoteAccessForbidden();
+        }
         catch (InvalidOperationException failure)
         {
             return this.QuoteRequestRefused(failure.Message);
@@ -88,6 +104,10 @@ public sealed class QuotesController : ControllerBase
             return this.QuoteDocumentUnavailable();
         }
         catch (Exception failure) when (failure is QuoteSourceUnavailableException or HttpRequestException)
+        {
+            return this.QuoteSourceUnavailable();
+        }
+        catch (OperationCanceledException) when (!HttpContext.RequestAborted.IsCancellationRequested)
         {
             return this.QuoteSourceUnavailable();
         }

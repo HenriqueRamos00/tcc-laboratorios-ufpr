@@ -267,9 +267,8 @@ describe('DissolvedGasDiagnosisService, pentágono de Duval', () => {
 describe('DissolvedGasDiagnosisService, IEEE C57.104', () => {
   afterEach(() => TestBed.resetTestingModule());
 
-  // A soma dos seis combustíveis tem que dar no totalizador que o laudo publica.
-  // É a conferência que o CLAUDE.md pede: totalizador se reconhece pela soma, e
-  // não pelo rótulo.
+  // A soma dos seis gases combustíveis deve coincidir com o totalizador do laudo.
+  // A conferência pelo valor evita depender do rótulo usado na fonte.
   it('soma os seis gases combustíveis e bate com o totalizador do laudo', () => {
     const [reading] = diagnosisOf(collectionWith({})).ieee.readings;
 

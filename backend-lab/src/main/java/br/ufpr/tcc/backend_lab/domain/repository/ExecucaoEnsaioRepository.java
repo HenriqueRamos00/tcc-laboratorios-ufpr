@@ -1,7 +1,11 @@
 package br.ufpr.tcc.backend_lab.domain.repository;
 
 import br.ufpr.tcc.backend_lab.domain.model.entity.ExecucaoEnsaio;
+import br.ufpr.tcc.backend_lab.domain.model.enums.StatusEnsaio;
 import java.util.Optional;
+import java.util.Collection;
+import java.util.List;
+import java.time.OffsetDateTime;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.EntityGraph;
@@ -10,6 +14,20 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
 public interface ExecucaoEnsaioRepository extends JpaRepository<ExecucaoEnsaio, Long> {
+    @Query("""
+            select e.orcamento.id as orcamentoId, e.status as status,
+                   e.reportReference as reportReference, e.publishedAt as publishedAt
+            from ExecucaoEnsaio e where e.orcamento.id in :ids
+            """)
+    List<Andamento> consultarAndamentos(@Param("ids") Collection<Long> ids);
+
+    interface Andamento {
+        Long getOrcamentoId();
+        StatusEnsaio getStatus();
+        String getReportReference();
+        OffsetDateTime getPublishedAt();
+    }
+
     @EntityGraph(attributePaths = {"amostra", "amostra.orcamento", "amostra.orcamento.empresa", "responsavel"})
     @Query("""
             select e from ExecucaoEnsaio e

@@ -1,4 +1,5 @@
 using System.Text.RegularExpressions;
+using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Options;
 
 using Portal.Adapters.BackendAuth;
@@ -27,7 +28,10 @@ public static class PortalSourceRegistration
         switch (portal.DataSource)
         {
             case PortalOptions.BackendLabSource:
-                services.AddScoped<IQuoteRepository, FakeSalesforceQuoteRepository>();
+                services.AddHttpContextAccessor();
+                services.AddTransient<SpringBearerForwardingHandler>();
+                services.AddScoped<SpringQuoteAuthenticationFilter>();
+                services.Configure<MvcOptions>(options => options.Filters.AddService<SpringQuoteAuthenticationFilter>());
                 services.AddOptions<BackendLabOptions>()
                     .Bind(configuration.GetSection(BackendLabOptions.SectionName))
                     .Validate(options => Uri.TryCreate(options.BaseUrl, UriKind.Absolute, out Uri? uri)
@@ -37,6 +41,22 @@ public static class PortalSourceRegistration
                         && string.IsNullOrEmpty(uri.Fragment),
                         "BackendLab:BaseUrl é obrigatório e deve ser uma URL HTTP ou HTTPS sem credenciais, query ou fragmento.")
                     .ValidateOnStart();
+                services.AddHttpClient<IQuoteRepository, SpringQuoteRepository>((provider, client) =>
+                    {
+                        BackendLabOptions backendLab = provider.GetRequiredService<IOptions<BackendLabOptions>>().Value;
+                        client.BaseAddress = new Uri(backendLab.BaseUrl.TrimEnd('/') + "/");
+                        client.Timeout = TimeSpan.FromSeconds(10);
+                    })
+                    .ConfigurePrimaryHttpMessageHandler(() => new HttpClientHandler { AllowAutoRedirect = false })
+                    .AddHttpMessageHandler<SpringBearerForwardingHandler>();
+                services.AddHttpClient<IQuoteDocumentRepository, SpringQuoteDocumentRepository>((provider, client) =>
+                    {
+                        BackendLabOptions backendLab = provider.GetRequiredService<IOptions<BackendLabOptions>>().Value;
+                        client.BaseAddress = new Uri(backendLab.BaseUrl.TrimEnd('/') + "/");
+                        client.Timeout = TimeSpan.FromSeconds(10);
+                    })
+                    .ConfigurePrimaryHttpMessageHandler(() => new HttpClientHandler { AllowAutoRedirect = false })
+                    .AddHttpMessageHandler<SpringBearerForwardingHandler>();
                 services.AddHttpClient<IClientAuthenticator, BackendLabAdapter>((provider, client) =>
                     {
                         BackendLabOptions backendLab = provider.GetRequiredService<IOptions<BackendLabOptions>>().Value;
@@ -49,6 +69,12 @@ public static class PortalSourceRegistration
             case PortalOptions.LactecSource:
                 services.AddHttpContextAccessor();
                 services.AddScoped<IQuoteCompanyScope, AuthenticatedQuoteCompanyScope>();
+                // A proposta escrita a mao continua valendo; o orcamento sem arquivo recebe a pagina
+                // gerada a partir dele mesmo, para o botao de baixar nunca cair no vazio na demonstracao.
+                services.AddScoped<IQuoteDocumentRepository>(provider =>
+                    new GeneratedQuoteDocumentRepository(
+                        provider.GetRequiredService<IQuoteRepository>(),
+                        new LocalQuoteDocumentRepository()));
                 if (portal.UseDemoData)
                     services.AddScoped<IQuoteRepository>(provider =>
                         new FakeSalesforceQuoteRepository(provider.GetRequiredService<IQuoteCompanyScope>()));

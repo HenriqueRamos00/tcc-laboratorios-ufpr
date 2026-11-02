@@ -4,14 +4,12 @@
 // que sao a transcrição das views do AutoLAB. Saida:
 // `frontend/src/app/model/measured-gas-sample.spec-util.ts`.
 //
-// Como regerar, da raiz do repositorio. Nada roda no host, como manda o CLAUDE.md:
+// Execute da raiz do repositório no contêiner Node usado pelo frontend:
 //
 //   docker run --rm -v "$PWD:/w" -w /w node:22-alpine \
 //     node tools/gerar-amostra-de-cromatografia.mjs
 //
-// Era um script Python, e Python rodado na maquina do desenvolvedor contraria a regra
-// do projeto tanto quanto `node` ou `dotnet` soltos. Em Node ele roda no mesmo
-// contentor que o resto do frontend ja usa, sem exigir nada instalado.
+// Assim, a geração usa o ambiente do projeto sem exigir Node instalado no host.
 //
 // O script RECUSA escrever quando o totalizador publicado de um protocolo nao bate
 // exatamente com a soma dos gases daquele protocolo. A igualdade e exata de proposito:
