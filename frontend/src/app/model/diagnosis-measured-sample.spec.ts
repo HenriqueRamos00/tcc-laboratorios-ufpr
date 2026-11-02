@@ -233,9 +233,7 @@ describe('Triangulo de Duval 5 sobre o dado real', () => {
 
 // Os quatro metodos abaixo ainda nao tem algoritmo no frontend: o pentagono e
 // so desenho, e NBR 7274 / IEC 60599, Rogers e IEEE C57.104 chegam chumbados na
-// massa de demonstracao. Os casos ficam escritos, com a entrada medida que cada
-// um deve consumir, e pendentes em vez de vermelhos: suite vermelha por falta de
-// implementacao de outro agente nao distingue regressao de trabalho em curso.
+// massa de demonstracao.
 //
 // A entrada medida de cada um, do protocolo 01417/2026-001:
 //   pentagono        H2 60, CH4 77, C2H6 140, C2H4 33, C2H2 0
