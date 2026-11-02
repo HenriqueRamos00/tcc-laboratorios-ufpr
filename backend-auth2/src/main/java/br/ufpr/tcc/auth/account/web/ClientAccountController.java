@@ -1,0 +1,177 @@
+package br.ufpr.tcc.auth.account.web;
+
+import br.ufpr.tcc.auth.account.AccountLifecycle;
+import br.ufpr.tcc.auth.shared.security.ApplicationCaller;
+import br.ufpr.tcc.auth.shared.security.CallerScope;
+import java.util.List;
+import java.util.Optional;
+import org.springframework.web.bind.annotation.DeleteMapping;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PutMapping;
+import io.swagger.v3.oas.annotations.media.Schema;
+import jakarta.validation.Valid;
+import jakarta.validation.constraints.Email;
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Pattern;
+import jakarta.validation.constraints.Size;
+import org.springframework.http.HttpStatus;
+import io.swagger.v3.oas.annotations.security.SecurityRequirement;
+import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RestController;
+
+/** Cadastro de cliente e confirmacao do endereco de e-mail. */
+@SecurityRequirement(name = "credencial-de-aplicacao")
+@RestController
+class ClientAccountController {
+
+    private final AccountLifecycle lifecycle;
+
+    ClientAccountController(AccountLifecycle lifecycle) {
+        this.lifecycle = lifecycle;
+    }
+
+    record CreateClientRequest(
+            @NotBlank @Size(max = 150) String name,
+            @NotBlank @Email @Size(max = 254) String email,
+            @NotBlank @Size(max = 72)
+            @Schema(format = "password", accessMode = Schema.AccessMode.WRITE_ONLY,
+                    minLength = 8,
+                    description = "Senha, preservando espacos: o servidor nao corta espaco nas pontas,\n"
+                            + " nao muda a caixa e nao remove acentuacao, porque cada uma dessas trocas\n"
+                            + " mudaria a credencial em silencio. O minimo de oito, mais maiuscula,\n"
+                            + " minuscula e digito, e cobrado pelo caso de uso e nao por anotacao.")
+            String password,
+            @Pattern(regexp = "CLIENTE", message = "Perfil deve ser CLIENTE")
+            @Schema(pattern = "^CLIENTE$", description = "Unico perfil aceito hoje.")
+            String role,
+            String serviceId) {
+
+        @Override
+        public String toString() {
+            return "CreateClientRequest[email=" + email + ", password=[OMITIDA]]";
+        }
+    }
+
+    @PostMapping("/api/users")
+    ResponseEntity<Void> create(@AuthenticationPrincipal ApplicationCaller caller,
+            @Valid @RequestBody CreateClientRequest request) {
+        return switch (lifecycle.register(caller, request.serviceId(), request.name(),
+                request.email(), request.password())) {
+            case CREATED -> ResponseEntity.status(HttpStatus.CREATED).build();
+            case EMAIL_TAKEN -> ResponseEntity.status(HttpStatus.CONFLICT).build();
+            case PASSWORD_REJECTED, SCOPE_REJECTED -> ResponseEntity.badRequest().build();
+        };
+    }
+
+    record ConfirmationRequest(@NotBlank String token) {
+
+        @Override
+        public String toString() {
+            return "ConfirmationRequest[token=[OMITIDO]]";
+        }
+    }
+
+    /**
+     * Listagem de contas no alcance de quem chamou.
+     *
+     * Aplicacao enxerga as contas dela; administrador atravessa aplicacoes. O filtro vai
+     * na consulta e nunca na memoria depois: consultar tudo e descartar devolveria o mesmo
+     * corpo e traria dado alheio para dentro do processo.
+     */
+    @GetMapping("/api/users")
+    ResponseEntity<List<AccountLifecycle.AccountSummary>> list(
+            @AuthenticationPrincipal Object caller) {
+        return ResponseEntity.ok(lifecycle.list(CallerScope.applicationScopeOf(caller)));
+    }
+
+    @GetMapping("/api/users/{id}")
+    ResponseEntity<AccountLifecycle.AccountSummary> read(@AuthenticationPrincipal Object caller,
+            @PathVariable String id) {
+        return lifecycle.find(CallerScope.applicationScopeOf(caller), id)
+                .map(ResponseEntity::ok)
+                .orElseGet(() -> ResponseEntity.notFound().build());
+    }
+
+    /**
+     * A alteracao muda nome e situacao, e declara apenas isso.
+     *
+     * Endereco, perfil e aplicacao sairam daqui porque a rota nao os honra, e campo declarado
+     * que a rota descarta e pior que campo ausente: quem manda endereco novo recebia 200 com
+     * o endereco antigo. Trocar o endereco e operacao propria, com confirmacao do novo
+     * endereco, e ela ainda nao existe; perfil tem um unico valor; e a aplicacao sai da
+     * credencial. Campo fora desta lista agora responde 400, porque a desserializacao recusa
+     * o que nao conhece.
+     *
+     * A situacao e obrigatoria pela mesma razao da aplicacao: ela decide se a conta entra,
+     * entao nao muda por omissao. Enquanto era opcional e ausente valia verdadeiro, um pedido
+     * de renomeacao reativava conta desativada em silencio.
+     */
+    record UpdateClientRequest(
+            @NotBlank @Size(max = 150) String name,
+            @NotNull Boolean active) {
+    }
+
+    @PutMapping("/api/users/{id}")
+    ResponseEntity<AccountLifecycle.AccountSummary> update(@AuthenticationPrincipal Object caller,
+            @PathVariable String id, @Valid @RequestBody UpdateClientRequest request) {
+        return lifecycle.update(CallerScope.applicationScopeOf(caller), id, request.name(),
+                        request.active())
+                .map(ResponseEntity::ok)
+                .orElseGet(() -> ResponseEntity.notFound().build());
+    }
+
+    /** Recurso de outra aplicacao responde igual a identificador inventado. */
+    @DeleteMapping("/api/users/{id}")
+    ResponseEntity<Void> delete(@AuthenticationPrincipal Object caller, @PathVariable String id) {
+        return lifecycle.delete(CallerScope.applicationScopeOf(caller), id)
+                ? ResponseEntity.noContent().build()
+                : ResponseEntity.notFound().build();
+    }
+
+    record RecoveryRequest(@NotBlank @Email @Size(max = 254) String email) {
+    }
+
+    /** Responde sempre 202, exista ou nao o endereco. */
+    @PostMapping("/api/auth/recoveries")
+    ResponseEntity<Void> requestRecovery(@AuthenticationPrincipal ApplicationCaller caller,
+            @Valid @RequestBody RecoveryRequest request) {
+        lifecycle.requestPasswordRecovery(caller, request.email());
+        return ResponseEntity.accepted().build();
+    }
+
+    record PasswordResetRequest(@NotBlank String token, @NotBlank @Size(max = 72)
+            @Schema(format = "password", accessMode = Schema.AccessMode.WRITE_ONLY,
+                    minLength = 8,
+                    description = "Senha, preservando espacos: o servidor nao corta espaco nas pontas,\n"
+                            + " nao muda a caixa e nao remove acentuacao, porque cada uma dessas trocas\n"
+                            + " mudaria a credencial em silencio. O minimo de oito, mais maiuscula,\n"
+                            + " minuscula e digito, e cobrado pelo caso de uso e nao por anotacao.")
+            String password) {
+
+        @Override
+        public String toString() {
+            return "PasswordResetRequest[token=[OMITIDO], password=[OMITIDA]]";
+        }
+    }
+
+    @PostMapping("/api/auth/password-resets")
+    ResponseEntity<Void> resetPassword(@AuthenticationPrincipal ApplicationCaller caller,
+            @Valid @RequestBody PasswordResetRequest request) {
+        return lifecycle.resetPassword(caller, request.token(), request.password())
+                ? ResponseEntity.noContent().build()
+                : ResponseEntity.badRequest().build();
+    }
+
+    @PostMapping("/api/auth/confirmations")
+    ResponseEntity<Void> confirm(@AuthenticationPrincipal ApplicationCaller caller,
+            @Valid @RequestBody ConfirmationRequest request) {
+        return lifecycle.confirmEmail(caller, request.token())
+                ? ResponseEntity.noContent().build()
+                : ResponseEntity.badRequest().build();
+    }
+}

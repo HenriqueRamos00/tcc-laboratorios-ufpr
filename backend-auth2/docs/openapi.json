@@ -1,0 +1,1407 @@
+{
+    "openapi": "3.1.0",
+    "info": {
+        "title": "Servico de autenticacao do Lactec, segunda implementacao",
+        "description": "Autenticacao e autorizacao compartilhada pelas aplicacoes do Lactec.\n\nQuatro pontos do contrato que valem para quase toda rota, ditos uma vez aqui:\n\n1. 401 **sem** `WWW-Authenticate` quer dizer credencial da pessoa recusada;\n401 **com** `WWW-Authenticate` quer dizer que a credencial da aplicacao nao foi\naceita. Sao erros de dono diferente e a tela trata cada um de um jeito.\n2. 429 sempre leva `Retry-After` em segundos inteiros.\n3. Todo identificador viaja como texto, inclusive quando o banco guarda numero:\nnumero de 64 bits perde precisao em JavaScript.\n4. O minimo de oito caracteres da senha e regra de **cadastro**. No login nao\nexiste minimo, de proposito: cobrar ali responderia 400 onde o contrato espera\n401 e entregaria o tamanho da senha a quem sonda.\n",
+        "version": "0.0.1-SNAPSHOT"
+    },
+    "servers": [
+        {
+            "url": "http://localhost:8081",
+            "description": "Generated server url"
+        }
+    ],
+    "paths": {
+        "/api/users/{id}": {
+            "get": {
+                "tags": [
+                    "client-account-controller"
+                ],
+                "operationId": "read",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "content": {
+                            "*/*": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/AccountSummary"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "credencial-de-aplicacao": []
+                    }
+                ]
+            },
+            "put": {
+                "tags": [
+                    "client-account-controller"
+                ],
+                "operationId": "update",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/UpdateClientRequest"
+                            }
+                        }
+                    },
+                    "required": true
+                },
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "content": {
+                            "*/*": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/AccountSummary"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "credencial-de-aplicacao": []
+                    }
+                ]
+            },
+            "delete": {
+                "tags": [
+                    "client-account-controller"
+                ],
+                "operationId": "delete",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK"
+                    }
+                },
+                "security": [
+                    {
+                        "credencial-de-aplicacao": []
+                    }
+                ]
+            }
+        },
+        "/api/services/{serviceId}": {
+            "get": {
+                "tags": [
+                    "application-controller"
+                ],
+                "operationId": "read_1",
+                "parameters": [
+                    {
+                        "name": "serviceId",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "content": {
+                            "*/*": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/RegisteredApplicationView"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "credencial-administrativa": []
+                    }
+                ]
+            },
+            "put": {
+                "tags": [
+                    "application-controller"
+                ],
+                "operationId": "update_1",
+                "parameters": [
+                    {
+                        "name": "serviceId",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/UpdateApplicationRequest"
+                            }
+                        }
+                    },
+                    "required": true
+                },
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "content": {
+                            "*/*": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/RegisteredApplicationView"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "credencial-administrativa": []
+                    }
+                ]
+            },
+            "delete": {
+                "tags": [
+                    "application-controller"
+                ],
+                "operationId": "deactivate",
+                "parameters": [
+                    {
+                        "name": "serviceId",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK"
+                    }
+                },
+                "security": [
+                    {
+                        "credencial-administrativa": []
+                    }
+                ]
+            }
+        },
+        "/api/companies/{id}": {
+            "get": {
+                "tags": [
+                    "company-controller"
+                ],
+                "operationId": "read_2",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "content": {
+                            "*/*": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/CompanyView"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "credencial-de-aplicacao": []
+                    }
+                ]
+            },
+            "put": {
+                "tags": [
+                    "company-controller"
+                ],
+                "operationId": "update_2",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/CompanyRequest"
+                            }
+                        }
+                    },
+                    "required": true
+                },
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "content": {
+                            "*/*": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/CompanyView"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "credencial-de-aplicacao": []
+                    }
+                ]
+            },
+            "delete": {
+                "tags": [
+                    "company-controller"
+                ],
+                "operationId": "delete_1",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK"
+                    }
+                },
+                "security": [
+                    {
+                        "credencial-de-aplicacao": []
+                    }
+                ]
+            }
+        },
+        "/api/admins/{id}": {
+            "get": {
+                "tags": [
+                    "administrator-controller"
+                ],
+                "operationId": "read_3",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "content": {
+                            "*/*": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/AdministratorSummary"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "credencial-administrativa": []
+                    }
+                ]
+            },
+            "put": {
+                "tags": [
+                    "administrator-controller"
+                ],
+                "operationId": "update_3",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/UpdateAdministratorRequest"
+                            }
+                        }
+                    },
+                    "required": true
+                },
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "content": {
+                            "*/*": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/AdministratorSummary"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "credencial-administrativa": []
+                    }
+                ]
+            },
+            "delete": {
+                "tags": [
+                    "administrator-controller"
+                ],
+                "operationId": "delete_2",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK"
+                    }
+                },
+                "security": [
+                    {
+                        "credencial-administrativa": []
+                    }
+                ]
+            }
+        },
+        "/api/users": {
+            "get": {
+                "tags": [
+                    "client-account-controller"
+                ],
+                "operationId": "list",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "content": {
+                            "*/*": {
+                                "schema": {
+                                    "type": "array",
+                                    "items": {
+                                        "$ref": "#/components/schemas/AccountSummary"
+                                    }
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "credencial-de-aplicacao": []
+                    }
+                ]
+            },
+            "post": {
+                "tags": [
+                    "client-account-controller"
+                ],
+                "operationId": "create",
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/CreateClientRequest"
+                            }
+                        }
+                    },
+                    "required": true
+                },
+                "responses": {
+                    "200": {
+                        "description": "OK"
+                    }
+                },
+                "security": [
+                    {
+                        "credencial-de-aplicacao": []
+                    }
+                ]
+            }
+        },
+        "/api/setup/admin": {
+            "post": {
+                "tags": [
+                    "setup-administrator-controller"
+                ],
+                "operationId": "setup",
+                "parameters": [
+                    {
+                        "name": "X-Setup-Secret",
+                        "in": "header",
+                        "required": false,
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/SetupRequest"
+                            }
+                        }
+                    },
+                    "required": true
+                },
+                "responses": {
+                    "200": {
+                        "description": "OK"
+                    }
+                }
+            }
+        },
+        "/api/services": {
+            "get": {
+                "tags": [
+                    "application-controller"
+                ],
+                "operationId": "list_1",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "content": {
+                            "*/*": {
+                                "schema": {
+                                    "type": "array",
+                                    "items": {
+                                        "$ref": "#/components/schemas/RegisteredApplicationView"
+                                    }
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "credencial-administrativa": []
+                    }
+                ]
+            },
+            "post": {
+                "tags": [
+                    "application-controller"
+                ],
+                "operationId": "register",
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/RegisterApplicationRequest"
+                            }
+                        }
+                    },
+                    "required": true
+                },
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "content": {
+                            "*/*": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/RegisteredApplicationView"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "credencial-administrativa": []
+                    }
+                ]
+            }
+        },
+        "/api/services/{serviceId}/tokens": {
+            "get": {
+                "tags": [
+                    "application-controller"
+                ],
+                "operationId": "listTokens",
+                "parameters": [
+                    {
+                        "name": "serviceId",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "content": {
+                            "*/*": {
+                                "schema": {
+                                    "type": "array",
+                                    "items": {
+                                        "$ref": "#/components/schemas/TokenView"
+                                    }
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "credencial-administrativa": []
+                    }
+                ]
+            },
+            "post": {
+                "tags": [
+                    "application-controller"
+                ],
+                "operationId": "issueToken",
+                "parameters": [
+                    {
+                        "name": "serviceId",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/IssueTokenRequest"
+                            }
+                        }
+                    },
+                    "required": true
+                },
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "content": {
+                            "*/*": {
+                                "schema": {
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "credencial-administrativa": []
+                    }
+                ]
+            }
+        },
+        "/api/companies": {
+            "get": {
+                "tags": [
+                    "company-controller"
+                ],
+                "operationId": "list_2",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "content": {
+                            "*/*": {
+                                "schema": {
+                                    "type": "array",
+                                    "items": {
+                                        "$ref": "#/components/schemas/CompanyView"
+                                    }
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "credencial-de-aplicacao": []
+                    }
+                ]
+            },
+            "post": {
+                "tags": [
+                    "company-controller"
+                ],
+                "operationId": "register_1",
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/CompanyRequest"
+                            }
+                        }
+                    },
+                    "required": true
+                },
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "content": {
+                            "*/*": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/CompanyView"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "credencial-de-aplicacao": []
+                    }
+                ]
+            }
+        },
+        "/api/auth/recoveries": {
+            "post": {
+                "tags": [
+                    "client-account-controller"
+                ],
+                "operationId": "requestRecovery",
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/RecoveryRequest"
+                            }
+                        }
+                    },
+                    "required": true
+                },
+                "responses": {
+                    "200": {
+                        "description": "OK"
+                    }
+                },
+                "security": [
+                    {
+                        "credencial-de-aplicacao": []
+                    }
+                ]
+            }
+        },
+        "/api/auth/password-resets": {
+            "post": {
+                "tags": [
+                    "client-account-controller"
+                ],
+                "operationId": "resetPassword",
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/PasswordResetRequest"
+                            }
+                        }
+                    },
+                    "required": true
+                },
+                "responses": {
+                    "200": {
+                        "description": "OK"
+                    }
+                },
+                "security": [
+                    {
+                        "credencial-de-aplicacao": []
+                    }
+                ]
+            }
+        },
+        "/api/auth/login": {
+            "post": {
+                "tags": [
+                    "client-login-controller"
+                ],
+                "operationId": "login",
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/ClientLoginRequest"
+                            }
+                        }
+                    },
+                    "required": true
+                },
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "content": {
+                            "*/*": {
+                                "schema": {
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "credencial-de-aplicacao": []
+                    }
+                ]
+            }
+        },
+        "/api/auth/confirmations": {
+            "post": {
+                "tags": [
+                    "client-account-controller"
+                ],
+                "operationId": "confirm",
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/ConfirmationRequest"
+                            }
+                        }
+                    },
+                    "required": true
+                },
+                "responses": {
+                    "200": {
+                        "description": "OK"
+                    }
+                },
+                "security": [
+                    {
+                        "credencial-de-aplicacao": []
+                    }
+                ]
+            }
+        },
+        "/api/admins": {
+            "get": {
+                "tags": [
+                    "administrator-controller"
+                ],
+                "operationId": "list_3",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "content": {
+                            "*/*": {
+                                "schema": {
+                                    "type": "array",
+                                    "items": {
+                                        "$ref": "#/components/schemas/AdministratorSummary"
+                                    }
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "credencial-administrativa": []
+                    }
+                ]
+            },
+            "post": {
+                "tags": [
+                    "administrator-controller"
+                ],
+                "operationId": "register_2",
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/RegisterAdministratorRequest"
+                            }
+                        }
+                    },
+                    "required": true
+                },
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "content": {
+                            "*/*": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/AdministratorSummary"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "credencial-administrativa": []
+                    }
+                ]
+            }
+        },
+        "/api/admin/auth/login": {
+            "post": {
+                "tags": [
+                    "administrator-login-controller"
+                ],
+                "operationId": "login_1",
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/AdministratorLoginRequest"
+                            }
+                        }
+                    },
+                    "required": true
+                },
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "content": {
+                            "*/*": {
+                                "schema": {
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/services/{serviceId}/tokens/{tokenId}": {
+            "delete": {
+                "tags": [
+                    "application-controller"
+                ],
+                "operationId": "revokeToken",
+                "parameters": [
+                    {
+                        "name": "serviceId",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "name": "tokenId",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK"
+                    }
+                },
+                "security": [
+                    {
+                        "credencial-administrativa": []
+                    }
+                ]
+            }
+        }
+    },
+    "components": {
+        "schemas": {
+            "UpdateClientRequest": {
+                "type": "object",
+                "properties": {
+                    "name": {
+                        "type": "string",
+                        "maxLength": 150,
+                        "minLength": 0
+                    },
+                    "active": {
+                        "type": "boolean"
+                    }
+                },
+                "required": [
+                    "active",
+                    "name"
+                ]
+            },
+            "AccountSummary": {
+                "type": "object",
+                "properties": {
+                    "id": {
+                        "type": "string"
+                    },
+                    "name": {
+                        "type": "string"
+                    },
+                    "email": {
+                        "type": "string"
+                    },
+                    "role": {
+                        "type": "string"
+                    },
+                    "active": {
+                        "type": "boolean"
+                    },
+                    "serviceId": {
+                        "type": "string"
+                    },
+                    "emailConfirmed": {
+                        "type": "boolean"
+                    }
+                }
+            },
+            "UpdateApplicationRequest": {
+                "type": "object",
+                "properties": {
+                    "name": {
+                        "type": "string",
+                        "maxLength": 150,
+                        "minLength": 0
+                    },
+                    "code": {
+                        "type": "string",
+                        "maxLength": 80,
+                        "minLength": 0,
+                        "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$"
+                    },
+                    "active": {
+                        "type": "boolean"
+                    }
+                },
+                "required": [
+                    "active",
+                    "code",
+                    "name"
+                ]
+            },
+            "RegisteredApplicationView": {
+                "type": "object",
+                "properties": {
+                    "id": {
+                        "type": "string"
+                    },
+                    "name": {
+                        "type": "string"
+                    },
+                    "code": {
+                        "type": "string"
+                    },
+                    "active": {
+                        "type": "boolean"
+                    }
+                }
+            },
+            "CompanyRequest": {
+                "type": "object",
+                "properties": {
+                    "name": {
+                        "type": "string",
+                        "maxLength": 150,
+                        "minLength": 0
+                    },
+                    "cnpj": {
+                        "type": "string",
+                        "minLength": 1,
+                        "pattern": "^[0-9]{14}$"
+                    }
+                },
+                "required": [
+                    "cnpj",
+                    "name"
+                ]
+            },
+            "CompanyView": {
+                "type": "object",
+                "properties": {
+                    "id": {
+                        "type": "string"
+                    },
+                    "name": {
+                        "type": "string"
+                    },
+                    "cnpj": {
+                        "type": "string"
+                    },
+                    "serviceId": {
+                        "type": "string"
+                    }
+                }
+            },
+            "UpdateAdministratorRequest": {
+                "type": "object",
+                "properties": {
+                    "name": {
+                        "type": "string",
+                        "maxLength": 150,
+                        "minLength": 0
+                    },
+                    "email": {
+                        "type": "string",
+                        "format": "email",
+                        "maxLength": 254,
+                        "minLength": 0
+                    },
+                    "active": {
+                        "type": "boolean"
+                    },
+                    "password": {
+                        "type": "string",
+                        "format": "password",
+                        "description": "Senha, preservando espacos: o servidor nao corta espaco nas pontas,\n nao muda a caixa e nao remove acentuacao, porque cada uma dessas trocas\n mudaria a credencial em silencio. O minimo de oito, mais maiuscula,\n minuscula e digito, e cobrado pelo caso de uso e nao por anotacao.",
+                        "maxLength": 72,
+                        "minLength": 8,
+                        "writeOnly": true
+                    }
+                },
+                "required": [
+                    "active",
+                    "email",
+                    "name"
+                ]
+            },
+            "AdministratorSummary": {
+                "type": "object",
+                "properties": {
+                    "id": {
+                        "type": "string"
+                    },
+                    "name": {
+                        "type": "string"
+                    },
+                    "email": {
+                        "type": "string"
+                    },
+                    "active": {
+                        "type": "boolean"
+                    }
+                }
+            },
+            "CreateClientRequest": {
+                "type": "object",
+                "properties": {
+                    "name": {
+                        "type": "string",
+                        "maxLength": 150,
+                        "minLength": 0
+                    },
+                    "email": {
+                        "type": "string",
+                        "format": "email",
+                        "maxLength": 254,
+                        "minLength": 0
+                    },
+                    "password": {
+                        "type": "string",
+                        "format": "password",
+                        "description": "Senha, preservando espacos: o servidor nao corta espaco nas pontas,\n nao muda a caixa e nao remove acentuacao, porque cada uma dessas trocas\n mudaria a credencial em silencio. O minimo de oito, mais maiuscula,\n minuscula e digito, e cobrado pelo caso de uso e nao por anotacao.",
+                        "maxLength": 72,
+                        "minLength": 8,
+                        "writeOnly": true
+                    },
+                    "role": {
+                        "type": "string",
+                        "description": "Unico perfil aceito hoje.",
+                        "pattern": "^CLIENTE$"
+                    },
+                    "serviceId": {
+                        "type": "string"
+                    }
+                },
+                "required": [
+                    "email",
+                    "name",
+                    "password"
+                ]
+            },
+            "SetupRequest": {
+                "type": "object",
+                "properties": {
+                    "name": {
+                        "type": "string",
+                        "maxLength": 150,
+                        "minLength": 0
+                    },
+                    "email": {
+                        "type": "string",
+                        "format": "email",
+                        "maxLength": 254,
+                        "minLength": 0
+                    },
+                    "password": {
+                        "type": "string",
+                        "format": "password",
+                        "description": "Senha, preservando espacos: o servidor nao corta espaco nas pontas,\n nao muda a caixa e nao remove acentuacao, porque cada uma dessas trocas\n mudaria a credencial em silencio. O minimo de oito, mais maiuscula,\n minuscula e digito, e cobrado pelo caso de uso e nao por anotacao.",
+                        "maxLength": 72,
+                        "minLength": 8,
+                        "writeOnly": true
+                    }
+                },
+                "required": [
+                    "email",
+                    "name",
+                    "password"
+                ]
+            },
+            "RegisterApplicationRequest": {
+                "type": "object",
+                "properties": {
+                    "name": {
+                        "type": "string",
+                        "maxLength": 150,
+                        "minLength": 0
+                    },
+                    "code": {
+                        "type": "string",
+                        "maxLength": 80,
+                        "minLength": 0,
+                        "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$"
+                    }
+                },
+                "required": [
+                    "code",
+                    "name"
+                ]
+            },
+            "IssueTokenRequest": {
+                "type": "object",
+                "properties": {
+                    "name": {
+                        "type": "string",
+                        "maxLength": 150,
+                        "minLength": 0
+                    },
+                    "expiresIn": {
+                        "type": "integer",
+                        "format": "int64",
+                        "exclusiveMinimum": 0
+                    }
+                },
+                "required": [
+                    "name"
+                ]
+            },
+            "RecoveryRequest": {
+                "type": "object",
+                "properties": {
+                    "email": {
+                        "type": "string",
+                        "format": "email",
+                        "maxLength": 254,
+                        "minLength": 0
+                    }
+                },
+                "required": [
+                    "email"
+                ]
+            },
+            "PasswordResetRequest": {
+                "type": "object",
+                "properties": {
+                    "token": {
+                        "type": "string",
+                        "minLength": 1
+                    },
+                    "password": {
+                        "type": "string",
+                        "format": "password",
+                        "description": "Senha, preservando espacos: o servidor nao corta espaco nas pontas,\n nao muda a caixa e nao remove acentuacao, porque cada uma dessas trocas\n mudaria a credencial em silencio. O minimo de oito, mais maiuscula,\n minuscula e digito, e cobrado pelo caso de uso e nao por anotacao.",
+                        "maxLength": 72,
+                        "minLength": 8,
+                        "writeOnly": true
+                    }
+                },
+                "required": [
+                    "password",
+                    "token"
+                ]
+            },
+            "ClientLoginRequest": {
+                "type": "object",
+                "properties": {
+                    "email": {
+                        "type": "string",
+                        "format": "email",
+                        "example": "cliente@example.com",
+                        "maxLength": 254,
+                        "minLength": 0
+                    },
+                    "password": {
+                        "type": "string",
+                        "format": "password",
+                        "description": "Senha da conta, preservando espacos: o servidor nao remove espaco nas pontas, e a senha diferencia maiuscula de minuscula.",
+                        "maxLength": 72,
+                        "minLength": 0,
+                        "writeOnly": true
+                    }
+                },
+                "required": [
+                    "email",
+                    "password"
+                ]
+            },
+            "ConfirmationRequest": {
+                "type": "object",
+                "properties": {
+                    "token": {
+                        "type": "string",
+                        "minLength": 1
+                    }
+                },
+                "required": [
+                    "token"
+                ]
+            },
+            "RegisterAdministratorRequest": {
+                "type": "object",
+                "properties": {
+                    "name": {
+                        "type": "string",
+                        "maxLength": 150,
+                        "minLength": 0
+                    },
+                    "email": {
+                        "type": "string",
+                        "format": "email",
+                        "maxLength": 254,
+                        "minLength": 0
+                    },
+                    "password": {
+                        "type": "string",
+                        "format": "password",
+                        "description": "Senha, preservando espacos: o servidor nao corta espaco nas pontas,\n nao muda a caixa e nao remove acentuacao, porque cada uma dessas trocas\n mudaria a credencial em silencio. O minimo de oito, mais maiuscula,\n minuscula e digito, e cobrado pelo caso de uso e nao por anotacao.",
+                        "maxLength": 72,
+                        "minLength": 8,
+                        "writeOnly": true
+                    }
+                },
+                "required": [
+                    "email",
+                    "name",
+                    "password"
+                ]
+            },
+            "AdministratorLoginRequest": {
+                "type": "object",
+                "properties": {
+                    "email": {
+                        "type": "string",
+                        "format": "email",
+                        "maxLength": 254,
+                        "minLength": 0
+                    },
+                    "password": {
+                        "type": "string",
+                        "format": "password",
+                        "maxLength": 72,
+                        "minLength": 0,
+                        "writeOnly": true
+                    }
+                },
+                "required": [
+                    "email",
+                    "password"
+                ]
+            },
+            "TokenView": {
+                "type": "object",
+                "properties": {
+                    "id": {
+                        "type": "string"
+                    },
+                    "name": {
+                        "type": "string"
+                    },
+                    "serviceId": {
+                        "type": "string"
+                    },
+                    "createdAt": {
+                        "type": "string",
+                        "format": "date-time"
+                    },
+                    "expiresAt": {
+                        "type": "string",
+                        "format": "date-time"
+                    },
+                    "revokedAt": {
+                        "type": "string",
+                        "format": "date-time"
+                    }
+                }
+            }
+        },
+        "securitySchemes": {
+            "credencial-administrativa": {
+                "type": "http",
+                "description": "Credencial administrativa, obtida no login administrativo. Formato adm_ seguido de 43 caracteres.",
+                "in": "header",
+                "scheme": "bearer"
+            },
+            "credencial-de-aplicacao": {
+                "type": "http",
+                "description": "Credencial da aplicacao, emitida pelo administrador. Formato svc_ seguido de 43 caracteres.",
+                "in": "header",
+                "scheme": "bearer"
+            }
+        }
+    }
+}
