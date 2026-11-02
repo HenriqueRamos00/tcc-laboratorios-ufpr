@@ -84,7 +84,7 @@ public class GlobalExceptionHandler {
     public ResponseEntity<ApiErrorResponse> handleUploadMuitoGrande(
             MaxUploadSizeExceededException exception) {
         return ResponseEntity.status(HttpStatus.CONTENT_TOO_LARGE)
-                .body(new ApiErrorResponse("O PDF do orçamento deve ter no máximo 50 MiB"));
+                .body(new ApiErrorResponse("O arquivo enviado deve ter no máximo 50 MiB"));
     }
 
     @ExceptionHandler(MultipartException.class)
@@ -92,7 +92,7 @@ public class GlobalExceptionHandler {
         for (Throwable cause = exception; cause != null; cause = cause.getCause()) {
             if (cause instanceof MaxUploadSizeExceededException) {
                 return ResponseEntity.status(HttpStatus.CONTENT_TOO_LARGE)
-                        .body(new ApiErrorResponse("O PDF do orçamento deve ter no máximo 50 MiB"));
+                        .body(new ApiErrorResponse("O arquivo enviado deve ter no máximo 50 MiB"));
             }
         }
         return ResponseEntity.badRequest()

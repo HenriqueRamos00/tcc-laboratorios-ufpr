@@ -3,10 +3,13 @@ package br.ufpr.tcc.backend_lab.domain.repository;
 import br.ufpr.tcc.backend_lab.domain.model.entity.Orcamento;
 import br.ufpr.tcc.backend_lab.domain.model.enums.StatusComercialOrcamento;
 
+import jakarta.persistence.LockModeType;
+
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.EntityGraph;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
@@ -27,6 +30,15 @@ public interface OrcamentoRepository extends JpaRepository<Orcamento, Long> {
     @EntityGraph(attributePaths = {"empresa", "items"})
     @Query("select orcamento from Orcamento orcamento where orcamento.id = :id")
     Optional<Orcamento> buscarDetalhePorId(Long id);
+
+    /**
+     * Busca o orçamento travando a linha (SELECT ... FOR UPDATE) até o fim da transação.
+     * Assim, dois pedidos simultâneos de aceite ou recusa do mesmo orçamento são atendidos
+     * um de cada vez, e o segundo já encontra a decisão do primeiro.
+     */
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("select orcamento from Orcamento orcamento where orcamento.id = :id")
+    Optional<Orcamento> buscarParaDecisao(Long id);
 
     @EntityGraph(attributePaths = "empresa")
     @Query(

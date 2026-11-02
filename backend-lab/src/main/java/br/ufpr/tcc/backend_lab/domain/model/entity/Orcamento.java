@@ -15,6 +15,7 @@ import jakarta.persistence.PrePersist;
 import jakarta.persistence.PreUpdate;
 import jakarta.persistence.Table;
 
+import br.ufpr.tcc.backend_lab.domain.exception.RegraNegocioException;
 import br.ufpr.tcc.backend_lab.domain.model.enums.StatusComercialOrcamento;
 import br.ufpr.tcc.backend_lab.domain.model.enums.EtapaAcompanhamentoOrcamento;
 
@@ -82,5 +83,32 @@ public class Orcamento {
     @PreUpdate
     void validarEtapa() {
         EtapaAcompanhamentoOrcamento.deTexto(stage);
+    }
+
+    /** HU-09: o cliente aprova a proposta e o orçamento segue para execução. */
+    public void registrarAceite() {
+        exigirAguardandoDecisaoDoCliente();
+        status = StatusComercialOrcamento.IN_PROGRESS;
+        stage = EtapaAcompanhamentoOrcamento.APROVADO_PELO_CLIENTE.texto();
+    }
+
+    /** HU-10: o cliente recusa a proposta e o orçamento é encerrado. */
+    public void registrarRecusa() {
+        exigirAguardandoDecisaoDoCliente();
+        status = StatusComercialOrcamento.REFUSED;
+        stage = EtapaAcompanhamentoOrcamento.RECUSADO.texto();
+    }
+
+    // O cliente só decide uma proposta que já foi escrita e ainda não foi decidida: o
+    // orçamento precisa estar pendente de aceite e na etapa de negociação.
+    private void exigirAguardandoDecisaoDoCliente() {
+        boolean aguardandoDecisao =
+                status == StatusComercialOrcamento.PENDING_ACCEPTANCE
+                        && EtapaAcompanhamentoOrcamento.deTexto(stage)
+                                == EtapaAcompanhamentoOrcamento.NEGOCIACAO;
+        if (!aguardandoDecisao) {
+            throw RegraNegocioException.conflito(
+                    "Este orçamento não está aguardando a decisão do cliente");
+        }
     }
 }
