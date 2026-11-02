@@ -82,6 +82,15 @@ html {
     )
   );
 
+  @include mat.select-overrides((
+    trigger-text-font: $plain-family,
+    trigger-text-size: 14px,
+    trigger-text-weight: 400,
+    enabled-trigger-text-color: var(--color-lactec-ink),
+    enabled-arrow-color: var(--color-lactec-muted),
+    panel-background-color: var(--color-lactec-paper),
+  ));
+
   @include mat.checkbox-overrides(
     (
       selected-icon-color: var(--color-lactec-primary),

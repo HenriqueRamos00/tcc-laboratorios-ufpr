@@ -207,6 +207,17 @@ seguem o formato `{ "message": "..." }`.
 
 O arquivo `.env` é local e não deve conter credenciais reais versionadas. Use `.env.example` como referência.
 
+
+### Manutenção de ensaios
+
+O Portal Interno consulta `GET /api/tests`, abre `GET /api/tests/{id}` e usa `POST`/`PUT` para criar ou substituir uma execução. As consultas de seleção ficam em `/api/tests/references/quotes`, `/samples`, `/analyzed-equipment`, `/technicians` e `/instruments`; os formatos conhecidos usam `/api/tests/measurement-templates/{analysisType}`. Todas essas rotas exigem um usuário ativo com perfil TECNICO.
+
+O request identifica a amostra por `sampleId` existente ou por `newSample` com orçamento, código, descrição e equipamento analisado opcional. As alternativas são mutuamente exclusivas. A amostra nova e a execução são gravadas na mesma transação; não há CRUD independente nem gestão de coleta, recebimento, estoque ou descarte. O código de amostra mantém a unicidade global existente. Equipamentos analisados são filtrados pela empresa do orçamento e não se confundem com instrumentos laboratoriais utilizados.
+
+Uma execução mantém suas medições, instrumentos laboratoriais, classificação informada e texto técnico em rascunho na base PostgreSQL. A manutenção usa a base própria Spring/PostgreSQL; integração com AutoLAB não faz parte do escopo. O código do ensaio é gerado no servidor. A edição exige `version` e usa controle otimista; conflitos retornam `test-version-conflict`, enquanto colisões do código de amostra retornam `sample-code-conflict`, ambos em 409. Quantidades são decimais em texto JSON, com limite de 16 dígitos inteiros e 8 casas. O tipo de cada resultado é informado explicitamente para preservar texto como `ND` ou `12,30`. Resultados `quantity`, `not-detected`, `not-performed` e `text` mantêm significados distintos. A classificação não é calculada automaticamente e o texto não é relatório publicado.
+
+O seed da HU25 é opt-in por `DEMO_SEED_ENABLED=true`, depende das propostas/técnicos demonstrativos existentes e roda uma única vez por versão. Ele cria amostras e instrumentos demonstrativos, três execuções com quatro formas de resultado e datas coerentes. O seed não importa os JSONL do Portal do Cliente e não representa dados oficiais do AutoLAB.
+
 ## Testes
 
 Execute todos os testes com:
@@ -291,7 +302,8 @@ Para carregar os exemplos, configure `DEMO_SEED_ENABLED=true` e reinicie o Backe
 
 - 6 empresas, 6 técnicos e 7 clientes;
 - 26 orçamentos com os cinco status comerciais e 44 itens de serviço;
-- 14 execuções técnicas com exemplos de pendências, cancelamentos, validação e publicação;
+- 17 execuções com exemplos de resultados, pendências, cancelamentos, validação e publicação;
+- 13 amostras vinculadas aos orçamentos e dois instrumentos laboratoriais;
 - um PDF de exemplo na proposta Lactec.
 
 Quatro propostas não têm laboratório, escopo, contato próprio ou itens, para demonstrar a consulta de registros antigos. As execuções têm andamento próprio, separado do status comercial. As contas e empresas são fictícias; os CNPJs passam pela validação e os novos e-mails usam `example.test`.

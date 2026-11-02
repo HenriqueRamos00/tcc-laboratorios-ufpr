@@ -102,7 +102,22 @@ A tabela mostra proposta, empresa, nome e descrição, data, valor e status. Ao 
 
 O formulário lateral de criação e edição exige uma empresa ativa para novos registros e mantém o vínculo original durante a edição mesmo quando a empresa está inativa. O laboratório é informado como texto livre. Nome e e-mail do contato começam com os dados da empresa e podem ser ajustados para a proposta. Itens de serviço são editáveis em cartões compactos; subtotais e total são somente leitura e calculados a partir de quantidade e preço unitário, sem impostos ou descontos. O envio é bloqueado quando um valor não pode ser representado com precisão segura em centavos. A criação inicia com status **Pendente de Aceite**; na edição, somente os cinco status comerciais podem ser salvos. A etapa continua sob responsabilidade do sistema.
 
-Um PDF pode ser enviado no cadastro ou na edição, com limite de 50 MiB. Na edição, deixar o campo de arquivo vazio mantém o documento atual; enviar outro PDF o substitui. O painel de detalhes mostra laboratório, escopo, contato e itens de serviço, indicando os campos sem informação nos registros antigos. Os itens aparecem em cartões para facilitar a leitura em telas estreitas.
+Um PDF pode ser enviado na criação ou na edição, com limite de 50 MiB. Na edição, manter o campo de arquivo vazio preserva o documento existente; enviar outro PDF o substitui. O detalhe apresenta laboratório, escopo, contato e itens retornados pela API e identifica dados ausentes nos orçamentos legados. Para manter a tabela legível, a proposta abre o detalhe diretamente e as ações ficam limitadas a editar e, quando disponível, baixar o PDF. Os itens aparecem como cartões no painel lateral para evitar uma tabela larga em telas estreitas.
+
+
+## Manutenção de ensaios
+
+A página **Manter ensaios** (`/tecnico/ensaios`) consulta as execuções próprias do Backend Lab, com busca e paginação. O formulário (`/tecnico/ensaios/novo` e `/tecnico/ensaios/:id/editar`) usa diretamente as rotas `/api/tests` e mantém os IDs de orçamento, amostra, equipamento analisado, responsável e instrumento como referências distintas dos códigos apresentados.
+
+A execução começa com a escolha de orçamento e permite selecionar uma amostra dele ou informar código e descrição no próprio formulário. Para usar uma nova identificação, o técnico confirma explicitamente a ação; ela só é gravada junto com o ensaio ao salvar. Não há cadastro independente nem gestão do ciclo de vida de amostras. O equipamento analisado é opcional e filtrado pela empresa do orçamento; instrumentos laboratoriais também são opcionais e têm consulta própria.
+
+A execução registra amostra, tipo, método, norma, agendamento, responsável, instrumentos laboratoriais, medições, classificação opcional e texto técnico em rascunho. O código é gerado pelo servidor; o estado do processo aparece somente para leitura. O técnico escolhe explicitamente quantidade, ND, não realizado ou texto em cada medição, preservando valores textuais como `ND` e `12,30`. Quantidades aceitam vírgula e preservam a precisão permitida pelo contrato, sem arredondamento.
+
+As linhas físico-químicas e cromatográficas são carregadas pela API. Outros tipos permitem linhas editáveis. Trocar o formato ou o tipo de resultado após editar valores solicita confirmação. As consultas de orçamento, amostra, equipamento analisado, técnico, instrumentos e modelo têm estados próprios de carregamento e erro; as seleções ficam preservadas nas tentativas. Durante o salvamento, os campos são bloqueados e o formulário só confirma o sucesso após a resposta do Spring. Conflito de versão exige recarga explícita; conflito de código de amostra mantém o rascunho para pesquisar uma referência ou escolher outro código.
+
+A seleção de orçamento abre um painel lateral com pesquisa e paginação; o formulário mostra somente o orçamento escolhido. As pesquisas de amostra e equipamento usam opções sobrepostas de altura limitada. Indicadores de consulta ficam no campo e em espaço auxiliar reservado, evitando deslocamento do restante do formulário. Os grupos de contexto, dados do ensaio e resultados reutilizam a identidade visual e os seletores Angular Material do Portal Interno.
+
+As tabelas mantêm rolagem horizontal própria para telas estreitas. A sequência do protótipo que avançava entre páginas de ensaios foi adaptada para uma única execução com ações **Salvar** e **Cancelar**; outra análise da amostra é cadastrada como execução separada. Classificação da análise e estado de processo aparecem em campos distintos. Laudo permanece como texto técnico em rascunho, sem assinatura ou publicação.
 
 ## Consulta técnica de orçamentos
 

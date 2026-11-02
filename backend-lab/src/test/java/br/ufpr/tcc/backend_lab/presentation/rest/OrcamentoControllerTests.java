@@ -16,6 +16,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 import br.ufpr.tcc.backend_lab.domain.model.entity.DocumentoOrcamento;
 import br.ufpr.tcc.backend_lab.domain.model.entity.ExecucaoEnsaio;
+import br.ufpr.tcc.backend_lab.domain.model.entity.Amostra;
 import br.ufpr.tcc.backend_lab.domain.model.entity.Empresa;
 import br.ufpr.tcc.backend_lab.domain.model.entity.Orcamento;
 import br.ufpr.tcc.backend_lab.domain.model.entity.OrcamentoItem;
@@ -24,6 +25,7 @@ import br.ufpr.tcc.backend_lab.domain.model.entity.Usuario;
 import br.ufpr.tcc.backend_lab.domain.model.enums.StatusComercialOrcamento;
 import br.ufpr.tcc.backend_lab.domain.repository.DocumentoOrcamentoRepository;
 import br.ufpr.tcc.backend_lab.domain.repository.ExecucaoEnsaioRepository;
+import br.ufpr.tcc.backend_lab.domain.repository.AmostraRepository;
 import br.ufpr.tcc.backend_lab.domain.repository.EmpresaRepository;
 import br.ufpr.tcc.backend_lab.domain.repository.OrcamentoRepository;
 import br.ufpr.tcc.backend_lab.domain.repository.UsuarioRepository;
@@ -50,6 +52,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.math.BigDecimal;
 import java.nio.charset.StandardCharsets;
 import java.time.OffsetDateTime;
+import java.time.LocalDate;
 import java.util.Arrays;
 import java.util.HashSet;
 import java.util.Set;
@@ -64,6 +67,7 @@ class OrcamentoControllerTests {
     @Autowired OrcamentoRepository orcamentos;
     @Autowired DocumentoOrcamentoRepository documentos;
     @Autowired ExecucaoEnsaioRepository execucoes;
+    @Autowired AmostraRepository amostras;
     @Autowired JwtService jwtService;
     @Autowired PasswordEncoder passwordEncoder;
     private final ObjectMapper objectMapper = new ObjectMapper();
@@ -976,6 +980,16 @@ class OrcamentoControllerTests {
             String reportReference,
             OffsetDateTime publishedAt) {
         ExecucaoEnsaio execucao = new ExecucaoEnsaio();
+        Amostra amostra = new Amostra();
+        amostra.setCodigo("A-" + orcamento.getId() + "-" + amostras.count());
+        amostra.setDescricao("Amostra da consulta técnica");
+        amostra.setOrcamento(orcamento);
+        execucao.setAmostra(amostras.saveAndFlush(amostra));
+        execucao.setResponsavel(usuarios.findByEmailIgnoreCase("tecnico-orcamentos@example.test").orElseThrow());
+        execucao.setTipo("Análise de óleo");
+        execucao.setMetodo("Análise físico-química");
+        execucao.setNorma("ABNT NBR 10576");
+        execucao.setDataAgendada(LocalDate.of(2026, 10, 24));
         execucao.setOrcamento(orcamento);
         execucao.setStatus(status);
         execucao.setReportReference(reportReference);

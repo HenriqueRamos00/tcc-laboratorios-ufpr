@@ -1,7 +1,22 @@
 -- Execuções de demonstração para testar os status técnicos dos orçamentos.
 -- Uma execução publicada sem data deve aparecer como Validado na consulta.
-INSERT INTO execucoes_ensaios (orcamento_id, status, report_reference, published_at)
-SELECT orcamento.id, seed.status, seed.report_reference, seed.published_at
+INSERT INTO amostras (codigo, descricao, orcamento_id)
+SELECT 'A-TEC-' || o.code, 'Amostra demonstrativa da consulta técnica', o.id
+FROM orcamentos o
+WHERE o.code IN ('DEMO-SEED-2026-001', 'DEMO-SEED-2026-002', 'DEMO-SEED-2026-003',
+                 'DEMO-SEED-2026-004', 'DEMO-SEED-2026-005', 'DEMO-SEED-2026-006',
+                 'DEMO-SEED-2026-007', 'DEMO-SEED-2026-008', 'DEMO-SEED-2026-009',
+                 'DEMO-SEED-2026-010')
+  AND NOT EXISTS (SELECT 1 FROM amostras a WHERE a.codigo = 'A-TEC-' || o.code);
+
+INSERT INTO execucoes_ensaios (codigo, amostra_id, orcamento_id, responsavel_id,
+                              tipo, metodo, norma, data_agendada, status,
+                              report_reference, published_at, version, atualizado_em)
+SELECT REPLACE(seed.code, 'DEMO-SEED-2026-', 'E-DEMO-') || '-' || seed.status,
+       amostra.id, orcamento.id, tecnico.id, 'Análise demonstrativa de óleo',
+       'Análise físico-química', 'ABNT NBR 10576', DATE '2026-10-24',
+       seed.status, seed.report_reference, seed.published_at, 0,
+       TIMESTAMP WITH TIME ZONE '2026-10-25 09:00:00-03:00'
 FROM (VALUES
     ('DEMO-SEED-2026-001', 'incomplete', NULL, NULL),
     ('DEMO-SEED-2026-002', 'complete', NULL, NULL),
@@ -19,8 +34,10 @@ FROM (VALUES
     ('DEMO-SEED-2026-010', 'complete', NULL, NULL)
 ) AS seed(code, status, report_reference, published_at)
 JOIN orcamentos orcamento ON orcamento.code = seed.code
+JOIN amostras amostra ON amostra.codigo = 'A-TEC-' || orcamento.code
+JOIN usuarios tecnico ON tecnico.email_normalizado = 'demo.tecnico.helena@example.test' AND tecnico.perfil = 'TECNICO'
 WHERE NOT EXISTS (
     SELECT 1
     FROM execucoes_ensaios existente
-    WHERE existente.orcamento_id = orcamento.id
+    WHERE existente.codigo = REPLACE(seed.code, 'DEMO-SEED-2026-', 'E-DEMO-') || '-' || seed.status
 );
