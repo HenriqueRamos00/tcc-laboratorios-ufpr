@@ -12,8 +12,8 @@ public sealed class SpringQuoteAdapterTests
 {
     private const string QuoteJson = """
         {"id":"52","code":"ORC-52","name":"Análise de óleo","status":"InProgress",
-        "stage":"Em execução","description":"Análise físico-química","companyName":"Copel",
-        "externalContactName":"Ana","externalContactEmail":"ana@copel.com",
+        "stage":"Em execução","description":"Análise físico-química","companyName":"EMPRESA DE ENERGIA",
+        "externalContactName":"Ana","externalContactEmail":"ana@example.test",
         "totalPrice":1234.56,"createdDate":"2026-10-20T13:45:00-03:00"}
         """;
 
@@ -22,7 +22,7 @@ public sealed class SpringQuoteAdapterTests
     {
         string json = QuoteJson
             .Replace("\"externalContactName\":\"Ana\"", "\"externalContactName\":null", StringComparison.Ordinal)
-            .Replace("\"externalContactEmail\":\"ana@copel.com\"", "\"externalContactEmail\":null", StringComparison.Ordinal)
+            .Replace("\"externalContactEmail\":\"ana@example.test\"", "\"externalContactEmail\":null", StringComparison.Ordinal)
             .Replace("\"createdDate\":\"2026-10-20T13:45:00-03:00\"", "\"createdDate\":null", StringComparison.Ordinal);
         using var handler = new ResponseHandler(_ => JsonResponse(HttpStatusCode.OK, $"[{json}]"));
         using var client = CreateClient(handler);

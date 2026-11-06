@@ -4,6 +4,7 @@ using Portal.Adapters.Quotes;
 using Portal.Api.Controllers;
 using Portal.Application.Quotes;
 using Portal.Application.Quotes.Exceptions;
+using Portal.Tests.Pipeline;
 
 using Xunit;
 
@@ -117,7 +118,8 @@ public sealed class QuoteDocumentTests
     }
 
     private static QuotesController CreateController(IQuoteDocumentRepository documents) =>
-        new(new QuoteService(new FakeSalesforceQuoteRepository(), documents));
+        new(new QuoteService(
+            new FakeSalesforceQuoteRepository(), documents, new InMemoryLaboratoryProgressRepository()));
 
     private sealed class FixedDocumentRepository(byte[] document) : IQuoteDocumentRepository
     {
