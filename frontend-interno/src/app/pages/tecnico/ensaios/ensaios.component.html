@@ -84,7 +84,7 @@
             <th class="px-4 py-3">Agendamento</th>
             <th class="px-4 py-3">Responsável</th>
             <th class="px-4 py-3">Estado do processo</th>
-            <th class="px-4 py-3">Ação</th>
+            <th class="px-4 py-3"><span class="sr-only">Ações</span></th>
           </tr>
         </thead>
         <tbody>
@@ -101,13 +101,21 @@
               <td class="px-4 py-3">{{ formatDate(item.scheduledDate) }}</td>
               <td class="px-4 py-3">{{ item.responsible.name }}</td>
               <td class="px-4 py-3">{{ statusLabel(item.status) }}</td>
-              <td class="px-4 py-3">
-                <a
-                  mat-button
-                  [routerLink]="['/tecnico/ensaios', item.id, 'editar']"
-                  [attr.aria-label]="'Editar ensaio ' + item.code"
-                  ><mat-icon>edit</mat-icon>Editar</a
-                >
+              <td class="px-4 py-2">
+                <div class="flex flex-wrap items-center gap-1">
+                  <a
+                    mat-button
+                    [routerLink]="['/tecnico/ensaios', item.id, 'status']"
+                    [attr.aria-label]="'Acompanhar status do ensaio ' + item.code"
+                    ><mat-icon>timeline</mat-icon>Acompanhar</a
+                  >
+                  <a
+                    mat-button
+                    [routerLink]="['/tecnico/ensaios', item.id, 'editar']"
+                    [attr.aria-label]="'Editar ensaio ' + item.code"
+                    ><mat-icon>edit</mat-icon>Editar</a
+                  >
+                </div>
               </td>
             </tr>
           }

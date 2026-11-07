@@ -5,11 +5,14 @@ import com.fasterxml.jackson.annotation.JsonInclude.Include;
 import br.ufpr.tcc.backend_lab.domain.model.entity.Amostra;
 import br.ufpr.tcc.backend_lab.domain.model.entity.Empresa;
 import br.ufpr.tcc.backend_lab.domain.model.entity.ExecucaoEnsaio;
+import br.ufpr.tcc.backend_lab.domain.model.entity.HistoricoStatusEnsaio;
 import br.ufpr.tcc.backend_lab.domain.model.entity.InstrumentoLaboratorial;
 import br.ufpr.tcc.backend_lab.domain.model.entity.MedicaoEnsaio;
 import br.ufpr.tcc.backend_lab.domain.model.entity.Orcamento;
-import java.util.List;
+import br.ufpr.tcc.backend_lab.domain.model.entity.Usuario;
+import java.time.OffsetDateTime;
 import java.util.Comparator;
+import java.util.List;
 
 public final class EnsaioDtos {
     private EnsaioDtos() { }
@@ -22,6 +25,10 @@ public final class EnsaioDtos {
     public record AmostraResumo(String id, String code, String description) { }
     public record TecnicoRef(String id, String name, String unit) { }
     public record ResponsavelRef(String id, String name, String unit, boolean active) { }
+    public record StatusAtualizado(String id, String status, OffsetDateTime changedAt,
+            TecnicoRef responsible, long version, boolean changed) { }
+    public record HistoricoStatus(String id, String previousStatus, String status, String action,
+            OffsetDateTime changedAt, TecnicoRef responsible, String justification) { }
     public record InstrumentoRef(String id, String inventoryNumber, String name,
             String calibrationCertificate, String calibrationValidUntil) { }
     public record Medicao(String code, String name, String unit, String method,
@@ -59,6 +66,16 @@ public final class EnsaioDtos {
         return new InstrumentoRef(instrumento.getId().toString(), instrumento.getNumeroPatrimonio(),
                 instrumento.getNome(), instrumento.getCertificadoCalibracao(),
                 instrumento.getCalibracaoValidaAte() == null ? null : instrumento.getCalibracaoValidaAte().toString());
+    }
+
+    public static TecnicoRef tecnico(Usuario tecnico) {
+        return new TecnicoRef(tecnico.getId().toString(), tecnico.getNome(), tecnico.getUnidade());
+    }
+
+    public static HistoricoStatus historicoStatus(HistoricoStatusEnsaio evento) {
+        return new HistoricoStatus(evento.getId().toString(), evento.getStatusAnterior().codigo(),
+                evento.getStatusNovo().codigo(), evento.getAction(), evento.getAlteradoEm(),
+                tecnico(evento.getTecnico()), evento.getJustificativa());
     }
 
     public static Resumo resumo(ExecucaoEnsaio ensaio) {

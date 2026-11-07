@@ -1,0 +1,44 @@
+<app-dialog-shell [title]="titulo">
+  @if (data.acao === 'cancelar') {
+    <p class="m-0 text-sm text-lactec-ink-soft">
+      O ensaio será marcado como cancelado. Informe o motivo para registrar esta ação no histórico.
+    </p>
+  } @else {
+    <p class="m-0 text-sm text-lactec-ink-soft">
+      O ensaio voltará para Em execução para que possa ser refeito. Informe o motivo da rejeição.
+    </p>
+  }
+  <label for="status-justificativa" class="mt-4 grid gap-1 text-sm font-medium text-lactec-ink">
+    Justificativa
+    <textarea
+      id="status-justificativa"
+      [formControl]="justificativa"
+      rows="5"
+      maxlength="2000"
+      class="w-full resize-y rounded-lg border border-lactec-line bg-white p-3 text-sm font-normal text-lactec-ink focus:border-lactec-primary focus:outline-none focus:ring-2 focus:ring-lactec-primary/20"
+      [attr.aria-invalid]="justificativa.touched && !justificativa.value.trim()"
+      aria-describedby="status-justificativa-hint status-justificativa-error"
+      placeholder="Descreva o motivo"
+    ></textarea>
+    <small id="status-justificativa-hint" class="font-normal text-lactec-muted">
+      Obrigatória, até 2000 caracteres.
+    </small>
+    @if (justificativa.touched && !justificativa.value.trim()) {
+      <small id="status-justificativa-error" class="font-normal text-red-700" role="alert">
+        Informe uma justificativa.
+      </small>
+    }
+  </label>
+  <div dialog-footer class="flex w-full flex-wrap justify-end gap-3">
+    <button mat-stroked-button type="button" mat-dialog-close>Voltar</button>
+    <button
+      mat-flat-button
+      type="button"
+      [class.confirmacao-dialog-perigo]="data.acao === 'cancelar'"
+      [disabled]="!justificativa.value.trim() || justificativa.value.length > 2000"
+      (click)="confirmar()"
+    >
+      {{ textoConfirmacao }}
+    </button>
+  </div>
+</app-dialog-shell>

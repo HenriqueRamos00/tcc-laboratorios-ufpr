@@ -12,6 +12,9 @@ import {
   TechnicianReference,
   TestDetail,
   TestRequest,
+  TestStatusHistoryEntry,
+  TestStatusUpdateRequest,
+  TestStatusUpdateResponse,
   TestSummary,
   TestUpdateRequest,
 } from '@/app/model/ensaio';
@@ -37,6 +40,20 @@ export class EnsaiosService {
     return this.http.put<TestDetail>(
       `${this.endpoint}/${encodeURIComponent(id)}`,
       request,
+    );
+  }
+  updateStatus(
+    id: string,
+    request: TestStatusUpdateRequest,
+  ): Observable<TestStatusUpdateResponse> {
+    return this.http.patch<TestStatusUpdateResponse>(
+      `${this.endpoint}/${encodeURIComponent(id)}/status`,
+      request,
+    );
+  }
+  statusHistory(id: string): Observable<TestStatusHistoryEntry[]> {
+    return this.http.get<TestStatusHistoryEntry[]>(
+      `${this.endpoint}/${encodeURIComponent(id)}/status-history`,
     );
   }
   samples(

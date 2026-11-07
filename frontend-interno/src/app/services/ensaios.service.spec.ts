@@ -65,4 +65,24 @@ describe('Serviço de ensaios', () => {
     expect(request.request.body.version).toBe(3);
     request.flush({});
   });
+  it('atualiza o status pelo recurso de transição e envia a versão atual', () => {
+    service.updateStatus('42', {
+      action: 'set-status', targetStatus: 'validated', version: 4,
+    }).subscribe();
+    const request = http.expectOne('/api/tests/42/status');
+    expect(request.request.method).toBe('PATCH');
+    expect(request.request.body).toEqual({
+      action: 'set-status', targetStatus: 'validated', version: 4,
+    });
+    request.flush({
+      id: '42', status: 'validated', changedAt: '2026-11-01T15:00:00Z',
+      responsible: { id: '7', name: 'Técnica', unit: null }, version: 5, changed: true,
+    });
+  });
+  it('consulta o histórico de status do ensaio', () => {
+    service.statusHistory('42').subscribe();
+    const request = http.expectOne('/api/tests/42/status-history');
+    expect(request.request.method).toBe('GET');
+    request.flush([]);
+  });
 });

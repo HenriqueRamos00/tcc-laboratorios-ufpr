@@ -149,6 +149,24 @@ describe('Página de orçamentos técnicos', () => {
     fixture.destroy();
   }));
 
+  it('filtra orçamento sem ensaios pelo código técnico not-started', fakeAsync(() => {
+    const semEnsaios: OrcamentoTecnico = { ...orcamento, technicalStatus: 'not-started' };
+    service.list.and.returnValue(of(pagina([semEnsaios])));
+    const fixture = criarPagina();
+    fixture.detectChanges();
+
+    fixture.componentInstance.statusControl.setValue('not-started');
+    fixture.detectChanges();
+
+    expect(service.list.calls.mostRecent().args[0]).toEqual({
+      search: '', status: 'not-started', from: null, to: null, page: 1, pageSize: 20,
+    });
+    expect(fixture.nativeElement.textContent).toContain('Não iniciado');
+    expect(fixture.nativeElement.querySelector('#orcamentos-tecnicos-status option[value="not-started"]')?.textContent)
+      .toContain('Não iniciado');
+    fixture.destroy();
+  }));
+
   for (const [from, to, motivo] of [
     ['2026-10-20', '2026-10-01', 'ordem'],
     ['2026-02-30', '', 'calendário'],
@@ -267,6 +285,17 @@ describe('Drawer técnico de orçamento', () => {
 
     expect(fixture.nativeElement.textContent).toContain('Não informado');
     expect(fixture.nativeElement.textContent).not.toContain('Incompleto');
+    fixture.destroy();
+  }));
+
+  it('apresenta no detalhe o resumo Não iniciado retornado pela API', fakeAsync(() => {
+    service.get.and.returnValue(of({ ...detalhe, technicalStatus: 'not-started' }));
+    const fixture = TestBed.createComponent(OrcamentoTecnicoDetalheDialogComponent);
+    fixture.detectChanges();
+    fixture.detectChanges();
+
+    expect(fixture.nativeElement.textContent).toContain('Não iniciado');
+    expect(fixture.nativeElement.textContent).not.toContain('Em execução');
     fixture.destroy();
   }));
 

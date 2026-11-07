@@ -1,0 +1,23 @@
+.status-edit__select {
+  width: 100%;
+  min-width: 0;
+  height: 44px;
+  border: 1px solid var(--color-lactec-line);
+  border-radius: 8px;
+  background: var(--color-lactec-paper);
+  padding: 0 12px;
+  color: var(--color-lactec-ink);
+  font: inherit;
+  font-size: 14px;
+}
+
+.status-edit__select:focus-visible {
+  outline: 2px solid var(--color-lactec-primary);
+  outline-offset: 2px;
+}
+
+.status-edit__select:disabled {
+  cursor: not-allowed;
+  background: var(--color-lactec-line-soft);
+  color: var(--color-lactec-muted);
+}

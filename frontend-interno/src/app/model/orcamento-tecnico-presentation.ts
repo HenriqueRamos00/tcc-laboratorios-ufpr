@@ -16,7 +16,8 @@ export interface OrcamentoTecnicoApresentacao extends OrcamentoTecnico {
 }
 
 const ROTULOS_STATUS_TECNICO: Readonly<Record<StatusTecnicoOrcamento, string>> = {
-  incomplete: 'Incompleto',
+  'not-started': 'Não iniciado',
+  incomplete: 'Em execução',
   complete: 'Completo',
   validated: 'Validado',
   'report-published': 'Publicado',
@@ -26,6 +27,7 @@ const ROTULOS_STATUS_TECNICO: Readonly<Record<StatusTecnicoOrcamento, string>> =
 const CLASSE_STATUS_AUSENTE = 'bg-lactec-line-soft text-lactec-ink-soft';
 
 const CLASSES_STATUS_TECNICO: Readonly<Record<StatusTecnicoOrcamento, string>> = {
+  'not-started': CLASSE_STATUS_AUSENTE,
   incomplete: 'bg-lactec-danger-bg text-lactec-danger-ink',
   complete: 'bg-lactec-pill-pend-bg text-lactec-pill-pend-ink',
   validated: 'bg-lactec-pill-proc-bg text-lactec-pill-proc-ink',

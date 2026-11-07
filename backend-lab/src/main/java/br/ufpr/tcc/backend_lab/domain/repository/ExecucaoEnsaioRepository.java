@@ -14,6 +14,8 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
 public interface ExecucaoEnsaioRepository extends JpaRepository<ExecucaoEnsaio, Long> {
+    boolean existsByOrcamentoId(Long orcamentoId);
+
     @Query("""
             select e.orcamento.id as orcamentoId, e.status as status,
                    e.reportReference as reportReference, e.publishedAt as publishedAt

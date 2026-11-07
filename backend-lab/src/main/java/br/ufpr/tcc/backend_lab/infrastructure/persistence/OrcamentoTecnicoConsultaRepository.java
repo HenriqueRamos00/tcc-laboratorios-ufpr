@@ -1,6 +1,7 @@
 package br.ufpr.tcc.backend_lab.infrastructure.persistence;
 
 import br.ufpr.tcc.backend_lab.domain.model.enums.StatusOrcamentoTecnico;
+import br.ufpr.tcc.backend_lab.domain.model.enums.StatusComercialOrcamento;
 import br.ufpr.tcc.backend_lab.domain.model.enums.StatusEnsaio;
 
 import lombok.RequiredArgsConstructor;
@@ -38,6 +39,9 @@ public class OrcamentoTecnicoConsultaRepository {
             ), status_tecnico AS (
                 SELECT orcamento.id AS orcamento_id,
                        CASE
+                           WHEN resumo.orcamento_id IS NULL
+                               AND orcamento.status IN (:statusComercialElegivel)
+                               THEN :summaryNotStarted
                            WHEN resumo.orcamento_id IS NULL THEN NULL
                            WHEN resumo.ativas = 0 THEN :summaryCancelled
                            WHEN resumo.todas_publicadas THEN :summaryReportPublished
@@ -64,6 +68,7 @@ public class OrcamentoTecnicoConsultaRepository {
                    OR orcamento.created_date >= :inicio)
               AND (CAST(:fimExclusivo AS timestamp with time zone) IS NULL
                    OR orcamento.created_date < :fimExclusivo)
+              AND orcamento.status IN (:statusComercialElegivel)
               AND (CAST(:status AS text) IS NULL OR status.technical_status = :status)
             """;
 
@@ -142,6 +147,10 @@ public class OrcamentoTecnicoConsultaRepository {
                 .addValue("reportPublishedState", StatusEnsaio.REPORT_PUBLISHED.codigo())
                 .addValue("incompleteState", StatusEnsaio.INCOMPLETE.codigo())
                 .addValue("completeState", StatusEnsaio.COMPLETE.codigo())
+                .addValue(
+                        "statusComercialElegivel",
+                        StatusComercialOrcamento.codigosElegiveisParaNovosEnsaios())
+                .addValue("summaryNotStarted", StatusOrcamentoTecnico.NOT_STARTED.codigo())
                 .addValue("summaryCancelled", StatusOrcamentoTecnico.CANCELLED.codigo())
                 .addValue("summaryReportPublished", StatusOrcamentoTecnico.REPORT_PUBLISHED.codigo())
                 .addValue("summaryIncomplete", StatusOrcamentoTecnico.INCOMPLETE.codigo())

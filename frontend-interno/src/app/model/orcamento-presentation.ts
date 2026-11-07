@@ -9,8 +9,8 @@ export const STATUS_ORCAMENTO_CANONICO = [
 export type StatusOrcamento = (typeof STATUS_ORCAMENTO_CANONICO)[number];
 
 const ROTULOS_STATUS_ORCAMENTO: Readonly<Record<StatusOrcamento, string>> = {
-  PendingAcceptance: 'Pendente de Aceite',
-  InProgress: 'Em Andamento',
+  PendingAcceptance: 'Aguardando aceite',
+  InProgress: 'Aceito',
   Finished: 'Finalizado',
   Refused: 'Recusado',
   Cancelled: 'Cancelado',

@@ -15,6 +15,7 @@ import { OrcamentosTecnicosComponent } from '@/app/pages/tecnico/orcamentos/orca
 import { PlaceholderComponent } from '@/app/pages/placeholder/placeholder.component';
 import { EnsaiosComponent } from '@/app/pages/tecnico/ensaios/ensaios.component';
 import { EnsaioFormComponent } from '@/app/pages/tecnico/ensaios/ensaio-form.component';
+import { EnsaioStatusComponent } from '@/app/pages/tecnico/ensaios/ensaio-status.component';
 import { LoginService } from '@/app/services/login.service';
 import { routes } from './app.routes';
 
@@ -38,11 +39,13 @@ describe('Rotas do Portal Interno', () => {
     const filhos = tecnico?.children ?? [];
     const lista = filhos.find((rota) => rota.path === 'ensaios');
     const novo = filhos.find((rota) => rota.path === 'ensaios/novo');
+    const status = filhos.find((rota) => rota.path === 'ensaios/:id/status');
     const editar = filhos.find((rota) => rota.path === 'ensaios/:id/editar');
 
     expect(tecnico?.data?.['role']).toBe('TECNICO');
     expect(await lista?.loadComponent?.()).toBe(EnsaiosComponent);
     expect(await novo?.loadComponent?.()).toBe(EnsaioFormComponent);
+    expect(await status?.loadComponent?.()).toBe(EnsaioStatusComponent);
     expect(await editar?.loadComponent?.()).toBe(EnsaioFormComponent);
     expect(novo?.canDeactivate).toBeDefined();
     expect(editar?.canDeactivate).toBeDefined();
