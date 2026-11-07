@@ -19,14 +19,23 @@ namespace Portal.Application.LabResults;
 public interface IForConsultingLabResults
 {
     /// <summary>
-    /// Os equipamentos do inquilino. O AutoLAB nao tem cadastro de equipamento, entao a
-    /// lista nasce do agrupamento das analises, e nao de uma tabela de equipamentos.
+    /// Os equipamentos do inquilino, cada um com a placa que o cadastro afirma sobre ele.
+    ///
+    /// A lista continua nascendo do agrupamento das analises, e nao de uma consulta ao
+    /// cadastro: o cadastro nao sabe de quem e o equipamento, e listar por ele entregaria o
+    /// parque de todos os clientes. A ordem dos dois passos e o que garante o isolamento, e
+    /// ela e parte do contrato desta operacao: as analises do inquilino respondem primeiro, e
+    /// o cadastro so e consultado sobre os numeros de serie que elas revelaram.
+    ///
+    /// A placa e nula com frequencia e isso e resposta bem sucedida.
+    /// <see cref="TestedEquipment"/> vem dos laudos e existe sempre; o cadastro conhece 86%
+    /// das series e nem sempre concorda consigo mesmo.
     /// </summary>
-    Task<IReadOnlyList<TestedEquipment>> ListEquipmentAsync(
+    Task<IReadOnlyList<EquipmentWithNameplate>> ListEquipmentAsync(
         string tenant,
         CancellationToken cancellationToken);
 
-    Task<TestedEquipment?> GetEquipmentAsync(
+    Task<EquipmentWithNameplate?> GetEquipmentAsync(
         string tenant,
         string equipmentKey,
         CancellationToken cancellationToken);

@@ -23,6 +23,7 @@ public sealed class RunningPortal : WebApplicationFactory<Program>
     protected override void ConfigureWebHost(IWebHostBuilder builder)
     {
         builder.UseSetting("LabResults:Source", "embedded-sample");
+        builder.UseSetting("EquipmentRegistry:Source", "in-memory-sample");
         builder.UseSetting("LabResults:DevelopmentTenant", SampleTenant);
         builder.UseSetting("Portal:DataSource", "backend-lab");
         builder.UseSetting("BackendLab:BaseUrl", "https://backend-lab.test/");

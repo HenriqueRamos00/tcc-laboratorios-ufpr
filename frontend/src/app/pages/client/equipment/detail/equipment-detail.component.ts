@@ -53,8 +53,19 @@ const PER_PAGE = 4;
 const DOWNLOAD_FAILURE =
   'Não foi possível baixar o relatório agora. Tente novamente em instantes.';
 
-/** O AutoLAB não tem cadastro de equipamento, então não tem placa nem localização. */
+/**
+ * O cadastro do AutoLAB preenche campo a campo, e nenhuma coluna dele é obrigatória. A
+ * célula diz que não foi informado, em vez de ficar vazia como se o dado fosse em branco.
+ */
 const NOT_REPORTED = 'Não informado';
+
+/**
+ * Dito uma vez, e só quando o cadastro não conhece a série. Sem esta frase a tela repetiria
+ * "Não informado" em sete cartões sem dizer por quê, e o cliente não teria como distinguir
+ * um equipamento que o cadastro não tem de um cujas colunas estão em branco.
+ */
+const NAMEPLATE_UNKNOWN =
+  'O cadastro de equipamentos do laboratório não tem este número de série, então os dados de placa não aparecem aqui.';
 
 function historyRow(report: EquipmentReport): HistoryRow {
   return {
@@ -96,15 +107,27 @@ export class EquipmentDetailComponent {
     const equipment = this.equipment();
     if (!equipment) return [];
     return [
-      { icon: 'tag', label: 'Numero de Série', value: equipment.serialNumber ?? NOT_REPORTED },
-      { icon: 'sell', label: 'TAG', value: equipment.tag },
-      { icon: 'water_drop', label: 'Tipo do Oleo', value: equipment.oilType ?? NOT_REPORTED },
+      { icon: 'tag', label: 'Número de Série', value: equipment.serialNumber ?? NOT_REPORTED },
+      { icon: 'sell', label: 'TAG', value: equipment.equipmentTag ?? equipment.tag },
+      { icon: 'category', label: 'Tipo de Equipamento', value: equipment.type ?? NOT_REPORTED },
+      { icon: 'water_drop', label: 'Tipo do Óleo', value: equipment.oilType ?? NOT_REPORTED },
       { icon: 'location_on', label: 'Local', value: equipment.location ?? NOT_REPORTED },
       { icon: 'business_center', label: 'Empresa', value: equipment.company },
       { icon: 'bolt', label: 'Tensão', value: equipment.voltage ?? NOT_REPORTED },
       { icon: 'electric_meter', label: 'Potência', value: equipment.power ?? NOT_REPORTED },
+      { icon: 'factory', label: 'Fabricante', value: equipment.manufacturer ?? NOT_REPORTED },
+      {
+        icon: 'calendar_month',
+        label: 'Ano de Fabricação',
+        value: equipment.manufacturingYear ?? NOT_REPORTED,
+      },
+      { icon: 'opacity', label: 'Volume de Óleo', value: equipment.oilVolume ?? NOT_REPORTED },
     ];
   });
+
+  protected readonly nameplateNotice = computed(() =>
+    this.equipment()?.nameplateKnown === false ? NAMEPLATE_UNKNOWN : '',
+  );
 
   protected readonly totalPages = computed(() =>
     Math.max(1, Math.ceil(this.history().length / PER_PAGE)),

@@ -113,6 +113,21 @@ internal static class ProblemResponses
             "A fonte de orcamentos nao respondeu a esta consulta.");
     }
 
+    /// <summary>
+    /// A fonte que informa a etapa do laboratorio e outra, e o corpo de erro diz qual caiu.
+    /// Reaproveitar aqui o codigo da fonte de orcamentos mandaria quem atende olhar o
+    /// Salesforce quando quem nao respondeu foi o AutoLAB, que e exatamente o que uma
+    /// excecao unica para as duas fontes fazia antes.
+    /// </summary>
+    public static IActionResult LaboratoryProgressSourceUnavailable(this ControllerBase controller)
+    {
+        return controller.AsProblem(
+            StatusCodes.Status502BadGateway,
+            "laboratory-progress-source-unavailable",
+            "Fonte de etapas do laboratorio indisponivel.",
+            "A fonte que informa a etapa do laboratorio nao respondeu a esta consulta.");
+    }
+
     public static IActionResult QuoteAuthenticationRequired(this ControllerBase controller)
     {
         return controller.AsProblem(

@@ -19,6 +19,11 @@
 
   <section class="mt-6 rounded-2xl border border-lactec-line bg-lactec-paper p-6">
     <h2 class="sr-only">Identificação do equipamento</h2>
+
+    @if (nameplateNotice()) {
+      <p class="mb-4 text-sm text-lactec-muted" role="status">{{ nameplateNotice() }}</p>
+    }
+
     <dl class="m-0 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
       @for (card of cards(); track card.label) {
         <div class="flex items-center gap-4 rounded-lg border border-lactec-line-soft px-4 py-4">

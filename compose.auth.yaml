@@ -36,6 +36,28 @@ services:
       sqlserver:
         condition: service_healthy
 
+  # O banco do AutoLAB para desenvolvimento, na mesma instancia que o backend-auth ja usa.
+  # Trocar pelo SQL Server de producao e trocar a cadeia de conexao da api, sem mexer aqui.
+  #
+  # O DDL e a carga sao provisorios enquanto o laboratorio nao envia o esquema real: os nomes
+  # das colunas vieram dos extratos, os tipos sao suposicao, e a massa e sintetica porque o
+  # extrato verdadeiro carrega nome de cliente. Esta pasta diz isso em cada arquivo.
+  autolab-init:
+    image: mcr.microsoft.com/mssql/server:2022-latest
+    entrypoint: ["/bin/bash", "-c"]
+    command:
+      - >-
+        for arquivo in /sql/01-create-database.sql /sql/02-create-objects.sql /sql/03-load-sample.sql; do
+          /opt/mssql-tools18/bin/sqlcmd -S sqlserver -U sa -C -b -f 65001 -i "$$arquivo" || exit 1;
+        done
+    environment:
+      SQLCMDPASSWORD: *demo-sql-password
+    volumes:
+      - ./backend-portal-web/docker/autolab:/sql:ro
+    depends_on:
+      sqlserver:
+        condition: service_healthy
+
   backend-auth:
     build:
       context: ./backend-auth

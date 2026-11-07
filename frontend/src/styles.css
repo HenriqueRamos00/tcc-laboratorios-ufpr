@@ -6,8 +6,8 @@
    Material) as referencia por var(). */
 @theme static {
   /* Marca */
-  --color-lactec-primary: #18A5B8;
-  --color-lactec-primary-dark: #0E8A9C;
+  --color-lactec-primary: #138291;
+  --color-lactec-primary-dark: #106A77;
   --color-lactec-on-primary: #FFFFFF;
   --color-lactec-nav: #0F4C5C;
   --color-lactec-nav-dark: #0B3D4A;
@@ -24,7 +24,7 @@
   --color-lactec-paper: #FFFFFF;
 
   /* Feedback */
-  --color-lactec-success: #2E9E6A;
+  --color-lactec-success: #27865A;
   --color-lactec-success-soft: #3FAE6B;
   --color-lactec-danger: #D9534F;
   --color-lactec-warning: #E5A53B;
@@ -998,4 +998,48 @@ app-proposal-viewer ngx-extended-pdf-viewer .pdfViewer#viewer {
    lados precisam mudar juntos. */
 mat-sidenav-content.mat-drawer-content:has(app-proposal-viewer [data-fullscreen]) {
   z-index: 3;
+}
+
+/* O retorno para o nivel acima, no inicio da barra superior. Regra nao encamadada e nao
+   utilitaria pelo motivo que o resto deste arquivo ja documenta: o mat-icon de dentro herda
+   a cor do ancestral, e utilitaria do Tailwind nao alcanca componente do Material. A altura
+   de 44px e o alvo de toque recomendado, e o foco e um contorno de 2px em vez de uma troca
+   de cor de borda. */
+.shell-back {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 44px;
+  margin-left: -8px;
+  padding: 0 12px 0 8px;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--color-lactec-ink-soft);
+  text-decoration: none;
+  transition: background-color 120ms ease, color 120ms ease;
+}
+
+.shell-back:hover {
+  background: var(--color-lactec-line-soft);
+  color: var(--color-lactec-ink);
+}
+
+.shell-back:focus-visible {
+  outline: 2px solid var(--color-lactec-primary);
+  outline-offset: 2px;
+}
+
+/* No celular a barra superior e escura, entao o mesmo link usa o par de cores da navegacao. */
+.shell-back--dark {
+  color: var(--color-lactec-on-nav);
+}
+
+.shell-back--dark:hover {
+  background: var(--color-lactec-nav-hover);
+  color: var(--color-lactec-on-primary);
+}
+
+.shell-back--dark:focus-visible {
+  outline-color: var(--color-lactec-paper);
 }
