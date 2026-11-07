@@ -33,8 +33,11 @@ export class EquipmentListComponent {
   protected readonly equipmentList = signal<readonly Equipment[]>([]);
 
   /**
-   * A busca é por número de série e por TAG, como o campo promete. O número de série pode
-   * ser nulo no dado real, e aí sobra a TAG, que nunca é nula.
+   * A busca é por número de série e por TAG, como o campo promete. São três campos porque
+   * TAG tem duas procedências: a de placa, que o cadastro informa em 55% das linhas, e a
+   * identificação do laudo, que é o que `tag` carrega quando o cadastro não informa. Buscar
+   * só em `tag` deixaria de encontrar pela TAG de placa, que é justamente a que o cliente
+   * tem pintada no equipamento e vê impressa na coluna.
    */
   protected readonly visible = computed(() => {
     const term = this.searchTerm().trim().toLowerCase();
@@ -42,6 +45,7 @@ export class EquipmentListComponent {
     return this.equipmentList().filter(
       (equipment) =>
         (equipment.serialNumber ?? '').toLowerCase().includes(term) ||
+        (equipment.equipmentTag ?? '').toLowerCase().includes(term) ||
         equipment.tag.toLowerCase().includes(term),
     );
   });

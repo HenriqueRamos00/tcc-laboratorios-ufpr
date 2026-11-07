@@ -1,5 +1,7 @@
 using Portal.Application.LabResults;
+using Portal.Application.Nameplate;
 using Portal.Domain.LabResults;
+using Portal.Tests.Nameplate;
 
 using Xunit;
 
@@ -31,12 +33,14 @@ public sealed class LabResultsConsultationTests
             AnalysisOf("01352/2026-004", "111.594/1"),
             AnalysisOf("01417/2026-001", "571289"));
 
-        LabResultsConsultation service = new(source);
+        LabResultsConsultation service = Consultation(source);
 
-        IReadOnlyList<TestedEquipment> found = await service.ListEquipmentAsync(
+        IReadOnlyList<EquipmentWithNameplate> found = await service.ListEquipmentAsync(
             Tenant, CancellationToken.None);
 
-        Assert.Equal(["111.594/1", "571289"], found.Select(equipment => equipment.EquipmentKey).Order());
+        Assert.Equal(
+            ["111.594/1", "571289"],
+            found.Select(item => item.Equipment.EquipmentKey).Order());
         Assert.Equal(1, source.TimesTheWholeTenantWasAsked);
     }
 
@@ -52,13 +56,13 @@ public sealed class LabResultsConsultationTests
             AnalysisOf("01351/2026-004", "111.594/1"),
             AnalysisOf("01417/2026-001", "571289"));
 
-        LabResultsConsultation service = new(source);
+        LabResultsConsultation service = Consultation(source);
 
-        TestedEquipment? found = await service.GetEquipmentAsync(
+        EquipmentWithNameplate? found = await service.GetEquipmentAsync(
             Tenant, "571289", CancellationToken.None);
 
         Assert.NotNull(found);
-        Assert.Equal("571289", found.EquipmentKey);
+        Assert.Equal("571289", found.Equipment.EquipmentKey);
         Assert.Equal(1, source.TimesOneEquipmentWasAsked);
         Assert.Equal(0, source.TimesTheWholeTenantWasAsked);
     }
@@ -69,7 +73,7 @@ public sealed class LabResultsConsultationTests
         InMemoryLabTestRepository source = new(
             AnalysisOf("01351/2026-004", "111.594/1", company: OtherTenant));
 
-        LabResultsConsultation service = new(source);
+        LabResultsConsultation service = Consultation(source);
 
         Assert.Null(await service.GetEquipmentAsync(Tenant, "111.594/1", CancellationToken.None));
         Assert.Empty(await service.ListEquipmentAsync(Tenant, CancellationToken.None));
@@ -87,7 +91,7 @@ public sealed class LabResultsConsultationTests
             AnalysisOf("01351/2026-004", "111.594/1"),
             AnalysisOf("01417/2026-001", "571289"));
 
-        LabResultsConsultation service = new(source);
+        LabResultsConsultation service = Consultation(source);
 
         await service.GetHealthIndicatorsAsync(Query("111.594/1"), CancellationToken.None);
 
@@ -101,7 +105,7 @@ public sealed class LabResultsConsultationTests
         InMemoryLabTestRepository source = new(
             AnalysisOf("01351/2026-004", "111.594/1", company: OtherTenant));
 
-        LabResultsConsultation service = new(source);
+        LabResultsConsultation service = Consultation(source);
 
         Assert.Null(await service.GetHealthIndicatorsAsync(Query("111.594/1"), CancellationToken.None));
     }
@@ -120,7 +124,7 @@ public sealed class LabResultsConsultationTests
         InMemoryLabTestRepository source = new(inTheSeries);
         PaginatedSource paginated = new(source, apart);
 
-        LabResultsConsultation service = new(paginated);
+        LabResultsConsultation service = Consultation(paginated);
 
         SampleHealthIndicators? indicators = await service.GetHealthIndicatorsAsync(
             Query("111.594/1", selected: "01352/2026-004"),
@@ -142,7 +146,7 @@ public sealed class LabResultsConsultationTests
         SampleAnalysis inTheSeries = AnalysisOf("01351/2026-004", "111.594/1");
         SampleAnalysis ofAnother = AnalysisOf("01417/2026-001", "571289");
 
-        LabResultsConsultation service = new(
+        LabResultsConsultation service = Consultation(
             new PaginatedSource(new InMemoryLabTestRepository(inTheSeries), ofAnother));
 
         SampleHealthIndicators? indicators = await service.GetHealthIndicatorsAsync(
@@ -157,13 +161,28 @@ public sealed class LabResultsConsultationTests
     public async Task AConsultationWithoutTenantIsRefusedBeforeTheSourceIsTouched()
     {
         InMemoryLabTestRepository source = new(AnalysisOf("01351/2026-004", "111.594/1"));
-        LabResultsConsultation service = new(source);
+        LabResultsConsultation service = Consultation(source);
 
         await Assert.ThrowsAsync<ArgumentException>(() => service.GetHealthIndicatorsAsync(
             new HealthIndicatorsQuery("   ", "111.594/1", null),
             CancellationToken.None));
 
         Assert.Equal(0, source.TimesOneEquipmentWasAsked);
+    }
+
+    /// <summary>
+    /// A fatia do cadastro deu a aplicacao um segundo ator conduzido, e nenhum dos casos
+    /// acima fala do cadastro. Montar o servico aqui deixa a dependencia nova num lugar so: o
+    /// duble vazio responde "o cadastro nao conhece ninguem", que e o cenario de todos eles e
+    /// nao muda nenhuma afirmacao que ja faziam.
+    /// </summary>
+    private static LabResultsConsultation Consultation(
+        ILabTestRepository labTests,
+        IEquipmentNameplateRepository? registry = null)
+    {
+        return new LabResultsConsultation(
+            labTests,
+            registry ?? new InMemoryEquipmentNameplateRepository());
     }
 
     private static HealthIndicatorsQuery Query(string equipmentKey, string? selected = null)

@@ -23,4 +23,19 @@
     <EmbeddedResource Include="LabResults\DemonstrationSeries.jsonl" />
   </ItemGroup>
 
+  <!-- As tres imagens do papel timbrado do orcamento viajam dentro do assembly pelo mesmo
+       motivo da amostra de ensaios: a suite e a API desenham exatamente o mesmo arquivo, e
+       o documento gerado dentro do contentor nao depende de nada copiado para o disco ao
+       lado do executavel. Os nomes logicos sao os caminhos com ponto no lugar da barra, e
+       estao escritos em QuotationAssets. -->
+  <ItemGroup>
+    <EmbeddedResource Include="Quotes\Assets\header-banner.png" />
+    <EmbeddedResource Include="Quotes\Assets\footer-stripes.png" />
+    <EmbeddedResource Include="Quotes\Assets\social-networks.png" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="QuestPDF" Version="2026.9.1" />
+  </ItemGroup>
+
 </Project>

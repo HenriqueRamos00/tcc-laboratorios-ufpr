@@ -18,8 +18,8 @@ public sealed class SpringQuoteContractTests
 {
     private const string QuoteJson = """
         {"id":"52","code":"ORC-52","name":"Análise de óleo","status":"InProgress",
-        "stage":"Em execução","description":"Análise físico-química","companyName":"Copel",
-        "externalContactName":"Ana","externalContactEmail":"ana@copel.com",
+        "stage":"Em execução","description":"Análise físico-química","companyName":"EMPRESA DE ENERGIA",
+        "externalContactName":"Ana","externalContactEmail":"ana@example.test",
         "totalPrice":1234.56,"createdDate":"2026-10-20T13:45:00-03:00"}
         """;
 
@@ -152,7 +152,7 @@ public sealed class SpringQuoteContractTests
     {
         string quoteWithNullContacts = QuoteJson
             .Replace("\"externalContactName\":\"Ana\"", "\"externalContactName\":null", StringComparison.Ordinal)
-            .Replace("\"externalContactEmail\":\"ana@copel.com\"", "\"externalContactEmail\":null", StringComparison.Ordinal);
+            .Replace("\"externalContactEmail\":\"ana@example.test\"", "\"externalContactEmail\":null", StringComparison.Ordinal);
         using var origin = new QuoteOrigin((_, _) => Task.FromResult(JsonResponse(HttpStatusCode.OK, quoteWithNullContacts)));
         using var portal = new SpringQuotesPortal(origin);
         using HttpClient client = portal.CreateClient();

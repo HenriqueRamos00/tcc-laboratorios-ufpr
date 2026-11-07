@@ -8,6 +8,7 @@ using Portal.Adapters.Demo;
 using Portal.Adapters.Quotes;
 using Portal.Api.LabResults;
 using Portal.Application.Quotes;
+using Portal.Tests.Quotes;
 using Xunit;
 
 namespace Portal.Tests.Authentication;
@@ -32,20 +33,15 @@ public sealed class DemoPortalContractTests
             : ["quote-4", "quote-5", "quote-7", "quote-9", "quote-11", "quote-13", "quote-15", "quote-17", "quote-19"];
         Assert.Equal(expected.Order(StringComparer.Ordinal), quotes.Select(q => (string)q!["id"]!).Order(StringComparer.Ordinal));
         Assert.All(quotes, quote => Assert.Equal(company, (string?)quote!["companyName"]));
-        string ownQuote = cnpj == DemoCompanies.EnergyCnpj ? "quote-3" : "quote-4";
+        // Os dois precisam ter proposta escrita: a rota do documento responde 404 antes da
+        // negociacao, e quote-4 esta em analise pela area.
+        string ownQuote = cnpj == DemoCompanies.EnergyCnpj ? "quote-3" : "quote-15";
         using var pdf = await client.GetAsync($"/api/quotes/{ownQuote}/document");
         Assert.Equal(HttpStatusCode.OK, pdf.StatusCode);
         Assert.Equal("application/pdf", pdf.Content.Headers.ContentType!.MediaType);
         byte[] documentBytes = await pdf.Content.ReadAsByteArrayAsync();
-        if (ownQuote == "quote-3")
-        {
-            byte[] persistedDocument = await File.ReadAllBytesAsync(
-                Path.Combine(AppContext.BaseDirectory, "Documents", "quote-3.pdf"));
-            Assert.Equal(persistedDocument, documentBytes);
-        }
-        string document = Encoding.Latin1.GetString(documentBytes);
-        Assert.StartsWith("%PDF-", document);
-        if (ownQuote != "quote-3") Assert.Contains(company, document);
+        Assert.StartsWith("%PDF-", Encoding.Latin1.GetString(documentBytes, 0, 5));
+        Assert.Contains(company, PdfText.OfWholeDocument(documentBytes));
 
         JsonArray equipment = (await client.GetFromJsonAsync<JsonArray>("/api/equipments"))!;
         Assert.Equal(equipmentCount, equipment.Count);

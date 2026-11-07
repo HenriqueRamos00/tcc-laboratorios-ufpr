@@ -45,12 +45,14 @@
         <tbody>
           @for (equipment of visible(); track equipment.id) {
             <tr class="border-t border-lactec-line-soft">
-              <!-- O AutoLAB não informa número de série, tipo nem localização em todo laudo.
-                   A célula diz isso, em vez de ficar vazia como se o dado fosse em branco. -->
+              <!-- O cadastro do AutoLAB não informa todo campo de todo equipamento, e não
+                   conhece 14% das séries. A célula diz isso, em vez de ficar vazia como se o
+                   dado fosse em branco. A coluna de TAG prefere a TAG de placa e cai na
+                   identificação do laudo, que é o que `tag` sempre carrega. -->
               <td class="px-4 py-3 text-lactec-ink">
                 {{ equipment.serialNumber ?? 'Não informado' }}
               </td>
-              <td class="px-4 py-3 text-lactec-ink">{{ equipment.tag }}</td>
+              <td class="px-4 py-3 text-lactec-ink">{{ equipment.equipmentTag ?? equipment.tag }}</td>
               <td class="px-4 py-3 text-lactec-ink">{{ equipment.type ?? 'Não informado' }}</td>
               <td class="px-4 py-3 text-lactec-ink">{{ equipment.location ?? 'Não informado' }}</td>
               <td class="px-4 py-3 text-lactec-ink">{{ equipment.reportCount }}</td>

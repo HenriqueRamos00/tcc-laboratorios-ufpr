@@ -1,11 +1,14 @@
 using Microsoft.AspNetCore.Mvc;
 
 using Portal.Api.LabResults;
+using Portal.Api.Nameplate;
 using Portal.Api.Configuration;
 using Portal.Application.LabResults.Exceptions;
+using Portal.Application.Nameplate.Exceptions;
 using Portal.Domain.LabResults.Exceptions;
 using Portal.Application.LabResults;
 using Portal.Domain.LabResults;
+using Portal.Domain.Nameplate;
 
 namespace Portal.Api.Controllers;
 
@@ -39,7 +42,7 @@ public sealed class EquipmentController : ControllerBase
     {
         return AnswerAsync(async tenant =>
         {
-            IReadOnlyList<TestedEquipment> equipmentList = await _labResults
+            IReadOnlyList<EquipmentWithNameplate> equipmentList = await _labResults
                 .ListEquipmentAsync(tenant, cancellationToken);
 
             return Ok(equipmentList.Select(BuildListingRow));
@@ -51,16 +54,32 @@ public sealed class EquipmentController : ControllerBase
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     public Task<IActionResult> Get(string id, CancellationToken cancellationToken)
     {
-        return AnswerAboutOneAsync(id, cancellationToken, equipment => Ok(new EquipmentDetailResponse
+        return AnswerAboutOneAsync(id, cancellationToken, found =>
         {
-            Id = OpaqueIdentifier.Encode(equipment.EquipmentKey),
-            SerialNumber = equipment.SerialNumber,
-            Tag = equipment.DisplayLabel,
-            Company = equipment.Company,
-            Identification = equipment.MostRecentReport.Identification,
-            ReportCount = equipment.Reports.Count,
-            MostRecentReportDate = WireDate.From(equipment.MostRecentReport.AnalysisEndDate)
-        }));
+            TestedEquipment equipment = found.Equipment;
+            EquipmentNameplate? nameplate = found.Nameplate;
+
+            return Ok(new EquipmentDetailResponse
+            {
+                Id = OpaqueIdentifier.Encode(equipment.EquipmentKey),
+                SerialNumber = equipment.SerialNumber,
+                Tag = equipment.DisplayLabel,
+                EquipmentTag = nameplate?.Tag,
+                Type = nameplate?.EquipmentType,
+                Location = null,
+                Company = equipment.Company,
+                Identification = equipment.MostRecentReport.Identification,
+                ReportCount = equipment.Reports.Count,
+                MostRecentReportDate = WireDate.From(equipment.MostRecentReport.AnalysisEndDate),
+                OilType = nameplate?.OilType,
+                Voltage = nameplate?.Voltage,
+                Power = NameplateWireText.PowerOf(nameplate),
+                Manufacturer = nameplate?.Manufacturer,
+                ManufacturingYear = nameplate?.ManufacturingYear,
+                OilVolume = nameplate?.OilVolume,
+                NameplateKnown = nameplate is not null
+            });
+        });
     }
 
     [HttpGet("{id}/reports")]
@@ -68,8 +87,8 @@ public sealed class EquipmentController : ControllerBase
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     public Task<IActionResult> ListReports(string id, CancellationToken cancellationToken)
     {
-        return AnswerAboutOneAsync(id, cancellationToken, equipment =>
-            Ok(equipment.Reports.Select(report => new EquipmentReportResponse
+        return AnswerAboutOneAsync(id, cancellationToken, found =>
+            Ok(found.Equipment.Reports.Select(report => new EquipmentReportResponse
             {
                 Id = OpaqueIdentifier.Encode(report.ProtocoloLactec),
                 Date = WireDate.From(report.AnalysisEndDate),
@@ -107,36 +126,53 @@ public sealed class EquipmentController : ControllerBase
     private Task<IActionResult> AnswerAboutOneAsync(
         string id,
         CancellationToken cancellationToken,
-        Func<TestedEquipment, IActionResult> describe)
+        Func<EquipmentWithNameplate, IActionResult> describe)
     {
         return AnswerAsync(async tenant =>
         {
             if (!OpaqueIdentifier.TryDecode(id, out string equipmentKey))
                 return this.UnreadableEquipmentIdentifier();
 
-            TestedEquipment? equipment = await _labResults
+            EquipmentWithNameplate? found = await _labResults
                 .GetEquipmentAsync(tenant, equipmentKey, cancellationToken);
 
-            return equipment is null ? this.EquipmentWithoutAnalysis() : describe(equipment);
+            return found is null ? this.EquipmentWithoutAnalysis() : describe(found);
         });
     }
 
-    private static EquipmentResponse BuildListingRow(TestedEquipment equipment)
+    private static EquipmentResponse BuildListingRow(EquipmentWithNameplate found)
     {
+        TestedEquipment equipment = found.Equipment;
+
         return new EquipmentResponse
         {
             Id = OpaqueIdentifier.Encode(equipment.EquipmentKey),
             SerialNumber = equipment.SerialNumber,
             Tag = equipment.DisplayLabel,
+            EquipmentTag = found.Nameplate?.Tag,
+            Type = found.Nameplate?.EquipmentType,
+            Location = null,
             Company = equipment.Company,
             Identification = equipment.MostRecentReport.Identification,
             ReportCount = equipment.Reports.Count,
-            MostRecentReportDate = WireDate.From(equipment.MostRecentReport.AnalysisEndDate)
+            MostRecentReportDate = WireDate.From(equipment.MostRecentReport.AnalysisEndDate),
+            NameplateKnown = found.Nameplate is not null
         };
     }
 
+    /// <summary>
+    /// A queda do cadastro entra aqui junto com a queda da fonte de ensaios, e as duas
+    /// respondem 502. E escolha discutivel de proposito, e esta declarada: a placa e
+    /// acessoria e a listagem poderia ser servida sem ela, mas servir a listagem com tipo,
+    /// tensao e potencia em branco enquanto o cadastro esta fora do ar diria ao cliente que
+    /// ninguem sabe esses dados, que e falso, e ele nao teria como notar a diferenca.
+    /// Enquanto o corpo nao tiver um campo que diga "o cadastro nao respondeu", recusar a
+    /// resposta inteira e o que nao mente.
+    /// </summary>
     private static bool IsSourceFailure(Exception exception)
     {
-        return exception is ResultNameOutsideKnownListException or LabTestSourceUnavailableException;
+        return exception is ResultNameOutsideKnownListException
+            or LabTestSourceUnavailableException
+            or NameplateSourceUnavailableException;
     }
 }
