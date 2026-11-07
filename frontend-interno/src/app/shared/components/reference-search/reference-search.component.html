@@ -23,7 +23,7 @@
   [cdkConnectedOverlayViewportMargin]="12" [cdkConnectedOverlayPush]="true"
   (overlayOutsideClick)="outside($event)" (detach)="opened.set(false)">
   <section #panel class="reference-panel" [id]="fieldId() + '-panel'" role="dialog" [attr.aria-label]="'Opções: ' + label()"
-    (keydown)="panelKeydown($event)" (focusout)="checkFocus()" [attr.aria-busy]="loading()">
+    (keydown)="panelKeydown($event)" (focusout)="checkFocus($event)" [attr.aria-busy]="loading()">
     <div class="reference-options">
       @if (loading()) { <p class="p-3 text-sm text-lactec-muted" role="status">Buscando…</p> }
       @else if (error()) { <button mat-button type="button" [disabled]="locked()" (click)="retry.emit()">Tentar consulta novamente</button> }

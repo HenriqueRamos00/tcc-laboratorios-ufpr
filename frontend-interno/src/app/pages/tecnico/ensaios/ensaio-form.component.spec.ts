@@ -1,4 +1,5 @@
 import { By } from '@angular/platform-browser';
+import { OverlayContainer } from '@angular/cdk/overlay';
 import { MatSelect, MatSelectChange } from '@angular/material/select';
 import { HttpErrorResponse } from '@angular/common/http';
 import { ComponentFixture, fakeAsync, TestBed, tick } from '@angular/core/testing';
@@ -12,6 +13,7 @@ import {
 } from '@/app/model/ensaio';
 import { AppDialogService } from '@/app/services/app-dialog.service';
 import { EnsaiosService } from '@/app/services/ensaios.service';
+import { ReferenceSearchComponent } from '@shared/components/reference-search/reference-search.component';
 import { EnsaioFormComponent } from './ensaio-form.component';
 
 const quote: QuoteReference = {
@@ -26,6 +28,11 @@ const sample: SampleReference = {
   description: 'Óleo do transformador TR-01',
   quote,
   analyzedEquipment: null,
+};
+const analyzedEquipment = {
+  id: '55',
+  tag: 'DEMO-TR-HU25-01',
+  serialNumber: '111.594/1',
 };
 const saved: TestDetail = {
   id: '42',
@@ -105,6 +112,58 @@ describe('Formulário de ensaio', () => {
     expect(service.quotes).not.toHaveBeenCalled();
   });
 
+  it('seleciona uma amostra existente pelo seletor compartilhado sem salvar o ensaio', () => {
+    component.selectedQuote.set(quote);
+    component.samples.set([sample]);
+    component.sampleTotal.set(1);
+    component.sampleLoading.set(false);
+    component.sampleChooserOpen.set(true);
+    fixture.detectChanges();
+
+    const search = findReferenceSearch('sample-search');
+    search.opened.set(true);
+    fixture.detectChanges();
+    const option = TestBed.inject(OverlayContainer).getContainerElement()
+      .querySelector<HTMLButtonElement>('#sample-search-panel .reference-option')!;
+    option.click();
+    fixture.detectChanges();
+
+    expect(component.form.controls.sampleId.value).toBe(sample.id);
+    expect(component.selectedSample).toEqual(sample);
+    expect(component.sampleChooserOpen()).toBeFalse();
+    expect(service.create).not.toHaveBeenCalled();
+    expect(service.update).not.toHaveBeenCalled();
+  });
+
+  it('associa equipamento analisado na nova identificação sem salvar o ensaio', () => {
+    component.selectedQuote.set(quote);
+    component.identificationMode.set('new');
+    component.sampleChooserOpen.set(true);
+    component.analyzedEquipment.set([analyzedEquipment]);
+    component.equipmentTotal.set(1);
+    component.equipmentLoading.set(false);
+    component.form.patchValue({
+      newSampleCode: 'A-HU25-NOVA/2026',
+      newSampleDescription: 'Óleo do transformador TR-02',
+      analyzedEquipmentId: null,
+    });
+    fixture.detectChanges();
+
+    const search = findReferenceSearch('analyzed-equipment-search');
+    search.opened.set(true);
+    fixture.detectChanges();
+    const option = TestBed.inject(OverlayContainer).getContainerElement()
+      .querySelector<HTMLButtonElement>('#analyzed-equipment-search-panel .reference-option')!;
+    option.click();
+    fixture.detectChanges();
+
+    expect(component.form.controls.analyzedEquipmentId.value).toBe(analyzedEquipment.id);
+    expect(component.currentAnalyzedEquipment()).toEqual(analyzedEquipment);
+    expect(component.equipmentSearch.value).toBe(analyzedEquipment.tag);
+    expect(service.create).not.toHaveBeenCalled();
+    expect(service.update).not.toHaveBeenCalled();
+  });
+
   it('confirma a troca de orçamento antes de descartar a identificação nova', () => {
     prepareNewSample();
     const otherQuote = { ...quote, id: '99' };
@@ -175,6 +234,14 @@ describe('Formulário de ensaio', () => {
       reportText: '',
     });
     component.confirmedNewSampleCode.set('A-HU25-NOVA/2026');
+  }
+
+  function findReferenceSearch(fieldId: string): ReferenceSearchComponent {
+    const search = fixture.debugElement.queryAll(By.directive(ReferenceSearchComponent))
+      .map((debugElement) => debugElement.componentInstance as ReferenceSearchComponent)
+      .find((candidate) => candidate.fieldId() === fieldId);
+    if (!search) throw new Error(`Seletor não encontrado: ${fieldId}`);
+    return search;
   }
 
   it('envia a amostra existente escolhida e preserva ND como texto', () => {
