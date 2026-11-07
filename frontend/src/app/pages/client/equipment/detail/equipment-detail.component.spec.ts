@@ -15,15 +15,36 @@ const DETAIL: EquipmentDetail = {
   id: EQUIPMENT_ID,
   serialNumber: '571289',
   tag: '571289',
-  type: null,
+  equipmentTag: 'TR-00001',
+  type: 'TRANSFORMADOR',
   location: null,
   company: 'EMPRESA DE ENERGIA',
   identification: 'LACTEC-02272/2026',
   reportCount: 2,
   mostRecentReportDate: '2026-06-23',
+  nameplateKnown: true,
+  oilType: 'Óleo Mineral Isolante',
+  voltage: '220',
+  power: '50 MVA',
+  manufacturer: 'FABRICANTE DE TRANSFORMADORES',
+  manufacturingYear: '1979',
+  oilVolume: '20570',
+};
+
+/** A série que o cadastro não conhece, que é o caso das duas séries inventadas. */
+const DETAIL_WITHOUT_NAMEPLATE: EquipmentDetail = {
+  ...DETAIL,
+  serialNumber: '884120',
+  tag: '884120',
+  equipmentTag: null,
+  type: null,
+  nameplateKnown: false,
   oilType: null,
   voltage: null,
   power: null,
+  manufacturer: null,
+  manufacturingYear: null,
+  oilVolume: null,
 };
 
 const HISTORY: EquipmentReport[] = [
@@ -102,6 +123,52 @@ describe('EquipmentDetailComponent', () => {
     const botao = tela.querySelector('tbody button') as HTMLButtonElement;
 
     expect(botao.disabled).toBeTrue();
+  }));
+
+  /**
+   * O que o cadastro informa aparece com a unidade que ele escreveu, e nenhuma frase de
+   * ausência é dita quando ele conhece a série.
+   */
+  it('mostra o que o cadastro informa, sem anunciar ausência', fakeAsync(() => {
+    const fixture = montarDetalhe();
+
+    const tela: HTMLElement = fixture.nativeElement;
+    const cartoes = Array.from(tela.querySelectorAll('dl dd')).map((celula) =>
+      celula.textContent?.trim(),
+    );
+
+    expect(cartoes).toContain('TR-00001');
+    expect(cartoes).toContain('TRANSFORMADOR');
+    expect(cartoes).toContain('50 MVA');
+    expect(cartoes).toContain('FABRICANTE DE TRANSFORMADORES');
+    expect(cartoes).toContain('Não informado');
+    expect(tela.querySelector('[role="status"]')).toBeNull();
+  }));
+
+  /**
+   * A série que o cadastro não conhece diz isso uma vez, em vez de repetir "Não informado"
+   * em sete cartões sem explicar por quê.
+   */
+  it('diz que o cadastro não conhece a série quando não há placa', fakeAsync(() => {
+    TestBed.configureTestingModule({
+      providers: [provideRouter([]), provideHttpClient(), provideHttpClientTesting()],
+    });
+
+    const fixture = TestBed.createComponent(EquipmentDetailComponent);
+    fixture.componentRef.setInput('id', EQUIPMENT_ID);
+    fixture.detectChanges();
+
+    const http = TestBed.inject(HttpTestingController);
+    http.expectOne(`${API_URL}/api/equipments/${EQUIPMENT_ID}`).flush(DETAIL_WITHOUT_NAMEPLATE);
+    http.expectOne(`${API_URL}/api/equipments/${EQUIPMENT_ID}/reports`).flush(HISTORY);
+    fixture.detectChanges();
+
+    const tela: HTMLElement = fixture.nativeElement;
+
+    expect(tela.querySelector('[role="status"]')?.textContent).toContain(
+      'não tem este número de série',
+    );
+    expect(tela.textContent).toContain('884120');
   }));
 
   it('baixa o relatório e revoga o endereço temporário depois do clique', fakeAsync(() => {

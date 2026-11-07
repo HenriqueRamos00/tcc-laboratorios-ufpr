@@ -1,7 +1,6 @@
-using System.Text;
-
 using Portal.Adapters.Quotes;
 using Portal.Application.Quotes;
+using Portal.Tests.Quotes;
 
 using Xunit;
 
@@ -32,20 +31,21 @@ public sealed class GeneratedQuoteDocumentTests
         byte[]? document = await documents.GetDocumentAsync("quote-15", CancellationToken.None);
 
         Assert.NotNull(document);
-        string text = Encoding.Latin1.GetString(document);
-        Assert.StartsWith("%PDF-1.4", text);
+        string text = PdfText.Collapsed(PdfText.OfWholeDocument(document));
         Assert.Contains("EAQ_2026_45496_V_1", text);
-        Assert.Contains("DISTRIBUIDORA DE ENERGIA", text);
-        Assert.Contains("R$ 11.270,00", text);
+        Assert.Contains("DISTRIBUIDORADEENERGIA", text);
+        Assert.Contains("R$11.270,00", text);
     }
 
     /// <summary>
-    /// A tabela de referencia cruzada guarda deslocamento em bytes, e leitor que a confere
-    /// recusa o arquivo quando o numero nao aponta para o lugar certo. Verde na suite sem
-    /// esta conferencia significaria so que a string foi montada, nao que o PDF abre.
+    /// O gerador antigo montava o PDF a mao e a suite conferia a tabela de referencia cruzada
+    /// dele, porque um deslocamento errado faz o leitor recusar o arquivo. A conferencia saiu
+    /// com o gerador: a tabela agora e escrita pela QuestPDF, e testa-la seria testar a
+    /// biblioteca. O que prova que o arquivo abre e o leitor da suite conseguir ler as cinco
+    /// paginas dele.
     /// </summary>
     [Fact]
-    public async Task GeneratedProposalPointsItsCrossReferenceTableAtTheRightByte()
+    public async Task GeneratedProposalOpensWithFivePages()
     {
         var documents = new GeneratedQuoteDocumentRepository(
             new FakeSalesforceQuoteRepository(),
@@ -53,10 +53,7 @@ public sealed class GeneratedQuoteDocumentTests
 
         byte[] document = (await documents.GetDocumentAsync("quote-15", CancellationToken.None))!;
 
-        string text = Encoding.Latin1.GetString(document);
-        int declared = int.Parse(text.Split("startxref\n")[1].Split('\n')[0]);
-        Assert.Equal("xref", Encoding.Latin1.GetString(document, declared, 4));
-        Assert.EndsWith("%%EOF\n", text);
+        Assert.Equal(5, PdfText.PageCountOf(document));
     }
 
     [Fact]

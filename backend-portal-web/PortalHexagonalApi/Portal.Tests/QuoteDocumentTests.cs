@@ -92,17 +92,34 @@ public sealed class QuoteDocumentTests
         Assert.Null(document);
     }
 
+    /// <summary>
+    /// O adaptador le o arquivo do diretorio que recebe, byte a byte.
+    ///
+    /// O caso escreve a propria massa em vez de ler um documento entregue junto com a
+    /// aplicacao. Havia um PDF de demonstracao versionado em Documents, e ele respondia antes
+    /// do gerador: o unico orcamento que tinha arquivo era o unico que nunca mostrava a
+    /// proposta montada com os dados do orcamento. O arquivo saiu, e o teste do adaptador
+    /// deixou de depender dele.
+    /// </summary>
     [Fact]
-    public async Task LocalAdapterLoadsTheShippedPdfFixture()
+    public async Task LocalAdapterReadsTheDocumentItFindsOnDisk()
     {
-        var adapter = new LocalQuoteDocumentRepository();
+        string directory = Directory.CreateTempSubdirectory().FullName;
+        byte[] written = System.Text.Encoding.ASCII.GetBytes("%PDF-1.4 documento de teste");
 
-        byte[]? document = await adapter.GetDocumentAsync("quote-3", CancellationToken.None);
+        try
+        {
+            await File.WriteAllBytesAsync(Path.Combine(directory, "quote-3.pdf"), written);
 
-        Assert.NotNull(document);
-        Assert.StartsWith("%PDF-1.4", System.Text.Encoding.ASCII.GetString(document));
-        Assert.Contains("TOTAL DA PROPOSTA", System.Text.Encoding.ASCII.GetString(document));
-        Assert.Contains("R$ 3.450,00", System.Text.Encoding.ASCII.GetString(document));
+            byte[]? document = await new LocalQuoteDocumentRepository(directory)
+                .GetDocumentAsync("quote-3", CancellationToken.None);
+
+            Assert.Equal(written, document);
+        }
+        finally
+        {
+            Directory.Delete(directory, recursive: true);
+        }
     }
 
     [Fact]

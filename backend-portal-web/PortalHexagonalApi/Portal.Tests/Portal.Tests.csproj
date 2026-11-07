@@ -10,6 +10,11 @@
   <ItemGroup>
     <PackageReference Include="Microsoft.AspNetCore.Mvc.Testing" Version="10.0.8" />
     <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.14.1" />
+    <!-- Le o texto do PDF que a suite acabou de gerar. A QuestPDF comprime o fluxo de
+         conteudo e embute a fonte como subconjunto, entao procurar a string crua nos bytes
+         nao encontra nada, e o teste que fizesse isso so poderia passar com um gerador que
+         nao comprime. PdfPig e Apache-2.0, nao sai no pacote da API e so existe aqui. -->
+    <PackageReference Include="PdfPig" Version="0.1.16" />
     <PackageReference Include="xunit" Version="2.9.3" />
     <PackageReference Include="xunit.runner.visualstudio" Version="3.1.5">
       <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>

@@ -5,6 +5,7 @@ using Portal.Adapters.Salesforce;
 using Portal.Api.Configuration;
 using Portal.Api.Authentication;
 using Portal.Api.LabResults;
+using Portal.Api.Nameplate;
 using Portal.Api.Pipeline;
 using Portal.Application.Authentication;
 using Portal.Application.LabResults;
@@ -51,6 +52,7 @@ builder.Services.AddScoped<IForConsultingLabResults, LabResultsConsultation>();
 builder.Services.AddPortalDataSource(builder.Configuration);
 
 builder.Services.AddLabTestRepository(builder.Configuration);
+builder.Services.AddEquipmentRegistrySource(builder.Configuration);
 builder.Services.AddLaboratoryProgressSource(builder.Configuration);
 builder.Services.AddSingleton(
     builder.Configuration.GetSection(SalesforceOptions.SectionName).Get<SalesforceOptions>() ?? new SalesforceOptions());

@@ -69,14 +69,24 @@ public sealed class QuoteService : IQuoteUseCase
 
     /// <summary>
     /// O download nao passa pela fonte do laboratorio. Ele precisa saber se o orcamento
-    /// existe e se o cliente o alcanca, e nada disso depende da etapa: consultar o AutoLAB
-    /// aqui seria uma ida a rede por clique de botao, sem nenhum efeito no arquivo servido.
+    /// existe, se o cliente o alcanca e se ja houve proposta escrita, e nada disso depende da
+    /// etapa do laboratorio: consultar o AutoLAB aqui seria uma ida a rede por clique de
+    /// botao, sem nenhum efeito no arquivo servido. A etapa que decide e a comercial, que
+    /// chega dentro do proprio orcamento.
+    ///
+    /// Orcamento antes da negociacao nao tem documento, e a rota responde o mesmo 404 de
+    /// orcamento sem arquivo publicado. A decisao mora aqui, e nao no adaptador, porque vale
+    /// para as tres fontes; e a porta conduzida continua sem saber dela, porque o que ela
+    /// recebe e o pedido que ja passou pela regra.
     /// </summary>
     public async Task<byte[]?> GetDocumentAsync(string id, CancellationToken cancellationToken)
     {
         if (string.IsNullOrWhiteSpace(id)) return null;
 
-        if (await _quoteRepository.GetQuoteByIdAsync(id, cancellationToken) is null) return null;
+        Quote? quote = await _quoteRepository.GetQuoteByIdAsync(id, cancellationToken);
+
+        if (quote is null) return null;
+        if (!ProposalAvailability.ExistsAt(CommercialStage.AsTheSourceWroteIt(quote.Stage))) return null;
 
         return await _documents.GetDocumentAsync(id, cancellationToken);
     }
