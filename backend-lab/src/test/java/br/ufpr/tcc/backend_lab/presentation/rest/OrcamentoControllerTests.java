@@ -519,7 +519,7 @@ class OrcamentoControllerTests {
         assertEquals(
                 Set.of(
                         "id", "code", "name", "companyName", "createdDate", "technicalStatus",
-                        "description", "laboratoryName", "scope", "items"),
+                        "description", "laboratoryName", "protocol", "scope", "items"),
                 nomesDosCampos(raiz));
         assertEquals(
                 Set.of("testType", "sampleCount", "standard"),
@@ -739,6 +739,7 @@ class OrcamentoControllerTests {
                 .andExpect(jsonPath("$.stage").value("Negociação"))
                 .andExpect(jsonPath("$.companyId").value(copel.getId().toString()))
                 .andExpect(jsonPath("$.laboratoryName").value("Laboratório de Materiais"))
+                .andExpect(jsonPath("$.protocol").value("L-TEST-NOVO-001-X"))
                 .andExpect(jsonPath("$.scope").value("Ensaios de caracterização"))
                 .andExpect(jsonPath("$.externalContactName").value("Contato do orçamento"))
                 .andExpect(jsonPath("$.externalContactEmail").value("novo.contato@example.test"))
@@ -752,6 +753,20 @@ class OrcamentoControllerTests {
 
         executarBusca("NOVO-001")
                 .andExpect(jsonPath("$.items[0].items").doesNotExist());
+    }
+
+    @Test
+    @DisplayName("rejeita orçamento sem protocolo do laboratório")
+    void rejeitaOrcamentoSemProtocoloDoLaboratorio() throws Exception {
+        String corpoSemProtocolo = corpoOrcamento(
+                "SEM-PROTOCOLO-001", copel, "PendingAcceptance", "2", "15.00", "30.00")
+                .replace("\"protocol\": \"L-TEST-NOVO-001-X\",", "\"protocol\": \"   \",");
+
+        mockMvc.perform(post("/api/quotes")
+                        .header("Authorization", tokenAdministrador)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(corpoSemProtocolo))
+                .andExpect(status().isBadRequest());
     }
 
     @Test
@@ -972,6 +987,7 @@ class OrcamentoControllerTests {
                   "companyId": "%s",
                   "name": "Proposta de ensaio",
                   "laboratoryName": "Laboratório de Materiais",
+                  "protocol": "L-TEST-NOVO-001-X",
                   "description": "Caracterização mecânica de amostras",
                   "scope": "Ensaios de caracterização",
                   "externalContactName": " Contato do orçamento ",
@@ -1024,6 +1040,7 @@ class OrcamentoControllerTests {
         Orcamento orcamento = new Orcamento();
         orcamento.setEmpresa(empresa);
         orcamento.setCode(code);
+        orcamento.setProtocol("L-TEST-2026-" + code);
         orcamento.setName(name);
         orcamento.setStatus(status);
         orcamento.setStage("Negociação");

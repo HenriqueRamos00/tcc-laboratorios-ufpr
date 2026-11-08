@@ -122,6 +122,7 @@ class EnsaioControllerTests {
         var quote = new Orcamento();
         quote.setEmpresa(empresa);
         quote.setCode("TEST-HU25-001");
+        quote.setProtocol("L-TEST-2026-001-X");
         quote.setName("Proposta de teste");
         quote.setStatus(StatusComercialOrcamento.IN_PROGRESS);
         quote.setStage("Recebido");
@@ -561,6 +562,7 @@ class EnsaioControllerTests {
         Orcamento outro = new Orcamento();
         outro.setEmpresa(amostra.getOrcamento().getEmpresa());
         outro.setCode("TEST-HU25-002");
+        outro.setProtocol("L-TEST-2026-002-X");
         outro.setName("Segunda proposta");
         outro.setStatus(StatusComercialOrcamento.PENDING_ACCEPTANCE);
         outro.setStage("Negociação");
@@ -1022,6 +1024,7 @@ class EnsaioControllerTests {
         Orcamento orcamento = new Orcamento();
         orcamento.setEmpresa(empresa);
         orcamento.setCode(codigo);
+        orcamento.setProtocol("L-TEST-2026-" + codigo);
         orcamento.setName("Proposta de teste");
         orcamento.setStatus(status);
         orcamento.setStage("Recebido");

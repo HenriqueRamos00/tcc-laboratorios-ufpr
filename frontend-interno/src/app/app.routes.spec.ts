@@ -16,6 +16,7 @@ import { PlaceholderComponent } from '@/app/pages/placeholder/placeholder.compon
 import { EnsaiosComponent } from '@/app/pages/tecnico/ensaios/ensaios.component';
 import { EnsaioFormComponent } from '@/app/pages/tecnico/ensaios/ensaio-form.component';
 import { EnsaioStatusComponent } from '@/app/pages/tecnico/ensaios/ensaio-status.component';
+import { RelatoriosComponent } from '@/app/pages/tecnico/relatorios/relatorios.component';
 import { LoginService } from '@/app/services/login.service';
 import { routes } from './app.routes';
 
@@ -60,6 +61,49 @@ describe('Rotas do Portal Interno', () => {
     expect(rotaTecnico?.data?.['role']).toBe('TECNICO');
     expect(rotaTecnico?.canActivate).toContain(authGuard);
     expect(await rotaOrcamentosTecnicos?.loadComponent?.()).toBe(OrcamentosTecnicosComponent);
+  });
+
+  it('mantém Relatórios como rota canônica e redireciona os endereços antigos', async () => {
+    const filhos = rotaTecnico?.children ?? [];
+    const resultados = filhos.find((rota) => rota.path === 'resultados');
+    const relatorios = filhos.find((rota) => rota.path === 'relatorios');
+    const resultadoPorId = filhos.find((rota) => rota.path === 'resultados/:id');
+    const relatorioPorId = filhos.find((rota) => rota.path === 'relatorios/:id');
+
+    expect(rotaTecnico?.data?.['role']).toBe('TECNICO');
+    expect(await relatorios?.loadComponent?.()).toBe(RelatoriosComponent);
+    expect(await relatorioPorId?.loadComponent?.()).toBe(RelatoriosComponent);
+    expect(resultados?.pathMatch).toBe('full');
+    expect(resultadoPorId?.pathMatch).toBe('full');
+    expect(typeof resultados?.redirectTo).toBe('function');
+    expect(typeof resultadoPorId?.redirectTo).toBe('function');
+
+    TestBed.configureTestingModule({ providers: [provideRouter([])] });
+    const router = TestBed.inject(Router);
+    const listRedirect = resultados?.redirectTo;
+    const detailRedirect = resultadoPorId?.redirectTo;
+    expect(typeof listRedirect).toBe('function');
+    expect(typeof detailRedirect).toBe('function');
+
+    const listUrl = TestBed.runInInjectionContext(() =>
+      (listRedirect as (snapshot: ActivatedRouteSnapshot) => UrlTree)({
+        params: {},
+        queryParams: { filtro: 'pendente' },
+        fragment: 'lista',
+      } as unknown as ActivatedRouteSnapshot),
+    );
+    const detailUrl = TestBed.runInInjectionContext(() =>
+      (detailRedirect as (snapshot: ActivatedRouteSnapshot) => UrlTree)({
+        params: { id: '804' },
+        queryParams: { aba: 'pdf' },
+        fragment: 'documento',
+      } as unknown as ActivatedRouteSnapshot),
+    );
+
+    expect(router.serializeUrl(listUrl)).toBe('/tecnico/relatorios?filtro=pendente#lista');
+    expect(router.serializeUrl(detailUrl)).toBe('/tecnico/relatorios/804?aba=pdf#documento');
+    expect(filhos.find((rota) => rota.path === 'ensaios')).toBeDefined();
+    expect(filhos.find((rota) => rota.path === 'ensaios-amostras')).toBeUndefined();
   });
 
   it('mantém o dashboard técnico como página provisória', async () => {

@@ -1,4 +1,4 @@
-// O orçamento chega do Salesforce com a etapa escrita por extenso e o valor em
+// O orçamento chega pela API com a etapa escrita por extenso e o valor em
 // número cru. Aqui ele vira o que a tela mostra, e vira num lugar só: a
 // listagem de orçamentos e a tela de relatórios leem a mesma situação, então
 // etapa reconhecida de um jeito numa e de outro jeito na outra seria defeito.
@@ -10,6 +10,7 @@ import type { Quote } from './quote';
 export interface DisplayedQuote {
   readonly id: string;
   readonly code: string;
+  readonly protocol?: string;
   readonly proposalName: string;
   readonly description: string;
   readonly company: string;
@@ -128,7 +129,7 @@ function resolveExternalContact(quote: Quote): string {
   );
 }
 
-// Sem fallbacks inventados: exibimos apenas o que vem do Salesforce.
+// Sem fallbacks inventados: o protocolo fica ausente quando a fonte não o envia.
 export function toDisplayedQuote(quote: Quote): DisplayedQuote {
   const hasValue = typeof quote.totalPrice === 'number' && quote.totalPrice > 0;
   const status = recognizeStage(quote.stage ?? '');
@@ -136,6 +137,7 @@ export function toDisplayedQuote(quote: Quote): DisplayedQuote {
   return {
     id: quote.id?.trim() || '',
     code: quote.code?.trim() || FIELD_PLACEHOLDER,
+    protocol: quote.protocol?.trim() || undefined,
     proposalName: quote.name?.trim() || FIELD_PLACEHOLDER,
     description: quote.description?.trim() || '',
     company: quote.companyName?.trim() || FIELD_PLACEHOLDER,

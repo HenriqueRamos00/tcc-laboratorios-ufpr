@@ -2,9 +2,11 @@ import { provideHttpClient } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { fakeAsync, TestBed, tick } from '@angular/core/testing';
 import { provideRouter } from '@angular/router';
+import { Subject } from 'rxjs';
 
 import { API_URL } from '@/app/environment/env';
 import type { EquipmentDetail, EquipmentReport } from '@/app/model/equipment';
+import { ReportsService } from '@/app/services/reports.service';
 
 import { EquipmentDetailComponent } from './equipment-detail.component';
 
@@ -171,21 +173,43 @@ describe('EquipmentDetailComponent', () => {
     expect(tela.textContent).toContain('884120');
   }));
 
-  it('baixa o relatório e revoga o endereço temporário depois do clique', fakeAsync(() => {
+  it('consulta os bytes do relatório antes de salvar o PDF recebido', fakeAsync(() => {
+    const pdf = new Subject<Blob>();
+    const downloadReport = jasmine.createSpy('downloadReport').and.returnValue(pdf.asObservable());
     const criar = spyOn(URL, 'createObjectURL').and.returnValue(TEMPORARY_ADDRESS);
     const revogar = spyOn(URL, 'revokeObjectURL');
     const clicar = spyOn(HTMLAnchorElement.prototype, 'click');
-    const fixture = montarDetalhe();
+    TestBed.configureTestingModule({
+      providers: [
+        provideRouter([]),
+        provideHttpClient(),
+        provideHttpClientTesting(),
+        { provide: ReportsService, useValue: { downloadReport } },
+      ],
+    });
+
+    const fixture = TestBed.createComponent(EquipmentDetailComponent);
+    fixture.componentRef.setInput('id', EQUIPMENT_ID);
+    fixture.detectChanges();
+
+    const http = TestBed.inject(HttpTestingController);
+    http.expectOne(`${API_URL}/api/equipments/${EQUIPMENT_ID}`).flush(DETAIL);
+    http
+      .expectOne(`${API_URL}/api/equipments/${EQUIPMENT_ID}/reports`)
+      .flush(HISTORY);
+    fixture.detectChanges();
 
     const tela: HTMLElement = fixture.nativeElement;
     const botao = tela.querySelector('tbody button') as HTMLButtonElement;
     botao.click();
     fixture.detectChanges();
 
+    expect(downloadReport).toHaveBeenCalledOnceWith(HISTORY[0].id);
     expect(botao.textContent).toContain('Baixando…');
     expect(botao.disabled).toBeTrue();
 
-    tick(400);
+    pdf.next(new Blob(['%PDF-1.4'], { type: 'application/pdf' }));
+    pdf.complete();
     fixture.detectChanges();
 
     expect(criar.calls.mostRecent().args[0] instanceof Blob).toBeTrue();

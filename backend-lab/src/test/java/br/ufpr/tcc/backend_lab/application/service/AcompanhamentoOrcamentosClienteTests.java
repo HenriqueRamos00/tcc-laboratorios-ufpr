@@ -9,7 +9,6 @@ import br.ufpr.tcc.backend_lab.domain.repository.ExecucaoEnsaioRepository.Andame
 import org.junit.jupiter.api.Test;
 import org.springframework.core.io.ClassPathResource;
 
-import java.time.OffsetDateTime;
 import java.nio.charset.StandardCharsets;
 import java.util.regex.Pattern;
 import java.util.List;
@@ -60,7 +59,7 @@ class AcompanhamentoOrcamentosClienteTests {
         for (var caso : esperadas.entrySet()) {
             var status = caso.getKey();
             when(ensaios.consultarAndamentos(List.of(1L)))
-                    .thenReturn(List.of(andamento(1L, status, "LAUDO-1", OffsetDateTime.now())));
+                    .thenReturn(List.of(andamento(1L, status)));
             assertEquals(caso.getValue(), acompanhamento.resolver(List.of(orcamento)).get(1L));
             assertEquals(StatusComercialOrcamento.PENDING_ACCEPTANCE, orcamento.getStatus());
             assertEquals("Negociação", orcamento.getStage());
@@ -73,10 +72,10 @@ class AcompanhamentoOrcamentosClienteTests {
         var segundo = orcamento(StatusComercialOrcamento.FINISHED);
         segundo.setId(2L);
         when(ensaios.consultarAndamentos(List.of(1L, 2L))).thenReturn(List.of(
-                andamento(1L, StatusEnsaio.FINALIZED, null, null),
-                andamento(1L, StatusEnsaio.COMPLETE, null, null),
-                andamento(1L, StatusEnsaio.CANCELLED, null, null),
-                andamento(2L, StatusEnsaio.VALIDATED, null, null)));
+                andamento(1L, StatusEnsaio.FINALIZED),
+                andamento(1L, StatusEnsaio.COMPLETE),
+                andamento(1L, StatusEnsaio.CANCELLED),
+                andamento(2L, StatusEnsaio.VALIDATED)));
         var etapas = acompanhamento.resolver(List.of(primeiro, segundo));
         assertEquals(EtapaAcompanhamentoOrcamento.COMPLETO, etapas.get(1L));
         assertEquals(EtapaAcompanhamentoOrcamento.VALIDADO, etapas.get(2L));
@@ -85,7 +84,7 @@ class AcompanhamentoOrcamentosClienteTests {
     @Test
     void encerramentoComercialPrevaleceSobreExecucoes() {
         when(ensaios.consultarAndamentos(List.of(1L))).thenReturn(List.of(
-                andamento(1L, StatusEnsaio.INCOMPLETE, null, null)));
+                andamento(1L, StatusEnsaio.INCOMPLETE)));
         assertEquals(EtapaAcompanhamentoOrcamento.RECUSADO, acompanhamento.resolver(
                 List.of(orcamento(StatusComercialOrcamento.REFUSED))).get(1L));
         assertEquals(EtapaAcompanhamentoOrcamento.CANCELADO, acompanhamento.resolver(
@@ -93,15 +92,13 @@ class AcompanhamentoOrcamentosClienteTests {
     }
 
     @Test
-    void publicacaoSemReferenciaOuDataNaoProduzEtapaFicticia() {
+    void refleteStatusPublicadoSemExigirMetadadosDuplicadosNaExecucao() {
         var orcamento = orcamento(StatusComercialOrcamento.FINISHED);
-        for (var execucao : List.of(
-                andamento(1L, StatusEnsaio.REPORT_PUBLISHED, null, OffsetDateTime.now()),
-                andamento(1L, StatusEnsaio.REPORT_PUBLISHED, " ", OffsetDateTime.now()),
-                andamento(1L, StatusEnsaio.REPORT_PUBLISHED, "LAUDO-1", null))) {
-            when(ensaios.consultarAndamentos(List.of(1L))).thenReturn(List.of(execucao));
-            assertThrows(IllegalStateException.class, () -> acompanhamento.resolver(List.of(orcamento)));
-        }
+        when(ensaios.consultarAndamentos(List.of(1L)))
+                .thenReturn(List.of(andamento(1L, StatusEnsaio.REPORT_PUBLISHED)));
+
+        assertEquals(EtapaAcompanhamentoOrcamento.RELATORIO_PUBLICADO,
+                acompanhamento.resolver(List.of(orcamento)).get(1L));
     }
 
     @Test
@@ -140,16 +137,12 @@ class AcompanhamentoOrcamentosClienteTests {
         return orcamento;
     }
 
-    private Andamento andamento(Long id, StatusEnsaio status, String referencia, OffsetDateTime data) {
+    private Andamento andamento(Long id, StatusEnsaio status) {
         return new Andamento() {
             @Override
             public Long getOrcamentoId() { return id; }
             @Override
             public StatusEnsaio getStatus() { return status; }
-            @Override
-            public String getReportReference() { return referencia; }
-            @Override
-            public OffsetDateTime getPublishedAt() { return data; }
         };
     }
 }

@@ -145,11 +145,12 @@ WHERE lower(trim(u.email)) = 'lactec@lactec.com'
 -- Os três registros antigos mantêm campos de detalhe nulos e nenhum item.
 -- Os demais percorrem os cinco status comerciais e têm laboratório/contato próprios.
 INSERT INTO orcamentos (
-    empresa_id, code, name, status, stage, description, laboratory_name, scope,
+    empresa_id, code, name, status, stage, description, laboratory_name, protocol, scope,
     external_contact_name, external_contact_email, total_price, created_date
 )
 SELECT e.id, seed.code, seed.name, seed.status, seed.stage, seed.description,
-       seed.laboratory_name, seed.scope, seed.external_contact_name,
+       seed.laboratory_name, 'L-DEMO-2026-S-' || RIGHT(seed.code, 3) || '-X',
+       seed.scope, seed.external_contact_name,
        seed.external_contact_email, seed.total_price, seed.created_date
 FROM (VALUES
     ('98765432000198', 'DEMO-SEED-2026-001', 'Análise de óleo isolante - lote 01',
@@ -319,10 +320,11 @@ WHERE NOT EXISTS (
 
 -- Preserva a proposta de demonstração já usada no fluxo de cliente.
 INSERT INTO orcamentos (
-    empresa_id, code, name, status, stage, description, total_price, created_date
+    empresa_id, code, name, status, stage, description, protocol, total_price, created_date
 )
 SELECT e.id, 'DEMO-LACTEC-001', 'Orçamento de demonstração', 'PendingAcceptance', 'Em negociação',
-       'Orçamento de demonstração usado para validar o acesso do cliente.', 1250.00, CURRENT_TIMESTAMP
+       'Orçamento de demonstração usado para validar o acesso do cliente.',
+       'L-DEMO-2026-026-X', 1250.00, CURRENT_TIMESTAMP
 FROM empresas e
 WHERE e.cnpj = '11222333000181'
   AND NOT EXISTS (SELECT 1 FROM orcamentos WHERE code = 'DEMO-LACTEC-001');

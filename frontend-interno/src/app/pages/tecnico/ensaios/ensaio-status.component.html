@@ -100,14 +100,71 @@
 
     <app-status-progress
       class="mt-6 block"
-      [steps]="flowSteps"
+      [steps]="flowSteps()"
       [currentIndex]="currentStageIndex()"
       label="Progresso do status do ensaio"
     />
-    <p class="mb-0 mt-4 text-sm text-lactec-muted">
-      <strong class="font-semibold text-lactec-ink-soft">Publicação do relatório ainda não disponível.</strong>
-      O texto do ensaio é salvo como rascunho e não disponibiliza documento ao cliente.
-    </p>
+    @if (publishedDocumentAvailable()) {
+      <p class="mb-0 mt-4 rounded-lg border border-emerald-200 bg-emerald-50 p-3 text-sm text-emerald-900" role="status">
+        Há pelo menos um relatório validado, publicado e com PDF acessível ao cliente. A etapa Relatório publicado pode ser selecionada manualmente.
+      </p>
+    } @else if (reportsError()) {
+      <div class="mt-4 flex flex-wrap items-center justify-between gap-3 rounded-lg border border-amber-300 bg-amber-50 p-3 text-sm text-amber-950" role="alert">
+        <span>Não foi possível confirmar a disponibilidade de um relatório publicado. A etapa permanece bloqueada até a consulta ser concluída.</span>
+        <button mat-stroked-button type="button" [disabled]="reportsLoading()" (click)="retryReports()">Tentar novamente</button>
+      </div>
+    } @else {
+      <p class="mb-0 mt-4 text-sm text-lactec-muted">
+        A etapa Relatório publicado só fica disponível após a validação e publicação de um relatório com PDF acessível ao cliente.
+      </p>
+    }
+
+    @if (detail()!.status === 'drafting-report') {
+      <section class="mt-5 rounded-xl border border-lactec-line-soft bg-lactec-line-soft/40 p-4" aria-labelledby="test-reports-heading">
+        <div class="report-preparation__header">
+          <div class="report-preparation__copy">
+            <h3 id="test-reports-heading" class="m-0 text-base font-semibold text-lactec-ink">Relatório técnico</h3>
+            <p class="mb-0 mt-1 text-sm text-lactec-muted">Prepare o documento depois de salvar os dados do ensaio.</p>
+          </div>
+          @if (!reportsLoading() && !reportsError() && !reportDocuments().length) {
+            <app-action-button
+              class="report-preparation__button"
+              variant="primary"
+              icon="description"
+              [label]="preparingReport() ? 'Preparando…' : 'Preparar relatório'"
+              [disabled]="!canPrepareReport"
+              [loading]="preparingReport()"
+              [fullWidthOnMobile]="true"
+              (activated)="prepareReport()"
+            />
+          }
+        </div>
+        @if (reportsLoading()) {
+          <p class="mb-0 mt-3 flex items-center gap-2 text-sm text-lactec-muted" role="status"><mat-spinner diameter="18" />Consultando documentos…</p>
+        } @else if (reportsError()) {
+          <p class="mb-0 mt-3 text-sm text-red-700" role="alert">Não foi possível consultar os relatórios deste ensaio.</p>
+        } @else if (preparationError()) {
+          <p class="mb-0 mt-3 text-sm text-red-700" role="alert">{{ preparationError() }}</p>
+        }
+        @if (reportDocuments().length) {
+          @if (reportDocuments().length > 1) {
+            <p class="mb-0 mt-3 text-sm text-lactec-muted">Há vários relatórios vinculados. Selecione o documento que deseja abrir.</p>
+          } @else {
+            <p class="mb-0 mt-3 text-sm text-lactec-muted">O relatório deste ensaio já existe.</p>
+          }
+          <ul class="mb-0 mt-2 grid list-none gap-2 p-0" aria-label="Relatórios deste ensaio">
+            @for (report of reportDocuments(); track report.id) {
+              <li>
+                <button mat-stroked-button type="button" (click)="openReport(report.id)">
+                  <mat-icon aria-hidden="true">description</mat-icon>
+                  Registro {{ report.id }} - {{ report.validationStatus === 'validated' ? 'Validado' : 'Aguardando validação' }}{{ report.published ? ', publicado' : '' }}
+                </button>
+              </li>
+            }
+          </ul>
+        }
+      </section>
+    }
 
     @if (detail()!.status === 'cancelled') {
       <div class="mt-4 rounded-lg border border-amber-300 bg-amber-50 p-4 text-sm text-amber-950" role="status">
@@ -138,7 +195,7 @@
           (change)="onStatusControlChange($event)"
         >
           <option value="">Selecione uma etapa</option>
-          @for (stage of targetStatuses; track stage) {
+          @for (stage of targetStatuses(); track stage) {
             <option [value]="stage">
               {{ statusLabel(stage) }}{{ isCurrentStage(stage) ? ' (status atual)' : '' }}
             </option>

@@ -60,6 +60,9 @@ public class Orcamento {
     @Column(length = 120)
     private String laboratoryName;
 
+    @Column(length = 80)
+    private String protocol;
+
     @Column(length = 2000)
     private String scope;
 
@@ -81,8 +84,11 @@ public class Orcamento {
 
     @PrePersist
     @PreUpdate
-    void validarEtapa() {
+    void validarAntesDePersistir() {
         EtapaAcompanhamentoOrcamento.deTexto(stage);
+        if (protocol == null || protocol.isBlank()) {
+            throw new IllegalStateException("Protocolo do laboratório é obrigatório");
+        }
     }
 
     /** HU-09: o cliente aprova a proposta e o orçamento segue para execução. */

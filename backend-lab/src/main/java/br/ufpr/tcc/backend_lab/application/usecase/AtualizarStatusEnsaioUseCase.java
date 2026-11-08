@@ -3,6 +3,8 @@ package br.ufpr.tcc.backend_lab.application.usecase;
 import br.ufpr.tcc.backend_lab.application.dto.request.AtualizarStatusEnsaioRequest;
 import br.ufpr.tcc.backend_lab.application.dto.response.EnsaioDtos;
 import br.ufpr.tcc.backend_lab.application.service.ResolvedorReferenciasEnsaio;
+import br.ufpr.tcc.backend_lab.application.service.DisponibilidadeRelatorios;
+import br.ufpr.tcc.backend_lab.domain.exception.ConflitoRelatorioException;
 import br.ufpr.tcc.backend_lab.domain.exception.ConflitoEdicaoEnsaioException;
 import br.ufpr.tcc.backend_lab.domain.exception.DadosEnsaioInvalidosException;
 import br.ufpr.tcc.backend_lab.domain.exception.EnsaioNaoEncontradoException;
@@ -26,12 +28,15 @@ public class AtualizarStatusEnsaioUseCase {
     private final ExecucaoEnsaioRepository ensaios;
     private final HistoricoStatusEnsaioRepository historico;
     private final UsuarioRepository usuarios;
+    private final DisponibilidadeRelatorios disponibilidadeRelatorios;
 
     public AtualizarStatusEnsaioUseCase(ExecucaoEnsaioRepository ensaios,
-            HistoricoStatusEnsaioRepository historico, UsuarioRepository usuarios) {
+            HistoricoStatusEnsaioRepository historico, UsuarioRepository usuarios,
+            DisponibilidadeRelatorios disponibilidadeRelatorios) {
         this.ensaios = ensaios;
         this.historico = historico;
         this.usuarios = usuarios;
+        this.disponibilidadeRelatorios = disponibilidadeRelatorios;
     }
 
     @Transactional
@@ -39,7 +44,7 @@ public class AtualizarStatusEnsaioUseCase {
             Long tecnicoId) {
         validarRequest(request);
         Long chave = ResolvedorReferenciasEnsaio.id(id);
-        ExecucaoEnsaio ensaio = ensaios.buscarCompleto(chave)
+        ExecucaoEnsaio ensaio = ensaios.buscarParaEditar(chave)
                 .orElseThrow(() -> new EnsaioNaoEncontradoException("Ensaio não encontrado"));
         if (request.version() != ensaio.getVersion()) {
             throw new ConflitoEdicaoEnsaioException("O ensaio foi alterado por outra sessão");
@@ -67,8 +72,11 @@ public class AtualizarStatusEnsaioUseCase {
                     ensaio.getStatus().codigo(), null, null, ensaio.getVersion(), false);
         }
         if (novoStatus == StatusEnsaio.REPORT_PUBLISHED) {
-            throw RegraNegocioException.conflito(
-                    "O relatório só pode ser publicado quando estiver disponível para o cliente");
+            if (!disponibilidadeRelatorios.existePublicadoDisponivel(ensaio.getId(), ensaio)) {
+                throw new ConflitoRelatorioException(
+                        "O relatório só pode ser publicado quando um PDF validado estiver disponível para o cliente",
+                        "published-report-unavailable");
+            }
         }
 
         OffsetDateTime alteradoEm = OffsetDateTime.now(ZoneOffset.UTC);

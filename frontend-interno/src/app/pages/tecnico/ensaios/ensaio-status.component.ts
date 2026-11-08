@@ -4,7 +4,7 @@ import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
-import { ActivatedRoute, RouterLink } from '@angular/router';
+import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { AppDialogService } from '@/app/services/app-dialog.service';
 import {
   ProcessStatus,
@@ -15,6 +15,8 @@ import {
 } from '@/app/model/ensaio';
 import { formatCivilDate, processStatusLabel } from '@/app/model/ensaio-presentation';
 import { EnsaiosService } from '@/app/services/ensaios.service';
+import { TestReportSummary } from '@/app/model/relatorio';
+import { ActionButtonComponent } from '@shared/components/action-button/action-button.component';
 import { StatusProgressComponent, StatusProgressStep } from '@shared/components/status-progress/status-progress.component';
 import { StatusJustificativaDialogComponent, StatusJustificativaDialogData } from './status-justificativa-dialog.component';
 
@@ -36,10 +38,6 @@ const FLOW_STATUS_ICONS: Readonly<Record<Exclude<ProcessStatus, 'cancelled'>, st
   'report-published': 'cloud_done',
 };
 
-const TARGET_STATUSES = FLOW_STATUSES.filter(
-  (status): status is TestStatusTarget => status !== 'report-published',
-);
-
 const FLOW_STATUS_STEPS: readonly StatusProgressStep[] = FLOW_STATUSES.map((status) => ({
   key: status,
   label: processStatusLabel(status),
@@ -54,6 +52,7 @@ const FLOW_STATUS_STEPS: readonly StatusProgressStep[] = FLOW_STATUSES.map((stat
     MatIconModule,
     MatProgressSpinnerModule,
     RouterLink,
+    ActionButtonComponent,
     StatusProgressComponent,
   ],
   templateUrl: './ensaio-status.component.html',
@@ -63,21 +62,34 @@ const FLOW_STATUS_STEPS: readonly StatusProgressStep[] = FLOW_STATUSES.map((stat
 export class EnsaioStatusComponent {
   private readonly service = inject(EnsaiosService);
   private readonly route = inject(ActivatedRoute);
+  private readonly router = inject(Router);
   private readonly dialog = inject(AppDialogService);
   private readonly destroyRef = inject(DestroyRef);
   private readonly id = this.route.snapshot.paramMap.get('id');
 
   readonly flowStatuses = FLOW_STATUSES;
-  readonly targetStatuses = TARGET_STATUSES;
-  readonly flowSteps = FLOW_STATUS_STEPS;
+  readonly targetStatuses = computed(() => FLOW_STATUSES.filter(
+    (status): status is TestStatusTarget => status !== 'report-published' || this.publishedDocumentAvailable(),
+  ));
+  readonly flowSteps = computed(() => {
+    const savedStatus = this.detail()?.status;
+    return FLOW_STATUS_STEPS.filter((step) => step.key !== 'report-published'
+      || this.publishedDocumentAvailable() || savedStatus === 'report-published');
+  });
   readonly detail = signal<TestDetail | null>(null);
   readonly history = signal<TestStatusHistoryEntry[]>([]);
+  readonly reportDocuments = signal<TestReportSummary[]>([]);
+  readonly publishedDocumentAvailable = signal(false);
   readonly selectedStatus = signal<TestStatusTarget | null>(null);
   readonly detailLoading = signal(true);
   readonly detailError = signal(false);
   readonly detailErrorStatus = signal(0);
   readonly historyLoading = signal(true);
   readonly historyError = signal(false);
+  readonly reportsLoading = signal(true);
+  readonly reportsError = signal(false);
+  readonly preparingReport = signal(false);
+  readonly preparationError = signal('');
   readonly saving = signal(false);
   readonly conflict = signal(false);
   readonly staleState = signal(false);
@@ -95,6 +107,7 @@ export class EnsaioStatusComponent {
   constructor() {
     this.loadDetail();
     this.loadHistory();
+    this.loadReports();
   }
 
   get canChangeStatus(): boolean {
@@ -116,6 +129,43 @@ export class EnsaioStatusComponent {
 
   get canPrepareNextStage(): boolean {
     return this.canChangeStatus && this.adjacentTargetStatus(1) !== null;
+  }
+
+  get canPrepareReport(): boolean {
+    return this.canChangeStatus && this.detail()?.status === 'drafting-report' &&
+      !this.reportsLoading() && this.reportDocuments().length === 0 && !this.preparingReport();
+  }
+
+  prepareReport(): void {
+    if (!this.id || !this.canPrepareReport) return;
+    this.preparingReport.set(true);
+    this.preparationError.set('');
+    this.service.prepareReport(this.id).pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
+      next: (result) => {
+        this.preparingReport.set(false);
+        this.reportDocuments.set(result.reports);
+        if (result.reportId) {
+          this.openReport(result.reportId);
+        } else if (result.outcome === 'selection-required') {
+          this.preparationError.set('Há mais de um relatório para este ensaio. Selecione um dos documentos existentes.');
+        }
+        this.loadReports();
+      },
+      error: (error: HttpErrorResponse) => {
+        this.preparingReport.set(false);
+        this.preparationError.set(error.status === 409
+          ? 'O estado do ensaio mudou. Os dados atuais foram recarregados.'
+          : this.apiErrorMessage(error) ?? 'Não foi possível preparar o relatório. Confira sua conexão e tente novamente.');
+        if (error.status === 409) {
+          this.loadDetail();
+          this.loadReports();
+        }
+      },
+    });
+  }
+
+  openReport(reportId: string): void {
+    void this.router.navigate(['/tecnico/relatorios', reportId]);
   }
 
   isCurrentStage(status: ProcessStatus): boolean {
@@ -227,6 +277,7 @@ export class EnsaioStatusComponent {
               : `Status atualizado para ${processStatusLabel(result.status)}.`
             : 'O ensaio já estava neste status.');
           this.loadHistory();
+          this.loadReports();
         },
         error: (error: HttpErrorResponse) => {
           this.saving.set(false);
@@ -253,7 +304,8 @@ export class EnsaioStatusComponent {
   }
 
   private isTargetStatus(status: ProcessStatus): status is TestStatusTarget {
-    return status !== 'report-published' && status !== 'cancelled';
+    return status !== 'cancelled' &&
+      (status !== 'report-published' || this.publishedDocumentAvailable());
   }
 
   private adjacentTargetStatus(direction: -1 | 1): TestStatusTarget | null {
@@ -319,6 +371,34 @@ export class EnsaioStatusComponent {
       error: () => {
         this.historyLoading.set(false);
         this.historyError.set(true);
+      },
+    });
+  }
+
+  retryReports(): void {
+    this.loadReports();
+  }
+
+  private loadReports(): void {
+    if (!this.id) {
+      this.reportsLoading.set(false);
+      this.reportsError.set(true);
+      return;
+    }
+    this.reportsLoading.set(true);
+    this.reportsError.set(false);
+    this.service.reportsForTest(this.id).pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
+      next: (result) => {
+        this.reportDocuments.set(result.items);
+        this.publishedDocumentAvailable.set(result.publishedDocumentAvailable);
+        this.reportsLoading.set(false);
+        this.reportsError.set(false);
+      },
+      error: () => {
+        this.reportDocuments.set([]);
+        this.publishedDocumentAvailable.set(false);
+        this.reportsLoading.set(false);
+        this.reportsError.set(true);
       },
     });
   }

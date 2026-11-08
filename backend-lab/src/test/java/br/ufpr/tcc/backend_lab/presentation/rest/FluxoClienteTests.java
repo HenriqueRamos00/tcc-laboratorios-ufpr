@@ -1,9 +1,17 @@
 package br.ufpr.tcc.backend_lab.presentation.rest;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertArrayEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyCollection;
+import static org.mockito.Mockito.clearInvocations;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.verify;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
@@ -32,25 +40,31 @@ import br.ufpr.tcc.backend_lab.domain.exception.EmailJaCadastradoException;
 import br.ufpr.tcc.backend_lab.domain.exception.RegraNegocioException;
 import br.ufpr.tcc.backend_lab.domain.model.entity.Cliente;
 import br.ufpr.tcc.backend_lab.domain.model.entity.Amostra;
+import br.ufpr.tcc.backend_lab.domain.model.entity.DocumentoRelatorio;
 import br.ufpr.tcc.backend_lab.domain.model.entity.ExecucaoEnsaio;
 import br.ufpr.tcc.backend_lab.domain.model.entity.DocumentoOrcamento;
+import br.ufpr.tcc.backend_lab.domain.model.entity.RelatorioTecnico;
 import br.ufpr.tcc.backend_lab.domain.model.entity.Empresa;
 import br.ufpr.tcc.backend_lab.domain.model.entity.Orcamento;
 import br.ufpr.tcc.backend_lab.domain.model.entity.PerfilUsuario;
 import br.ufpr.tcc.backend_lab.domain.model.entity.Usuario;
 import br.ufpr.tcc.backend_lab.domain.model.enums.StatusComercialOrcamento;
 import br.ufpr.tcc.backend_lab.domain.model.enums.StatusEnsaio;
+import br.ufpr.tcc.backend_lab.domain.model.enums.StatusValidacaoRelatorio;
 import br.ufpr.tcc.backend_lab.domain.model.enums.EtapaAcompanhamentoOrcamento;
 import br.ufpr.tcc.backend_lab.domain.repository.ClienteRepository;
 import br.ufpr.tcc.backend_lab.domain.repository.AmostraRepository;
 import br.ufpr.tcc.backend_lab.domain.repository.ExecucaoEnsaioRepository;
 import br.ufpr.tcc.backend_lab.domain.repository.DocumentoOrcamentoRepository;
+import br.ufpr.tcc.backend_lab.domain.repository.DocumentoRelatorioRepository;
 import br.ufpr.tcc.backend_lab.domain.repository.EmpresaRepository;
 import br.ufpr.tcc.backend_lab.domain.repository.OrcamentoRepository;
+import br.ufpr.tcc.backend_lab.domain.repository.RelatorioTecnicoRepository;
 import br.ufpr.tcc.backend_lab.domain.repository.UsuarioRepository;
 import br.ufpr.tcc.backend_lab.infrastructure.security.JwtService;
 
 import jakarta.persistence.EntityManager;
+import tools.jackson.databind.ObjectMapper;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -62,6 +76,7 @@ import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.test.context.bean.override.mockito.MockitoSpyBean;
 
 import com.lowagie.text.pdf.PdfReader;
 import com.lowagie.text.pdf.parser.PdfTextExtractor;
@@ -83,6 +98,8 @@ class FluxoClienteTests {
     @Autowired OrcamentoRepository orcamentos;
     @Autowired AmostraRepository amostras;
     @Autowired ExecucaoEnsaioRepository ensaios;
+    @Autowired RelatorioTecnicoRepository relatorios;
+    @MockitoSpyBean DocumentoRelatorioRepository documentosRelatorios;
     @Autowired DocumentoOrcamentoRepository documentos;
     @Autowired CreateEmpresaUseCase criarEmpresa;
     @Autowired CreateClienteUseCase criarCliente;
@@ -96,6 +113,7 @@ class FluxoClienteTests {
     @Autowired PasswordEncoder passwordEncoder;
     @Autowired JdbcTemplate jdbcTemplate;
     @Autowired EntityManager entityManager;
+    @Autowired ObjectMapper objectMapper;
     Empresa empresaA, empresaB, empresaSemVinculo;
     Cliente clienteA;
     Orcamento orcamentoA, orcamentoB, orcamentoSemVinculo;
@@ -130,6 +148,511 @@ class FluxoClienteTests {
     }
 
     @Test
+    void clienteVeEtapaPublicadaSemMetadadosDuplicadosNaExecucao() throws Exception {
+        Long relatorioId = criarRelatorioPublicado(orcamentoA, "A-RELATORIO-PUBLICADO");
+        RelatorioTecnico relatorio = relatorios.findById(relatorioId).orElseThrow();
+        ExecucaoEnsaio ensaio = ensaios.findById(relatorio.getExecucao().getId()).orElseThrow();
+        String tokenTecnico = "Bearer " + jwtService.generateToken(tecnico);
+
+        mockMvc.perform(patch("/api/tests/{id}/status", ensaio.getId())
+                        .header("Authorization", tokenTecnico)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"action\":\"set-status\",\"targetStatus\":\"report-published\",\"version\":"
+                                + ensaio.getVersion() + "}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.status").value("report-published"));
+
+        ExecucaoEnsaio publicada = ensaios.findById(ensaio.getId()).orElseThrow();
+        assertNull(publicada.getReportReference());
+        assertNull(publicada.getPublishedAt());
+        mockMvc.perform(get("/api/client/quotes").header("Authorization", tokenClienteA))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$[0].stage").value("Relatório publicado"));
+        mockMvc.perform(get("/api/client/quotes/{id}", orcamentoA.getId())
+                        .header("Authorization", tokenClienteA))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.stage").value("Relatório publicado"));
+
+        var arquivo = mockMvc.perform(get("/api/client/reports/{id}/file", relatorioId)
+                        .header("Authorization", tokenClienteA))
+                .andExpect(status().isOk())
+                .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_PDF))
+                .andReturn();
+        assertArrayEquals(documentosRelatorios.findByRelatorioId(relatorioId).orElseThrow().getContent(),
+                arquivo.getResponse().getContentAsByteArray());
+    }
+
+    @Test
+    void clienteBaixaSomenteRelatoriosPublicadosDasEmpresasVinculadas() throws Exception {
+        Long relatorioAutorizado = criarRelatorioPublicado(orcamentoA, "A-RELATORIO-A");
+        Long relatorioDeOutraEmpresa = criarRelatorioPublicado(orcamentoB, "A-RELATORIO-B");
+
+        mockMvc.perform(get("/api/client/reports").header("Authorization", tokenClienteA))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.length()").value(1))
+                .andExpect(jsonPath("$[0].id").value(relatorioAutorizado.toString()))
+                .andExpect(jsonPath("$[0].code").value(relatorioAutorizado.toString()))
+                .andExpect(jsonPath("$[0].protocol").value(orcamentoA.getProtocol()))
+                .andExpect(jsonPath("$[0].laboratory").value(orcamentoA.getLaboratoryName()))
+                .andExpect(jsonPath("$[0].sample").value("A-RELATORIO-A - Amostra A-RELATORIO-A"))
+                .andExpect(jsonPath("$[0].publishedOn").isNotEmpty());
+
+        mockMvc.perform(get("/api/client/quotes/{id}/reports", orcamentoA.getId())
+                        .header("Authorization", tokenClienteA))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.reports.length()").value(1))
+                .andExpect(jsonPath("$.reports[0].id").value(relatorioAutorizado.toString()))
+                .andExpect(jsonPath("$.reports[0].testType").value("Análise cromatográfica"))
+                .andExpect(jsonPath("$.protocol").value(orcamentoA.getProtocol()))
+                .andExpect(jsonPath("$.testType").value("Análise cromatográfica"))
+                .andExpect(jsonPath("$.summary").value("1 relatório publicado disponível para consulta e download."));
+
+        mockMvc.perform(get("/api/client/quotes/{id}/reports", orcamentoB.getId())
+                        .header("Authorization", tokenClienteA))
+                .andExpect(status().isForbidden());
+        mockMvc.perform(get("/api/client/reports/{id}/file", relatorioDeOutraEmpresa)
+                        .header("Authorization", tokenClienteA))
+                .andExpect(status().isForbidden());
+
+        var arquivo = mockMvc.perform(get("/api/client/reports/{id}/file", relatorioAutorizado)
+                        .header("Authorization", tokenClienteA))
+                .andExpect(status().isOk())
+                .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_PDF))
+                .andReturn();
+        assertArrayEquals(documentosRelatorios.findByRelatorioId(relatorioAutorizado).orElseThrow().getContent(),
+                arquivo.getResponse().getContentAsByteArray());
+    }
+
+    @Test
+    void resumeSomenteRelatoriosPublicadosAcessiveisComTiposDistintos() throws Exception {
+        Long fisicoQuimica = criarRelatorioPublicado(orcamentoA, "AMOSTRA-RESUMO-FQ-1",
+                "Análise físico-química");
+        Long cromatografia = criarRelatorioPublicado(orcamentoA, "AMOSTRA-RESUMO-CROM-1",
+                "Análise cromatográfica");
+        Long fisicoQuimicaRepetido = criarRelatorioPublicado(orcamentoA, "AMOSTRA-RESUMO-FQ-2",
+                "Análise físico-química");
+        Long pdfInvalido = criarRelatorioPublicado(orcamentoA, "AMOSTRA-RESUMO-PDF-INVALIDO",
+                "Análise sem PDF válido");
+        criarRelatorioPendente(orcamentoA, "AMOSTRA-RESUMO-RASCUNHO");
+        criarRelatorioPublicado(orcamentoB, "AMOSTRA-RESUMO-OUTRA-EMPRESA",
+                "Análise de outra empresa");
+
+        OffsetDateTime instantePublicacao = OffsetDateTime.parse("2026-11-08T12:00:00Z");
+        for (Long id : List.of(fisicoQuimica, cromatografia, fisicoQuimicaRepetido, pdfInvalido)) {
+            jdbcTemplate.update("UPDATE relatorios_tecnicos SET published_at = ? WHERE id = ?", instantePublicacao, id);
+        }
+        DocumentoRelatorio documentoInvalido = documentosRelatorios.findByRelatorioId(pdfInvalido).orElseThrow();
+        documentoInvalido.setContent("conteúdo que não é PDF".getBytes(java.nio.charset.StandardCharsets.UTF_8));
+        documentosRelatorios.saveAndFlush(documentoInvalido);
+        entityManager.clear();
+
+        mockMvc.perform(get("/api/client/quotes/{id}/reports", orcamentoA.getId())
+                        .header("Authorization", tokenClienteA))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.reports.length()").value(3))
+                .andExpect(jsonPath("$.reports[0].testType").value("Análise físico-química"))
+                .andExpect(jsonPath("$.reports[1].testType").value("Análise cromatográfica"))
+                .andExpect(jsonPath("$.reports[2].testType").value("Análise físico-química"))
+                .andExpect(jsonPath("$.testType").value("Análise físico-química; Análise cromatográfica"))
+                .andExpect(jsonPath("$.summary")
+                        .value("3 relatórios publicados disponíveis para consulta e download."));
+
+        mockMvc.perform(get("/api/client/reports").header("Authorization", tokenClienteA))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.length()").value(3))
+                .andExpect(jsonPath("$[0].id").exists());
+    }
+
+    @Test
+    void retornaResumoVazioParaOrcamentoAutorizadoSemRelatorios() throws Exception {
+        mockMvc.perform(get("/api/client/quotes/{id}/reports", orcamentoA.getId())
+                        .header("Authorization", tokenClienteA))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.protocol").value(orcamentoA.getProtocol()))
+                .andExpect(jsonPath("$.testType").value(""))
+                .andExpect(jsonPath("$.summary")
+                        .value("Nenhum relatório publicado disponível para consulta e download."))
+                .andExpect(jsonPath("$.reports.length()").value(0));
+
+        mockMvc.perform(get("/api/client/reports").header("Authorization", tokenClienteA))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.length()").value(0));
+
+        mockMvc.perform(get("/api/client/quotes/{id}/reports", 999999L)
+                        .header("Authorization", tokenClienteA))
+                .andExpect(status().isNotFound());
+    }
+
+    @Test
+    void mantemResumoEIdentificacaoDoSnapshotValidadoAposEdicao() throws Exception {
+        String protocoloValidado = orcamentoA.getProtocol();
+        String laboratorioValidado = orcamentoA.getLaboratoryName();
+        String tipoValidado = "Análise físico-química do óleo";
+        Long relatorioId = criarRelatorioPublicado(orcamentoA, "AMOSTRA-SNAPSHOT-ORIGINAL", tipoValidado);
+        RelatorioTecnico relatorio = relatorios.findById(relatorioId).orElseThrow();
+        Long execucaoId = relatorio.getExecucao().getId();
+
+        jdbcTemplate.update("UPDATE execucoes_ensaios SET tipo = ? WHERE id = ?",
+                "Tipo editado depois da validação", execucaoId);
+        jdbcTemplate.update("UPDATE amostras SET codigo = ?, descricao = ? WHERE id = ?",
+                "AMOSTRA-SNAPSHOT-EDITADA", "Descrição editada depois da validação",
+                relatorio.getExecucao().getAmostra().getId());
+        jdbcTemplate.update("UPDATE orcamentos SET protocol = ?, laboratory_name = ? WHERE id = ?",
+                "L-EDITADO-DEPOIS-VALIDACAO", "Laboratório editado depois da validação", orcamentoA.getId());
+        entityManager.clear();
+
+        mockMvc.perform(get("/api/client/quotes/{id}/reports", orcamentoA.getId())
+                        .header("Authorization", tokenClienteA))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.protocol").value(protocoloValidado))
+                .andExpect(jsonPath("$.testType").value(tipoValidado))
+                .andExpect(jsonPath("$.reports.length()").value(1))
+                .andExpect(jsonPath("$.reports[0].protocol").value(protocoloValidado))
+                .andExpect(jsonPath("$.reports[0].laboratory").value(laboratorioValidado))
+                .andExpect(jsonPath("$.reports[0].sample")
+                        .value("AMOSTRA-SNAPSHOT-ORIGINAL - Amostra AMOSTRA-SNAPSHOT-ORIGINAL"))
+                .andExpect(jsonPath("$.reports[0].testType").value(tipoValidado))
+                .andExpect(jsonPath("$.summary")
+                        .value("1 relatório publicado disponível para consulta e download."));
+    }
+
+    @Test
+    void mantemVinculosDoDocumentoValidadoQuandoExecucaoMudaDeOrcamento() throws Exception {
+        Long relatorioId = criarRelatorioValidado(orcamentoA, "AMOSTRA-ORIGINAL");
+        RelatorioTecnico relatorio = relatorios.findById(relatorioId).orElseThrow();
+        ExecucaoEnsaio ensaio = ensaios.findById(relatorio.getExecucao().getId()).orElseThrow();
+        Amostra amostraDaEmpresaB = new Amostra();
+        amostraDaEmpresaB.setCodigo("AMOSTRA-NOVA");
+        amostraDaEmpresaB.setDescricao("Amostra da empresa B");
+        amostraDaEmpresaB.setOrcamento(orcamentoB);
+        amostraDaEmpresaB = amostras.saveAndFlush(amostraDaEmpresaB);
+
+        ensaio.setAmostra(amostraDaEmpresaB);
+        ensaio.setOrcamento(orcamentoB);
+        ensaios.saveAndFlush(ensaio);
+        entityManager.clear();
+
+        String tokenTecnico = "Bearer " + jwtService.generateToken(tecnico);
+        mockMvc.perform(get("/api/reports/{id}", relatorioId).header("Authorization", tokenTecnico))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.company.id").value(empresaA.getId().toString()))
+                .andExpect(jsonPath("$.quote.id").value(orcamentoA.getId().toString()))
+                .andExpect(jsonPath("$.sample.code").value("AMOSTRA-ORIGINAL"));
+
+        relatorio = relatorios.findById(relatorioId).orElseThrow();
+        mockMvc.perform(post("/api/reports/{id}/publication", relatorioId)
+                        .header("Authorization", tokenTecnico)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"version\":" + relatorio.getVersion() + "}"))
+                .andExpect(status().isOk());
+
+        Cliente clienteB = cliente("cliente-b@example.test", empresaB);
+        String tokenClienteB = "Bearer " + loginCliente.execute(
+                new LoginRequest(clienteB.getUsuario().getEmail(), " senha ")).accessToken();
+
+        mockMvc.perform(get("/api/client/reports").header("Authorization", tokenClienteA))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$[0].id").value(relatorioId.toString()))
+                .andExpect(jsonPath("$[0].sample").value("AMOSTRA-ORIGINAL - Amostra AMOSTRA-ORIGINAL"));
+        mockMvc.perform(get("/api/client/reports").header("Authorization", tokenClienteB))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.length()").value(0));
+        mockMvc.perform(get("/api/client/quotes/{id}/reports", orcamentoA.getId())
+                        .header("Authorization", tokenClienteA))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.reports[0].id").value(relatorioId.toString()));
+        mockMvc.perform(get("/api/client/reports/{id}/file", relatorioId)
+                        .header("Authorization", tokenClienteA))
+                .andExpect(status().isOk());
+        mockMvc.perform(get("/api/client/reports/{id}/file", relatorioId)
+                        .header("Authorization", tokenClienteB))
+                .andExpect(status().isForbidden());
+
+        ensaio = ensaios.findById(ensaio.getId()).orElseThrow();
+        mockMvc.perform(patch("/api/tests/{id}/status", ensaio.getId())
+                        .header("Authorization", tokenTecnico)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"action\":\"set-status\",\"targetStatus\":\"report-published\",\"version\":"
+                                + ensaio.getVersion() + "}"))
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.code").value("published-report-unavailable"));
+    }
+
+    @Test
+    void mantemVinculosDoDocumentoPublicadoQuandoExecucaoMudaDeOrcamento() throws Exception {
+        Long relatorioId = criarRelatorioPublicado(orcamentoA, "AMOSTRA-ORIGINAL-APOS-PUBLICACAO");
+        RelatorioTecnico relatorio = relatorios.findById(relatorioId).orElseThrow();
+        ExecucaoEnsaio ensaio = ensaios.findById(relatorio.getExecucao().getId()).orElseThrow();
+        Amostra amostraDaEmpresaB = new Amostra();
+        amostraDaEmpresaB.setCodigo("AMOSTRA-B-APOS-PUBLICACAO");
+        amostraDaEmpresaB.setDescricao("Amostra B após publicação");
+        amostraDaEmpresaB.setOrcamento(orcamentoB);
+        amostraDaEmpresaB = amostras.saveAndFlush(amostraDaEmpresaB);
+        ensaio.setAmostra(amostraDaEmpresaB);
+        ensaio.setOrcamento(orcamentoB);
+        ensaios.saveAndFlush(ensaio);
+        entityManager.clear();
+
+        String tokenTecnico = "Bearer " + jwtService.generateToken(tecnico);
+        mockMvc.perform(get("/api/reports/{id}", relatorioId).header("Authorization", tokenTecnico))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.company.id").value(empresaA.getId().toString()))
+                .andExpect(jsonPath("$.quote.id").value(orcamentoA.getId().toString()))
+                .andExpect(jsonPath("$.sample.code").value("AMOSTRA-ORIGINAL-APOS-PUBLICACAO"));
+
+        Cliente clienteB = cliente("cliente-b-pos-publicacao@example.test", empresaB);
+        String tokenClienteB = "Bearer " + loginCliente.execute(
+                new LoginRequest(clienteB.getUsuario().getEmail(), " senha ")).accessToken();
+        mockMvc.perform(get("/api/client/reports").header("Authorization", tokenClienteA))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$[0].id").value(relatorioId.toString()))
+                .andExpect(jsonPath("$[0].sample")
+                        .value("AMOSTRA-ORIGINAL-APOS-PUBLICACAO - Amostra AMOSTRA-ORIGINAL-APOS-PUBLICACAO"));
+        mockMvc.perform(get("/api/client/reports").header("Authorization", tokenClienteB))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.length()").value(0));
+        mockMvc.perform(get("/api/client/reports/{id}/file", relatorioId)
+                        .header("Authorization", tokenClienteA))
+                .andExpect(status().isOk());
+        mockMvc.perform(get("/api/client/reports/{id}/file", relatorioId)
+                        .header("Authorization", tokenClienteB))
+                .andExpect(status().isForbidden());
+
+        ensaio = ensaios.findById(ensaio.getId()).orElseThrow();
+        mockMvc.perform(patch("/api/tests/{id}/status", ensaio.getId())
+                        .header("Authorization", tokenTecnico)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"action\":\"set-status\",\"targetStatus\":\"report-published\",\"version\":"
+                                + ensaio.getVersion() + "}"))
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.code").value("published-report-unavailable"));
+    }
+
+    @Test
+    void naoEntregaPorOrcamentoQuandoEmpresaDoMesmoOrcamentoMuda() throws Exception {
+        Long relatorioId = criarRelatorioPublicado(orcamentoA, "AMOSTRA-EMPRESA-ORCAMENTO-TROCADA");
+        OrcamentoRequest dados = requestAceite(orcamentoA);
+        OrcamentoRequest transferido = new OrcamentoRequest(dados.code(), empresaB.getId().toString(),
+                dados.name(), dados.laboratoryName(), dados.protocol(), dados.description(), dados.scope(),
+                dados.externalContactName(), dados.externalContactEmail(), dados.status(),
+                dados.totalPrice(), dados.items());
+        editarOrcamento.execute(orcamentoA.getId(), transferido, null);
+        entityManager.clear();
+
+        Cliente clienteB = cliente("cliente-b-orcamento-trocado@example.test", empresaB);
+        String tokenClienteB = "Bearer " + loginCliente.execute(
+                new LoginRequest(clienteB.getUsuario().getEmail(), " senha ")).accessToken();
+        mockMvc.perform(get("/api/client/quotes/{id}/reports", orcamentoA.getId())
+                        .header("Authorization", tokenClienteB))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.reports.length()").value(0));
+        mockMvc.perform(get("/api/client/quotes/{id}/reports", orcamentoA.getId())
+                        .header("Authorization", tokenClienteA))
+                .andExpect(status().isForbidden());
+        mockMvc.perform(get("/api/client/reports").header("Authorization", tokenClienteA))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$[0].id").value(relatorioId.toString()));
+        mockMvc.perform(get("/api/client/reports").header("Authorization", tokenClienteB))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.length()").value(0));
+        mockMvc.perform(get("/api/client/reports/{id}/file", relatorioId)
+                        .header("Authorization", tokenClienteA))
+                .andExpect(status().isOk())
+                .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_PDF));
+        mockMvc.perform(get("/api/client/reports/{id}/file", relatorioId)
+                        .header("Authorization", tokenClienteB))
+                .andExpect(status().isForbidden());
+
+        RelatorioTecnico relatorio = relatorios.findById(relatorioId).orElseThrow();
+        ExecucaoEnsaio ensaio = ensaios.findById(relatorio.getExecucao().getId()).orElseThrow();
+        mockMvc.perform(patch("/api/tests/{id}/status", ensaio.getId())
+                        .header("Authorization", "Bearer " + jwtService.generateToken(tecnico))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"action\":\"set-status\",\"targetStatus\":\"report-published\",\"version\":"
+                                + ensaio.getVersion() + "}"))
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.code").value("published-report-unavailable"));
+    }
+
+    @Test
+    void mantemEmpresaValidadaQuandoMesmoOrcamentoMudaAntesDaPublicacao() throws Exception {
+        Long relatorioId = criarRelatorioValidado(orcamentoA, "AMOSTRA-VALIDADA-ANTES-TROCA-EMPRESA");
+        String tokenTecnico = "Bearer " + jwtService.generateToken(tecnico);
+        OrcamentoRequest dados = requestAceite(orcamentoA);
+        OrcamentoRequest transferido = new OrcamentoRequest(dados.code(), empresaB.getId().toString(),
+                dados.name(), dados.laboratoryName(), dados.protocol(), dados.description(), dados.scope(),
+                dados.externalContactName(), dados.externalContactEmail(), dados.status(),
+                dados.totalPrice(), dados.items());
+        editarOrcamento.execute(orcamentoA.getId(), transferido, null);
+        entityManager.clear();
+
+        Cliente clienteB = cliente("cliente-b-orcamento-trocado-antes-publicacao@example.test", empresaB);
+        String tokenClienteB = "Bearer " + loginCliente.execute(
+                new LoginRequest(clienteB.getUsuario().getEmail(), " senha ")).accessToken();
+
+        mockMvc.perform(get("/api/reports/{id}", relatorioId).header("Authorization", tokenTecnico))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.company.id").value(empresaA.getId().toString()))
+                .andExpect(jsonPath("$.quote.id").value(orcamentoA.getId().toString()));
+        mockMvc.perform(get("/api/client/quotes/{id}/reports", orcamentoA.getId())
+                        .header("Authorization", tokenClienteB))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.reports.length()").value(0));
+        mockMvc.perform(get("/api/client/quotes/{id}/reports", orcamentoA.getId())
+                        .header("Authorization", tokenClienteA))
+                .andExpect(status().isForbidden());
+        mockMvc.perform(get("/api/client/reports").header("Authorization", tokenClienteA))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.length()").value(0));
+        mockMvc.perform(get("/api/client/reports").header("Authorization", tokenClienteB))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.length()").value(0));
+
+        mockMvc.perform(post("/api/reports/{id}/publication", relatorioId)
+                        .header("Authorization", tokenTecnico)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"version\":1}"))
+                .andExpect(status().isOk());
+
+        mockMvc.perform(get("/api/client/reports").header("Authorization", tokenClienteA))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$[0].id").value(relatorioId.toString()));
+        mockMvc.perform(get("/api/client/reports").header("Authorization", tokenClienteB))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.length()").value(0));
+        mockMvc.perform(get("/api/client/reports/{id}/file", relatorioId)
+                        .header("Authorization", tokenClienteA))
+                .andExpect(status().isOk())
+                .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_PDF));
+        mockMvc.perform(get("/api/client/reports/{id}/file", relatorioId)
+                        .header("Authorization", tokenClienteB))
+                .andExpect(status().isForbidden());
+    }
+
+    @Test
+    void rejeitaValidacaoQuandoConteudoMudaDepoisDaLeituraDoRelatorio() throws Exception {
+        Long relatorioId = criarRelatorioPendente(orcamentoA, "AMOSTRA-REVISAO");
+        RelatorioTecnico relatorio = relatorios.findById(relatorioId).orElseThrow();
+        ExecucaoEnsaio ensaio = ensaios.findById(relatorio.getExecucao().getId()).orElseThrow();
+        ensaio.setTextoLaudo("Conclusão atualizada depois da revisão");
+        ensaios.saveAndFlush(ensaio);
+
+        String tokenTecnico = "Bearer " + jwtService.generateToken(tecnico);
+        mockMvc.perform(post("/api/reports/{id}/validation", relatorioId)
+                        .header("Authorization", tokenTecnico)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"version\":0,\"contentFingerprint\":\"0000000000000000000000000000000000000000000000000000000000000000\"}"))
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.code").value("report-content-changed"));
+
+        assertEquals(StatusValidacaoRelatorio.PENDING_VALIDATION,
+                relatorios.findById(relatorioId).orElseThrow().getValidationStatus());
+        assertFalse(documentosRelatorios.existsById(relatorioId));
+    }
+
+    private Long criarRelatorioPublicado(Orcamento orcamento, String codigoAmostra) throws Exception {
+        return criarRelatorioPublicado(orcamento, codigoAmostra, "Análise cromatográfica");
+    }
+
+    private Long criarRelatorioPublicado(Orcamento orcamento, String codigoAmostra, String tipoEnsaio)
+            throws Exception {
+        Amostra amostra = new Amostra();
+        amostra.setCodigo(codigoAmostra);
+        amostra.setDescricao("Amostra " + codigoAmostra);
+        amostra.setOrcamento(orcamento);
+        amostra = amostras.saveAndFlush(amostra);
+
+        ExecucaoEnsaio ensaio = new ExecucaoEnsaio();
+        ensaio.setCodigo("ER-" + UUID.randomUUID().toString().substring(0, 24));
+        ensaio.setAmostra(amostra);
+        ensaio.setOrcamento(orcamento);
+        ensaio.setResponsavel(tecnico);
+        ensaio.setTipo(tipoEnsaio);
+        ensaio.setTipoAnalise("chromatography");
+        ensaio.setMetodo("Método registrado");
+        ensaio.setNorma("Norma registrada");
+        ensaio.setDataAgendada(LocalDate.of(2026, 11, 7));
+        ensaio.setStatus(StatusEnsaio.DRAFTING_REPORT);
+        ensaio = ensaios.saveAndFlush(ensaio);
+
+        String tokenTecnico = "Bearer " + jwtService.generateToken(tecnico);
+        mockMvc.perform(post("/api/tests/{id}/reports/preparation", ensaio.getId())
+                        .header("Authorization", tokenTecnico))
+                .andExpect(status().isCreated());
+        RelatorioTecnico relatorio = relatorios.findByExecucaoIdOrderByIdAsc(ensaio.getId()).getFirst();
+        validarRelatorio(relatorio, tokenTecnico);
+        mockMvc.perform(post("/api/reports/{id}/publication", relatorio.getId())
+                        .header("Authorization", tokenTecnico)
+                        .contentType(MediaType.APPLICATION_JSON).content("{\"version\":1}"))
+                .andExpect(status().isOk());
+        return relatorio.getId();
+    }
+
+    private Long criarRelatorioValidado(Orcamento orcamento, String codigoAmostra) throws Exception {
+        return criarRelatorioValidado(orcamento, codigoAmostra, "Análise cromatográfica");
+    }
+
+    private Long criarRelatorioValidado(Orcamento orcamento, String codigoAmostra, String tipoEnsaio)
+            throws Exception {
+        Long reportId = criarRelatorioPendente(orcamento, codigoAmostra, tipoEnsaio);
+        RelatorioTecnico relatorio = relatorios.findById(reportId).orElseThrow();
+        String tokenTecnico = "Bearer " + jwtService.generateToken(tecnico);
+        validarRelatorio(relatorio, tokenTecnico);
+        return reportId;
+    }
+
+    private Long criarRelatorioPendente(Orcamento orcamento, String codigoAmostra) throws Exception {
+        return criarRelatorioPendente(orcamento, codigoAmostra, "Análise cromatográfica");
+    }
+
+    private Long criarRelatorioPendente(Orcamento orcamento, String codigoAmostra, String tipoEnsaio)
+            throws Exception {
+        Amostra amostra = new Amostra();
+        amostra.setCodigo(codigoAmostra);
+        amostra.setDescricao("Amostra " + codigoAmostra);
+        amostra.setOrcamento(orcamento);
+        amostra = amostras.saveAndFlush(amostra);
+
+        ExecucaoEnsaio ensaio = new ExecucaoEnsaio();
+        ensaio.setCodigo("ER-" + UUID.randomUUID().toString().substring(0, 24));
+        ensaio.setAmostra(amostra);
+        ensaio.setOrcamento(orcamento);
+        ensaio.setResponsavel(tecnico);
+        ensaio.setTipo(tipoEnsaio);
+        ensaio.setTipoAnalise("chromatography");
+        ensaio.setMetodo("Método registrado");
+        ensaio.setNorma("Norma registrada");
+        ensaio.setDataAgendada(LocalDate.of(2026, 11, 7));
+        ensaio.setStatus(StatusEnsaio.DRAFTING_REPORT);
+        ensaio = ensaios.saveAndFlush(ensaio);
+
+        String tokenTecnico = "Bearer " + jwtService.generateToken(tecnico);
+        mockMvc.perform(post("/api/tests/{id}/reports/preparation", ensaio.getId())
+                        .header("Authorization", tokenTecnico))
+                .andExpect(status().isCreated());
+        RelatorioTecnico relatorio = relatorios.findByExecucaoIdOrderByIdAsc(ensaio.getId()).getFirst();
+        return relatorio.getId();
+    }
+
+    private void validarRelatorio(RelatorioTecnico relatorio, String tokenTecnico) throws Exception {
+        String fingerprint = fingerprintRelatorio(relatorio.getId(), tokenTecnico);
+        mockMvc.perform(post("/api/reports/{id}/validation", relatorio.getId())
+                        .header("Authorization", tokenTecnico)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"version\":" + relatorio.getVersion()
+                                + ",\"contentFingerprint\":\"" + fingerprint + "\"}"))
+                .andExpect(status().isOk());
+    }
+
+    private String fingerprintRelatorio(Long relatorioId, String token) throws Exception {
+        String detalhe = mockMvc.perform(get("/api/reports/{id}", relatorioId)
+                        .header("Authorization", token))
+                .andExpect(status().isOk())
+                .andReturn().getResponse().getContentAsString();
+        return objectMapper.readTree(detalhe).get("contentFingerprint").asText();
+    }
+
+    @Test
     void permiteConsultarOrcamentoEPdfDaEmpresaVinculada() throws Exception {
         mockMvc.perform(
                         get("/api/client/quotes/{id}", orcamentoA.getId())
@@ -145,6 +668,43 @@ class FluxoClienteTests {
                 .andExpect(status().isOk())
                 .andExpect(content().contentType(MediaType.APPLICATION_PDF))
                 .andExpect(content().bytes("%PDF-1.4 demo".getBytes()));
+    }
+
+    @Test
+    void listaClienteSemCarregarBytesDosPdfsDeCadaRelatorio() throws Exception {
+        criarRelatorioPublicado(orcamentoA, "AMOSTRA-LOTE-CLIENTE-A");
+        criarRelatorioPublicado(orcamentoA, "AMOSTRA-LOTE-CLIENTE-B");
+        clearInvocations(documentosRelatorios);
+
+        mockMvc.perform(get("/api/client/reports").header("Authorization", tokenClienteA))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.length()").value(2));
+
+        verify(documentosRelatorios, never()).findByRelatorioId(any());
+        verify(documentosRelatorios, times(1)).buscarIdsComPdfValido(anyCollection());
+
+        clearInvocations(documentosRelatorios);
+        mockMvc.perform(get("/api/client/quotes/{id}/reports", orcamentoA.getId())
+                        .header("Authorization", tokenClienteA))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.reports.length()").value(2));
+        verify(documentosRelatorios, never()).findByRelatorioId(any());
+        verify(documentosRelatorios, times(1)).buscarIdsComPdfValido(anyCollection());
+    }
+
+    @Test
+    void omiteDocumentoPublicoComPdfInvalido() throws Exception {
+        Long reportId = criarRelatorioPublicado(orcamentoA, "AMOSTRA-PDF-INVALIDO");
+        DocumentoRelatorio documento = documentosRelatorios.findByRelatorioId(reportId).orElseThrow();
+        documento.setContent("conteúdo que não é PDF".getBytes(java.nio.charset.StandardCharsets.UTF_8));
+        documentosRelatorios.saveAndFlush(documento);
+
+        mockMvc.perform(get("/api/client/reports").header("Authorization", tokenClienteA))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.length()").value(0));
+        mockMvc.perform(get("/api/client/reports/{id}/file", reportId)
+                        .header("Authorization", tokenClienteA))
+                .andExpect(status().isNotFound());
     }
 
     @Test
@@ -709,6 +1269,8 @@ class FluxoClienteTests {
         Orcamento orcamento = new Orcamento();
         orcamento.setEmpresa(empresa);
         orcamento.setCode(codigo);
+        orcamento.setProtocol("L-TEST-2026-" + codigo);
+        orcamento.setLaboratoryName("Laboratório de teste");
         orcamento.setName(codigo);
         orcamento.setDescription("Análise de amostra");
         orcamento.setStage("Em negociação");
@@ -730,6 +1292,7 @@ class FluxoClienteTests {
                 orcamento.getEmpresa().getId().toString(),
                 orcamento.getName(),
                 "Laboratório de teste",
+                "L-TEST-2026-" + orcamento.getCode(),
                 orcamento.getDescription(),
                 null,
                 "Contato de teste",

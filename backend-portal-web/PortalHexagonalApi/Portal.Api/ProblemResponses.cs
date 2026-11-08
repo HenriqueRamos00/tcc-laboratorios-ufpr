@@ -185,4 +185,40 @@ internal static class ProblemResponses
             "Documento nao encontrado.",
             "Este orcamento nao tem documento publicado.");
     }
+
+    public static IActionResult ReportAuthenticationRequired(this ControllerBase controller)
+    {
+        return controller.AsProblem(
+            StatusCodes.Status401Unauthorized,
+            "report-authentication-required",
+            "Autenticação necessária.",
+            "Entre novamente para consultar os relatórios publicados.");
+    }
+
+    public static IActionResult ReportAccessForbidden(this ControllerBase controller)
+    {
+        return controller.AsProblem(
+            StatusCodes.Status403Forbidden,
+            "report-access-forbidden",
+            "Acesso ao relatório proibido.",
+            "O usuário autenticado não tem acesso a este relatório.");
+    }
+
+    public static IActionResult ReportDocumentNotFound(this ControllerBase controller)
+    {
+        return controller.AsProblem(
+            StatusCodes.Status404NotFound,
+            "report-document-not-found",
+            "Relatório não encontrado.",
+            "Nenhum relatório publicado com este identificador.");
+    }
+
+    public static IActionResult ReportSourceUnavailable(this ControllerBase controller)
+    {
+        return controller.AsProblem(
+            StatusCodes.Status502BadGateway,
+            "report-source-unavailable",
+            "Fonte de relatórios indisponível.",
+            "A fonte de relatórios não respondeu à consulta.");
+    }
 }

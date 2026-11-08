@@ -179,7 +179,7 @@ describe('Formulário de ensaio', () => {
   });
 
   it('mostra Novo ensaio sem expor código ou placeholder na criação', () => {
-    const heading = fixture.nativeElement.querySelector('header h1') as HTMLElement;
+    const heading = fixture.nativeElement.querySelector('app-page-header h1') as HTMLElement;
 
     expect(heading.textContent).toContain('Novo ensaio');
     expect(heading.textContent).not.toContain(saved.code);
@@ -195,12 +195,14 @@ describe('Formulário de ensaio', () => {
     component.editId.set(saved.id);
     component.detail.set(saved);
     fixture.detectChanges();
-    const heading = fixture.nativeElement.querySelector('header h1') as HTMLElement;
+    const heading = fixture.nativeElement.querySelector('app-page-header h1') as HTMLElement;
+    const badge = fixture.nativeElement.querySelector('app-page-header [acoes]') as HTMLElement;
 
     expect(heading.textContent).toContain('Editar ensaio');
-    expect(heading.textContent).toContain('Código do ensaio:');
-    expect(heading.textContent).toContain(saved.code);
-    expect(heading.querySelector('.font-mono')?.textContent).toContain(saved.code);
+    expect(heading.textContent).not.toContain(saved.code);
+    expect(badge.textContent).toContain('Código do ensaio:');
+    expect(badge.textContent).toContain(saved.code);
+    expect(badge.classList.contains('font-mono')).toBeTrue();
   });
 
   it('abre a alteração de status pela edição de um ensaio persistido sem mudanças', () => {

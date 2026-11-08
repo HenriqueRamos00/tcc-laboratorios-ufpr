@@ -15,6 +15,7 @@ public record OrcamentoTecnicoDetalheResponse(
         String technicalStatus,
         String description,
         String laboratoryName,
+        String protocol,
         String scope,
         List<OrcamentoTecnicoItemResponse> items) {
     public static OrcamentoTecnicoDetalheResponse from(
@@ -28,6 +29,7 @@ public record OrcamentoTecnicoDetalheResponse(
                 technicalStatus == null ? null : technicalStatus.codigo(),
                 orcamento.getDescription(),
                 orcamento.getLaboratoryName(),
+                orcamento.getProtocol(),
                 orcamento.getScope(),
                 orcamento.getItems().stream().map(OrcamentoTecnicoItemResponse::from).toList());
     }

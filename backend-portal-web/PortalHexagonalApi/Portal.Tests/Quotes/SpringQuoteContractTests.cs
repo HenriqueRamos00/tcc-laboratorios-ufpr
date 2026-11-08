@@ -19,6 +19,7 @@ public sealed class SpringQuoteContractTests
     private const string QuoteJson = """
         {"id":"52","code":"ORC-52","name":"Análise de óleo","status":"InProgress",
         "stage":"Em execução","description":"Análise físico-química","companyName":"EMPRESA DE ENERGIA",
+        "protocol":"L-45490-2026-X",
         "externalContactName":"Ana","externalContactEmail":"ana@example.test",
         "totalPrice":1234.56,"createdDate":"2026-10-20T13:45:00-03:00"}
         """;
@@ -143,6 +144,7 @@ public sealed class SpringQuoteContractTests
         Assert.Equal("52", (string?)quote["id"]);
         Assert.Equal(1234.56m, (decimal?)quote["totalPrice"]);
         Assert.Equal("Em execução", (string?)quote["stage"]);
+        Assert.Equal("L-45490-2026-X", (string?)quote["protocol"]);
         Assert.Equal(string.Empty, (string?)quote["opportunityId"]);
         Assert.Equal("/api/client/quotes/52", Assert.Single(origin.Requests).Path);
     }

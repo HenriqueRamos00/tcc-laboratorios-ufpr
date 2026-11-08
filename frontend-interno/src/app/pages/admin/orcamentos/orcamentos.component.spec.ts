@@ -30,6 +30,7 @@ describe('Página de orçamentos', () => {
     stage: 'PendingAcceptance',
     description: 'Análise físico-química de óleo isolante',
     companyName: 'Copel Distribuição',
+    protocol: 'L-45482-2026-X',
     externalContactName: 'Ana Lima',
     externalContactEmail: 'ana@example.com',
     totalPrice: 12500,
@@ -41,6 +42,7 @@ describe('Página de orçamentos', () => {
     ...orcamento,
     companyId: 'company-1',
     laboratoryName: 'Laboratório de Ensaios',
+    protocol: 'L-45482-2026-X',
     scope: null,
     items: [],
   };

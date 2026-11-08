@@ -1,11 +1,12 @@
 -- Carteira complementar de demonstração do acompanhamento do cliente.
 -- Todos os registros pertencem às empresas ativas vinculadas à cliente Mariana.
 INSERT INTO orcamentos (
-    empresa_id, code, name, status, stage, description, laboratory_name, scope,
+    empresa_id, code, name, status, stage, description, laboratory_name, protocol, scope,
     external_contact_name, external_contact_email, total_price, created_date
 )
 SELECT empresa.id, seed.code, seed.name, seed.status, seed.stage, seed.description,
-       seed.laboratory_name, seed.scope, seed.contact_name, seed.contact_email,
+       seed.laboratory_name, 'L-DEMO-2026-P-' || RIGHT(seed.code, 3) || '-X',
+       seed.scope, seed.contact_name, seed.contact_email,
        seed.total_price, seed.created_date
 FROM (VALUES
     ('98765432000198', 'DEMO-PIPE-2026-001', 'Óleo isolante - avaliação inicial do lote 06', 'PendingAcceptance', 'Qualificação', 'Triagem de demanda para avaliação de óleo isolante de transformador.', 'Laboratório de Óleos e Combustíveis', 'Definição preliminar dos parâmetros físico-químicos.', 'Mariana Costa', 'demo.cliente.mariana@example.test', 6800.00, TIMESTAMP WITH TIME ZONE '2026-10-28 09:00:00-03:00'),

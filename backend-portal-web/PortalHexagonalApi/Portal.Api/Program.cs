@@ -7,9 +7,11 @@ using Portal.Api.Authentication;
 using Portal.Api.LabResults;
 using Portal.Api.Nameplate;
 using Portal.Api.Pipeline;
+using Portal.Api.Reports;
 using Portal.Application.Authentication;
 using Portal.Application.LabResults;
 using Portal.Application.Quotes;
+using Portal.Application.Reports;
 
 WebApplicationBuilder builder = WebApplication.CreateBuilder(args);
 
@@ -48,8 +50,10 @@ builder.Services
 builder.Services.AddScoped<IQuoteUseCase, QuoteService>();
 builder.Services.AddScoped<ILoginUseCase, LoginService>();
 builder.Services.AddScoped<IForConsultingLabResults, LabResultsConsultation>();
+builder.Services.AddScoped<IForConsultingReports, ReportsConsultation>();
 
 builder.Services.AddPortalDataSource(builder.Configuration);
+builder.Services.AddReportDocumentRepository(builder.Configuration);
 
 builder.Services.AddLabTestRepository(builder.Configuration);
 builder.Services.AddEquipmentRegistrySource(builder.Configuration);

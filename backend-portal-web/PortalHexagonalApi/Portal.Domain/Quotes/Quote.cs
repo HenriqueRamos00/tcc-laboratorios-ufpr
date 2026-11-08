@@ -10,6 +10,7 @@ public sealed class Quote
     public string Stage { get; }
     public string Description { get; }
     public string CompanyName { get; }
+    public string? Protocol { get; }
     public string ExternalContactName { get; }
     public string ExternalContactEmail { get; }
     public decimal TotalPrice { get; }
@@ -27,7 +28,8 @@ public sealed class Quote
         string externalContactName,
         string externalContactEmail,
         decimal totalPrice,
-        DateTimeOffset? createdDate)
+        DateTimeOffset? createdDate,
+        string? protocol = null)
     {
         Id = id;
         OpportunityId = opportunityId;
@@ -37,6 +39,7 @@ public sealed class Quote
         Stage = stage;
         Description = description;
         CompanyName = companyName;
+        Protocol = protocol;
         ExternalContactName = externalContactName;
         ExternalContactEmail = externalContactEmail;
         TotalPrice = totalPrice;

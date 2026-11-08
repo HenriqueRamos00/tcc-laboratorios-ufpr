@@ -16,7 +16,7 @@ import {
   ValidationErrors,
   Validators,
 } from '@angular/forms';
-import { ActivatedRoute, Router, RouterLink } from '@angular/router';
+import { ActivatedRoute, Router } from '@angular/router';
 import { MatButtonModule } from '@angular/material/button';
 import { MatSelectChange, MatSelectModule } from '@angular/material/select';
 import { ReferenceSearchComponent, ReferenceSearchOption } from '@shared/components/reference-search/reference-search.component';
@@ -62,6 +62,7 @@ import {
   ConfirmacaoDialogComponent,
   ConfirmacaoDialogData,
 } from '@shared/components/confirmacao-dialog/confirmacao-dialog.component';
+import { PageHeaderComponent } from '@/app/shared/components/page-header/page-header.component';
 
 type ConflictType = 'version' | 'sample' | 'generic' | null;
 type IdentificationMode = 'existing' | 'new' | null;
@@ -88,12 +89,12 @@ const quantidadeValida = (control: AbstractControl): ValidationErrors | null =>
   standalone: true,
   imports: [
     ReactiveFormsModule,
-    RouterLink,
     MatButtonModule,
     MatIconModule,
     MatSelectModule,
     ReferenceSearchComponent,
     MatProgressSpinnerModule,
+    PageHeaderComponent,
   ],
   templateUrl: './ensaio-form.component.html',
   styleUrl: './ensaio-form.component.css',

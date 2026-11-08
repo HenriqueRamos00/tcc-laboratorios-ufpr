@@ -7,7 +7,12 @@ import { ReportsService } from '@/app/services/reports.service';
 
 import { QuoteReportsComponent } from './quote-reports.component';
 
-function conclusao(quoteId: string, quoteCode: string, protocol: string): AnalysisConclusion {
+function conclusao(
+  quoteId: string,
+  quoteCode: string,
+  protocol: string,
+  publishedOn = '08/11/2026',
+): AnalysisConclusion {
   return {
     quoteId,
     quoteCode,
@@ -21,19 +26,34 @@ function conclusao(quoteId: string, quoteCode: string, protocol: string): Analys
         protocol,
         sample: 'Transformador TR-01',
         laboratory: 'Lab. de Óleos',
-        publishedOn: '07/03/2026',
+        publishedOn,
       },
     ],
   };
 }
 
-const CONCLUSAO_POR_ORCAMENTO = new Map<string, AnalysisConclusion>([
+const CONCLUSAO_POR_ORCAMENTO = new Map<string, AnalysisConclusion | null>([
   ['quote-15', conclusao('quote-15', 'EAQ_2026_45496_V_1', '00307/2026')],
   ['quote-18', conclusao('quote-18', 'EAQ_2026_45499_V_1', '00412/2026')],
+  ['quote-10', null],
+  ['quote-20', (() => {
+    const conclusion = conclusao('quote-20', 'ORC-2026-0091', 'L-45490-2026-X');
+    return {
+      ...conclusion,
+      reports: [
+        ...conclusion.reports,
+        { ...conclusion.reports[0], id: 'quote-20-2', code: '805' },
+      ],
+      testType: 'Análise cromatográfica; Análise físico-química',
+      summary: '2 relatórios publicados disponíveis para consulta e download.',
+    };
+  })()],
+  ['quote-21', conclusao('quote-21', 'ORC-2026-0092', 'L-45491-2026-X', '07/11/2026')],
 ]);
 
 function montarTela(quoteId: string) {
   const pedidos: string[] = [];
+  const downloadReport = jasmine.createSpy('downloadReport').and.returnValue(of(new Blob(['%PDF-1.4'])));
 
   TestBed.configureTestingModule({
     providers: [
@@ -45,6 +65,7 @@ function montarTela(quoteId: string) {
             pedidos.push(id);
             return of(CONCLUSAO_POR_ORCAMENTO.get(id) ?? null);
           },
+          downloadReport,
         },
       },
     ],
@@ -54,7 +75,7 @@ function montarTela(quoteId: string) {
   fixture.componentRef.setInput('quoteId', quoteId);
   fixture.detectChanges();
 
-  return { fixture, tela: fixture.nativeElement as HTMLElement, pedidos };
+  return { fixture, tela: fixture.nativeElement as HTMLElement, pedidos, downloadReport };
 }
 
 function protocolosNaTabela(tela: HTMLElement): (string | undefined)[] {
@@ -69,6 +90,22 @@ describe('QuoteReportsComponent, os laudos de um orçamento só', () => {
 
     expect(pedidos).toEqual(['quote-18']);
     expect(protocolosNaTabela(tela)).toEqual(['00412/2026']);
+  });
+
+  it('apresenta a data de publicação recebida da API', () => {
+    const { tela } = montarTela('quote-18');
+
+    const publicacao = tela.querySelector('tbody tr td:nth-child(5)');
+
+    expect(publicacao?.textContent?.trim()).toBe('08/11/2026');
+  });
+
+  it('exibe a data de publicação formatada recebida da API', () => {
+    const { tela } = montarTela('quote-21');
+
+    const publicacao = tela.querySelector('tbody tr td:nth-child(5)');
+
+    expect(publicacao?.textContent?.trim()).toBe('07/11/2026');
   });
 
   // O router reaproveita a instância quando só o identificador muda: sem
@@ -96,5 +133,26 @@ describe('QuoteReportsComponent, os laudos de um orçamento só', () => {
 
     expect(tela.querySelector('tbody')).toBeNull();
     expect(tela.textContent).toContain('ainda não tem relatório publicado');
+  });
+
+  it('apresenta os tipos e o resumo enviados pelo backend', () => {
+    const { tela } = montarTela('quote-20');
+
+    expect(tela.textContent).toContain('ID do Protocolo: L-45490-2026-X');
+    expect(tela.textContent).not.toContain('A fonte atual não fornece');
+    expect(tela.textContent).toContain('Análise cromatográfica; Análise físico-química');
+    expect(tela.textContent).toContain('2 relatórios publicados disponíveis para consulta e download.');
+    expect(tela.textContent).not.toContain('Não informado');
+  });
+
+  it('conecta o botão ao download do PDF do relatório', () => {
+    spyOn(URL, 'createObjectURL').and.returnValue('blob:relatorio');
+    spyOn(HTMLAnchorElement.prototype, 'click');
+    const { tela, downloadReport } = montarTela('quote-15');
+
+    tela.querySelector<HTMLButtonElement>('tbody button')!.click();
+
+    expect(downloadReport).toHaveBeenCalledWith('quote-15-1');
+    expect(URL.createObjectURL).toHaveBeenCalled();
   });
 });

@@ -1,0 +1,192 @@
+<section class="reports-page mx-auto flex w-full max-w-[1440px] flex-col gap-6">
+  <app-page-header
+    [title]="pageTitle"
+    subtitle="Consulte e valide os documentos técnicos dos ensaios."
+    [breadcrumbs]="[{ label: 'Painel técnico', route: '/tecnico' }, { label: breadcrumbLabel }]"
+  />
+
+  <section class="reports-filters" aria-label="Filtros de relatórios">
+    <app-search-field
+      [value]="search.value"
+      placeholder="Nº de registro, amostra, cliente ou tipo..."
+      label="Pesquisar relatórios por registro, amostra, cliente ou tipo"
+      (valueChange)="search.setValue($event)"
+    />
+    <label class="reports-filter">
+      <span>Status documental</span>
+      <select
+        [value]="validationFilter()"
+        aria-label="Filtrar relatórios por status documental"
+        (change)="setValidationFilter($any($event.target).value)"
+      >
+        <option value="all">Todos os status</option>
+        <option value="pending-validation">Aguardando validação</option>
+        <option value="validated">Validado</option>
+      </select>
+    </label>
+    <label class="reports-filter">
+      <span>Publicação no portal do cliente</span>
+      <select
+        [value]="publicationFilter()"
+        aria-label="Filtrar relatórios por publicação no portal do cliente"
+        (change)="setPublicationFilter($any($event.target).value)"
+      >
+        <option value="all">Todos</option>
+        <option value="published">Sim</option>
+        <option value="unpublished">Não</option>
+      </select>
+    </label>
+  </section>
+
+  <section class="reports-workspace" aria-label="Lista e detalhe de relatórios">
+    <aside class="reports-list-panel" aria-label="Lista de relatórios">
+      <div class="reports-list-heading">
+        <div>
+          <p class="reports-overline">Documentos técnicos</p>
+          <h2>Relatórios</h2>
+        </div>
+        <span class="reports-count" [attr.aria-label]="totalItems() + ' relatórios'">
+          {{ totalItems() }}
+        </span>
+      </div>
+
+      @if (listLoading()) {
+        <div class="reports-loading-list" aria-hidden="true">
+          @for (row of [1, 2, 3]; track row) {
+            <div class="reports-skeleton-row">
+              <span></span><span></span><span></span>
+            </div>
+          }
+        </div>
+      } @else if (listError()) {
+        <div class="reports-list-message">
+          <app-empty-state
+            title="Não foi possível carregar"
+            [descricao]="listError()!"
+            icon="cloud_off"
+            tom="erro"
+          >
+            <button mat-stroked-button type="button" (click)="retryList()">
+              <mat-icon>refresh</mat-icon>
+              Tentar novamente
+            </button>
+          </app-empty-state>
+        </div>
+      } @else if (reports().length === 0) {
+        <div class="reports-list-message">
+          <app-empty-state
+            title="Nenhum relatório encontrado"
+            descricao="Ajuste a busca ou os filtros para consultar outros relatórios."
+            icon="description"
+          />
+        </div>
+      } @else {
+        <div class="reports-list" aria-label="Resultados da pesquisa">
+          @for (report of reports(); track report.id) {
+            <button
+              type="button"
+              class="report-list-item"
+              [class.report-list-item--selected]="selectedId() === report.id"
+              [attr.aria-pressed]="selectedId() === report.id"
+              (click)="selectReport(report)"
+            >
+              <span class="report-list-item__top">
+                <span class="report-reference mono">{{ report.id }}</span>
+                <span [class]="statusClass(report.validationStatus)">
+                  {{ statusLabel(report.validationStatus) }}
+                </span>
+              </span>
+              <span class="report-list-item__client">{{ report.company.name }}</span>
+              <span class="report-list-item__meta">
+                {{ report.type }}<span aria-hidden="true"> · </span>{{ report.sample.code }}
+              </span>
+              <span class="report-list-item__bottom">
+                <span [class]="publicationClass(report.published)">
+                  <mat-icon aria-hidden="true">{{ report.published ? 'public' : 'public_off' }}</mat-icon>
+                  {{ publicationLabel(report.published) }}
+                </span>
+                @if (report.pdfAvailable) {
+                  <mat-icon class="report-pdf-icon" aria-hidden="true">picture_as_pdf</mat-icon>
+                }
+              </span>
+            </button>
+          }
+        </div>
+
+        @if (hasMoreThanOnePage()) {
+          <nav class="reports-pagination" aria-label="Paginação dos relatórios">
+            <button
+              mat-icon-button
+              type="button"
+              aria-label="Página anterior"
+              [disabled]="page() <= 1 || listLoading()"
+              (click)="previousPage()"
+            >
+              <mat-icon>chevron_left</mat-icon>
+            </button>
+            <span>Página {{ page() }} de {{ pageCount() }}</span>
+            <button
+              mat-icon-button
+              type="button"
+              aria-label="Próxima página"
+              [disabled]="page() >= pageCount() || listLoading()"
+              (click)="nextPage()"
+            >
+              <mat-icon>chevron_right</mat-icon>
+            </button>
+          </nav>
+        }
+      }
+    </aside>
+
+    <section class="reports-detail-panel" aria-label="Detalhes do relatório selecionado">
+      @if (listLoading() || detailLoading()) {
+        <div class="reports-detail-loading" role="status" aria-live="polite">
+          <mat-spinner diameter="30" aria-label="Carregando relatório" />
+          <p>Carregando relatório técnico…</p>
+        </div>
+      } @else if (detailError()) {
+        <div class="reports-detail-message">
+          <app-empty-state
+            title="Não foi possível carregar o relatório"
+            [descricao]="detailError()!"
+            icon="cloud_off"
+            tom="erro"
+          >
+            <button mat-stroked-button type="button" (click)="retryDetail()">
+              <mat-icon>refresh</mat-icon>
+              Tentar novamente
+            </button>
+          </app-empty-state>
+        </div>
+      } @else if (!detail()) {
+        <div class="reports-detail-message">
+          <app-empty-state
+            title="Selecione um relatório"
+            descricao="Os dados do documento técnico aparecerão aqui."
+            icon="description"
+          />
+        </div>
+      } @else {
+        <app-report-detail
+          [report]="detail()!"
+          [saving]="saving()"
+          [validationConflict]="validationConflict()"
+          [validationMessage]="validationMessage()"
+          [validationError]="validationError()"
+          [publishing]="publishing()"
+          [publicationConflict]="publicationConflict()"
+          [publicationMessage]="publicationMessage()"
+          [publicationError]="publicationError()"
+          [pdfLoading]="pdfLoading()"
+          [pdfError]="pdfError()"
+          (validate)="validateReport()"
+          (publish)="publishReport()"
+          (retry)="retryDetail()"
+          (openPdf)="openPdf()"
+          (downloadPdf)="downloadPdf()"
+        />
+      }
+    </section>
+  </section>
+</section>

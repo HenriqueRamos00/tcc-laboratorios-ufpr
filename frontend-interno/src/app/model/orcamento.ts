@@ -6,6 +6,7 @@ export interface Orcamento {
   readonly stage: string;
   readonly description: string;
   readonly companyName: string;
+  readonly protocol: string;
   readonly externalContactName: string;
   readonly externalContactEmail: string;
   readonly totalPrice: number;
@@ -32,6 +33,7 @@ export interface OrcamentoRequest {
   readonly companyId: string;
   readonly name: string;
   readonly laboratoryName: string;
+  readonly protocol: string;
   readonly description: string;
   readonly scope: string | null;
   readonly externalContactName: string;

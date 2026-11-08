@@ -26,6 +26,7 @@ function quoteAtStage(stageName: string): Quote {
     stage: stageName,
     description: 'Análise físico-química e cromatografia',
     companyName: 'Empresa Exemplo Alfa Ltda',
+    protocol: 'L-45487-2026-X',
     externalContactName: 'Fulano de Tal',
     externalContactEmail: 'fulano@exemplo.com',
     totalPrice: 4200,

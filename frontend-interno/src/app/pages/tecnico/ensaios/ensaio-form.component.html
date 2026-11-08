@@ -1,22 +1,18 @@
-<nav class="mb-2 flex flex-wrap items-center gap-1 text-sm" aria-label="Trilha de navegação">
-  <a routerLink="/tecnico">Painel técnico</a>
-  <mat-icon class="icone-16" aria-hidden="true">chevron_right</mat-icon>
-  <a routerLink="/tecnico/ensaios">Ensaios</a>
-  <mat-icon class="icone-16" aria-hidden="true">chevron_right</mat-icon>
-  <span aria-current="page">{{ editId() ? "Editar ensaio" : "Novo ensaio" }}</span>
-</nav>
-
-<header class="mb-6">
-  <h1 class="m-0 flex flex-wrap items-center justify-start gap-x-3 gap-y-2 text-2xl font-semibold text-lactec-ink md:text-3xl">
-    <span>{{ editId() ? "Editar ensaio" : "Novo ensaio" }}</span>
-    @if (editId() && detail()?.code; as code) {
-      <span class="inline-flex max-w-full min-w-0 break-words rounded-md border border-lactec-line bg-lactec-line-soft px-2.5 py-1 font-mono text-sm font-medium leading-5 text-lactec-muted">
-        <span class="sr-only">Código do ensaio: </span>{{ code }}
-      </span>
-    }
-  </h1>
-  <p class="mt-1 text-sm text-lactec-muted">Registre os dados da análise e seus resultados.</p>
-</header>
+<app-page-header
+  [title]="editId() ? 'Editar ensaio' : 'Novo ensaio'"
+  subtitle="Registre os dados da análise e seus resultados."
+  [breadcrumbs]="[
+    { label: 'Painel técnico', route: '/tecnico' },
+    { label: 'Ensaios', route: '/tecnico/ensaios' },
+    { label: editId() ? 'Editar ensaio' : 'Novo ensaio' },
+  ]"
+>
+  @if (editId() && detail()?.code; as code) {
+    <span acoes class="inline-flex max-w-full min-w-0 break-words rounded-md border border-lactec-line bg-lactec-line-soft px-2.5 py-1 font-mono text-sm font-medium leading-5 text-lactec-muted">
+      <span class="sr-only">Código do ensaio: </span>{{ code }}
+    </span>
+  }
+</app-page-header>
 
 @if (detailLoading() && !detail()) {
   <div class="flex min-h-48 items-center justify-center gap-3" role="status" aria-live="polite">
