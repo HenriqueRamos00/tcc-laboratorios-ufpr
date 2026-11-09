@@ -1,9 +1,11 @@
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Options;
 
 using Portal.Adapters.Pipeline;
 using Portal.Api.Pipeline;
 using Portal.Application.Pipeline;
+using Portal.Tests.AutoLab;
 
 using Xunit;
 
@@ -32,27 +34,30 @@ public sealed class LaboratoryProgressSourceRegistrationTests
     }
 
     [Fact]
-    public void TheInMemorySampleSourceRegistersTheWrittenSampleAdapter()
+    public void TheSqlServerSourceRegistersTheAutoLabAdapter()
     {
-        ServiceProvider provider = Register("in-memory-sample").BuildServiceProvider();
+        IServiceCollection services = new ServiceCollection()
+            .AddLaboratoryProgressSource(AutoLabSettings.Configuration(AutoLabSettings.Complete("LaboratoryProgress:Source")));
 
-        Assert.IsType<InMemorySituaProcessRepository>(
-            provider.GetRequiredService<ILaboratoryProgressRepository>());
+        Assert.IsType<AutoLabSituaProcessRepository>(AutoLabSettings.ResolveInScope<ILaboratoryProgressRepository>(services));
     }
 
     [Fact]
-    public void TheSqlServerSourceAnnouncesThatItHasNoAdapter()
+    public void TheSqlServerSourceWithoutTheAutoLabSettingsFailsValidation()
     {
-        Assert.Throws<NotSupportedException>(() => Register("sql-server"));
+        IServiceCollection services = new ServiceCollection()
+            .AddLaboratoryProgressSource(AutoLabSettings.Configuration(AutoLabSettings.WithoutDatabase("LaboratoryProgress:Source")));
+
+        Assert.Throws<OptionsValidationException>(() => AutoLabSettings.ResolveInScope<ILaboratoryProgressRepository>(services));
     }
 
     [Fact]
     public void AnUnknownSourceBringsStartupDownNamingTheValue()
     {
         InvalidOperationException failure = Assert.Throws<InvalidOperationException>(
-            () => Register("in-memory-sampl"));
+            () => Register("sqlserver"));
 
-        Assert.Contains("in-memory-sampl", failure.Message, StringComparison.Ordinal);
+        Assert.Contains("sqlserver", failure.Message, StringComparison.Ordinal);
     }
 
     private static IServiceCollection Register(string? source)

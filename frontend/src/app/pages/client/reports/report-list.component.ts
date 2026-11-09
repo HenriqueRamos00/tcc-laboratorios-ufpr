@@ -1,5 +1,6 @@
 import { ChangeDetectionStrategy, Component, computed, DestroyRef, inject, signal } from '@angular/core';
-import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
+import { takeUntilDestroyed, toObservable } from '@angular/core/rxjs-interop';
+import { catchError, EMPTY, switchMap, tap } from 'rxjs';
 import { NgClass } from '@angular/common';
 import { MatIconModule } from '@angular/material/icon';
 import { RouterLink } from '@angular/router';
@@ -7,6 +8,7 @@ import { RouterLink } from '@angular/router';
 import { EmptyStateComponent } from '@shared/components/empty-state/empty-state.component';
 import { PageHeaderComponent } from '@shared/components/page-header/page-header.component';
 import { SearchFieldComponent } from '@shared/components/search-field/search-field.component';
+import { PaginationComponent } from '@shared/components/pagination/pagination.component';
 
 import {
   badgeFor,
@@ -14,9 +16,12 @@ import {
   type StatusBadge,
   toDisplayedQuote,
 } from '@/app/model/quote-presentation';
-import type { PublishedReport } from '@/app/model/report';
+import { DEFAULT_PAGE_SIZE } from '@/app/model/page';
+import type { Report } from '@/app/model/report';
 import { QuotesService } from '@/app/services/quotes.service';
 import { ReportsService } from '@/app/services/reports.service';
+
+import { ReportTableComponent } from './report-table/report-table.component';
 
 // A tela tem dois jeitos de achar um laudo, e nenhum dos dois acompanha etapa:
 // quem já sabe o que procura varre todos os laudos publicados; quem veio pelo
@@ -33,6 +38,8 @@ type ReportsTab = 'reports' | 'quotes';
     PageHeaderComponent,
     SearchFieldComponent,
     EmptyStateComponent,
+    PaginationComponent,
+    ReportTableComponent,
   ],
   templateUrl: './report-list.component.html',
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -47,7 +54,11 @@ export class ReportListComponent {
   protected readonly reportSearch = signal('');
   protected readonly quoteSearch = signal('');
 
-  protected readonly reports = signal<readonly PublishedReport[] | null>(null);
+  protected readonly pageSize = DEFAULT_PAGE_SIZE;
+  protected readonly reportPage = signal(1);
+  protected readonly reportTotal = signal(0);
+  protected readonly reportsLoading = signal(true);
+  protected readonly reports = signal<readonly Report[] | null>(null);
   protected readonly quotesWithReport = signal<readonly DisplayedQuote[] | null>(null);
   protected readonly reportsFailed = signal(false);
   protected readonly quotesFailed = signal(false);
@@ -56,9 +67,10 @@ export class ReportListComponent {
     const list = this.reports() ?? [];
     const term = this.reportSearch().trim().toLowerCase();
     if (!term) return list;
-    return list.filter(
-      (report) =>
-        report.code.toLowerCase().includes(term) || report.protocol.toLowerCase().includes(term),
+    return list.filter((report) =>
+      [report.identification, report.requestNumber, report.quoteCode].some((value) =>
+        (value ?? '').toLowerCase().includes(term),
+      ),
     );
   });
 
@@ -75,12 +87,27 @@ export class ReportListComponent {
   });
 
   constructor() {
-    this.reportsService
-      .publishedReports()
-      .pipe(takeUntilDestroyed(this.destroyRef))
-      .subscribe({
-        next: (list) => this.reports.set(list),
-        error: () => this.reportsFailed.set(true),
+    toObservable(this.reportPage)
+      .pipe(
+        tap(() => {
+          this.reportsLoading.set(true);
+          this.reportsFailed.set(false);
+        }),
+        switchMap((page) =>
+          this.reportsService.list({ page, pageSize: this.pageSize }).pipe(
+            catchError(() => {
+              this.reportsFailed.set(true);
+              this.reportsLoading.set(false);
+              return EMPTY;
+            }),
+          ),
+        ),
+        takeUntilDestroyed(),
+      )
+      .subscribe((result) => {
+        this.reports.set(result.items);
+        this.reportTotal.set(result.total);
+        this.reportsLoading.set(false);
       });
 
     this.quotesService
@@ -95,6 +122,10 @@ export class ReportListComponent {
           ),
         error: () => this.quotesFailed.set(true),
       });
+  }
+
+  protected goToReportPage(page: number): void {
+    this.reportPage.set(page);
   }
 
   protected selectTab(tab: ReportsTab): void {

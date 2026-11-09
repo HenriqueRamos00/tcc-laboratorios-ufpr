@@ -1,49 +1,74 @@
 import { TestBed } from '@angular/core/testing';
 import { provideRouter } from '@angular/router';
-import { of } from 'rxjs';
+import { of, throwError } from 'rxjs';
 
-import type { AnalysisConclusion } from '@/app/model/report';
+import type { Quote } from '@/app/model/quote';
+import type { Report } from '@/app/model/report';
+import type { ReportQuery } from '@/app/services/reports.service';
+import { QuotesService } from '@/app/services/quotes.service';
 import { ReportsService } from '@/app/services/reports.service';
 
 import { QuoteReportsComponent } from './quote-reports.component';
 
-function conclusao(quoteId: string, quoteCode: string, protocol: string): AnalysisConclusion {
+function quote(id: string, code: string, stage: string): Quote {
   return {
-    quoteId,
-    quoteCode,
-    protocol,
-    testType: 'Ensaios Físico-Químicos em Óleo Isolante',
-    summary: 'A análise foi concluída e validada pela curadoria laboratorial.',
-    reports: [
-      {
-        id: `${quoteId}-1`,
-        code: `LACTEC-${protocol}`,
-        protocol,
-        sample: 'Transformador TR-01',
-        laboratory: 'Lab. de Óleos',
-        publishedOn: '07/03/2026',
-      },
-    ],
+    id, code, name: `Proposta ${code}`, status: 'Finalizado', stage, description: '',
+    companyName: 'EMPRESA DE ENERGIA', externalContactName: '', externalContactEmail: '',
+    totalPrice: 0, createdDate: null,
   };
 }
 
-const CONCLUSAO_POR_ORCAMENTO = new Map<string, AnalysisConclusion>([
-  ['quote-15', conclusao('quote-15', 'EAQ_2026_45496_V_1', '00307/2026')],
-  ['quote-18', conclusao('quote-18', 'EAQ_2026_45499_V_1', '00412/2026')],
+function laudo(identification: string, quoteCode: string): Report {
+  return {
+    id: `id-${identification}`,
+    identification,
+    requestNumber: 'S-1',
+    quoteCode,
+    sampleId: null,
+    sampleName: 'Transformador TR-01',
+    client: 'EMPRESA DE ENERGIA',
+    status: 'Publicado',
+    scheduledDate: null,
+    issueDate: '2026-03-07',
+    publicationDate: '2026-03-08',
+    hasSignedDocument: true,
+  };
+}
+
+const ORCAMENTOS = new Map<string, Quote>([
+  ['quote-15', quote('quote-15', 'EAQ_2026_45496_V_1', 'Relatório publicado')],
+  ['quote-18', quote('quote-18', 'EAQ_2026_45499_V_1', 'Elaborando relatório')],
+  ['quote-10', quote('quote-10', 'EAQ_2026_45491_V_1', 'Em execução')],
+  ['quote-16', quote('quote-16', 'EAQ_2026_45497_V_1', 'Fechado perdido')],
+]);
+
+const LAUDOS_POR_CODIGO = new Map<string, Report[]>([
+  ['EAQ_2026_45496_V_1', [laudo('LACTEC-00307/2026', 'EAQ_2026_45496_V_1')]],
+  ['EAQ_2026_45499_V_1', [laudo('LACTEC-00412/2026', 'EAQ_2026_45499_V_1')]],
 ]);
 
 function montarTela(quoteId: string) {
-  const pedidos: string[] = [];
+  const pedidos: ReportQuery[] = [];
 
   TestBed.configureTestingModule({
     providers: [
       provideRouter([]),
       {
+        provide: QuotesService,
+        useValue: {
+          getQuoteById: (id: string) => {
+            const found = ORCAMENTOS.get(id);
+            return found ? of(found) : throwError(() => new Error('404'));
+          },
+        },
+      },
+      {
         provide: ReportsService,
         useValue: {
-          analysisConclusion: (id: string) => {
-            pedidos.push(id);
-            return of(CONCLUSAO_POR_ORCAMENTO.get(id) ?? null);
+          list: (query: ReportQuery) => {
+            pedidos.push(query);
+            const items = LAUDOS_POR_CODIGO.get(query.quoteCode ?? '') ?? [];
+            return of({ items, total: items.length, page: query.page, pageSize: query.pageSize });
           },
         },
       },
@@ -57,38 +82,57 @@ function montarTela(quoteId: string) {
   return { fixture, tela: fixture.nativeElement as HTMLElement, pedidos };
 }
 
-function protocolosNaTabela(tela: HTMLElement): (string | undefined)[] {
-  return Array.from(tela.querySelectorAll('tbody tr td:nth-child(2)')).map((celula) =>
+function relatoriosNaTabela(tela: HTMLElement): (string | undefined)[] {
+  return Array.from(tela.querySelectorAll('tbody tr td:first-child')).map((celula) =>
     celula.textContent?.trim(),
   );
 }
 
 describe('QuoteReportsComponent, os laudos de um orçamento só', () => {
-  it('pede ao serviço o orçamento que o endereço nomeia e mostra só os laudos dele', () => {
+  it('pede à API os laudos pelo código do orçamento que o endereço nomeia', () => {
     const { tela, pedidos } = montarTela('quote-18');
 
-    expect(pedidos).toEqual(['quote-18']);
-    expect(protocolosNaTabela(tela)).toEqual(['00412/2026']);
+    expect(pedidos).toEqual([{ quoteCode: 'EAQ_2026_45499_V_1', page: 1, pageSize: 50 }]);
+    expect(relatoriosNaTabela(tela)).toEqual(['LACTEC-00412/2026']);
   });
 
-  // O router reaproveita a instância quando só o identificador muda: sem
-  // recarregar, a tela fica mostrando os laudos do orçamento anterior.
   it('troca os laudos quando o endereço passa a nomear outro orçamento', () => {
     const { fixture, tela, pedidos } = montarTela('quote-18');
 
     fixture.componentRef.setInput('quoteId', 'quote-15');
     fixture.detectChanges();
 
-    expect(pedidos).toEqual(['quote-18', 'quote-15']);
-    expect(protocolosNaTabela(tela)).toEqual(['00307/2026']);
+    expect(pedidos.map((pedido) => pedido.quoteCode)).toEqual([
+      'EAQ_2026_45499_V_1',
+      'EAQ_2026_45496_V_1',
+    ]);
+    expect(relatoriosNaTabela(tela)).toEqual(['LACTEC-00307/2026']);
   });
 
-  it('a etapa destacada é a de relatório publicado', () => {
+  it('a etapa destacada é a etapa real do orçamento', () => {
+    const publicado = montarTela('quote-15').tela;
+    expect(publicado.querySelector('.status-stepper__step[data-state="active"]')?.textContent)
+      .toContain('Relatório publicado');
+
+    TestBed.resetTestingModule();
+    const elaborando = montarTela('quote-18').tela;
+    expect(elaborando.querySelector('.status-stepper__step[data-state="active"]')?.textContent)
+      .toContain('Elaborando relatório');
+  });
+
+  it('orçamento encerrado não mostra a linha de etapas', () => {
+    const { tela } = montarTela('quote-16');
+
+    expect(tela.querySelector('app-status-stepper')).toBeNull();
+  });
+
+  it('tipo de ensaio, resumo e laboratório, sem coluna no AutoLAB, aparecem como não disponíveis', () => {
     const { tela } = montarTela('quote-15');
 
-    const atual = tela.querySelector('.status-stepper__step[data-state="active"]');
-
-    expect(atual?.textContent?.trim()).toContain('Relatório publicado');
+    expect(tela.textContent).toContain('Tipo de ensaio: Dados não disponíveis');
+    expect(tela.textContent).toContain('Resumo da análise: Dados não disponíveis');
+    expect(tela.querySelector('tbody tr td:nth-child(4)')?.textContent?.trim())
+      .toBe('Dados não disponíveis');
   });
 
   it('orçamento sem laudo publicado anuncia a espera, em vez de uma tabela vazia', () => {
@@ -96,5 +140,12 @@ describe('QuoteReportsComponent, os laudos de um orçamento só', () => {
 
     expect(tela.querySelector('tbody')).toBeNull();
     expect(tela.textContent).toContain('ainda não tem relatório publicado');
+  });
+
+  it('orçamento que a API não entrega vira mensagem de falha', () => {
+    const { tela, pedidos } = montarTela('quote-99');
+
+    expect(pedidos).toEqual([]);
+    expect(tela.textContent).toContain('Não foi possível carregar os relatórios');
   });
 });

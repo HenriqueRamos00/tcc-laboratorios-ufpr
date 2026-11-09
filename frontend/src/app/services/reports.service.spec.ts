@@ -1,75 +1,84 @@
-import { HttpErrorResponse } from '@angular/common/http';
+import { provideHttpClient } from '@angular/common/http';
+import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { TestBed } from '@angular/core/testing';
-import { of, throwError } from 'rxjs';
-import type { Quote } from '@/app/model/quote';
-import { QuotesService } from './quotes.service';
+
+import { API_URL } from '@/app/environment/env';
+import type { Report } from '@/app/model/report';
+
 import { ReportsService } from './reports.service';
 
-function quote(id: string): Quote {
-  return {
-    id, code: id, name: 'Demo', status: 'Finalizado', stage: 'Relatório publicado',
-    description: '', companyName: 'Demo', externalContactName: '', externalContactEmail: '',
-    totalPrice: 0, createdDate: null,
-  };
-}
+const REPORT: Report = {
+  id: 'b2lkLTE',
+  identification: 'LACTEC-00307/2026',
+  requestNumber: 'S-00307/2026',
+  quoteCode: 'EAQ_2026_45496_V_1',
+  sampleId: 'AM-1',
+  sampleName: 'Transformador TR-01',
+  client: 'EMPRESA DE ENERGIA',
+  status: 'Publicado',
+  scheduledDate: '2026-03-10',
+  issueDate: '2026-03-07',
+  publicationDate: '2026-03-08',
+  hasSignedDocument: true,
+};
 
-describe('ReportsService, relatórios dos orçamentos autorizados', () => {
-  let quotes: jasmine.SpyObj<QuotesService>;
+describe('ReportsService', () => {
   let service: ReportsService;
+  let http: HttpTestingController;
 
   beforeEach(() => {
-    quotes = jasmine.createSpyObj<QuotesService>('QuotesService', ['getQuotes', 'getQuoteById']);
-    TestBed.configureTestingModule({ providers: [{ provide: QuotesService, useValue: quotes }] });
+    TestBed.configureTestingModule({
+      providers: [provideHttpClient(), provideHttpClientTesting()],
+    });
     service = TestBed.inject(ReportsService);
+    http = TestBed.inject(HttpTestingController);
   });
 
-  it('divide os relatórios existentes entre os clientes sem reutilizar a lista anterior', () => {
-    quotes.getQuotes.and.returnValue(of([quote('quote-18')]));
-    service.publishedReports().subscribe((reports) => {
-      expect(reports.length).toBe(4);
-      expect(reports.every((report) => report.protocol === '00412/2026')).toBeTrue();
+  afterEach(() => http.verify());
+
+  it('lista a página pedida e lê o total do cabeçalho', () => {
+    let total = -1;
+    let items: readonly Report[] = [];
+    service.list({ page: 2, pageSize: 50 }).subscribe((page) => {
+      total = page.total;
+      items = page.items;
     });
-    quotes.getQuotes.and.returnValue(of([quote('quote-15'), quote('quote-19')]));
-    service.publishedReports().subscribe((reports) => {
-      expect(reports.length).toBe(5);
-      expect(reports.every((report) => report.protocol !== '00412/2026')).toBeTrue();
-    });
+
+    http
+      .expectOne(`${API_URL}/api/reports?page=2&pageSize=50`)
+      .flush([REPORT], { headers: { 'X-Total-Count': '51', 'X-Page': '2', 'X-Page-Size': '50' } });
+
+    expect(total).toBe(51);
+    expect(items).toEqual([REPORT]);
   });
 
-  it('uma conta sem orçamentos não recebe relatórios locais', () => {
-    quotes.getQuotes.and.returnValue(of([]));
-    service.publishedReports().subscribe((reports) => expect(reports).toEqual([]));
+  it('filtra pelo código do orçamento quando ele é informado', () => {
+    service.list({ quoteCode: 'EAQ_2026_45496_V_1', page: 1, pageSize: 50 }).subscribe();
+
+    const request = http.expectOne((req) => req.url === `${API_URL}/api/reports`);
+    expect(request.request.params.get('quoteCode')).toBe('EAQ_2026_45496_V_1');
+    request.flush([]);
   });
 
-  it('consulta o orçamento antes de entregar sua conclusão', () => {
-    quotes.getQuoteById.and.returnValue(of(quote('quote-18')));
-    service.analysisConclusion('quote-18').subscribe((conclusion) => {
-      expect(conclusion?.quoteId).toBe('quote-18');
-      expect(conclusion?.reports.length).toBe(4);
-    });
-    expect(quotes.getQuoteById).toHaveBeenCalledOnceWith('quote-18');
+  it('baixa o PDF assinado com o nome do Content-Disposition', () => {
+    let name: string | null = null;
+    service.signedDocument('b2lkLTE').subscribe((file) => (name = file.name));
+
+    http
+      .expectOne(`${API_URL}/api/reports/b2lkLTE/document`)
+      .flush(new Blob(['%PDF-1.4']), {
+        headers: { 'Content-Disposition': "attachment; filename*=UTF-8''LACTEC-00307%2F2026.pdf" },
+      });
+
+    expect(name as string | null).toBe('LACTEC-00307/2026.pdf');
   });
 
-  it('um orçamento autorizado sem conclusão mantém a resposta nula', () => {
-    quotes.getQuoteById.and.returnValue(of(quote('quote-1')));
-    service.analysisConclusion('quote-1').subscribe((conclusion) => expect(conclusion).toBeNull());
-  });
+  it('sem Content-Disposition, devolve o arquivo sem nome para a tela escolher um', () => {
+    let name: string | null = 'x';
+    service.signedDocument('b2lkLTE').subscribe((file) => (name = file.name));
 
-  it('não entrega a conclusão de outro cliente quando a API responde 404', () => {
-    const failure = new HttpErrorResponse({ status: 404 });
-    quotes.getQuoteById.and.returnValue(throwError(() => failure));
-    service.analysisConclusion('quote-18').subscribe({
-      next: () => fail('Conclusão de outro cliente'),
-      error: (error) => expect(error).toBe(failure),
-    });
-  });
+    http.expectOne(`${API_URL}/api/reports/b2lkLTE/document`).flush(new Blob(['%PDF-1.4']));
 
-  it('propaga falhas da API sem voltar à lista completa de relatórios', () => {
-    const failure = new HttpErrorResponse({ status: 502 });
-    quotes.getQuotes.and.returnValue(throwError(() => failure));
-    service.publishedReports().subscribe({
-      next: () => fail('Fallback de relatórios indevido'),
-      error: (error) => expect(error).toBe(failure),
-    });
+    expect(name as string | null).toBeNull();
   });
 });

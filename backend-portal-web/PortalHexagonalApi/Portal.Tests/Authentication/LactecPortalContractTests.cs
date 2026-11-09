@@ -13,6 +13,7 @@ using Portal.Adapters.BackendAuth;
 using Portal.Adapters.Quotes;
 using Portal.Application.Quotes;
 using Portal.Application.Authentication;
+using Portal.Tests.AutoLab;
 using Xunit;
 
 namespace Portal.Tests.Authentication;
@@ -288,9 +289,18 @@ internal sealed class AuthPortal(HttpMessageHandler handler, string? overrideKey
     public static readonly string SigningKey = Convert.ToBase64String(Enumerable.Repeat((byte)42, 64).ToArray());
     public static readonly string ServiceToken = "svc_" + new string('a', 43);
 
+    private readonly AutoLabTestDatabase _database = AutoLabTestDatabase.WithSample();
+
+    protected override void Dispose(bool disposing)
+    {
+        base.Dispose(disposing);
+
+        if (disposing) _database.Dispose();
+    }
+
     protected override void ConfigureWebHost(IWebHostBuilder builder)
     {
-        builder.UseSetting("LabResults:Source", "embedded-sample");
+        builder.UseSampleAutoLab(_database);
         builder.UseSetting("Portal:DataSource", "lactec");
         builder.UseSetting("BackendLab:BaseUrl", "");
         builder.UseSetting("BackendAuth:BaseUrl", "https://backend-auth.test/");

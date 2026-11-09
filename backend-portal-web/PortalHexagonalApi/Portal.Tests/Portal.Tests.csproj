@@ -9,6 +9,7 @@
 
   <ItemGroup>
     <PackageReference Include="Microsoft.AspNetCore.Mvc.Testing" Version="10.0.8" />
+    <PackageReference Include="Microsoft.EntityFrameworkCore.Sqlite" Version="10.0.8" />
     <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.14.1" />
     <!-- Le o texto do PDF que a suite acabou de gerar. A QuestPDF comprime o fluxo de
          conteudo e embute a fonte como subconjunto, entao procurar a string crua nos bytes
@@ -27,5 +28,6 @@
     <ProjectReference Include="..\Portal.Adapters\Portal.Adapters.csproj" />
     <ProjectReference Include="..\Portal.Api\Portal.Api.csproj" />
     <Content Include="..\Portal.Api\Documents\*.pdf" Link="Documents\%(Filename)%(Extension)" CopyToOutputDirectory="PreserveNewest" />
+    <Content Include="AutoLab\autolab-sample.json" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
 </Project>

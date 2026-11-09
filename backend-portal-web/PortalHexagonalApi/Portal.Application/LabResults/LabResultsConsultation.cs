@@ -1,33 +1,37 @@
 using Portal.Application.Nameplate;
+using Portal.Application.Paging;
+using Portal.Application.ReportDocuments;
+using Portal.Application.Visibility;
 using Portal.Domain.LabResults;
 using Portal.Domain.Nameplate;
 
 namespace Portal.Application.LabResults;
 
 /// <summary>
-/// A aplicacao atras da porta condutora unica. As tres operacoes compartilham a mesma
-/// guarda de inquilino, que e justamente o que estava copiado em dois servicos enquanto a
-/// porta estava partida em duas.
-///
-/// Sao dois atores conduzidos, e este servico e o unico lugar que sabe a ordem em que eles
-/// sao consultados. A ordem e a regra de isolamento desta fatia: a fonte de ensaios e
-/// escopada por inquilino e responde primeiro; o cadastro de equipamentos nao tem coluna de
-/// empresa e so e consultado depois, com os numeros de serie que a primeira resposta trouxe.
-/// Trocar a ordem, ou consultar o cadastro com a chave que chegou na rota, devolve exatamente
-/// a mesma resposta HTTP para uma requisicao legitima e entrega a placa do transformador de
-/// outro cliente para uma requisicao forjada.
+/// A aplicacao atras da porta condutora unica. Este servico e o unico lugar que sabe a ordem
+/// em que os atores conduzidos sao consultados: a fonte de ensaios responde primeiro, dentro
+/// do escopo; o cadastro de equipamentos nao tem coluna de empresa e so e consultado depois,
+/// com os numeros de serie que a primeira resposta trouxe.
 /// </summary>
 public sealed class LabResultsConsultation : IForConsultingLabResults
 {
+    public const int MaxAnalysesPerEquipment = 100;
+
+    private static readonly PageRequest MostRecentAnalysisOnly = new(1, 1);
+    private static readonly PageRequest MostRecentAnalysesOfEquipment = new(1, MaxAnalysesPerEquipment);
+
     private readonly ILabTestRepository _labTestRepository;
     private readonly IEquipmentNameplateRepository _equipmentNameplateRepository;
+    private readonly IReportIssueRepository _reportIssues;
 
     public LabResultsConsultation(
         ILabTestRepository labTestRepository,
-        IEquipmentNameplateRepository equipmentNameplateRepository)
+        IEquipmentNameplateRepository equipmentNameplateRepository,
+        IReportIssueRepository reportIssues)
     {
         _labTestRepository = labTestRepository;
         _equipmentNameplateRepository = equipmentNameplateRepository;
+        _reportIssues = reportIssues;
     }
 
     /// <summary>
@@ -35,54 +39,88 @@ public sealed class LabResultsConsultation : IForConsultingLabResults
     /// por equipamento dentro do laco devolve a mesma resposta HTTP e faz um adaptador de
     /// banco abrir uma consulta por linha da tela.
     /// </summary>
-    public async Task<IReadOnlyList<EquipmentWithNameplate>> ListEquipmentAsync(
-        string tenant,
+    public async Task<Page<EquipmentWithNameplate>> ListEquipmentAsync(
+        VisibilityScope scope,
+        PageRequest page,
         CancellationToken cancellationToken)
     {
-        RequireTenant(tenant);
+        ArgumentNullException.ThrowIfNull(scope);
+        ArgumentNullException.ThrowIfNull(page);
 
-        IReadOnlyList<SampleAnalysis> analyses = await _labTestRepository
-            .GetAnalysesOfTenantAsync(tenant, cancellationToken);
+        Page<SampleAnalysis> analyses = await _labTestRepository
+            .GetAnalysesAsync(scope, page, cancellationToken);
 
-        IReadOnlyList<TestedEquipment> equipmentList = TestedEquipment.Gather(analyses);
+        IReadOnlyList<TestedEquipment> equipmentList = TestedEquipment.Gather(analyses.Items);
 
         IReadOnlyList<EquipmentNameplate> nameplates = await AskTheRegistryAboutAsync(
             equipmentList, cancellationToken);
 
-        return [.. equipmentList.Select(equipment => Pair(equipment, nameplates))];
+        return analyses.WithItems<EquipmentWithNameplate>(
+            [.. equipmentList.Select(equipment => Pair(equipment, nameplates))]);
+    }
+
+    public async Task<Page<EquipmentReportEntry>?> ListReportsAsync(
+        VisibilityScope scope,
+        string equipmentKey,
+        PageRequest page,
+        CancellationToken cancellationToken)
+    {
+        ArgumentNullException.ThrowIfNull(scope);
+        ArgumentNullException.ThrowIfNull(page);
+
+        if (string.IsNullOrWhiteSpace(equipmentKey)) return null;
+
+        Page<SampleAnalysis> analyses = await _labTestRepository
+            .GetAnalysesOfEquipmentAsync(scope, equipmentKey, page, cancellationToken);
+
+        TestedEquipment? equipment = TestedEquipment.Gather(analyses.Items)
+            .FirstOrDefault(found => string.Equals(
+                found.EquipmentKey, equipmentKey.Trim(), StringComparison.Ordinal));
+
+        if (equipment is null)
+            return analyses.TotalCount == 0 ? null : analyses.WithItems<EquipmentReportEntry>([]);
+
+        IReadOnlySet<string> signed = await _reportIssues.GetIdentificationsWithSignedDocumentAsync(
+            [.. equipment.Reports.Select(report => report.Identification).Distinct(StringComparer.Ordinal)],
+            cancellationToken);
+
+        return analyses.WithItems<EquipmentReportEntry>(
+            [.. equipment.Reports.Select(report =>
+                new EquipmentReportEntry(report, signed.Contains(report.Identification)))]);
     }
 
     /// <summary>
     /// Reusa a consulta por equipamento em vez de filtrar a lista inteira na memoria: e a
     /// mesma pergunta que a tela de indicadores faz, e um adaptador de banco vai responder
-    /// com um WHERE em vez de trazer o cliente todo para descartar quase tudo.
+    /// com um WHERE em vez de trazer tudo para descartar quase tudo.
     ///
     /// O cadastro e consultado depois de o equipamento ter sido encontrado nas analises do
-    /// inquilino, e nunca antes. Equipamento de outro cliente devolve ausencia aqui, e a
+    /// escopo, e nunca antes. Equipamento fora do escopo devolve ausencia aqui, e a
     /// pergunta sobre a placa nem chega a ser feita.
     /// </summary>
     public async Task<EquipmentWithNameplate?> GetEquipmentAsync(
-        string tenant,
+        VisibilityScope scope,
         string equipmentKey,
         CancellationToken cancellationToken)
     {
-        RequireTenant(tenant);
+        ArgumentNullException.ThrowIfNull(scope);
 
         if (string.IsNullOrWhiteSpace(equipmentKey)) return null;
 
-        IReadOnlyList<SampleAnalysis> analyses = await _labTestRepository
-            .GetAnalysesOfEquipmentAsync(tenant, equipmentKey, cancellationToken);
+        Page<SampleAnalysis> mostRecent = await _labTestRepository
+            .GetAnalysesOfEquipmentAsync(scope, equipmentKey, MostRecentAnalysisOnly, cancellationToken);
 
-        if (analyses.Count == 0) return null;
+        if (mostRecent.Items.Count == 0) return null;
 
-        TestedEquipment equipment = TestedEquipment.Gather(analyses)[0];
+        TestedEquipment equipment = TestedEquipment.Gather(mostRecent.Items)[0];
 
         return new EquipmentWithNameplate(
             equipment,
             equipment.SerialNumber is null
                 ? null
                 : await _equipmentNameplateRepository.GetNameplateOfAsync(
-                    equipment.SerialNumber, cancellationToken));
+                    equipment.SerialNumber, cancellationToken),
+            mostRecent.TotalCount);
     }
 
     public async Task<SampleHealthIndicators?> GetHealthIndicatorsAsync(
@@ -90,18 +128,37 @@ public sealed class LabResultsConsultation : IForConsultingLabResults
         CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(query);
-
-        RequireTenant(query.Tenant);
+        ArgumentNullException.ThrowIfNull(query.Scope);
 
         if (string.IsNullOrWhiteSpace(query.EquipmentKey))
             return null;
 
-        IReadOnlyList<SampleAnalysis> analyses = await _labTestRepository
-            .GetAnalysesOfEquipmentAsync(query.Tenant, query.EquipmentKey, cancellationToken);
+        Page<SampleAnalysis> recentAnalyses = await _labTestRepository
+            .GetAnalysesOfEquipmentAsync(
+                query.Scope, query.EquipmentKey, MostRecentAnalysesOfEquipment, cancellationToken);
+
+        IReadOnlyList<SampleAnalysis> analyses = recentAnalyses.Items;
 
         if (analyses.Count == 0) return null;
 
         SampleAnalysis? selected = await ResolveSelectedAnalysisAsync(query, analyses, cancellationToken);
+
+        EquipmentNameplate? nameplate = analyses[0].SerialNumber is null
+            ? null
+            : await _equipmentNameplateRepository.GetNameplateOfAsync(
+                analyses[0].SerialNumber!, cancellationToken);
+
+        string? physicalChemicalIdentification = (selected
+            ?? analyses.FirstOrDefault(analysis => analysis.HasPhysicalChemicalProperty))?.Identification;
+        string? gasIdentification = (selected
+            ?? analyses.FirstOrDefault(analysis => analysis.HasDissolvedGas))?.Identification;
+
+        ReportIssue? physicalChemicalReport = await CurrentIssueOfAsync(
+            physicalChemicalIdentification, cancellationToken);
+        ReportIssue? gasReport = string.Equals(
+                gasIdentification, physicalChemicalIdentification, StringComparison.Ordinal)
+            ? physicalChemicalReport
+            : await CurrentIssueOfAsync(gasIdentification, cancellationToken);
 
         return new SampleHealthIndicators(
             analyses[0].SerialNumber,
@@ -114,7 +171,21 @@ public sealed class LabResultsConsultation : IForConsultingLabResults
                 analyses.Where(analysis => analysis.HasDissolvedGas)),
             selected,
             GatherUnreadableResults(analyses),
-            [.. analyses.SelectMany(analysis => analysis.CheckTotalizers())]);
+            [.. analyses.SelectMany(analysis => analysis.CheckTotalizers())])
+        {
+            NominalVoltage = nameplate?.Voltage,
+            PhysicalChemicalReport = physicalChemicalReport,
+            GasReport = gasReport
+        };
+    }
+
+    private async Task<ReportIssue?> CurrentIssueOfAsync(
+        string? identification,
+        CancellationToken cancellationToken)
+    {
+        return identification is null
+            ? null
+            : await _reportIssues.GetCurrentIssueOfAsync(identification, cancellationToken);
     }
 
     /// <summary>
@@ -141,7 +212,7 @@ public sealed class LabResultsConsultation : IForConsultingLabResults
         if (inTheSeries is not null) return inTheSeries;
 
         SampleAnalysis? stranger = await _labTestRepository
-            .GetAnalysisByProtocolAsync(query.Tenant, requestedProtocol, cancellationToken);
+            .GetAnalysisByProtocolAsync(query.Scope, requestedProtocol, cancellationToken);
 
         return stranger is not null
             && string.Equals(
@@ -201,12 +272,7 @@ public sealed class LabResultsConsultation : IForConsultingLabResults
             equipment.SerialNumber is null
                 ? null
                 : nameplates.FirstOrDefault(nameplate => string.Equals(
-                    nameplate.SerialNumber, equipment.SerialNumber, StringComparison.Ordinal)));
-    }
-
-    private static void RequireTenant(string tenant)
-    {
-        if (string.IsNullOrWhiteSpace(tenant))
-            throw new ArgumentException("Consulta sem inquilino.", nameof(tenant));
+                    nameplate.SerialNumber, equipment.SerialNumber, StringComparison.Ordinal)),
+            equipment.Reports.Count);
     }
 }

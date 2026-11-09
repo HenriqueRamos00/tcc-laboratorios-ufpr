@@ -48,7 +48,7 @@ public sealed record SelectedAnalysisResponse
 
 public sealed record TestReportResponse
 {
-    public required string Title { get; init; }
+    public string? Title { get; init; }
 
     public required IReadOnlyList<string> Paragraphs { get; init; }
 }
@@ -103,7 +103,7 @@ public sealed record PhysicalChemicalBlockResponse
 
     public string? Verdict { get; init; }
 
-    public required string NominalVoltage { get; init; }
+    public string? NominalVoltage { get; init; }
 
     public required IReadOnlyList<AnalysisColumnResponse> Columns { get; init; }
 

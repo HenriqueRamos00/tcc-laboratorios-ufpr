@@ -95,7 +95,11 @@
                 ABNT NBR 10576/17
                 <span class="block font-normal text-lactec-muted">
                   Valores-limite para óleo de transformador em uso
-                  ({{ data.physicalChemical.nominalVoltage }})
+                  @if (data.physicalChemical.nominalVoltage; as nominalVoltage) {
+                    ({{ nominalVoltage }})
+                  } @else {
+                    (<app-data-unavailable subject="Tensão nominal" />)
+                  }
                 </span>
               </th>
               @if (historyColumns().length) {
@@ -141,8 +145,20 @@
                 >
                   {{ row.name }}
                 </th>
-                <td class="px-4 py-3 text-lactec-ink">{{ row.method }}</td>
-                <td class="px-4 py-3 text-lactec-ink">{{ row.limit }}</td>
+                <td class="px-4 py-3 text-lactec-ink">
+                  @if (row.method; as method) {
+                    {{ method }}
+                  } @else {
+                    <app-data-unavailable subject="Método" />
+                  }
+                </td>
+                <td class="px-4 py-3 text-lactec-ink">
+                  @if (row.limit; as limit) {
+                    {{ limit }}
+                  } @else {
+                    <app-data-unavailable subject="Valor-limite" />
+                  }
+                </td>
                 @for (value of row.history; track $index) {
                   <td class="px-4 py-3 text-right tabular-nums text-lactec-ink">{{ value }}</td>
                 }
@@ -172,10 +188,16 @@
         id="report-title-physical-chemical"
         class="display m-0 text-base font-semibold tracking-wide text-lactec-ink uppercase"
       >
-        {{ data.physicalChemical.report.title }}
+        @if (data.physicalChemical.report.title; as title) {
+          {{ title }}
+        } @else {
+          <app-data-unavailable subject="Título do relatório" />
+        }
       </h2>
       @for (paragraph of data.physicalChemical.report.paragraphs; track $index) {
         <p class="mt-2 mb-0 text-sm text-lactec-ink-soft">{{ paragraph }}</p>
+      } @empty {
+        <p class="mt-2 mb-0"><app-data-unavailable subject="Conclusão do relatório" /></p>
       }
     </section>
   } @else {
@@ -306,10 +328,16 @@
           id="report-title-chromatography"
           class="display m-0 text-base font-semibold tracking-wide text-lactec-ink uppercase"
         >
-          {{ data.dissolvedGases.report.title }}
+          @if (data.dissolvedGases.report.title; as title) {
+            {{ title }}
+          } @else {
+            <app-data-unavailable subject="Título do relatório" />
+          }
         </h2>
         @for (paragraph of data.dissolvedGases.report.paragraphs; track $index) {
           <p class="mt-2 mb-0 text-sm text-lactec-ink-soft">{{ paragraph }}</p>
+        } @empty {
+          <p class="mt-2 mb-0"><app-data-unavailable subject="Conclusão do relatório" /></p>
         }
       </section>
     } @else {

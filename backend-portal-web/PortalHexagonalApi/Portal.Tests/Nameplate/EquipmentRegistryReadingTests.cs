@@ -237,7 +237,7 @@ public sealed class EquipmentRegistryReadingTests
             "MONTADORA DE EQUIPAMENTOS"
         ];
 
-        Assert.All(InMemoryEquipmentRegistryRepository.ReadWrittenSample(), row =>
+        Assert.All(Portal.Tests.AutoLab.SampleAnalyses.RegistryRows, row =>
         {
             Assert.Matches(@"^(TR-\d{5})?$", row.Tag ?? string.Empty);
             Assert.Contains(row.Fabricante ?? string.Empty, inventedManufacturers);
@@ -252,7 +252,7 @@ public sealed class EquipmentRegistryReadingTests
     public void TheWrittenSampleDoesNotKnowTheInventedSerialNumbers()
     {
         Assert.Empty(EquipmentRegistryReading.NameplatesOf(
-            InMemoryEquipmentRegistryRepository.ReadWrittenSample(),
+            Portal.Tests.AutoLab.SampleAnalyses.RegistryRows,
             ["884120", "884121"]));
     }
 

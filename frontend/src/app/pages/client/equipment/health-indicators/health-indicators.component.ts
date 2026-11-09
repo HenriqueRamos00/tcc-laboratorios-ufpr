@@ -17,9 +17,12 @@ import {
   type Breadcrumb,
 } from '@shared/components/page-header/page-header.component';
 import { ConformityBannerComponent } from '@shared/components/conformity-banner/conformity-banner.component';
+import {
+  DataUnavailableComponent,
+  isUnavailableText,
+} from '@shared/components/data-unavailable/data-unavailable.component';
 
 import {
-  NOT_ASSESSED_LABEL,
   type GasRatioReading,
   type DissolvedGas,
   type HealthIndicators,
@@ -77,6 +80,7 @@ import { DiagnosticMethodsComponent } from './diagnostic-methods/diagnostic-meth
     ClassificationBadgeComponent,
     LineChartComponent,
     ConformityBannerComponent,
+    DataUnavailableComponent,
   ],
   templateUrl: './health-indicators.component.html',
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -92,8 +96,6 @@ export class HealthIndicatorsComponent {
   private readonly diagnosisCalculation = inject(DissolvedGasDiagnosisService);
   private readonly router = inject(Router);
   private readonly currentRoute = inject(ActivatedRoute);
-
-  protected readonly notAssessedLabel = NOT_ASSESSED_LABEL;
 
   // Parâmetro ausente chega como undefined, nunca como o valor anterior, então
   // o padrão vive no derivado e não num signal paralelo que precisasse de
@@ -212,8 +214,8 @@ export class HealthIndicatorsComponent {
     return (this.data()?.physicalChemical.tests ?? []).map((test) => ({
       key: test.key,
       name: test.name,
-      method: test.method,
-      limit: test.limit,
+      method: isUnavailableText(test.method) ? null : test.method,
+      limit: isUnavailableText(test.limit) ? null : test.limit,
       classification: test.classification,
       history: columns
         .map((column, index) => ({ column, value: test.valuesByAnalysis[index] ?? null }))

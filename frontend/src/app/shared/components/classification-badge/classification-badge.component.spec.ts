@@ -26,4 +26,14 @@ describe('ClassificationBadgeComponent', () => {
     expect(classesDaMarca('alerta')).toContain('bg-lactec-warning');
     expect(classesDaMarca('nao-conforme')).toContain('bg-lactec-danger');
   });
+
+  it('avisa que o dado não está disponível quando a classificação vem nula', () => {
+    const fixture = TestBed.createComponent(ClassificationBadgeComponent);
+    fixture.componentRef.setInput('classification', null);
+    fixture.detectChanges();
+    const raiz: HTMLElement = fixture.nativeElement;
+
+    expect(raiz.querySelector('app-data-unavailable')?.textContent).toContain('Dados não disponíveis');
+    expect(raiz.querySelector('.rounded-full')).toBeNull();
+  });
 });

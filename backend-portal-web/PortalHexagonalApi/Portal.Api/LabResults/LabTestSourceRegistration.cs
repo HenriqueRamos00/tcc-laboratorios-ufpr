@@ -1,4 +1,5 @@
 using Portal.Adapters.LabResults;
+using Portal.Api.AutoLab;
 using Portal.Application.LabResults;
 
 namespace Portal.Api.LabResults;
@@ -19,27 +20,25 @@ public static class LabTestSourceRegistration
 
         services.AddSingleton(options);
 
+        if (options.Scope is not (LabResultsOptions.AllScope or LabResultsOptions.CompanyScope))
+            throw new InvalidOperationException(
+                $"Configuracao '{LabResultsOptions.SectionName}:Scope' ausente ou com valor desconhecido "
+                + $"'{options.Scope}'. Valores aceitos: '{LabResultsOptions.AllScope}', "
+                + $"'{LabResultsOptions.CompanyScope}'.");
+
         if (string.IsNullOrWhiteSpace(options.Source))
             throw new InvalidOperationException(
                 $"Configuracao '{LabResultsOptions.SectionName}:Source' nao definida. "
-                + $"Valores aceitos: '{LabResultsOptions.EmbeddedSampleSource}', "
-                + $"'{LabResultsOptions.SqlServerSource}'.");
+                + $"Valor aceito: '{LabResultsOptions.SqlServerSource}'.");
 
-        switch (options.Source)
-        {
-            case LabResultsOptions.EmbeddedSampleSource:
-                services.AddScoped<ILabTestRepository, EmbeddedSampleLabTestRepository>();
-                return services;
+        if (options.Source != LabResultsOptions.SqlServerSource)
+            throw new InvalidOperationException(
+                $"Configuracao '{LabResultsOptions.SectionName}:Source' com valor desconhecido "
+                + $"'{options.Source}'.");
 
-            case LabResultsOptions.SqlServerSource:
-                throw new NotSupportedException(
-                    $"A fonte '{LabResultsOptions.SqlServerSource}' ainda nao tem adaptador. "
-                    + "Nao existe conexao com o SQL Server do AutoLAB.");
+        services.AddAutoLabDatabase(configuration);
+        services.AddScoped<ILabTestRepository, AutoLabLabTestRepository>();
 
-            default:
-                throw new InvalidOperationException(
-                    $"Configuracao '{LabResultsOptions.SectionName}:Source' com valor desconhecido "
-                    + $"'{options.Source}'.");
-        }
+        return services;
     }
 }

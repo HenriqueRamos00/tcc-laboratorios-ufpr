@@ -2,11 +2,15 @@ using Microsoft.AspNetCore.Mvc;
 
 using Portal.Api.LabResults;
 using Portal.Api.Nameplate;
-using Portal.Api.Configuration;
+using Portal.Api.ReportDocuments;
 using Portal.Application.LabResults.Exceptions;
 using Portal.Application.Nameplate.Exceptions;
 using Portal.Domain.LabResults.Exceptions;
 using Portal.Application.LabResults;
+using Portal.Application.Paging;
+using Portal.Application.ReportDocuments;
+using Portal.Application.ReportDocuments.Exceptions;
+using Portal.Application.Visibility;
 using Portal.Domain.LabResults;
 using Portal.Domain.Nameplate;
 
@@ -15,37 +19,45 @@ namespace Portal.Api.Controllers;
 /// <summary>
 /// A listagem de equipamentos e o detalhe de um deles, que as historias HU-05 e HU-06
 /// pedem. Como no controller de indicadores, aqui nao mora regra nenhuma de laudo: resolve
-/// endereco, resolve inquilino, chama a porta condutora e traduz para o corpo que a tela le.
+/// endereco, resolve o escopo, chama a porta condutora e traduz para o corpo que a tela le.
 /// </summary>
 [ApiController]
 [Route("api/equipments")]
 public sealed class EquipmentController : ControllerBase
 {
     private readonly IForConsultingLabResults _labResults;
+    private readonly IForDownloadingSignedReports _signedReports;
     private readonly LabResultsOptions _labResultsOptions;
-    private readonly PortalOptions _portalOptions;
 
     public EquipmentController(
         IForConsultingLabResults labResults,
-        LabResultsOptions labResultsOptions,
-        PortalOptions portalOptions)
+        IForDownloadingSignedReports signedReports,
+        LabResultsOptions labResultsOptions)
     {
         _labResults = labResults;
+        _signedReports = signedReports;
         _labResultsOptions = labResultsOptions;
-        _portalOptions = portalOptions;
     }
 
     [HttpGet]
     [ProducesResponseType(typeof(IReadOnlyList<EquipmentResponse>), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
-    public Task<IActionResult> List(CancellationToken cancellationToken)
+    public Task<IActionResult> List(
+        [FromQuery] PageQuery paging,
+        CancellationToken cancellationToken)
     {
-        return AnswerAsync(async tenant =>
-        {
-            IReadOnlyList<EquipmentWithNameplate> equipmentList = await _labResults
-                .ListEquipmentAsync(tenant, cancellationToken);
+        if (!paging.TryToRequest(out PageRequest request))
+            return Task.FromResult(this.InvalidPage());
 
-            return Ok(equipmentList.Select(BuildListingRow));
+        return AnswerAsync(async scope =>
+        {
+            Page<EquipmentWithNameplate> equipmentPage = await _labResults
+                .ListEquipmentAsync(scope, request, cancellationToken);
+
+            PageQuery.WriteHeaders(Response, equipmentPage);
+
+            return Ok(equipmentPage.Items.Select(BuildListingRow));
         });
     }
 
@@ -69,7 +81,7 @@ public sealed class EquipmentController : ControllerBase
                 Location = null,
                 Company = equipment.Company,
                 Identification = equipment.MostRecentReport.Identification,
-                ReportCount = equipment.Reports.Count,
+                ReportCount = found.ReportCount,
                 MostRecentReportDate = WireDate.From(equipment.MostRecentReport.AnalysisEndDate),
                 OilType = nameplate?.OilType,
                 Voltage = nameplate?.Voltage,
@@ -84,33 +96,98 @@ public sealed class EquipmentController : ControllerBase
 
     [HttpGet("{id}/reports")]
     [ProducesResponseType(typeof(IReadOnlyList<EquipmentReportResponse>), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
-    public Task<IActionResult> ListReports(string id, CancellationToken cancellationToken)
+    public Task<IActionResult> ListReports(
+        string id,
+        [FromQuery] PageQuery paging,
+        CancellationToken cancellationToken)
     {
-        return AnswerAboutOneAsync(id, cancellationToken, found =>
-            Ok(found.Equipment.Reports.Select(report => new EquipmentReportResponse
+        if (!paging.TryToRequest(out PageRequest request))
+            return Task.FromResult(this.InvalidPage());
+
+        return AnswerAsync(async scope =>
+        {
+            if (!OpaqueIdentifier.TryDecode(id, out string equipmentKey))
+                return this.UnreadableEquipmentIdentifier();
+
+            Page<EquipmentReportEntry>? reports;
+
+            try
             {
-                Id = OpaqueIdentifier.Encode(report.ProtocoloLactec),
-                Date = WireDate.From(report.AnalysisEndDate),
-                AnalysisType = report.AnalysisType,
-                Status = report.Status
-            })));
+                reports = await _labResults
+                    .ListReportsAsync(scope, equipmentKey, request, cancellationToken);
+            }
+            catch (ReportDocumentSourceUnavailableException)
+            {
+                return this.ReportDocumentSourceUnavailable();
+            }
+
+            if (reports is null) return this.EquipmentWithoutAnalysis();
+
+            PageQuery.WriteHeaders(Response, reports);
+
+            return Ok(reports.Items.Select(entry => new EquipmentReportResponse
+            {
+                Id = OpaqueIdentifier.Encode(entry.Report.ProtocoloLactec),
+                Date = WireDate.From(entry.Report.AnalysisEndDate),
+                AnalysisType = entry.Report.AnalysisType,
+                Status = entry.Report.Status,
+                HasSignedDocument = entry.HasSignedDocument
+            }));
+        });
+    }
+
+    [HttpGet("{id}/reports/{reportId}/document")]
+    [ProducesResponseType(typeof(FileContentResult), StatusCodes.Status200OK, "application/pdf")]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    [ProducesResponseType(StatusCodes.Status502BadGateway)]
+    public Task<IActionResult> GetSignedReport(
+        string id,
+        string reportId,
+        CancellationToken cancellationToken)
+    {
+        return AnswerAsync(async scope =>
+        {
+            if (!OpaqueIdentifier.TryDecode(id, out string equipmentKey))
+                return this.UnreadableEquipmentIdentifier();
+
+            if (!OpaqueIdentifier.TryDecode(reportId, out string protocoloLactec))
+                return this.UnreadableReportIdentifier();
+
+            SignedReportDocument? document;
+
+            try
+            {
+                document = await _signedReports.GetSignedReportAsync(
+                    scope, equipmentKey, protocoloLactec, cancellationToken);
+            }
+            catch (ReportDocumentSourceUnavailableException)
+            {
+                return this.ReportDocumentSourceUnavailable();
+            }
+
+            return document is null
+                ? this.ReportDocumentNotFound()
+                : File(document.Content, "application/pdf", SignedDocumentName.Of(document));
+        });
     }
 
     /// <summary>
-    /// O preambulo de toda rota desta classe: resolve o inquilino e traduz a falha da fonte.
+    /// O preambulo de toda rota desta classe: resolve o escopo e traduz a falha da fonte.
     /// Estava copiado em cada metodo, e copia de tratamento de erro diverge em silencio,
     /// porque basta uma das copias ganhar um caso novo.
     /// </summary>
-    private async Task<IActionResult> AnswerAsync(Func<string, Task<IActionResult>> answer)
+    private async Task<IActionResult> AnswerAsync(Func<VisibilityScope, Task<IActionResult>> answer)
     {
-        string? tenant = TenantResolution.Resolve(User, _labResultsOptions, _portalOptions);
+        VisibilityScope? scope = VisibilityScopeResolution.Resolve(User, _labResultsOptions);
 
-        if (tenant is null) return this.TenantNotIdentified();
+        if (scope is null) return this.TenantNotIdentified();
 
         try
         {
-            return await answer(tenant);
+            return await answer(scope);
         }
         catch (Exception failure) when (IsSourceFailure(failure))
         {
@@ -128,13 +205,13 @@ public sealed class EquipmentController : ControllerBase
         CancellationToken cancellationToken,
         Func<EquipmentWithNameplate, IActionResult> describe)
     {
-        return AnswerAsync(async tenant =>
+        return AnswerAsync(async scope =>
         {
             if (!OpaqueIdentifier.TryDecode(id, out string equipmentKey))
                 return this.UnreadableEquipmentIdentifier();
 
             EquipmentWithNameplate? found = await _labResults
-                .GetEquipmentAsync(tenant, equipmentKey, cancellationToken);
+                .GetEquipmentAsync(scope, equipmentKey, cancellationToken);
 
             return found is null ? this.EquipmentWithoutAnalysis() : describe(found);
         });
@@ -154,7 +231,7 @@ public sealed class EquipmentController : ControllerBase
             Location = null,
             Company = equipment.Company,
             Identification = equipment.MostRecentReport.Identification,
-            ReportCount = equipment.Reports.Count,
+            ReportCount = found.ReportCount,
             MostRecentReportDate = WireDate.From(equipment.MostRecentReport.AnalysisEndDate),
             NameplateKnown = found.Nameplate is not null
         };

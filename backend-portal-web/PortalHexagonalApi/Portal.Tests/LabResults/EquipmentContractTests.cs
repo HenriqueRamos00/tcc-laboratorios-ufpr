@@ -276,8 +276,12 @@ public sealed class EquipmentContractTests : IClassFixture<RunningPortal>
         {
             Assert.Equal("chromatography", (string?)report!["analysisType"]);
             Assert.Equal("completed", (string?)report["status"]);
-            Assert.Null(report["reportUrl"]);
+            Assert.False(report!.AsObject().ContainsKey("reportUrl"));
         });
+
+        Assert.Equal(
+            [false, true, true, true],
+            reports.Select(report => (bool)report!["hasSignedDocument"]!).Order());
     }
 
     [Fact]

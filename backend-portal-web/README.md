@@ -93,9 +93,9 @@ Há duas fontes, selecionadas exclusivamente por `Portal__DataSource` na inicial
 requisição ou fallback entre os serviços. Valores ausentes e desconhecidos impedem
 a inicialização. As configurações da fonte inativa são ignoradas. No modo `lactec`,
 os orçamentos são consultados no Salesforce com os CNPJs autorizados no JWT.
-Com `Portal__UseDemoData=true`, o C# usa `FakeSalesforceQuoteRepository` e resolve
-a empresa dos ensaios embutidos pelo CNPJ autenticado, conforme o demo abaixo.
-Sem essa opção, equipamentos e ensaios mantêm sua resolução de tenant existente.
+Com `Portal__UseDemoData=true`, o C# usa `FakeSalesforceQuoteRepository` para os
+orçamentos. A opção não afeta equipamentos, ensaios nem relatórios, que vêm sempre do
+AutoLAB com o escopo de `LabResults__Scope` (ver [Escopo de visibilidade](#escopo-de-visibilidade)).
 
 `POST /auth/login` é público e recebe `{ "email": "...", "password": "..." }`.
 O controller chama `ILoginUseCase` → `LoginService` → `IClientAuthenticator`.
@@ -241,30 +241,28 @@ Execute na raiz do repositório:
 docker compose -f compose.auth.yaml up -d --build
 ```
 
-O arquivo é independente e inicia banco, Backend Auth, API C# e frontend. Abra
+O arquivo é independente e inicia banco, Backend Auth, banco local do AutoLAB
+(`autolab-init`), API C# e frontend. Abra
 http://localhost:4200. Não requer Salesforce, Backend Lab, `.env` nem cadastro manual.
 As senhas são iguais aos e-mails:
 
 | Cliente | Empresa / CNPJ | Orçamentos | Equipamentos / laudos |
 | --- | --- | --- | --- |
-| `client1@lactec.com` | EMPRESA DE ENERGIA / `04252011000110` | `1, 3, 6, 8, 10, 12, 14, 16, 18` | 4 / 9 |
-| `client2@lactec.com` | DISTRIBUIDORA DE ENERGIA / `11222333000181` | `4, 5, 7, 9, 11, 13, 15, 17, 19` | 2 / 2 |
+| `client1@lactec.com` | EMPRESA DE ENERGIA / `04252011000110` | `1, 3, 6, 8, 10, 12, 14, 16, 18` | 6 / 11 |
+| `client2@lactec.com` | DISTRIBUIDORA DE ENERGIA / `11222333000181` | `4, 5, 7, 9, 11, 13, 15, 17, 19` | 6 / 11 |
 
 Os IDs de orçamento usam o prefixo `quote-`. Os valores, códigos, situações e descrições
 são preservados; as empresas dos orçamentos correspondem às contas. O PDF de `quote-3`
-também usa a empresa correta. Os arquivos de medidas e séries laboratoriais permanecem
-intactos. O agrupamento é por empresa; não há um vínculo novo entre orçamento e laudo.
-Os relatórios comerciais já simulados pelo frontend mantêm os vínculos existentes
-com `quote-18` (quatro relatórios para client1) e `quote-15`/`quote-19` (cinco para
-client2). A listagem e a conclusão consultam os orçamentos autorizados na API antes
-de mostrar essas fixtures; falhas da API não liberam a lista completa.
+também usa a empresa correta. Equipamentos, laudos e relatórios aparecem de forma
+generalizada para as duas contas (`LabResults__Scope=all`): são os 6 equipamentos e
+11 laudos da massa local. Os relatórios de `vwRelatoriosEnsaios` levam os códigos
+`OrcamentoCRM` dos orçamentos fictícios, e `SituaProcess` usa os mesmos códigos, então
+a etapa do laboratório aparece nos orçamentos locais.
 
 `Portal__UseDemoData` é `false` por padrão e não altera o fluxo Backend Auth → JWT.
 Quando habilitado em `lactec`, lista, detalhe e PDF dos orçamentos usam o escopo de
-CNPJs autenticado. Ensaios exigem exatamente uma das empresas demo autorizadas;
-ausência, CNPJ desconhecido ou várias empresas retornam 401, sem fallback para
-`LabResults__DevelopmentTenant`. Acesso a um orçamento, equipamento ou laudo de
-outra conta retorna 404. Requisições sem JWT continuam retornando 401.
+CNPJs autenticado; orçamento de outra conta retorna 404. Requisições sem JWT
+continuam retornando 401.
 
 O seed cria também `lactec@lactec.com`, com a mesma senha, para administrar somente
 o Backend Auth pelo Swagger/API. O token de integração e a chave JWT ficam nos
@@ -349,6 +347,142 @@ Salesforce__ClientSecret=your-connected-app-client-secret
 
 O endpoint `POST /api/salesforce/token` chama o OAuth do Salesforce e retorna o
 token recebido.
+
+## Conexao ao AutoLAB (SQL Server)
+
+As fontes `LabResults`, `EquipmentRegistry`, `LaboratoryProgress` e `ReportDocuments`
+aceitam `sql-server`. Nesse modo a API le o banco `bdautolab_ensaios` pelo Entity
+Framework Core (provider `Microsoft.EntityFrameworkCore.SqlServer`), somente leitura: sem
+migrations, sem `SaveChanges` (o `DbContext` recusa), consultas LINQ sem tracking sobre as
+views `vwDadosEnsaios`, `Equipamentos`, `SituaProcess` e `vwRelatoriosEnsaios` e sobre as
+tabelas `RelatorioEmissao` e `FileData`.
+
+As credenciais do AutoLAB real vem do ambiente ou do `.env` (nunca do `appsettings`
+versionado; o `appsettings.Development.json` so traz a senha publica do banco local):
+
+```env
+LabResults__Source=sql-server
+EquipmentRegistry__Source=sql-server
+LaboratoryProgress__Source=sql-server
+ReportDocuments__Source=sql-server
+
+AutoLab__Server=LACTECSQL10,49933
+AutoLab__Database=bdautolab_ensaios
+AutoLab__User=projeto_portal
+AutoLab__Password=<pedir ao responsavel pelo AutoLAB>
+AutoLab__Encrypt=false
+AutoLab__TrustServerCertificate=true
+AutoLab__ReadOnlyIntent=true
+AutoLab__CommandTimeoutSeconds=15
+AutoLab__ConnectTimeoutSeconds=10
+AutoLab__MaxPoolSize=10
+AutoLab__MaxRowsPerQuery=5000
+```
+
+A connection string e montada com `SqlConnectionStringBuilder` e validada na
+inicializacao (`ValidateOnStart`) quando alguma fonte e `sql-server`; com todas as fontes
+fora do banco, a secao `AutoLab` nao e exigida. O `DbContext` e registrado uma vez, em
+pool, mesmo com as quatro fontes ligadas.
+
+Protecoes para nao pesar no banco do laboratorio:
+
+- toda consulta tem limite no banco (`TOP` ou `OFFSET ... FETCH`) e, fora do escopo `all`,
+  `WHERE` (empresa, serie, protocolo, codigo do orcamento ou identificacao do laudo);
+- `AutoLab__MaxRowsPerQuery` limita as linhas de cada consulta; passar do limite responde
+  502 em vez de truncar o resultado em silencio;
+- listas grandes de series ou de orcamentos viram varios `IN` de ate 500 valores;
+- `AutoLab__CommandTimeoutSeconds` curto e `AutoLab__MaxPoolSize` limitam tempo e conexoes;
+- `ApplicationIntent=ReadOnly` (desligue com `AutoLab__ReadOnlyIntent=false` se a replica
+  recusar conexoes de intencao de leitura);
+- so as duas rotas de PDF leem coluna `varbinary` (`FileData.Content`); `PdfLiberado` nunca
+  e lido.
+
+### Paginacao
+
+`GET /api/equipments`, `GET /api/equipments/{id}/reports` e `GET /api/reports` aceitam `page` (a partir de 1)
+e `pageSize` (padrao 50, maximo 200). Valor invalido responde 400 com ProblemDetails. O
+corpo continua sendo o array da pagina; os cabecalhos `X-Total-Count`, `X-Page` e
+`X-Page-Size` (expostos no CORS, junto com `Content-Disposition` dos downloads) dizem o
+total e a pagina servida. A paginacao acontece no
+banco: primeiro as chaves (equipamentos do escopo, ou protocolos do equipamento) em
+ordem fixa, depois as linhas so das chaves da pagina.
+
+### PDF assinado do laudo
+
+`GET /api/equipments/{id}/reports/{reportId}/document` devolve `application/pdf`. O laudo
+e validado primeiro pelo caminho com escopo (o protocolo tem que estar no escopo e ser do
+equipamento da rota); so entao a identificacao dele busca em `RelatorioEmissao` a versao
+vigente (`GCRecord` nulo, sem substituto, maior revisao, mais recente) e o arquivo em
+`FileData` pelo `Oid`. Equipamento ou laudo fora do escopo, ou laudo sem PDF
+assinado, respondem 404.
+
+Cada linha do historico traz `hasSignedDocument`: existe `RelatorioEmissao` nao apagado
+com `PdfAssinado` cujo `FileData` nao esta apagado. A pagina inteira e resolvida numa
+consulta so, com `IN` das identificacoes. O antigo `reportUrl` saiu do contrato.
+
+### Relatorios (`vwRelatoriosEnsaios`)
+
+`GET /api/reports?quoteCode=` lista `vwRelatoriosEnsaios` (filtro opcional por
+`OrcamentoCRM` exato), ordenado por `DataPublicacao` desc, `DataEmissao` desc e `Oid`.
+Cada item: `id` (o `Oid`, opaco), `identification`, `requestNumber`, `quoteCode`,
+`sampleId`, `sampleName`, `client`, `status`, `scheduledDate`, `issueDate`,
+`publicationDate` (datas `yyyy-MM-dd` ou `null`) e `hasSignedDocument` (`PdfAssinado`
+preenchido). `GET /api/reports/{id}/document` segue `Oid` → `PdfAssinado` → `FileData`
+(`GCRecord` nulo) dentro do escopo; sem PDF responde 404. No escopo `company`, a empresa e
+comparada com `ClienteSolicitante`.
+
+### Indicadores: tensao nominal e texto do relatorio
+
+`physicalChemical.nominalVoltage` e `Equipamentos.Tensao` da placa, ou `null`.
+`physicalChemical.report` e `dissolvedGases.report` sao `{ title, paragraphs }` do
+`RelatorioEmissao` vigente da analise selecionada (sem selecao, da analise mais recente
+de cada serie): `TituloRelatorio` e `Conclusao` quebrada por linha em branco. Sem
+relatorio, `title` e `null` e `paragraphs` e vazio. Conformidade, veredito,
+classificacao, metodo e limite continuam podendo vir `null`/`-`.
+
+### Escopo de visibilidade
+
+`LabResults__Scope` e obrigatorio:
+
+- `all` (padrao do ambiente local): nenhuma consulta filtra empresa; todos os registros
+  aparecem para qualquer usuario autenticado.
+- `company`: filtra `vwDadosEnsaios.EmpresaTrafo` (e `ClienteSolicitante` nos relatorios)
+  pela claim `inquilino` ou, na falta dela, por `LabResults__DevelopmentTenant`; sem
+  nenhuma das duas responde 401.
+
+Caminho futuro do filtro por CNPJ (a autenticacao esta sendo refeita): claim
+`companyCnpjs` do JWT → `dbo.dCliente.Cnpj_Cpf` (colunas `Oid`, `Sigla`, `Nome`,
+`RazaoSocial`, `Cnpj_Cpf`) → ligacao ainda a investigar com `RelatorioEmissao.Solicitacao`,
+`vwRelatoriosEnsaios.ClienteSolicitante` ou `vwDadosEnsaios.EmpresaTrafo`. Casar por nome
+nao serve: dos 56 `EmpresaTrafo` distintos de uma amostra, so 2 casam com `dCliente.Nome` e
+1 com `RazaoSocial`.
+
+**Risco no AutoLAB real:** em `all`, a listagem de equipamentos agrupa a view
+`vwDadosEnsaios` inteira (`EmpresaTrafo` e `nvarchar(max)` sem indice, e nao ha filtro
+seletivo), e `GET /api/reports` sem `quoteCode` ordena `vwRelatoriosEnsaios` inteira. Uma
+consulta de levantamento que ordenou a view sem filtro levou 25,6 s em producao. Use
+`all` so no banco local ate existir o filtro por CNPJ.
+
+### Banco local do AutoLAB
+
+`docker/autolab/01-create-database.sql` cria `autolab` com `SQL_Latin1_General_CP1_CI_AS`;
+`02-create-objects.sql` cria `vwDadosEnsaios`, `Equipamentos`, `SituaProcess`,
+`vwRelatoriosEnsaios` e `dCliente` como views com os nomes, colunas, tipos e nulabilidade
+levantados em producao (sobre tabelas locais `*Local`), e `RelatorioEmissao`/`FileData`
+como as tabelas XPO, com os indices. `03-load-sample.sql` e gerado, junto com
+`PortalHexagonalApi/Portal.Tests/AutoLab/autolab-sample.json` (a mesma massa carregada no
+SQLite da suite), a partir de `tools/massa-autolab.mjs`:
+
+```bash
+node tools/gerar-massa-autolab.mjs
+```
+
+A massa tem 11 laudos de 6 equipamentos (EMPRESA DE ENERGIA e DISTRIBUIDORA DE ENERGIA),
+o cadastro de placas, as linhas de `SituaProcess` com os codigos dos orcamentos ficticios,
+um relatorio por laudo com PDFs assinados de uma pagina, laudos sem PDF, uma revisao
+substituida, um relatorio apagado (`GCRecord`) e um sem titulo nem conclusao. Para
+recarregar: `docker compose -f compose.auth.yaml run --rm autolab-init`. Para `dotnet run`
+fora do Docker, troque `AutoLab__Server` pelo endereco publicado da instancia.
 
 ## Como rodar com Docker
 

@@ -12,10 +12,6 @@ export const CLASSIFICATION_LABEL: Record<Classification, string> = {
   'nao-conforme': 'Não conforme',
 };
 
-// A classificação chega nula enquanto o núcleo normativo não roda no backend: o
-// AutoLAB entrega o valor medido, não o parecer. Nulo não é "normal" nem falha de
-// requisição, é ensaio ainda sem parecer, e a tela escreve isso em vez de pintar
-// uma faixa que ninguém atribuiu.
 export const NOT_ASSESSED_LABEL = 'Não avaliado';
 
 /** Faixa da classificação, na ordem em que aparece no medidor. */
@@ -76,7 +72,7 @@ export const NOT_DETECTED_TEXT = 'ND';
  * divisão sem pedir marcação ao template.
  */
 export interface TestReport {
-  readonly title: string;
+  readonly title: string | null;
   readonly paragraphs: readonly string[];
 }
 
@@ -115,7 +111,7 @@ export interface TestBlock {
 }
 
 export interface PhysicalChemicalBlock extends TestBlock {
-  readonly nominalVoltage: string;
+  readonly nominalVoltage: string | null;
   readonly columns: readonly AnalysisColumn[];
   readonly tests: readonly PhysicalChemicalTest[];
 }

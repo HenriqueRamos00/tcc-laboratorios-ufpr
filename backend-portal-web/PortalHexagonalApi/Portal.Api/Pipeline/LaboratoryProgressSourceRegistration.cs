@@ -1,4 +1,5 @@
 using Portal.Adapters.Pipeline;
+using Portal.Api.AutoLab;
 using Portal.Application.Pipeline;
 
 namespace Portal.Api.Pipeline;
@@ -33,30 +34,16 @@ public static class LaboratoryProgressSourceRegistration
                 services.AddScoped<ILaboratoryProgressRepository, NullLaboratoryProgressRepository>();
                 return services;
 
-            case LaboratoryProgressOptions.InMemorySampleSource:
-                services.AddScoped<ILaboratoryProgressRepository, InMemorySituaProcessRepository>();
-                return services;
-
-            // Quem escrever este adaptador precisa saber de duas coisas medidas nas 3345 linhas
-            // do extrato, porque nenhuma delas aparece num teste em memoria. Primeira: o SQL
-            // Server ignora espaco a direita na comparacao de texto, porque ela preenche o lado
-            // mais curto com branco, entao `WHERE OrcamentoCRM = '2026_'` tambem casa '2026_   '
-            // e o casamento
-            // exato que esta fatia promete deixa de valer no banco; duas chaves do extrato
-            // terminam em espaco. Segunda: duas chaves carregam o byte de controle 0x1F no
-            // meio, que nao e espaco e nao e imprimivel, e o casamento exato nunca as acha,
-            // que e o desfecho certo, porque limpa-las seria fundir orcamento distinto.
             case LaboratoryProgressOptions.SqlServerSource:
-                throw new NotSupportedException(
-                    $"A fonte '{LaboratoryProgressOptions.SqlServerSource}' ainda nao tem adaptador. "
-                    + "Nao existe conexao com o SQL Server do AutoLAB.");
+                services.AddAutoLabDatabase(configuration);
+                services.AddScoped<ILaboratoryProgressRepository, AutoLabSituaProcessRepository>();
+                return services;
 
             default:
                 throw new InvalidOperationException(
                     $"Configuracao '{LaboratoryProgressOptions.SectionName}:Source' com valor desconhecido "
                     + $"'{options.Source}'. Valores aceitos: "
                     + $"'{LaboratoryProgressOptions.NotConnectedSource}', "
-                    + $"'{LaboratoryProgressOptions.InMemorySampleSource}', "
                     + $"'{LaboratoryProgressOptions.SqlServerSource}'.");
         }
     }

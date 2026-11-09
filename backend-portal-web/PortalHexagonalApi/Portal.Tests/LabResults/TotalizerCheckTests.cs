@@ -1,4 +1,4 @@
-using Portal.Adapters.LabResults;
+using Portal.Tests.AutoLab;
 using Portal.Domain.LabResults;
 
 using Xunit;
@@ -143,7 +143,6 @@ public sealed class TotalizerCheckTests
 
     private static SampleAnalysis AnalysisFromTheSample(string protocoloLactec)
     {
-        return EmbeddedSampleLabTestRepository.ReadWholeSample()
-            .Single(analysis => analysis.ProtocoloLactec == protocoloLactec);
+        return SampleAnalyses.OfProtocol(protocoloLactec);
     }
 }

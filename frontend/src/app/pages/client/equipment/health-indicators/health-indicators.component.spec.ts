@@ -126,7 +126,7 @@ describe('HealthIndicatorsComponent, tabela físico-química', () => {
   // O AutoLAB entrega valor medido, não parecer: enquanto o núcleo normativo não
   // roda, `classificacao`, `conformidade` e `veredito` chegam nulos em todo laudo
   // físico-químico. A tela precisa dizer isso, e não calar nem quebrar.
-  it('diz que o ensaio não foi avaliado quando o laudo vem sem classificação', () => {
+  it('avisa que os dados não estão disponíveis quando o laudo vem sem classificação', () => {
     const semParecer = indicadoresCom(['2025-10-26'], [38]);
     const raiz = raizDe({
       ...semParecer,
@@ -138,10 +138,55 @@ describe('HealthIndicatorsComponent, tabela físico-química', () => {
       },
     });
 
-    expect(celulasDaPrimeiraLinha(raiz).at(-1)).toBe('Não avaliado');
+    expect(celulasDaPrimeiraLinha(raiz).at(-1)).toBe('Classificação: Dados não disponíveis');
     expect(raiz.querySelector('app-conformity-banner')?.textContent?.trim())
-      .toBe('Não avaliado');
-    expect(raiz.querySelector('app-conformity-gauge')?.textContent).toContain('Não avaliado');
+      .toBe('Conformidade do resultado: Dados não disponíveis');
+    expect(raiz.querySelector('app-conformity-gauge')?.textContent).toContain('Dados não disponíveis');
+    expect(raiz.querySelector('app-conformity-gauge ul')).toBeNull();
+  });
+
+  it('avisa que a tensão nominal não está disponível quando a placa não a informa', () => {
+    const base = indicadoresCom(['2025-10-26'], [38]);
+    const raiz = raizDe({
+      ...base,
+      physicalChemical: { ...base.physicalChemical, nominalVoltage: null },
+    });
+    const cabecalho = [...raiz.querySelectorAll('thead th')]
+      .find((th) => th.textContent?.includes('ABNT NBR 10576/17'));
+
+    expect(cabecalho?.querySelector('app-data-unavailable')).not.toBeNull();
+    expect(cabecalho?.textContent).not.toContain('null');
+  });
+
+  it('avisa que método e valor-limite não estão disponíveis quando chegam como hífen', () => {
+    const base = indicadoresCom(['2025-10-26'], [38]);
+    const raiz = raizDe({
+      ...base,
+      physicalChemical: {
+        ...base.physicalChemical,
+        tests: base.physicalChemical.tests.map((test) => ({ ...test, method: '-', limit: '-' })),
+      },
+    });
+    const celulas = celulasDaPrimeiraLinha(raiz);
+
+    expect(celulas[1]).toBe('Método: Dados não disponíveis');
+    expect(celulas[2]).toBe('Valor-limite: Dados não disponíveis');
+  });
+
+  it('avisa que o relatório não está disponível quando não há título nem conclusão', () => {
+    const raiz = raizDe({
+      ...HEALTH_INDICATORS,
+      physicalChemical: {
+        ...HEALTH_INDICATORS.physicalChemical,
+        report: { title: null, paragraphs: [] },
+      },
+    });
+    const regiao = raiz.querySelector('[aria-labelledby="report-title-physical-chemical"]');
+
+    expect(regiao?.querySelector('h2')?.textContent?.trim())
+      .toBe('Título do relatório: Dados não disponíveis');
+    expect(regiao?.querySelector('p')?.textContent?.trim())
+      .toBe('Conclusão do relatório: Dados não disponíveis');
   });
 
   it('separa ensaio não detectado de coleta não realizada', () => {
@@ -173,7 +218,7 @@ describe('HealthIndicatorsComponent, tabela físico-química', () => {
     const regiao = raiz.querySelector('[aria-labelledby="report-title-physical-chemical"]');
     const paragraphs = [...(regiao?.querySelectorAll('p') ?? [])].map((p) => p.textContent?.trim());
 
-    expect(regiao?.querySelector('h2')?.textContent?.trim()).toBe(report.title);
+    expect(regiao?.querySelector('h2')?.textContent?.trim()).toBe(report.title ?? undefined);
     expect(paragraphs).toEqual(report.paragraphs.map((paragraph) => paragraph));
   });
 

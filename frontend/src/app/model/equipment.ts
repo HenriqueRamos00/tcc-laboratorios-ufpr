@@ -90,10 +90,5 @@ export interface EquipmentReport {
   readonly date: string;
   readonly analysisType: ReportAnalysisType;
   readonly status: ReportStatus;
-  /**
-   * Endereço do arquivo publicado, quando já existe um. `null` enquanto o AutoLAB desta
-   * fatia serve resultado de ensaio e não o PDF assinado, e aí a tela não oferece download
-   * em vez de oferecer um botão que só sabe falhar.
-   */
-  readonly reportUrl: string | null;
+  readonly hasSignedDocument: boolean;
 }

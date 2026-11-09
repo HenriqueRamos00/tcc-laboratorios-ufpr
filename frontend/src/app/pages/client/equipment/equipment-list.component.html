@@ -54,7 +54,13 @@
               </td>
               <td class="px-4 py-3 text-lactec-ink">{{ equipment.equipmentTag ?? equipment.tag }}</td>
               <td class="px-4 py-3 text-lactec-ink">{{ equipment.type ?? 'Não informado' }}</td>
-              <td class="px-4 py-3 text-lactec-ink">{{ equipment.location ?? 'Não informado' }}</td>
+              <td class="px-4 py-3 text-lactec-ink">
+                @if (equipment.location; as location) {
+                  {{ location }}
+                } @else {
+                  <app-data-unavailable />
+                }
+              </td>
               <td class="px-4 py-3 text-lactec-ink">{{ equipment.reportCount }}</td>
               <td class="px-4 py-3 text-right">
                 <a
@@ -72,4 +78,16 @@
       </table>
     </div>
   </div>
+}
+
+@if (!failed() && total() > 0) {
+  <app-pagination
+    class="mt-4"
+    label="Paginação da listagem de equipamentos"
+    [page]="page()"
+    [pageSize]="pageSize"
+    [total]="total()"
+    [disabled]="loading()"
+    (pageChange)="goToPage($event)"
+  />
 }

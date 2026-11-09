@@ -36,12 +36,6 @@ services:
       sqlserver:
         condition: service_healthy
 
-  # O banco do AutoLAB para desenvolvimento, na mesma instancia que o backend-auth ja usa.
-  # Trocar pelo SQL Server de producao e trocar a cadeia de conexao da api, sem mexer aqui.
-  #
-  # O DDL e a carga sao provisorios enquanto o laboratorio nao envia o esquema real: os nomes
-  # das colunas vieram dos extratos, os tipos sao suposicao, e a massa e sintetica porque o
-  # extrato verdadeiro carrega nome de cliente. Esta pasta diz isso em cada arquivo.
   autolab-init:
     image: mcr.microsoft.com/mssql/server:2022-latest
     entrypoint: ["/bin/bash", "-c"]
@@ -91,8 +85,19 @@ services:
       ASPNETCORE_URLS: http://+:8080
       Portal__DataSource: lactec
       Portal__UseDemoData: "true"
-      LabResults__Source: embedded-sample
+      LabResults__Source: sql-server
+      LabResults__Scope: all
       LabResults__DevelopmentTenant: ""
+      EquipmentRegistry__Source: sql-server
+      LaboratoryProgress__Source: sql-server
+      ReportDocuments__Source: sql-server
+      AutoLab__Server: sqlserver
+      AutoLab__Database: autolab
+      AutoLab__User: sa
+      AutoLab__Password: *demo-sql-password
+      AutoLab__Encrypt: "false"
+      AutoLab__TrustServerCertificate: "true"
+      AutoLab__ReadOnlyIntent: "false"
       BackendAuth__BaseUrl: http://backend-auth:8080
       BackendAuth__ServiceToken: *demo-service-token
       BackendAuth__ServiceCode: portal-web
@@ -105,6 +110,8 @@ services:
     depends_on:
       backend-auth:
         condition: service_healthy
+      autolab-init:
+        condition: service_completed_successfully
 
   frontend:
     build:

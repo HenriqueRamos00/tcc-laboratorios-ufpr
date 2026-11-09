@@ -60,6 +60,33 @@ internal static class ProblemResponses
             "O identificador do laudo no endereco nao pode ser lido.");
     }
 
+    public static IActionResult InvalidPage(this ControllerBase controller)
+    {
+        return controller.AsProblem(
+            StatusCodes.Status400BadRequest,
+            "invalid-page",
+            "Pagina invalida.",
+            "Os parametros page e pageSize precisam ser inteiros: page de 1 a 100000 e pageSize de 1 a 200.");
+    }
+
+    public static IActionResult ReportDocumentNotFound(this ControllerBase controller)
+    {
+        return controller.AsProblem(
+            StatusCodes.Status404NotFound,
+            "report-document-not-found",
+            "Laudo assinado nao encontrado.",
+            "Nenhum PDF assinado foi encontrado para este laudo.");
+    }
+
+    public static IActionResult ReportDocumentSourceUnavailable(this ControllerBase controller)
+    {
+        return controller.AsProblem(
+            StatusCodes.Status502BadGateway,
+            "report-document-source-unavailable",
+            "Fonte de laudos assinados indisponivel.",
+            "A fonte dos laudos assinados nao respondeu a esta consulta.");
+    }
+
     public static IActionResult TenantNotIdentified(this ControllerBase controller)
     {
         return controller.AsProblem(

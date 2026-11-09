@@ -55,7 +55,16 @@ describe('ConformityGaugeComponent', () => {
     expect(medidor(raiz)).toBeNull();
     expect(grupoDoPonteiro(raiz)).toBeNull();
     expect(raiz.querySelector('[role="img"]')?.getAttribute('aria-label'))
-      .toBe('Conformidade: Não avaliado');
+      .toBe('Conformidade: Dados não disponíveis');
+    expect(raiz.textContent).toContain('Dados não disponíveis');
+    expect(raiz.querySelector('ul')).toBeNull();
+  });
+
+  it('mostra a legenda das faixas só quando há avaliação', () => {
+    const raiz = montar('normal', false);
+
+    expect(raiz.querySelectorAll('ul li').length).toBe(3);
+    expect(raiz.textContent).not.toContain('Dados não disponíveis');
   });
 
   // O campo chega como texto livre do servidor, nao como enum: literal que o
@@ -72,7 +81,7 @@ describe('ConformityGaugeComponent', () => {
   it('não anuncia a palavra null quando há faixa e falta o veredito', () => {
     const alvo = medidor(montar('normal', false, null));
 
-    expect(alvo.getAttribute('aria-valuetext')).toBe('Não avaliado, faixa Normal');
+    expect(alvo.getAttribute('aria-valuetext')).toBe('Dados não disponíveis, faixa Normal');
   });
 
   it('expõe o valor pelo papel meter, com o veredito por extenso', () => {

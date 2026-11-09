@@ -13,8 +13,11 @@ import {
   type Classification,
   CONFORMITY_RANGES,
   CLASSIFICATION_LABEL,
-  NOT_ASSESSED_LABEL,
 } from '@/app/model/health';
+import {
+  DATA_UNAVAILABLE,
+  DataUnavailableComponent,
+} from '@shared/components/data-unavailable/data-unavailable.component';
 
 // É um resumo do laudo e não uma medição contínua: por isso o ponteiro aponta
 // para o meio da faixa, e o veredito aparece escrito abaixo, porque cor sozinha
@@ -123,6 +126,7 @@ const ESPERA_MAXIMA_PELA_LARGADA_EM_MS = 150;
 @Component({
   selector: 'app-conformity-gauge',
   standalone: true,
+  imports: [DataUnavailableComponent],
   host: { class: 'block' },
   template: `
     <figure class="m-0 flex flex-col items-center gap-3">
@@ -160,7 +164,7 @@ const ESPERA_MAXIMA_PELA_LARGADA_EM_MS = 150;
         </svg>
       </div>
       } @else {
-      <div role="img" [attr.aria-label]="title() + ': ' + NOT_ASSESSED_LABEL">
+      <div role="img" [attr.aria-label]="title() + ': ' + DATA_UNAVAILABLE">
         <svg viewBox="0 0 160 96" class="w-40 h-24" aria-hidden="true">
           @for (arco of arcos(); track arco.key) {
             <path [attr.d]="arco.caminho" [class]="arco.classeDePreenchimento" />
@@ -169,28 +173,36 @@ const ESPERA_MAXIMA_PELA_LARGADA_EM_MS = 150;
       </div>
       }
 
-      <p class="display m-0 text-xl font-semibold tracking-wide text-lactec-ink">
-        {{ verdictText() }}
-      </p>
+      @if (assessed()) {
+        <p class="display m-0 text-xl font-semibold tracking-wide text-lactec-ink">
+          @if (verdict(); as verdictText) {
+            {{ verdictText }}
+          } @else {
+            <app-data-unavailable subject="Veredito" />
+          }
+        </p>
 
-      <ul class="m-0 flex list-none flex-wrap justify-center gap-x-5 gap-y-1 p-0">
-        @for (faixa of faixas; track faixa.key) {
-          <li class="flex flex-col items-center gap-1">
-            <span
-              class="flex items-center gap-2 text-sm font-medium"
-              [class]="classeDeTextoDaFaixa(faixa.key)"
-            >
+        <ul class="m-0 flex list-none flex-wrap justify-center gap-x-5 gap-y-1 p-0">
+          @for (faixa of faixas; track faixa.key) {
+            <li class="flex flex-col items-center gap-1">
               <span
-                class="inline-block h-3 w-3 rounded-full"
-                [class]="classeDeFundoDaFaixa(faixa.key)"
-                aria-hidden="true"
-              ></span>
-              <span>{{ faixa.label }}</span>
-            </span>
-            <span class="text-xs text-lactec-muted">{{ faixa.criterion }}</span>
-          </li>
-        }
-      </ul>
+                class="flex items-center gap-2 text-sm font-medium"
+                [class]="classeDeTextoDaFaixa(faixa.key)"
+              >
+                <span
+                  class="inline-block h-3 w-3 rounded-full"
+                  [class]="classeDeFundoDaFaixa(faixa.key)"
+                  aria-hidden="true"
+                ></span>
+                <span>{{ faixa.label }}</span>
+              </span>
+              <span class="text-xs text-lactec-muted">{{ faixa.criterion }}</span>
+            </li>
+          }
+        </ul>
+      } @else {
+        <p class="m-0"><app-data-unavailable [subject]="title()" /></p>
+      }
     </figure>
   `,
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -203,7 +215,7 @@ export class ConformityGaugeComponent {
   readonly animateOnEnter = input(true);
 
   protected readonly faixas = CONFORMITY_RANGES;
-  protected readonly NOT_ASSESSED_LABEL = NOT_ASSESSED_LABEL;
+  protected readonly DATA_UNAVAILABLE = DATA_UNAVAILABLE;
   protected readonly CENTRO_X = CENTRO_X;
   protected readonly CENTRO_Y = CENTRO_Y;
   protected readonly primeiraPosicao = 1;
@@ -240,14 +252,12 @@ export class ConformityGaugeComponent {
 
   protected readonly assessed = computed(() => this.indiceDaFaixa() >= 0);
 
-  protected readonly verdictText = computed(() => this.verdict() ?? NOT_ASSESSED_LABEL);
-
   // O veredito é nulável por conta própria, independente da classificação: sem o
   // derivado protegido, o leitor de tela ouvia a palavra "null".
   protected readonly leituraPorExtenso = computed(() => {
     const classification = this.classification();
-    if (!classification) return NOT_ASSESSED_LABEL;
-    return `${this.verdictText()}, faixa ${CLASSIFICATION_LABEL[classification]}`;
+    if (!classification) return DATA_UNAVAILABLE;
+    return `${this.verdict() ?? DATA_UNAVAILABLE}, faixa ${CLASSIFICATION_LABEL[classification]}`;
   });
 
   protected readonly estiloDoGiro = computed(() =>

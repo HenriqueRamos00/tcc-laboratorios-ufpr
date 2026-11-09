@@ -11,23 +11,10 @@
     <Nullable>enable</Nullable>
   </PropertyGroup>
 
-  <!-- The real sample of the views travels inside the assembly: the suite and the API read
-       exactly the same file, so a green test cannot depend on data the API never sees.
-
-       Two files because there are two provenances. LabTestSample.jsonl is measured data,
-       transcribed from vwDadosEnsaios. DemonstrationSeries.jsonl was written by hand to give
-       one piece of equipment more than one report, and none of its numbers came from a
-       laboratory. -->
-  <ItemGroup>
-    <EmbeddedResource Include="LabResults\LabTestSample.jsonl" />
-    <EmbeddedResource Include="LabResults\DemonstrationSeries.jsonl" />
-  </ItemGroup>
-
-  <!-- As tres imagens do papel timbrado do orcamento viajam dentro do assembly pelo mesmo
-       motivo da amostra de ensaios: a suite e a API desenham exatamente o mesmo arquivo, e
-       o documento gerado dentro do contentor nao depende de nada copiado para o disco ao
-       lado do executavel. Os nomes logicos sao os caminhos com ponto no lugar da barra, e
-       estao escritos em QuotationAssets. -->
+  <!-- As tres imagens do papel timbrado do orcamento viajam dentro do assembly: a suite e a
+       API desenham exatamente o mesmo arquivo, e o documento gerado dentro do contentor nao
+       depende de nada copiado para o disco ao lado do executavel. Os nomes logicos sao os
+       caminhos com ponto no lugar da barra, e estao escritos em QuotationAssets. -->
   <ItemGroup>
     <EmbeddedResource Include="Quotes\Assets\header-banner.png" />
     <EmbeddedResource Include="Quotes\Assets\footer-stripes.png" />
@@ -35,6 +22,7 @@
   </ItemGroup>
 
   <ItemGroup>
+    <PackageReference Include="Microsoft.EntityFrameworkCore.Relational" Version="10.0.8" />
     <PackageReference Include="QuestPDF" Version="2026.9.1" />
   </ItemGroup>
 

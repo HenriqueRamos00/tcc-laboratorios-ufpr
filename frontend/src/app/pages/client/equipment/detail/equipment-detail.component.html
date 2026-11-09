@@ -36,7 +36,13 @@
           </span>
           <div class="min-w-0">
             <dt class="text-sm text-lactec-muted">{{ card.label }}</dt>
-            <dd class="m-0 text-base font-semibold text-lactec-ink">{{ card.value }}</dd>
+            <dd class="m-0 text-base font-semibold text-lactec-ink">
+              @if (card.value; as value) {
+                {{ value }}
+              } @else {
+                <app-data-unavailable />
+              }
+            </dd>
           </div>
         </div>
       }
@@ -46,7 +52,7 @@
   <section class="mt-6 rounded-2xl border border-lactec-line bg-lactec-paper p-6">
     <h2 class="display m-0 text-xl font-semibold text-lactec-ink">Histórico de Relatórios</h2>
 
-    @if (history().length) {
+    @if (visible().length) {
       <div class="mt-4 overflow-x-auto">
         <table class="w-full border-collapse text-sm">
           <caption class="sr-only">
@@ -100,31 +106,17 @@
         <p class="mt-4 text-sm text-lactec-danger" role="alert">{{ downloadFailure() }}</p>
       }
 
-      <div
-        class="mt-4 flex flex-wrap items-center justify-end gap-3"
-        role="group"
-        aria-label="Paginação do histórico de relatórios"
-      >
-        <span class="text-sm text-lactec-muted" aria-live="polite">{{ range() }}</span>
-        <button
-          type="button"
-          class="rounded-lg border border-lactec-line px-3 py-2 text-sm text-lactec-ink
-                 disabled:opacity-40"
-          [disabled]="page() === 0"
-          (click)="previous()"
-        >
-          Anterior
-        </button>
-        <button
-          type="button"
-          class="rounded-lg border border-lactec-line px-3 py-2 text-sm text-lactec-ink
-                 disabled:opacity-40"
-          [disabled]="page() >= totalPages() - 1"
-          (click)="next()"
-        >
-          Próximo
-        </button>
-      </div>
+      <app-pagination
+        class="mt-4"
+        label="Paginação do histórico de relatórios"
+        [page]="page()"
+        [pageSize]="perPage"
+        [total]="historyTotal()"
+        [disabled]="historyLoading()"
+        (pageChange)="goToPage($event)"
+      />
+    } @else if (history() === null) {
+      <p class="mt-4 text-sm text-lactec-muted" role="status">Carregando histórico…</p>
     } @else {
       <app-empty-state
         class="mt-4"

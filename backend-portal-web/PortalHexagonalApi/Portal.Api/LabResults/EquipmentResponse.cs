@@ -118,13 +118,6 @@ public sealed record EquipmentDetailResponse
     public required bool NameplateKnown { get; init; }
 }
 
-/// <summary>
-/// Uma linha do historico de laudos.
-///
-/// <see cref="ReportUrl"/> e nula enquanto nao houver arquivo: o AutoLAB desta fatia
-/// serve o resultado dos ensaios, nao o PDF assinado. Nulo faz a tela esconder o botao, e
-/// um endereco inventado faria a tela oferecer um download que so sabe falhar.
-/// </summary>
 public sealed record EquipmentReportResponse
 {
     public required string Id { get; init; }
@@ -135,5 +128,5 @@ public sealed record EquipmentReportResponse
 
     public required ReportStatus Status { get; init; }
 
-    public string? ReportUrl { get; init; }
+    public required bool HasSignedDocument { get; init; }
 }
