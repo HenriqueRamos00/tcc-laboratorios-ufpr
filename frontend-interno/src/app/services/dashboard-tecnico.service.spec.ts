@@ -25,6 +25,14 @@ describe('Serviço do dashboard técnico', () => {
       testsAwaitingApproval: 2,
       testsFinished: 5,
       pendingReportsTotal: 7,
+      reportAnalytics: {
+        referenceDate: '2026-11-08',
+        monthlyReports: ['2026-06', '2026-07', '2026-08', '2026-09', '2026-10', '2026-11']
+          .map((month) => ({ month, validated: 0, published: 0 })),
+        pendingReportAge: {
+          upTo7Days: 2, from8To15Days: 3, over15Days: 2, oldestCreatedOn: '2026-10-20',
+        },
+      },
       pendingReports: [
         {
           id: '31',

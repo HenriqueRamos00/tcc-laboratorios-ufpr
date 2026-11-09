@@ -25,8 +25,11 @@ import br.ufpr.tcc.backend_lab.domain.repository.RelatorioTecnicoRepository;
 import br.ufpr.tcc.backend_lab.domain.repository.UsuarioRepository;
 import br.ufpr.tcc.backend_lab.infrastructure.security.JwtService;
 import java.math.BigDecimal;
+import java.time.Clock;
+import java.time.Instant;
 import java.time.LocalDate;
 import java.time.OffsetDateTime;
+import java.time.ZoneOffset;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
@@ -37,7 +40,11 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.boot.test.context.TestConfiguration;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Import;
+import org.springframework.context.annotation.Primary;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.MvcResult;
@@ -55,8 +62,19 @@ import tools.jackson.databind.ObjectMapper;
 })
 @AutoConfigureMockMvc
 @Transactional
+@Import(TechnicianDashboardControllerTests.RelogioFixo.class)
 class TechnicianDashboardControllerTests {
     private static final String CAMINHO = "/api/technician/dashboard";
+    private static final Instant AGORA = Instant.parse("2026-11-08T15:00:00Z");
+
+    @TestConfiguration
+    static class RelogioFixo {
+        @Bean
+        @Primary
+        Clock relogioDashboard() {
+            return Clock.fixed(AGORA, ZoneOffset.UTC);
+        }
+    }
 
     @Autowired MockMvc mockMvc;
     @Autowired JdbcTemplate jdbc;
@@ -111,7 +129,17 @@ class TechnicianDashboardControllerTests {
         JsonNode corpo = objectMapper.readTree(resposta.getResponse().getContentAsString());
         assertEquals(Set.of(
                 "testsInExecution", "testsAwaitingApproval", "testsFinished",
-                "pendingReportsTotal", "pendingReports"), campos(corpo));
+                "pendingReportsTotal", "pendingReports", "reportAnalytics"), campos(corpo));
+        JsonNode analytics = corpo.get("reportAnalytics");
+        assertEquals("2026-11-08", analytics.get("referenceDate").asText());
+        assertEquals(6, analytics.get("monthlyReports").size());
+        for (JsonNode month : analytics.get("monthlyReports")) {
+            assertEquals(0, month.get("validated").asInt());
+            assertEquals(0, month.get("published").asInt());
+        }
+        assertEquals(0, analytics.get("pendingReportAge").get("upTo7Days").asInt());
+        assertEquals(0, analytics.get("pendingReportAge").get("from8To15Days").asInt());
+        assertEquals(0, analytics.get("pendingReportAge").get("over15Days").asInt());
     }
 
     @Test
@@ -197,6 +225,69 @@ class TechnicianDashboardControllerTests {
         assertEquals(relatoriosAntes, jdbc.queryForObject("SELECT COUNT(*) FROM relatorios_tecnicos", Long.class));
         assertEquals(statusAntes, jdbc.queryForObject(
                 "SELECT status FROM execucoes_ensaios WHERE id = ?", String.class, primeira.getId()));
+    }
+
+    @Test
+    @DisplayName("agrupa eventos documentais nos seis meses de São Paulo e exclui datas futuras")
+    void analisaMesesPelasDatasDosDocumentosSemDependerDoStatusTecnico() throws Exception {
+        ExecucaoEnsaio execucao = criarExecucao(StatusEnsaio.INCOMPLETE, tecnico);
+        criarRelatorioComDatas(execucao, "2026-05-01T12:00:00Z",
+                "2026-06-01T02:59:59Z", "2026-06-01T03:00:00Z");
+        criarRelatorioComDatas(execucao, "2026-05-31T12:00:00Z",
+                "2026-06-01T03:00:00Z", null);
+        criarRelatorioComDatas(execucao, "2026-10-20T12:00:00Z",
+                "2026-11-01T02:59:59Z", "2026-11-01T03:00:00Z");
+        criarRelatorioComDatas(execucao, "2026-11-02T12:00:00Z",
+                "2026-11-08T14:59:59Z", "2026-11-08T15:01:00Z");
+        criarRelatorioComDatas(execucao, "2026-11-02T12:00:00Z",
+                "2026-11-09T12:00:00Z", null);
+        execucao.setStatus(StatusEnsaio.CANCELLED);
+        ensaios.saveAndFlush(execucao);
+
+        mockMvc.perform(get(CAMINHO).header("Authorization", tokenTecnico))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.reportAnalytics.monthlyReports.length()").value(6))
+                .andExpect(jsonPath("$.reportAnalytics.monthlyReports[0].month").value("2026-06"))
+                .andExpect(jsonPath("$.reportAnalytics.monthlyReports[0].validated").value(1))
+                .andExpect(jsonPath("$.reportAnalytics.monthlyReports[0].published").value(1))
+                .andExpect(jsonPath("$.reportAnalytics.monthlyReports[1].validated").value(0))
+                .andExpect(jsonPath("$.reportAnalytics.monthlyReports[1].published").value(0))
+                .andExpect(jsonPath("$.reportAnalytics.monthlyReports[4].validated").value(1))
+                .andExpect(jsonPath("$.reportAnalytics.monthlyReports[4].published").value(0))
+                .andExpect(jsonPath("$.reportAnalytics.monthlyReports[5].month").value("2026-11"))
+                .andExpect(jsonPath("$.reportAnalytics.monthlyReports[5].validated").value(1))
+                .andExpect(jsonPath("$.reportAnalytics.monthlyReports[5].published").value(1));
+    }
+
+    @Test
+    @DisplayName("separa pendências pelos limites de 7 e 15 dias corridos e informa o documento mais antigo")
+    void analisaIdadeDesdeAPreparacaoEmDiasDoCalendario() throws Exception {
+        ExecucaoEnsaio execucao = criarExecucao(StatusEnsaio.INCOMPLETE, tecnico);
+        for (String createdAt : List.of("2026-11-08T15:00:00Z", "2026-11-01T03:00:00Z",
+                "2026-11-01T02:59:59Z", "2026-10-24T03:00:00Z",
+                "2026-10-24T02:59:59Z", "2026-05-10T12:00:00Z")) {
+            criarRelatorioComDatas(execucao, createdAt, null, null);
+        }
+        criarRelatorioComDatas(execucao, "2026-01-01T12:00:00Z", "2026-05-01T12:00:00Z", null);
+
+        mockMvc.perform(get(CAMINHO).header("Authorization", tokenTecnico))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.pendingReportsTotal").value(6))
+                .andExpect(jsonPath("$.reportAnalytics.pendingReportAge.upTo7Days").value(2))
+                .andExpect(jsonPath("$.reportAnalytics.pendingReportAge.from8To15Days").value(2))
+                .andExpect(jsonPath("$.reportAnalytics.pendingReportAge.over15Days").value(2))
+                .andExpect(jsonPath("$.reportAnalytics.pendingReportAge.oldestCreatedOn").value("2026-05-10"));
+    }
+
+    private void criarRelatorioComDatas(ExecucaoEnsaio execucao, String criado, String validado, String publicado) {
+        Long id = criarRelatorio(execucao, validado == null
+                ? StatusValidacaoRelatorio.PENDING_VALIDATION : StatusValidacaoRelatorio.VALIDATED,
+                publicado != null);
+        RelatorioTecnico relatorio = relatorios.findById(id).orElseThrow();
+        relatorio.setCreatedAt(OffsetDateTime.parse(criado));
+        relatorio.setValidatedAt(validado == null ? null : OffsetDateTime.parse(validado));
+        relatorio.setPublishedAt(publicado == null ? null : OffsetDateTime.parse(publicado));
+        relatorios.saveAndFlush(relatorio);
     }
 
     private Set<String> campos(JsonNode objeto) {

@@ -32,6 +32,17 @@ describe('Dashboard do técnico', () => {
     testsFinished: 5,
     pendingReportsTotal: 0,
     pendingReports: [],
+    reportAnalytics: {
+      referenceDate: '2026-11-08',
+      monthlyReports: ['2026-06', '2026-07', '2026-08', '2026-09', '2026-10', '2026-11']
+        .map((month) => ({ month, validated: 0, published: 0 })),
+      pendingReportAge: {
+        upTo7Days: ajustes.pendingReportsTotal ?? 0,
+        from8To15Days: 0,
+        over15Days: 0,
+        oldestCreatedOn: ajustes.pendingReportsTotal ? '2026-11-08' : null,
+      },
+    },
     ...ajustes,
   });
 
@@ -108,7 +119,9 @@ describe('Dashboard do técnico', () => {
     expect(texto).toContain('Cromatografia de gases dissolvidos');
     expect(texto).toContain('Aguardando validação');
     expect(linksDeLaudos.length).toBe(6);
-    expect(linksDeLaudos[0].textContent?.trim()).toBe('31');
+    expect(linksDeLaudos[0].textContent).toContain('Abrir laudo');
+    expect(linksDeLaudos[0].getAttribute('aria-label')).toBe('Abrir laudo 31');
+    expect(fixture.nativeElement.querySelector('tbody tr td')?.textContent.trim()).toBe('31');
     expect(linksDeLaudos[0].getAttribute('href')).toBe('/tecnico/relatorios/31');
     expect(fixture.nativeElement.querySelector('a[aria-label="Ver todos os relatórios"]')?.getAttribute('href'))
       .toBe('/tecnico/relatorios');
@@ -136,6 +149,41 @@ describe('Dashboard do técnico', () => {
     expect(texto).toContain('Nenhum laudo pendente de validação');
     expect(texto).toContain('Ver todos');
     expect(fixture.nativeElement.querySelector('table')).toBeNull();
+    expect(fixture.nativeElement.querySelectorAll('app-bar-chart dl > div').length).toBe(9);
+    expect(texto).toContain('Nenhum laudo aguardando validação.');
+    expect(fixture.nativeElement.innerHTML).not.toContain('NaN');
+  });
+
+  it('apresenta os meses e faixas de espera da API com legenda e data do laudo mais antigo', () => {
+    fixture.detectChanges();
+    const dados = resposta({ pendingReportsTotal: 5, pendingReports: laudos(5) });
+    http.expectOne('/api/technician/dashboard').flush({
+      ...dados,
+      reportAnalytics: {
+        referenceDate: '2026-11-08',
+        monthlyReports: dados.reportAnalytics.monthlyReports.map((month, index) => ({
+          ...month, validated: index === 0 ? 7 : 0, published: index === 5 ? 3 : 0,
+        })),
+        pendingReportAge: {
+          upTo7Days: 2, from8To15Days: 1, over15Days: 2, oldestCreatedOn: '2026-10-20',
+        },
+      },
+    });
+    fixture.detectChanges();
+
+    const atividade = fixture.nativeElement.querySelector('section[aria-labelledby="atividade-laudos-titulo"]') as HTMLElement;
+    const idade = fixture.nativeElement.querySelector('section[aria-labelledby="idade-laudos-titulo"]') as HTMLElement;
+    expect(atividade.querySelectorAll('dl > div').length).toBe(6);
+    expect(atividade.textContent).toContain('Validados');
+    expect(atividade.textContent).toContain('Publicados');
+    expect(atividade.textContent).toContain('Mês atual parcial');
+    expect(atividade.textContent).toContain('7');
+    expect(atividade.textContent).toContain('3');
+    expect(idade.querySelectorAll('dl > div').length).toBe(3);
+    expect(idade.textContent).toContain('Até 7 dias');
+    expect(idade.textContent).toContain('8 a 15 dias');
+    expect(idade.textContent).toContain('16 dias ou mais');
+    expect(idade.textContent).toContain('20/10/2026');
   });
 
   it('mantém os atalhos na falha e permite repetir a consulta sem exibir números antigos', () => {
@@ -151,6 +199,7 @@ describe('Dashboard do técnico', () => {
     expect(texto).toContain('Manter ensaio');
     expect(texto).toContain('Equipamentos');
     expect(texto).not.toContain('Ensaios em execução');
+    expect(fixture.nativeElement.querySelector('app-bar-chart')).toBeNull();
     expect(fixture.nativeElement.querySelectorAll('nav[aria-label="Acesso rápido aos módulos técnicos"] a').length).toBe(4);
 
     const botao = fixture.nativeElement.querySelector('button') as HTMLButtonElement;

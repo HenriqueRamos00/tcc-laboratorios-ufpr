@@ -1,4 +1,34 @@
 import { ReportValidationStatus } from '@/app/model/relatorio';
+import { DashboardMonthlyReports, DashboardPendingReportAge } from '@/app/model/dashboard-tecnico';
+import type { BarChartRow, BarChartSeries } from '@shared/components/bar-chart/bar-chart.component';
+
+export const SERIES_ATIVIDADE_LAUDOS: readonly BarChartSeries[] = [
+  { label: 'Validados', tone: 'primary' },
+  { label: 'Publicados', tone: 'navy' },
+];
+
+export const SERIES_IDADE_LAUDOS: readonly BarChartSeries[] = [
+  { label: 'Laudos pendentes', tone: 'primary' },
+];
+
+const FORMATADOR_MES = new Intl.DateTimeFormat('pt-BR', {
+  month: 'short', year: 'numeric', timeZone: 'UTC',
+});
+
+export function linhasAtividadeLaudos(months: readonly DashboardMonthlyReports[]): BarChartRow[] {
+  return months.map((month) => ({
+    label: FORMATADOR_MES.format(new Date(`${month.month}-01T00:00:00Z`)),
+    values: [month.validated, month.published],
+  }));
+}
+
+export function linhasIdadeLaudos(ages: DashboardPendingReportAge): BarChartRow[] {
+  return [
+    { label: 'Até 7 dias', values: [ages.upTo7Days] },
+    { label: '8 a 15 dias', values: [ages.from8To15Days] },
+    { label: '16 dias ou mais', values: [ages.over15Days] },
+  ];
+}
 
 export type IndicadorDashboardTecnico =
   | 'testsInExecution'

@@ -1,4 +1,4 @@
-import { DecimalPipe } from '@angular/common';
+import { DatePipe, DecimalPipe } from '@angular/common';
 import { ChangeDetectionStrategy, Component, computed, DestroyRef, inject, signal } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { MatButtonModule } from '@angular/material/button';
@@ -11,11 +11,16 @@ import { validationStatusLabel } from '@/app/model/relatorio-presentation';
 import { DashboardTecnicoService } from '@/app/services/dashboard-tecnico.service';
 import { EmptyStateComponent } from '@shared/components/empty-state/empty-state.component';
 import { PageHeaderComponent } from '@shared/components/page-header/page-header.component';
+import { BarChartComponent } from '@shared/components/bar-chart/bar-chart.component';
 import {
   ATALHOS_DASHBOARD_TECNICO,
   classeStatusLaudoDashboard,
   INDICADORES_DASHBOARD_TECNICO,
   resumoLaudosPendentes,
+  linhasAtividadeLaudos,
+  linhasIdadeLaudos,
+  SERIES_ATIVIDADE_LAUDOS,
+  SERIES_IDADE_LAUDOS,
 } from './dashboard-tecnico-presentation';
 
 type EstadoCarregamento = 'carregando' | 'erro' | 'sucesso';
@@ -25,6 +30,8 @@ type EstadoCarregamento = 'carregando' | 'erro' | 'sucesso';
   standalone: true,
   imports: [
     DecimalPipe,
+    DatePipe,
+    BarChartComponent,
     EmptyStateComponent,
     MatButtonModule,
     MatIconModule,
@@ -53,6 +60,16 @@ export class DashboardTecnicoComponent {
   readonly atalhos = ATALHOS_DASHBOARD_TECNICO;
   readonly rotuloStatus = validationStatusLabel;
   readonly classeStatus = classeStatusLaudoDashboard;
+  readonly seriesAtividade = SERIES_ATIVIDADE_LAUDOS;
+  readonly seriesIdade = SERIES_IDADE_LAUDOS;
+  readonly atividadeLaudos = computed(() => {
+    const analytics = this.dados()?.reportAnalytics;
+    return analytics ? linhasAtividadeLaudos(analytics.monthlyReports) : [];
+  });
+  readonly idadeLaudos = computed(() => {
+    const analytics = this.dados()?.reportAnalytics;
+    return analytics ? linhasIdadeLaudos(analytics.pendingReportAge) : [];
+  });
   readonly resumoPendencias = computed(() => {
     const dados = this.dados();
     return dados

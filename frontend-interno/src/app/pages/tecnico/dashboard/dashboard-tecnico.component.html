@@ -37,7 +37,7 @@
       >
         @for (indicador of indicadores; track indicador.chave) {
           <article
-            class="min-w-0 rounded-xl border border-lactec-line bg-lactec-paper p-5 shadow-sm"
+            class="flex min-w-0 flex-col rounded-xl border border-lactec-line bg-lactec-paper p-5 shadow-sm"
             [attr.aria-labelledby]="'indicador-' + indicador.chave"
           >
             <div class="mb-5 flex min-w-0 items-start justify-between gap-3">
@@ -51,7 +51,7 @@
                 {{ indicador.icone }}
               </mat-icon>
             </div>
-            <p class="m-0 min-w-0 text-3xl font-semibold leading-tight tabular-nums text-lactec-ink [overflow-wrap:anywhere]">
+            <p class="mt-auto mb-0 min-w-0 text-3xl font-semibold leading-tight tabular-nums text-lactec-ink [overflow-wrap:anywhere]">
               {{ painel[indicador.chave] | number: '1.0-0' }}
             </p>
           </article>
@@ -127,24 +127,20 @@
         >
           <table class="w-full min-w-[42rem] border-collapse text-left text-sm">
             <caption class="sr-only">Laudos que aguardam validação técnica</caption>
-            <thead class="text-xs font-semibold uppercase tracking-wide text-lactec-muted">
+            <thead class="whitespace-nowrap text-xs font-semibold uppercase tracking-wide text-lactec-muted">
               <tr class="border-b border-lactec-line">
                 <th scope="col" class="px-5 py-3 sm:px-6">Laudo</th>
                 <th scope="col" class="px-5 py-3 sm:px-6">Cliente</th>
                 <th scope="col" class="px-5 py-3 sm:px-6">Tipo</th>
                 <th scope="col" class="px-5 py-3 sm:px-6">Status</th>
+                <th scope="col" class="px-5 py-3 sm:px-6"><span class="sr-only">Ações</span></th>
               </tr>
             </thead>
             <tbody>
               @for (laudo of painel.pendingReports; track laudo.id) {
                 <tr class="border-b border-lactec-line last:border-b-0">
-                  <td class="px-5 py-4 sm:px-6">
-                    <a
-                      [routerLink]="['/tecnico/relatorios', laudo.id]"
-                      class="mono break-all font-medium text-lactec-primary-dark underline decoration-transparent underline-offset-4 hover:decoration-current focus-visible:rounded-sm focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-lactec-primary"
-                    >
-                      {{ laudo.id }}
-                    </a>
+                  <td class="mono break-all px-5 py-4 font-medium text-lactec-ink sm:px-6">
+                    {{ laudo.id }}
                   </td>
                   <td class="max-w-64 whitespace-normal px-5 py-4 text-lactec-ink sm:px-6 [overflow-wrap:anywhere]">
                     {{ laudo.companyName }}
@@ -159,6 +155,17 @@
                       {{ rotuloStatus(laudo.validationStatus) }}
                     </span>
                   </td>
+                  <td class="px-5 py-4 sm:px-6">
+                    <a mat-stroked-button
+                      [routerLink]="['/tecnico/relatorios', laudo.id]"
+                      [attr.aria-label]="'Abrir laudo ' + laudo.id"
+                      class="whitespace-nowrap">
+                      <span class="inline-flex items-center gap-2">
+                        <mat-icon class="icone-20" aria-hidden="true">visibility</mat-icon>
+                        <span>Abrir laudo</span>
+                      </span>
+                    </a>
+                  </td>
                 </tr>
               }
             </tbody>
@@ -166,5 +173,34 @@
         </div>
       }
     </section>
+
+    <div class="grid min-w-0 gap-5 xl:grid-cols-2" aria-label="Análises dos relatórios">
+      <section class="min-w-0 rounded-xl border border-lactec-line bg-lactec-paper p-5 shadow-sm sm:p-6"
+        aria-labelledby="atividade-laudos-titulo">
+        <h2 id="atividade-laudos-titulo" class="m-0 text-lg font-semibold text-lactec-ink">Laudos validados e publicados</h2>
+        <p class="mt-1 mb-5 text-sm text-lactec-muted">Últimos seis meses. Mês atual parcial até a consulta.</p>
+        <app-bar-chart label="Laudos validados e publicados por mês"
+          [rows]="atividadeLaudos()" [series]="seriesAtividade" />
+        <p class="mt-5 mb-0 text-xs leading-relaxed text-lactec-muted">
+          Cada série considera a data do respectivo evento, no fuso de São Paulo.
+          Um laudo pode ser validado em um mês e publicado em outro.
+        </p>
+      </section>
+      <section class="min-w-0 rounded-xl border border-lactec-line bg-lactec-paper p-5 shadow-sm sm:p-6"
+        aria-labelledby="idade-laudos-titulo">
+        <h2 id="idade-laudos-titulo" class="m-0 text-lg font-semibold text-lactec-ink">Idade dos laudos pendentes</h2>
+        <p class="mt-1 mb-5 text-sm text-lactec-muted">Dias corridos desde a preparação, no fuso de São Paulo.</p>
+        <app-bar-chart label="Laudos aguardando validação por faixa de dias"
+          [rows]="idadeLaudos()" [series]="seriesIdade" />
+        @if (painel.reportAnalytics.pendingReportAge.oldestCreatedOn; as oldest) {
+          <p class="mt-5 mb-0 text-sm text-lactec-ink-soft">
+            Laudo pendente mais antigo preparado em <strong>{{ oldest | date: 'dd/MM/yyyy' : 'UTC' }}</strong>.
+          </p>
+        } @else {
+          <p class="mt-5 mb-0 text-sm text-lactec-muted">Nenhum laudo aguardando validação.</p>
+        }
+        <p class="mt-3 mb-0 text-xs text-lactec-muted">As faixas mostram o tempo de espera e não representam prazos de atraso.</p>
+      </section>
+    </div>
   }
 </div>
