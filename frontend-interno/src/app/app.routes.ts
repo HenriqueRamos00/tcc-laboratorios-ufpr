@@ -3,12 +3,6 @@ import { RedirectFunction, Router, Routes } from '@angular/router';
 
 import { authGuard, guestGuard } from '@core/guards/auth.guard';
 
-const placeholder = (title: string, description: string, icon: string) => ({
-  pageTitle: title,
-  pageDescription: description,
-  pageIcon: icon,
-});
-
 const redirectLegacyReports: RedirectFunction = (route) => {
   const router = inject(Router);
   const reportId = route.params['id'] as string | undefined;
@@ -115,14 +109,9 @@ export const routes: Routes = [
         path: '',
         pathMatch: 'full',
         loadComponent: () =>
-          import('@/app/pages/placeholder/placeholder.component').then(
-            (module) => module.PlaceholderComponent,
+          import('@/app/pages/tecnico/dashboard/dashboard-tecnico.component').then(
+            (module) => module.DashboardTecnicoComponent,
           ),
-        data: placeholder(
-          'Dashboard',
-          'Resumo das atividades técnicas e ensaios do laboratório.',
-          'dashboard',
-        ),
         title: 'Dashboard - Portal Interno Lactec',
       },
       {

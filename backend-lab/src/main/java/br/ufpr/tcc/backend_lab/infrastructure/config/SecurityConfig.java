@@ -50,6 +50,7 @@ public class SecurityConfig {
                                                 "/api/reports", "/api/reports/**")
                                         .hasRole("TECNICO")
                                         .requestMatchers(
+                                                "/api/technician/dashboard",
                                                 "/api/technician/quotes",
                                                 "/api/technician/quotes/**")
                                         .hasRole("TECNICO")

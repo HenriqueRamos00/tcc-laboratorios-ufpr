@@ -84,6 +84,12 @@ O dashboard também oferece atalhos para **Orçamentos**, **Técnicos**,
 **Empresas** e **Clientes**. A rota é exclusiva para ADMIN e usa a sessão e o
 shell existentes do Portal Interno.
 
+## Dashboard do Técnico
+
+A rota `/tecnico` é exclusiva para TECNICO e consulta `GET /api/technician/dashboard` diretamente no Spring. Mostra ensaios em execução, pendentes de aprovação e finalizados, além de até seis laudos pendentes de validação e seu total. Os atalhos abrem Manter ensaio, Novo ensaio, Pesquisar relatório e Equipamentos; cada laudo abre seu detalhe e **Ver todos** abre a pesquisa de relatórios.
+
+Os dados são consultados ao entrar no painel ou tentar novamente após uma falha. Ao retornar depois de alterar um status ou validar um relatório, a nova consulta atualiza os indicadores e a prévia. O painel trata carregamento, erro e ausência de laudos; os atalhos continuam disponíveis durante falhas. A tabela usa rolagem horizontal própria em telas estreitas. A fonte dos indicadores é o PostgreSQL do Spring; a integração real com o AutoLAB permanece pendente.
+
 ## Empresas e clientes
 
 As páginas **Empresas** (`/admin/empresas`) e **Clientes** (`/admin/clientes`) permitem pesquisar, cadastrar, editar e alterar a situação dos registros. São exclusivas ADMIN e consomem diretamente a API Spring. Os dados de listagem também preenchem a edição, sem endpoint extra de detalhe.

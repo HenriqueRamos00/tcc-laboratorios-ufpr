@@ -171,6 +171,14 @@ Para criar o administrador inicial, preencha `AUTH_SEED_ADMIN_*` no arquivo `.en
 
 Sem autenticação válida, a API retorna 401. Técnicos autenticados recebem 403. Tokens de clientes são recusados pelo filtro de autenticação nas rotas internas e recebem 401.
 
+### Dashboard do Técnico
+
+`GET /api/technician/dashboard` é exclusivo do perfil TECNICO e consulta o PostgreSQL da aplicação. Retorna três contagens de execuções: `testsInExecution` considera `INCOMPLETE`; `testsAwaitingApproval` considera `COMPLETE`; `testsFinished` reúne `FINALIZED`, `DRAFTING_REPORT` e `REPORT_PUBLISHED`. `VALIDATED` e `CANCELLED` ficam fora desses indicadores, que não representam uma divisão de todos os ensaios.
+
+`pendingReportsTotal` conta os relatórios em `PENDING_VALIDATION`. `pendingReports` apresenta até seis deles, por ID decrescente, com `id`, `companyName`, `type` e `validationStatus`. O total independe do limite da prévia; medições e documentos adicionais não multiplicam as contagens de ensaios. A consulta não altera dados nem retorna PDFs ou snapshots.
+
+Sem registros, a resposta é 200 com contagens zero e lista vazia. Sem autenticação válida, retorna 401; administradores recebem 403 e tokens de clientes são recusados pelo filtro de autenticação interno. A fonte atual é o banco Spring; a integração real com o AutoLAB permanece pendente.
+
 ### Consulta de orçamentos do cliente
 
 `GET /api/client/quotes` lista os orçamentos das empresas ativas vinculadas ao cliente autenticado. `GET /api/client/quotes/{id}` consulta um orçamento e `GET /api/client/quotes/{id}/document` retorna o PDF anexado ou gera um PDF a partir dos dados persistidos quando não há anexo. A autorização considera os vínculos atuais do cliente antes de consultar ou gerar o documento; orçamento de empresa sem vínculo retorna 403 e orçamento inexistente retorna 404.
