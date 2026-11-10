@@ -39,6 +39,20 @@ public sealed class AutoLabLabTestRepositoryTests : IDisposable
     }
 
     [Fact]
+    public async Task TheTenantListingFindsRowsWhoseCompanyCarriesSurroundingBlanks()
+    {
+        _database.AddTestRow("P-1", "571289", " " + Tenant, new DateTime(2026, 6, 1));
+        _database.AddTestRow("P-2", "111.594/1", Tenant + " ", new DateTime(2026, 5, 1));
+        _database.AddTestRow("P-3", "5233", " " + OtherTenant + " ", new DateTime(2026, 7, 1));
+
+        Page<SampleAnalysis> page = await Repository()
+            .GetAnalysesAsync(VisibilityScope.OfCompany(Tenant), PageRequest.First, CancellationToken.None);
+
+        Assert.Equal(["111.594/1", "571289"], page.Items.Select(item => item.EquipmentKey).Order());
+        Assert.DoesNotContain(page.Items, item => item.EquipmentKey == "5233");
+    }
+
+    [Fact]
     public async Task TwoSerialNumbersThatDifferOnlyByCaseAreTwoEquipments()
     {
         _database.AddTestRow("P-1", "ENSAIO-TESTE", Tenant, new DateTime(2026, 6, 1));

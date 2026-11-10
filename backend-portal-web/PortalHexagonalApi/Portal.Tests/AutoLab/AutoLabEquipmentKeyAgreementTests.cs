@@ -10,15 +10,6 @@ using Xunit;
 
 namespace Portal.Tests.AutoLab;
 
-/// <summary>
-/// A chave que a listagem devolve tem que ser a chave que o detalhe aceita. Sao duas
-/// consultas diferentes sobre a mesma coluna, e a regra de identidade esta escrita duas
-/// vezes: uma em <c>SampleAnalysis</c>, que apara as pontas, e outra na consulta, que le a
-/// coluna. Enquanto as duas escritas existirem, e este teste que prova que elas concordam.
-///
-/// Sem a aparagem na consulta, a listagem devolve o equipamento e o detalhe responde vazio,
-/// o que a tela publica como 404 num equipamento que ela acabou de listar.
-/// </summary>
 public sealed class AutoLabEquipmentKeyAgreementTests : IDisposable
 {
     private const string Tenant = "EMPRESA DE ENERGIA";

@@ -6,34 +6,9 @@ namespace Portal.Adapters.AutoLab;
 
 public static class AutoLabQueries
 {
-    /// <summary>
-    /// A collation que o portal exige nas comparacoes que decidem identidade de equipamento,
-    /// de protocolo, de serie e de relatorio. O banco do AutoLAB nasce em
-    /// SQL_Latin1_General_CP1_CI_AS, que nao distingue caixa, e a regra do portal e ordinal.
-    /// Sem COLLATE explicito o GROUP BY do servidor funde duas series que diferem so na caixa,
-    /// e o filtro ordinal que vem depois, em C#, descarta as linhas da caixa que nao casou.
-    /// Medido com ENSAIO-TESTE e ensaio-teste na mesma empresa: tres linhas gravadas, duas
-    /// chaves devolvidas, um equipamento sumido da listagem.
-    ///
-    /// A chamada fica escrita linha por linha, e nao atras de um metodo auxiliar, porque
-    /// EF Core traduz a arvore de expressao e nao entra em metodo nosso: um atalho como
-    /// Ordinal(row.NumSerie) derruba a consulta com
-    /// "Translation of method ... failed", medido.
-    ///
-    /// Branco nas pontas tambem decide identidade, e por isso a coluna entra aparada em toda
-    /// comparacao que decide chave de equipamento ou de protocolo. A aplicacao compara aparado:
-    /// <c>SampleAnalysis</c> apara serie e protocolo no construtor, e e dali que sai a chave
-    /// que a rota carrega. Sem aparar aqui, a listagem agrupa por <c>" 571289"</c>, o
-    /// adaptador apara para <c>"571289"</c> ao conferir a pagina, a tela recebe
-    /// <c>"571289"</c> e a consulta do detalhe procura <c>NumSerie = '571289'</c>, que nenhuma
-    /// linha atende: o equipamento aparece na lista e responde 404 ao ser aberto. Medido com
-    /// <c>" 571289"</c>, <c>"571289 "</c> e <c>" 571289 "</c>.
-    ///
-    /// Branco a esquerda conta nas duas pontas, no SQL Server e no SQLite. Branco a direita o
-    /// SQL Server ignora na igualdade, por completar com branco a menor das duas cadeias, e o
-    /// SQLite nao ignora: aparar nas duas pontas vale nos dois.
-    /// </summary>
     public const string OrdinalCollation = "Latin1_General_BIN2";
+
+    public const string CaseInsensitiveCollation = "Latin1_General_CI_AS";
 
     public static IQueryable<string> EquipmentKeys(
         AutoLabDbContext database,
@@ -61,8 +36,10 @@ public static class AutoLabQueries
         int rowLimit)
     {
         return TestRowsIn(database, scope)
-            .Where(row => equipmentKeys.Contains(EF.Functions.Collate(row.NumSerie!.Trim(), OrdinalCollation))
-                || equipmentKeys.Contains(EF.Functions.Collate(row.ProtocoloLactec!.Trim(), OrdinalCollation)))
+            .Where(row => ((equipmentKeys.Contains(row.NumSerie!) || row.NumSerie!.StartsWith(" "))
+                    && equipmentKeys.Contains(EF.Functions.Collate(row.NumSerie!.Trim(), OrdinalCollation)))
+                || ((equipmentKeys.Contains(row.ProtocoloLactec!) || row.ProtocoloLactec!.StartsWith(" "))
+                    && equipmentKeys.Contains(EF.Functions.Collate(row.ProtocoloLactec!.Trim(), OrdinalCollation))))
             .OrderBy(row => row.ProtocoloLactec)
             .Take(rowLimit);
     }
@@ -73,8 +50,10 @@ public static class AutoLabQueries
         string equipmentKey)
     {
         return TestRowsIn(database, scope)
-            .Where(row => (EF.Functions.Collate(row.NumSerie!.Trim(), OrdinalCollation) == equipmentKey
-                    || EF.Functions.Collate(row.ProtocoloLactec!.Trim(), OrdinalCollation) == equipmentKey)
+            .Where(row => (((row.NumSerie == equipmentKey || row.NumSerie!.StartsWith(" "))
+                        && EF.Functions.Collate(row.NumSerie!.Trim(), OrdinalCollation) == equipmentKey)
+                    || ((row.ProtocoloLactec == equipmentKey || row.ProtocoloLactec!.StartsWith(" "))
+                        && EF.Functions.Collate(row.ProtocoloLactec!.Trim(), OrdinalCollation) == equipmentKey))
                 && row.ProtocoloLactec != null)
             .GroupBy(row => EF.Functions.Collate(row.ProtocoloLactec!.Trim(), OrdinalCollation))
             .Select(report => new
@@ -94,7 +73,8 @@ public static class AutoLabQueries
         int rowLimit)
     {
         return TestRowsIn(database, scope)
-            .Where(row => protocols.Contains(EF.Functions.Collate(row.ProtocoloLactec!.Trim(), OrdinalCollation)))
+            .Where(row => (protocols.Contains(row.ProtocoloLactec!) || row.ProtocoloLactec!.StartsWith(" "))
+                && protocols.Contains(EF.Functions.Collate(row.ProtocoloLactec!.Trim(), OrdinalCollation)))
             .OrderBy(row => row.ProtocoloLactec)
             .Take(rowLimit);
     }
@@ -106,7 +86,8 @@ public static class AutoLabQueries
         int rowLimit)
     {
         return TestRowsIn(database, scope)
-            .Where(row => EF.Functions.Collate(row.ProtocoloLactec!.Trim(), OrdinalCollation) == protocol)
+            .Where(row => (row.ProtocoloLactec == protocol || row.ProtocoloLactec!.StartsWith(" "))
+                && EF.Functions.Collate(row.ProtocoloLactec!.Trim(), OrdinalCollation) == protocol)
             .OrderBy(row => row.Name)
             .Take(rowLimit);
     }
@@ -117,7 +98,8 @@ public static class AutoLabQueries
         int rowLimit)
     {
         return database.Equipamentos
-            .Where(row => serialNumbers.Contains(EF.Functions.Collate(row.NumSerie!.Trim(), OrdinalCollation)))
+            .Where(row => (serialNumbers.Contains(row.NumSerie!) || row.NumSerie!.StartsWith(" "))
+                && serialNumbers.Contains(EF.Functions.Collate(row.NumSerie!.Trim(), OrdinalCollation)))
             .OrderBy(row => row.NumSerie)
             .Take(rowLimit);
     }
@@ -218,7 +200,8 @@ public static class AutoLabQueries
         ArgumentNullException.ThrowIfNull(scope);
 
         return scope.Company is string company
-            ? database.DadosEnsaios.Where(row => row.EmpresaTrafo == company)
+            ? database.DadosEnsaios.Where(row =>
+                EF.Functions.Collate(row.EmpresaTrafo!.Trim(), CaseInsensitiveCollation) == company)
             : database.DadosEnsaios;
     }
 

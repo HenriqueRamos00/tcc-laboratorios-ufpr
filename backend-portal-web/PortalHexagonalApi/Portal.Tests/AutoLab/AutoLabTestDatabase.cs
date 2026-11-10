@@ -15,17 +15,17 @@ internal sealed class AutoLabTestDatabase : IDisposable
         ATTACH DATABASE ':memory:' AS dbo;
 
         CREATE TABLE dbo.vwDadosEnsaios (
-            Identificacao TEXT COLLATE NOCASE NULL,
-            ProtocoloLactec TEXT COLLATE NOCASE NULL,
-            NumSerie TEXT COLLATE NOCASE NULL,
+            Identificacao TEXT COLLATE Latin1_General_CI_AS NULL,
+            ProtocoloLactec TEXT COLLATE Latin1_General_CI_AS NULL,
+            NumSerie TEXT COLLATE Latin1_General_CI_AS NULL,
             Name TEXT NULL,
             Resultado TEXT NULL,
-            EmpresaTrafo TEXT COLLATE NOCASE NULL,
+            EmpresaTrafo TEXT COLLATE Latin1_General_CI_AS NULL,
             DataEmissao TEXT NULL,
             DataFinalAnalise TEXT NULL);
 
         CREATE TABLE dbo.Equipamentos (
-            NumSerie TEXT COLLATE NOCASE NULL,
+            NumSerie TEXT COLLATE Latin1_General_CI_AS NULL,
             Tag TEXT NULL,
             AnoFabricacao TEXT NULL,
             Potencia TEXT NULL,
@@ -37,7 +37,7 @@ internal sealed class AutoLabTestDatabase : IDisposable
             TipoEquipamento TEXT NULL);
 
         CREATE TABLE dbo.SituaProcess (
-            OrcamentoCRM TEXT COLLATE NOCASE NULL,
+            OrcamentoCRM TEXT COLLATE Latin1_General_CI_AS NULL,
             Recebido INTEGER NULL,
             Protocolado INTEGER NULL,
             SituacaoEnsaios INTEGER NULL,
@@ -45,7 +45,7 @@ internal sealed class AutoLabTestDatabase : IDisposable
 
         CREATE TABLE dbo.RelatorioEmissao (
             Oid TEXT NOT NULL PRIMARY KEY,
-            Identificacao TEXT COLLATE NOCASE NULL,
+            Identificacao TEXT COLLATE Latin1_General_CI_AS NULL,
             PdfAssinado TEXT NULL,
             PdfLiberado BLOB NULL,
             GCRecord INTEGER NULL,
@@ -63,12 +63,12 @@ internal sealed class AutoLabTestDatabase : IDisposable
         CREATE TABLE dbo.vwRelatoriosEnsaios (
             NumeroSolicitacao TEXT NULL,
             Oid TEXT NOT NULL,
-            OrcamentoCRM TEXT COLLATE NOCASE NULL,
+            OrcamentoCRM TEXT COLLATE Latin1_General_CI_AS NULL,
             IDAmostra TEXT NULL,
             Nome TEXT NULL,
             PdfAssinado TEXT NULL,
-            ClienteSolicitante TEXT COLLATE NOCASE NULL,
-            Identificacao TEXT COLLATE NOCASE NULL,
+            ClienteSolicitante TEXT COLLATE Latin1_General_CI_AS NULL,
+            Identificacao TEXT COLLATE Latin1_General_CI_AS NULL,
             DataFinalProgramadaCliente TEXT NULL,
             SituacaoRelatorio TEXT NULL,
             DataEmissao TEXT NULL,
@@ -95,21 +95,6 @@ internal sealed class AutoLabTestDatabase : IDisposable
 
     private readonly SqliteConnection _connection;
 
-    /// <summary>
-    /// O duble roda em SQLite, que nao conhece as collations do SQL Server. As consultas de
-    /// <see cref="Portal.Adapters.AutoLab.AutoLabQueries"/> pedem
-    /// <c>Latin1_General_BIN2</c> por nome, e sem registrar esse nome aqui a suite inteira
-    /// morre com "SQLite Error 1: 'no such collation sequence: Latin1_General_BIN2'", medido.
-    /// Registrar com <see cref="string.CompareOrdinal(string, string)"/> da ao duble a mesma
-    /// semantica que a collation binaria da ao servidor: comparacao byte a byte, com
-    /// distincao de caixa.
-    ///
-    /// Isto nao faz o duble imitar o motor de producao. Duas diferencas ficam medidas e sem
-    /// solucao em SQLite: o NOCASE das colunas so dobra A ate Z, enquanto a collation CI_AS
-    /// do servidor tambem dobra letra acentuada, e o SQLite nao completa a cadeia menor com
-    /// branco antes de comparar, enquanto o servidor completa por ANSI/ISO SQL-92. A segunda
-    /// classe de defeito nao pode falhar nesta suite.
-    /// </summary>
     public AutoLabTestDatabase()
     {
         _connection = new SqliteConnection("Data Source=:memory:");
@@ -117,6 +102,11 @@ internal sealed class AutoLabTestDatabase : IDisposable
         _connection.CreateCollation(
             AutoLabQueries.OrdinalCollation,
             (left, right) => string.CompareOrdinal(left, right));
+
+        _connection.CreateCollation(
+            AutoLabQueries.CaseInsensitiveCollation,
+            (left, right) => string.Compare(
+                left.TrimEnd(' '), right.TrimEnd(' '), StringComparison.OrdinalIgnoreCase));
 
         using SqliteCommand command = _connection.CreateCommand();
         command.CommandText = Schema;

@@ -53,13 +53,6 @@ public sealed class AutoLabSqlServerQueryTextTests
         Assert.DoesNotContain("PdfLiberado", sql, StringComparison.Ordinal);
     }
 
-    /// <summary>
-    /// As consultas que decidem identidade de equipamento, de protocolo ou de serie precisam
-    /// carregar a collation ordinal no proprio comando. O banco do AutoLAB e
-    /// SQL_Latin1_General_CP1_CI_AS e a regra do portal e ordinal: sem o COLLATE o servidor
-    /// decide pela caixa dele e o filtro ordinal do adaptador, que roda depois, apaga a linha
-    /// que o servidor juntou.
-    /// </summary>
     [Theory]
     [InlineData("EquipmentKeys")]
     [InlineData("RowsOfEquipmentKeys")]
@@ -73,6 +66,21 @@ public sealed class AutoLabSqlServerQueryTextTests
             "COLLATE " + AutoLabQueries.OrdinalCollation,
             SqlOf(name),
             StringComparison.Ordinal);
+    }
+
+    [Theory]
+    [InlineData("RowsOfEquipmentKeys", "NumSerie")]
+    [InlineData("RowsOfEquipmentKeys", "ProtocoloLactec")]
+    [InlineData("ProtocolsOfEquipment", "NumSerie")]
+    [InlineData("ProtocolsOfEquipment", "ProtocoloLactec")]
+    [InlineData("RowsOfProtocols", "ProtocoloLactec")]
+    [InlineData("RowsOfProtocol", "ProtocoloLactec")]
+    [InlineData("RegistryRowsOf", "NumSerie")]
+    public void TheIdentityLookupsKeepAComparisonOnTheBareColumn(string name, string column)
+    {
+        Assert.Matches(
+            new System.Text.RegularExpressions.Regex(@"\[\w+\]\.\[" + column + @"\] (=|IN) "),
+            SqlOf(name));
     }
 
     [Theory]
