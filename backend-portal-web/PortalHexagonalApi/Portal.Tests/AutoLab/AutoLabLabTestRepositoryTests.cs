@@ -39,6 +39,37 @@ public sealed class AutoLabLabTestRepositoryTests : IDisposable
     }
 
     [Fact]
+    public async Task TwoSerialNumbersThatDifferOnlyByCaseAreTwoEquipments()
+    {
+        _database.AddTestRow("P-1", "ENSAIO-TESTE", Tenant, new DateTime(2026, 6, 1));
+        _database.AddTestRow("P-2", "ensaio-teste", Tenant, new DateTime(2026, 5, 1));
+
+        Page<SampleAnalysis> page = await Repository()
+            .GetAnalysesAsync(VisibilityScope.OfCompany(Tenant), PageRequest.First, CancellationToken.None);
+
+        Assert.Equal(2, page.TotalCount);
+        Assert.Equal(
+            ["ENSAIO-TESTE", "ensaio-teste"],
+            page.Items.Select(item => item.EquipmentKey).Order(StringComparer.Ordinal));
+        Assert.Equal(
+            ["P-1", "P-2"],
+            page.Items.Select(item => item.ProtocoloLactec).Order(StringComparer.Ordinal));
+    }
+
+    [Fact]
+    public async Task TheHistoryOfOneCaseDoesNotCountTheOtherCase()
+    {
+        _database.AddTestRow("P-1", "ENSAIO-TESTE", Tenant, new DateTime(2026, 6, 1));
+        _database.AddTestRow("P-2", "ensaio-teste", Tenant, new DateTime(2026, 5, 1));
+
+        Page<SampleAnalysis> history = await Repository().GetAnalysesOfEquipmentAsync(
+            VisibilityScope.OfCompany(Tenant), "ensaio-teste", PageRequest.First, CancellationToken.None);
+
+        Assert.Equal(1, history.TotalCount);
+        Assert.Equal(["P-2"], history.Items.Select(item => item.ProtocoloLactec));
+    }
+
+    [Fact]
     public async Task TheListingPagesTheEquipmentKeysInTheDatabaseFromTheMostRecent()
     {
         _database.AddTestRow("P-1", "A", Tenant, new DateTime(2026, 1, 1));

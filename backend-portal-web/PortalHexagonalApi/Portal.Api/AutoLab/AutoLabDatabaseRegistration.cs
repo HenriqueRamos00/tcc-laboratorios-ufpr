@@ -37,7 +37,16 @@ public static class AutoLabDatabaseRegistration
             builder
                 .UseSqlServer(
                     options.BuildConnectionString(),
-                    sqlServer => sqlServer.CommandTimeout(options.CommandTimeoutSeconds))
+                    sqlServer =>
+                    {
+                        sqlServer.CommandTimeout(options.CommandTimeoutSeconds);
+
+                        if (options.MaxRetryCount > 0)
+                            sqlServer.EnableRetryOnFailure(
+                                options.MaxRetryCount,
+                                TimeSpan.FromSeconds(options.MaxRetryDelaySeconds),
+                                errorNumbersToAdd: null);
+                    })
                 .UseQueryTrackingBehavior(QueryTrackingBehavior.NoTracking);
         });
 

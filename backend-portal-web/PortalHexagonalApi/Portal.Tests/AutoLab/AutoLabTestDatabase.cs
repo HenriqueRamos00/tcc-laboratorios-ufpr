@@ -95,10 +95,28 @@ internal sealed class AutoLabTestDatabase : IDisposable
 
     private readonly SqliteConnection _connection;
 
+    /// <summary>
+    /// O duble roda em SQLite, que nao conhece as collations do SQL Server. As consultas de
+    /// <see cref="Portal.Adapters.AutoLab.AutoLabQueries"/> pedem
+    /// <c>Latin1_General_BIN2</c> por nome, e sem registrar esse nome aqui a suite inteira
+    /// morre com "SQLite Error 1: 'no such collation sequence: Latin1_General_BIN2'", medido.
+    /// Registrar com <see cref="string.CompareOrdinal(string, string)"/> da ao duble a mesma
+    /// semantica que a collation binaria da ao servidor: comparacao byte a byte, com
+    /// distincao de caixa.
+    ///
+    /// Isto nao faz o duble imitar o motor de producao. Duas diferencas ficam medidas e sem
+    /// solucao em SQLite: o NOCASE das colunas so dobra A ate Z, enquanto a collation CI_AS
+    /// do servidor tambem dobra letra acentuada, e o SQLite nao completa a cadeia menor com
+    /// branco antes de comparar, enquanto o servidor completa por ANSI/ISO SQL-92. A segunda
+    /// classe de defeito nao pode falhar nesta suite.
+    /// </summary>
     public AutoLabTestDatabase()
     {
         _connection = new SqliteConnection("Data Source=:memory:");
         _connection.Open();
+        _connection.CreateCollation(
+            AutoLabQueries.OrdinalCollation,
+            (left, right) => string.CompareOrdinal(left, right));
 
         using SqliteCommand command = _connection.CreateCommand();
         command.CommandText = Schema;

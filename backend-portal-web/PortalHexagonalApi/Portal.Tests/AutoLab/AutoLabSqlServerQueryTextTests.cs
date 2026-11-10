@@ -53,6 +53,28 @@ public sealed class AutoLabSqlServerQueryTextTests
         Assert.DoesNotContain("PdfLiberado", sql, StringComparison.Ordinal);
     }
 
+    /// <summary>
+    /// As consultas que decidem identidade de equipamento, de protocolo ou de serie precisam
+    /// carregar a collation ordinal no proprio comando. O banco do AutoLAB e
+    /// SQL_Latin1_General_CP1_CI_AS e a regra do portal e ordinal: sem o COLLATE o servidor
+    /// decide pela caixa dele e o filtro ordinal do adaptador, que roda depois, apaga a linha
+    /// que o servidor juntou.
+    /// </summary>
+    [Theory]
+    [InlineData("EquipmentKeys")]
+    [InlineData("RowsOfEquipmentKeys")]
+    [InlineData("ProtocolsOfEquipment")]
+    [InlineData("RowsOfProtocols")]
+    [InlineData("RowsOfProtocol")]
+    [InlineData("RegistryRowsOf")]
+    public void TheIdentityComparisonsCarryTheOrdinalCollation(string name)
+    {
+        Assert.Contains(
+            "COLLATE " + AutoLabQueries.OrdinalCollation,
+            SqlOf(name),
+            StringComparison.Ordinal);
+    }
+
     [Theory]
     [InlineData("EquipmentKeys")]
     [InlineData("ProtocolsOfEquipment")]
@@ -96,7 +118,7 @@ public sealed class AutoLabSqlServerQueryTextTests
         Assert.Equal(Microsoft.Data.SqlClient.SqlConnectionEncryptOption.Optional, built.Encrypt);
         Assert.True(built.TrustServerCertificate);
         Assert.Equal(10, built.MaxPoolSize);
-        Assert.Equal(15, built.CommandTimeout);
+        Assert.Equal(10, built.CommandTimeout);
         Assert.Equal(10, built.ConnectTimeout);
         Assert.Equal(Microsoft.Data.SqlClient.ApplicationIntent.ReadOnly, built.ApplicationIntent);
         Assert.False(built.PersistSecurityInfo);

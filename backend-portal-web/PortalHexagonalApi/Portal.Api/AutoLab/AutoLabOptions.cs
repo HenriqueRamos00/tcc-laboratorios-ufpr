@@ -24,13 +24,17 @@ public sealed class AutoLabOptions
 
     public string ApplicationName { get; set; } = "portal-api";
 
-    public int CommandTimeoutSeconds { get; set; } = 15;
+    public int CommandTimeoutSeconds { get; set; } = 10;
 
     public int ConnectTimeoutSeconds { get; set; } = 10;
 
     public int MaxPoolSize { get; set; } = 10;
 
     public int MaxRowsPerQuery { get; set; } = AutoLabQueryLimits.DefaultMaxRowsPerQuery;
+
+    public int MaxRetryCount { get; set; } = 3;
+
+    public int MaxRetryDelaySeconds { get; set; } = 2;
 
     public IEnumerable<string> Problems()
     {
@@ -42,6 +46,8 @@ public sealed class AutoLabOptions
         if (ConnectTimeoutSeconds is < 1 or > 120) yield return $"{SectionName}:ConnectTimeoutSeconds (1 a 120)";
         if (MaxPoolSize is < 1 or > 100) yield return $"{SectionName}:MaxPoolSize (1 a 100)";
         if (MaxRowsPerQuery is < 1 or > 100_000) yield return $"{SectionName}:MaxRowsPerQuery (1 a 100000)";
+        if (MaxRetryCount is < 0 or > 10) yield return $"{SectionName}:MaxRetryCount (0 a 10)";
+        if (MaxRetryDelaySeconds is < 1 or > 60) yield return $"{SectionName}:MaxRetryDelaySeconds (1 a 60)";
     }
 
     public string BuildConnectionString()
