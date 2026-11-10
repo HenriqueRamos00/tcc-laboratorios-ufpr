@@ -1,5 +1,6 @@
 services:
   sqlserver:
+    restart: unless-stopped
     image: mcr.microsoft.com/mssql/server:2022-latest
     environment:
       ACCEPT_EULA: "Y"
@@ -32,6 +33,7 @@ services:
         condition: service_healthy
 
   backend-auth:
+    restart: unless-stopped
     build:
       context: .
     environment:
