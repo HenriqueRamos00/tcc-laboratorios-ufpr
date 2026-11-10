@@ -1,5 +1,10 @@
 services:
   portal-api:
+    cap_drop:
+      - NET_RAW
+    networks:
+      - default
+      - lactec-auth
     build:
       context: .
       dockerfile: Dockerfile
@@ -17,3 +22,8 @@ services:
     # Volta sozinho quando o daemon do Docker reinicia junto com o WSL, em vez
     # de exigir um novo `docker compose up`. Parar à mão continua parando.
     restart: unless-stopped
+
+networks:
+  lactec-auth:
+    name: lactec-auth
+    external: true
