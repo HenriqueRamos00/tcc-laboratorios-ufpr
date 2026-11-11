@@ -2,6 +2,7 @@ using Portal.Adapters.AutoLab;
 using Portal.Adapters.LabResults;
 using Portal.Adapters.ReportDocuments;
 using Portal.Application.ReportDocuments;
+using Portal.Application.ReportDocuments.Exceptions;
 
 using Portal.Application.Visibility;
 
@@ -46,6 +47,48 @@ public sealed class AutoLabSignedReportDocumentTests : IDisposable
         string sql = Assert.Single(_database.Commands);
         Assert.DoesNotContain("PdfLiberado", sql, StringComparison.Ordinal);
         Assert.Contains("LIMIT 1", sql, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task AFileCompressedByTheAutoLabIsDeliveredAsThePlainPdf()
+    {
+        byte[] pdf = [.. "%PDF-1.4\n%%EOF"u8];
+        Guid file = _database.AddFile("laudo.pdf", CompressedAsAutoLab(pdf));
+        _database.AddReportIssue(Identification, file, revision: 0);
+
+        SignedReportDocument? document = await Repository()
+            .GetSignedDocumentOfAsync(Identification, CancellationToken.None);
+
+        Assert.Equal(pdf, document?.Content);
+    }
+
+    [Fact]
+    public async Task ACorruptCompressedFileIsReportedAsUnavailable()
+    {
+        byte[] corrupt = CompressedAsAutoLab([.. "%PDF-1.4"u8]);
+        Array.Fill(corrupt, (byte)0xFF, 27, corrupt.Length - 27);
+        Guid file = _database.AddFile("laudo.pdf", corrupt);
+        _database.AddReportIssue(Identification, file, revision: 0);
+
+        await Assert.ThrowsAsync<ReportDocumentSourceUnavailableException>(() => Repository()
+            .GetSignedDocumentOfAsync(Identification, CancellationToken.None));
+    }
+
+    [Fact]
+    public void AFileWithoutTheAutoLabSignatureIsKeptAsItIs()
+    {
+        byte[] gzipWithoutSignature = Gzip(CurrentPdf);
+
+        Assert.Same(CurrentPdf, FileDataContent.Decode(CurrentPdf));
+        Assert.Same(gzipWithoutSignature, FileDataContent.Decode(gzipWithoutSignature));
+    }
+
+    [Fact]
+    public void AFileThatExpandsBeyondTheLimitIsRefused()
+    {
+        byte[] bomb = CompressedAsAutoLab(new byte[FileDataContent.MaxDecodedBytes + 1]);
+
+        Assert.Throws<InvalidDataException>(() => FileDataContent.Decode(bomb));
     }
 
     [Fact]
@@ -133,6 +176,21 @@ public sealed class AutoLabSignedReportDocumentTests : IDisposable
         return new SignedReportDownload(
             new AutoLabLabTestRepository(context, new AutoLabQueryLimits()),
             new AutoLabReportIssueRepository(context, new AutoLabQueryLimits()));
+    }
+
+    private static byte[] CompressedAsAutoLab(byte[] content)
+    {
+        return [.. Convert.FromHexString("128B08DA41663B41BBFC2829752DCF962B"), .. Gzip(content)];
+    }
+
+    private static byte[] Gzip(byte[] content)
+    {
+        using MemoryStream output = new();
+
+        using (System.IO.Compression.GZipStream gzip = new(output, System.IO.Compression.CompressionLevel.Optimal))
+            gzip.Write(content);
+
+        return output.ToArray();
     }
 
     private AutoLabReportIssueRepository Repository()

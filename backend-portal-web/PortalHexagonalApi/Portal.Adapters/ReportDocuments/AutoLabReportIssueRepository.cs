@@ -121,9 +121,16 @@ public sealed class AutoLabReportIssueRepository : IReportIssueRepository
     {
         SignedDocumentRow? document = found.FirstOrDefault();
 
-        return document?.Content is { Length: > 0 } content
-            ? new SignedReportDocument(document.FileName, content)
-            : null;
+        if (document?.Content is not { Length: > 0 } stored) return null;
+
+        try
+        {
+            return new SignedReportDocument(document.FileName, FileDataContent.Decode(stored));
+        }
+        catch (InvalidDataException exception)
+        {
+            throw Unavailable("O arquivo assinado do AutoLAB não pôde ser lido.", exception);
+        }
     }
 
     private static string? Stated(string? value)
