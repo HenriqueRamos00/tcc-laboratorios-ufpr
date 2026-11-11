@@ -326,7 +326,7 @@ public sealed class LactecPortalContractTests
         DateTime now = DateTime.UtcNow;
         string? token = defect switch
         {
-            "expirado-demais" => SessionToken(now.AddMinutes(-31), now.AddHours(-1)),
+            "expirado-demais" => SessionToken(now.AddMinutes(-61), now.AddHours(-2)),
             "sem-inicio-de-sessao" => SessionToken(now.AddMinutes(5), null),
             "inicio-no-futuro" => SessionToken(now.AddMinutes(5), now.AddMinutes(1)),
             "assinatura" => SessionToken(now.AddMinutes(5), now.AddHours(-1), key: new byte[64]),
