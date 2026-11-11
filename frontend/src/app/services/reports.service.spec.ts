@@ -1,75 +1,112 @@
-import { HttpErrorResponse } from '@angular/common/http';
+import { HttpErrorResponse, provideHttpClient } from '@angular/common/http';
+import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { TestBed } from '@angular/core/testing';
-import { of, throwError } from 'rxjs';
-import type { Quote } from '@/app/model/quote';
-import { QuotesService } from './quotes.service';
+
+import { API_URL } from '@/app/environment/env';
+import type { AnalysisConclusion, PublishedReport } from '@/app/model/report';
 import { ReportsService } from './reports.service';
 
-function quote(id: string): Quote {
-  return {
-    id, code: id, name: 'Demo', status: 'Finalizado', stage: 'Relatório publicado',
-    description: '', companyName: 'Demo', externalContactName: '', externalContactEmail: '',
-    totalPrice: 0, createdDate: null,
-  };
-}
+const RELATORIOS: readonly PublishedReport[] = [
+  {
+    id: '804',
+    code: '804',
+    protocol: 'L-45490-2026-X',
+    sample: 'AM-2026-0142 - Óleo isolante',
+    laboratory: 'Laboratório de Ensaios',
+    publishedOn: '07/11/2026',
+  },
+];
 
-describe('ReportsService, relatórios dos orçamentos autorizados', () => {
-  let quotes: jasmine.SpyObj<QuotesService>;
+const CONCLUSAO: AnalysisConclusion = {
+  quoteId: '512',
+  quoteCode: 'ORC-2026-0091',
+  protocol: 'L-45490-2026-X',
+  testType: 'Análise cromatográfica',
+  summary: '1 relatório publicado disponível para consulta e download.',
+  reports: RELATORIOS,
+};
+
+describe('ReportsService, consulta de relatórios publicados', () => {
   let service: ReportsService;
+  let http: HttpTestingController;
 
   beforeEach(() => {
-    quotes = jasmine.createSpyObj<QuotesService>('QuotesService', ['getQuotes', 'getQuoteById']);
-    TestBed.configureTestingModule({ providers: [{ provide: QuotesService, useValue: quotes }] });
+    TestBed.configureTestingModule({
+      providers: [provideHttpClient(), provideHttpClientTesting()],
+    });
     service = TestBed.inject(ReportsService);
+    http = TestBed.inject(HttpTestingController);
   });
 
-  it('divide os relatórios existentes entre os clientes sem reutilizar a lista anterior', () => {
-    quotes.getQuotes.and.returnValue(of([quote('quote-18')]));
-    service.publishedReports().subscribe((reports) => {
-      expect(reports.length).toBe(4);
-      expect(reports.every((report) => report.protocol === '00412/2026')).toBeTrue();
+  afterEach(() => http.verify());
+
+  it('consulta a lista geral de relatórios publicados', () => {
+    let result: readonly PublishedReport[] | undefined;
+    service.publishedReports().subscribe((reports) => (result = reports));
+
+    const request = http.expectOne(`${API_URL}/api/reports`);
+    expect(request.request.method).toBe('GET');
+    request.flush(RELATORIOS);
+
+    expect(result).toEqual(RELATORIOS);
+  });
+
+  it('consulta os relatórios do orçamento', () => {
+    let result: AnalysisConclusion | null | undefined;
+    service.analysisConclusion('512').subscribe((conclusion) => (result = conclusion));
+
+    const request = http.expectOne(`${API_URL}/api/quotes/512/reports`);
+    expect(request.request.method).toBe('GET');
+    request.flush(CONCLUSAO);
+
+    expect(result).toEqual(CONCLUSAO);
+  });
+
+  it('preserva resposta sem relatório publicado para o orçamento', () => {
+    let result: AnalysisConclusion | null | undefined;
+    service.analysisConclusion('512').subscribe((conclusion) => (result = conclusion));
+
+    http.expectOne(`${API_URL}/api/quotes/512/reports`).flush(null, {
+      status: 204,
+      statusText: 'No Content',
     });
-    quotes.getQuotes.and.returnValue(of([quote('quote-15'), quote('quote-19')]));
-    service.publishedReports().subscribe((reports) => {
-      expect(reports.length).toBe(5);
-      expect(reports.every((report) => report.protocol !== '00412/2026')).toBeTrue();
+
+    expect(result).toBeNull();
+  });
+
+  it('solicita os bytes do PDF pelo identificador próprio do relatório', () => {
+    const pdf = new Blob(['%PDF-1.4'], { type: 'application/pdf' });
+    let result: Blob | undefined;
+    service.downloadReport('804').subscribe((file) => (result = file));
+
+    const request = http.expectOne(`${API_URL}/api/reports/804/file`);
+    expect(request.request.method).toBe('GET');
+    expect(request.request.responseType).toBe('blob');
+    request.flush(pdf);
+
+    expect(result).toBe(pdf);
+  });
+
+  it('propaga falhas da fonte sem voltar a dados de demonstração', () => {
+    let received: unknown;
+    service.publishedReports().subscribe({ error: (error) => (received = error) });
+
+    http.expectOne(`${API_URL}/api/reports`).flush(null, { status: 502, statusText: 'Bad Gateway' });
+
+    expect(received).toBeInstanceOf(HttpErrorResponse);
+    expect((received as HttpErrorResponse).status).toBe(502);
+  });
+
+  it('propaga a ausência de PDF publicado sem criar um arquivo substituto', () => {
+    let received: unknown;
+    service.downloadReport('inexistente').subscribe({ error: (error) => (received = error) });
+
+    http.expectOne(`${API_URL}/api/reports/inexistente/file`).flush(null, {
+      status: 404,
+      statusText: 'Not Found',
     });
-  });
 
-  it('uma conta sem orçamentos não recebe relatórios locais', () => {
-    quotes.getQuotes.and.returnValue(of([]));
-    service.publishedReports().subscribe((reports) => expect(reports).toEqual([]));
-  });
-
-  it('consulta o orçamento antes de entregar sua conclusão', () => {
-    quotes.getQuoteById.and.returnValue(of(quote('quote-18')));
-    service.analysisConclusion('quote-18').subscribe((conclusion) => {
-      expect(conclusion?.quoteId).toBe('quote-18');
-      expect(conclusion?.reports.length).toBe(4);
-    });
-    expect(quotes.getQuoteById).toHaveBeenCalledOnceWith('quote-18');
-  });
-
-  it('um orçamento autorizado sem conclusão mantém a resposta nula', () => {
-    quotes.getQuoteById.and.returnValue(of(quote('quote-1')));
-    service.analysisConclusion('quote-1').subscribe((conclusion) => expect(conclusion).toBeNull());
-  });
-
-  it('não entrega a conclusão de outro cliente quando a API responde 404', () => {
-    const failure = new HttpErrorResponse({ status: 404 });
-    quotes.getQuoteById.and.returnValue(throwError(() => failure));
-    service.analysisConclusion('quote-18').subscribe({
-      next: () => fail('Conclusão de outro cliente'),
-      error: (error) => expect(error).toBe(failure),
-    });
-  });
-
-  it('propaga falhas da API sem voltar à lista completa de relatórios', () => {
-    const failure = new HttpErrorResponse({ status: 502 });
-    quotes.getQuotes.and.returnValue(throwError(() => failure));
-    service.publishedReports().subscribe({
-      next: () => fail('Fallback de relatórios indevido'),
-      error: (error) => expect(error).toBe(failure),
-    });
+    expect(received).toEqual(jasmine.any(HttpErrorResponse));
+    expect((received as HttpErrorResponse).status).toBe(404);
   });
 });

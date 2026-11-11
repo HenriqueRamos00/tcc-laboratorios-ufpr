@@ -3,8 +3,11 @@ package br.ufpr.tcc.backend_lab.presentation.rest;
 import br.ufpr.tcc.backend_lab.application.dto.request.EnsaioRequest;
 import br.ufpr.tcc.backend_lab.application.dto.request.AtualizarStatusEnsaioRequest;
 import br.ufpr.tcc.backend_lab.application.dto.response.EnsaioDtos;
+import br.ufpr.tcc.backend_lab.application.dto.response.RelatorioDtos;
 import br.ufpr.tcc.backend_lab.application.usecase.AtualizarEnsaioUseCase;
 import br.ufpr.tcc.backend_lab.application.usecase.AtualizarStatusEnsaioUseCase;
+import br.ufpr.tcc.backend_lab.application.usecase.PrepararRelatorioUseCase;
+import br.ufpr.tcc.backend_lab.application.usecase.ListarRelatoriosDaExecucaoUseCase;
 import br.ufpr.tcc.backend_lab.application.usecase.CriarEnsaioUseCase;
 import br.ufpr.tcc.backend_lab.application.usecase.ListarAmostrasEnsaioUseCase;
 import br.ufpr.tcc.backend_lab.application.usecase.ListarEnsaiosUseCase;
@@ -44,6 +47,8 @@ public class EnsaioController {
     private final ListarTecnicosEnsaioUseCase listarTecnicos;
     private final ListarInstrumentosEnsaioUseCase listarInstrumentos;
     private final TemplateMedicaoUseCase templates;
+    private final PrepararRelatorioUseCase prepararRelatorio;
+    private final ListarRelatoriosDaExecucaoUseCase listarRelatorios;
 
     public EnsaioController(ListarEnsaiosUseCase listarEnsaios, ObterEnsaioUseCase obterEnsaio,
             CriarEnsaioUseCase criarEnsaio, AtualizarEnsaioUseCase atualizarEnsaio,
@@ -52,7 +57,9 @@ public class EnsaioController {
             ListarOrcamentosReferenciaEnsaioUseCase listarOrcamentos,
             ListarEquipamentosAnalisadosEnsaioUseCase listarEquipamentosAnalisados,
             AtualizarStatusEnsaioUseCase atualizarStatusEnsaio,
-            ListarHistoricoStatusEnsaioUseCase listarHistoricoStatus) {
+            ListarHistoricoStatusEnsaioUseCase listarHistoricoStatus,
+            PrepararRelatorioUseCase prepararRelatorio,
+            ListarRelatoriosDaExecucaoUseCase listarRelatorios) {
         this.listarEnsaios = listarEnsaios;
         this.obterEnsaio = obterEnsaio;
         this.criarEnsaio = criarEnsaio;
@@ -65,6 +72,8 @@ public class EnsaioController {
         this.listarTecnicos = listarTecnicos;
         this.listarInstrumentos = listarInstrumentos;
         this.templates = templates;
+        this.prepararRelatorio = prepararRelatorio;
+        this.listarRelatorios = listarRelatorios;
     }
 
     @GetMapping
@@ -98,6 +107,20 @@ public class EnsaioController {
     @GetMapping("/{id}/status-history")
     public List<EnsaioDtos.HistoricoStatus> historicoStatus(@PathVariable String id) {
         return listarHistoricoStatus.executar(id);
+    }
+
+    @GetMapping("/{id}/reports")
+    public RelatorioDtos.RelatoriosDaExecucao relatorios(@PathVariable String id) {
+        return listarRelatorios.executar(id);
+    }
+
+    @PostMapping("/{id}/reports/preparation")
+    public ResponseEntity<RelatorioDtos.Preparacao> prepararRelatorio(@PathVariable String id) {
+        RelatorioDtos.Preparacao result = prepararRelatorio.executar(id);
+        if ("created".equals(result.outcome())) {
+            return ResponseEntity.created(URI.create("/api/reports/" + result.reportId())).body(result);
+        }
+        return ResponseEntity.ok(result);
     }
 
     @GetMapping("/references/samples")

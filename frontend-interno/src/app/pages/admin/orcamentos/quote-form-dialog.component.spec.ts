@@ -56,6 +56,7 @@ describe('Formulário de orçamento', () => {
     hasDocument: true,
     companyId: 'company-1',
     laboratoryName: 'Laboratório de Ensaios',
+    protocol: 'L-45482-2026-X',
     scope: 'Análise conforme plano de amostragem',
     items: [{ testType: 'Teor de água', sampleCount: 3, standard: 'ASTM D1533', unitPrice: 12.5 }],
   };
@@ -66,6 +67,7 @@ describe('Formulário de orçamento', () => {
       companyId: 'company-1',
       name: 'Análise de óleo isolante',
       laboratoryName: 'Laboratório de Ensaios',
+      protocol: 'L-45482-2026-X',
       description: 'Análise físico-química de óleo isolante',
       scope: 'Análise conforme plano de amostragem',
       externalContactName: 'Ana Lima',
@@ -82,6 +84,7 @@ describe('Formulário de orçamento', () => {
       companyId: 'company-1',
       name: 'Análise de óleo isolante',
       laboratoryName: 'Laboratório de Ensaios',
+      protocol: 'L-45482-2026-X',
       description: 'Análise físico-química de óleo isolante',
       scope: 'Análise conforme plano de amostragem',
       externalContactName: 'Ana Lima',
@@ -123,6 +126,17 @@ describe('Formulário de orçamento', () => {
         { provide: MAT_DIALOG_DATA, useValue: dadosDialogo },
       ],
     });
+  });
+
+  it('exige o protocolo do laboratório antes de enviar o orçamento', () => {
+    const fixture = criarFormulario();
+    preencherFormulario(fixture.componentInstance);
+    fixture.componentInstance.form.controls.protocol.setValue('   ');
+
+    expect(fixture.componentInstance.form.controls.protocol.invalid).toBeTrue();
+    fixture.componentInstance.save();
+    expect(orcamentosService.create).not.toHaveBeenCalled();
+    fixture.destroy();
   });
 
   it('preenche o contato da empresa e preserva o campo que foi editado ao trocar empresa', fakeAsync(() => {

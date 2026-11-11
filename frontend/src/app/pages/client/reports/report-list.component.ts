@@ -5,6 +5,7 @@ import { MatIconModule } from '@angular/material/icon';
 import { RouterLink } from '@angular/router';
 
 import { EmptyStateComponent } from '@shared/components/empty-state/empty-state.component';
+import { handFileToTheBrowser } from '@shared/file-download';
 import { PageHeaderComponent } from '@shared/components/page-header/page-header.component';
 import { SearchFieldComponent } from '@shared/components/search-field/search-field.component';
 
@@ -51,6 +52,7 @@ export class ReportListComponent {
   protected readonly quotesWithReport = signal<readonly DisplayedQuote[] | null>(null);
   protected readonly reportsFailed = signal(false);
   protected readonly quotesFailed = signal(false);
+  protected readonly downloadFailed = signal(false);
 
   protected readonly visibleReports = computed(() => {
     const list = this.reports() ?? [];
@@ -82,7 +84,6 @@ export class ReportListComponent {
         next: (list) => this.reports.set(list),
         error: () => this.reportsFailed.set(true),
       });
-
     this.quotesService
       .getQuotes()
       .pipe(takeUntilDestroyed(this.destroyRef))
@@ -94,6 +95,17 @@ export class ReportListComponent {
               .filter((quote) => quote.status === 'relatorio-publicado'),
           ),
         error: () => this.quotesFailed.set(true),
+      });
+  }
+
+  protected downloadReport(report: PublishedReport): void {
+    this.downloadFailed.set(false);
+    this.reportsService
+      .downloadReport(report.id)
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: (file) => handFileToTheBrowser(file, `relatorio-${report.id}.pdf`),
+        error: () => this.downloadFailed.set(true),
       });
   }
 

@@ -52,13 +52,7 @@ public class AcompanhamentoOrcamentosCliente {
             case VALIDATED -> EtapaAcompanhamentoOrcamento.VALIDADO;
             case FINALIZED -> EtapaAcompanhamentoOrcamento.FINALIZADO;
             case DRAFTING_REPORT -> EtapaAcompanhamentoOrcamento.ELABORANDO_RELATORIO;
-            case REPORT_PUBLISHED -> {
-                if (ensaio.getReportReference() == null || ensaio.getReportReference().isBlank()
-                        || ensaio.getPublishedAt() == null) {
-                    throw new IllegalStateException("Ensaio publicado sem referência e data do laudo");
-                }
-                yield EtapaAcompanhamentoOrcamento.RELATORIO_PUBLICADO;
-            }
+            case REPORT_PUBLISHED -> EtapaAcompanhamentoOrcamento.RELATORIO_PUBLICADO;
             case CANCELLED -> EtapaAcompanhamentoOrcamento.CANCELADO;
         };
     }

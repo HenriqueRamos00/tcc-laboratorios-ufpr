@@ -8,8 +8,11 @@ using Portal.Adapters.BackendAuth;
 using Portal.Adapters.BackendLab;
 using Portal.Adapters.Quotes;
 using Portal.Api.Configuration;
+using Portal.Api.Reports;
+using Portal.Adapters.Reports;
 using Portal.Application.Authentication;
 using Portal.Application.Quotes;
+using Portal.Application.Reports;
 
 using Xunit;
 
@@ -33,6 +36,33 @@ public sealed class PortalSourceRegistrationTests
 
         Assert.IsType<SpringQuoteRepository>(scope.ServiceProvider.GetRequiredService<IQuoteRepository>());
         Assert.IsType<SpringQuoteDocumentRepository>(scope.ServiceProvider.GetRequiredService<IQuoteDocumentRepository>());
+    }
+
+    [Fact]
+    public void BackendLabSelecionaAConsultaDocumentalSpring()
+    {
+        IConfiguration configuration = Configuration("backend-lab", useDemoData: true);
+        using ServiceProvider provider = Register("backend-lab", useDemoData: true)
+            .AddReportDocumentRepository(configuration)
+            .BuildServiceProvider();
+        using IServiceScope scope = provider.CreateScope();
+
+        Assert.IsType<SpringReportDocumentRepository>(
+            scope.ServiceProvider.GetRequiredService<IReportDocumentRepository>());
+    }
+
+    [Theory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public void LactecPreservaOsRelatoriosDeExemploLegadosIndependentementeDaDemoComercial(bool useDemoData)
+    {
+        IConfiguration configuration = Configuration("lactec", useDemoData: useDemoData);
+        IServiceCollection services = Register("lactec", useDemoData: useDemoData)
+            .AddReportDocumentRepository(configuration);
+        ServiceDescriptor registration = services.Last(item =>
+            item.ServiceType == typeof(IReportDocumentRepository));
+
+        Assert.Equal(typeof(LactecDemoReportDocumentRepository), registration.ImplementationType);
     }
 
     [Fact]
@@ -109,6 +139,16 @@ public sealed class PortalSourceRegistrationTests
     private static IServiceCollection Register(
         string? source, string? baseUrl = "https://backend-lab.test/", bool useDemoData = false)
     {
+        IConfiguration configuration = Configuration(source, baseUrl, useDemoData);
+        return new ServiceCollection()
+            .AddControllers()
+            .Services
+            .AddPortalDataSource(configuration);
+    }
+
+    private static IConfiguration Configuration(
+        string? source, string? baseUrl = "https://backend-lab.test/", bool useDemoData = false)
+    {
         Dictionary<string, string?> values = [];
         if (source is not null) values["Portal:DataSource"] = source;
         values["Portal:UseDemoData"] = useDemoData.ToString();
@@ -121,13 +161,8 @@ public sealed class PortalSourceRegistrationTests
             values["BackendAuth:ServiceCode"] = "portal-web";
         }
 
-        IConfiguration configuration = new ConfigurationBuilder()
+        return new ConfigurationBuilder()
             .AddInMemoryCollection(values)
             .Build();
-
-        return new ServiceCollection()
-            .AddControllers()
-            .Services
-            .AddPortalDataSource(configuration);
     }
 }

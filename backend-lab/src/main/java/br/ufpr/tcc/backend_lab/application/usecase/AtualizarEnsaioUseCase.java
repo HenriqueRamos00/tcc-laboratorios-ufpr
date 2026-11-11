@@ -29,7 +29,7 @@ public class AtualizarEnsaioUseCase {
             throw new DadosEnsaioInvalidosException("Versão do ensaio é obrigatória");
         }
         Long chave = ResolvedorReferenciasEnsaio.id(id);
-        ExecucaoEnsaio ensaio = ensaios.buscarCompleto(chave)
+        ExecucaoEnsaio ensaio = ensaios.buscarParaEditar(chave)
                 .orElseThrow(() -> new EnsaioNaoEncontradoException("Ensaio não encontrado"));
         if (request.version() != ensaio.getVersion()) {
             throw new ConflitoEdicaoEnsaioException("O ensaio foi alterado por outra sessão");

@@ -68,6 +68,7 @@ public class UpdateOrcamentoUseCase {
         orcamento.setCode(request.code());
         orcamento.setName(request.name());
         orcamento.setLaboratoryName(request.laboratoryName());
+        orcamento.setProtocol(request.protocol());
         orcamento.setDescription(request.description());
         orcamento.setScope(request.scope());
         orcamento.setExternalContactName(request.externalContactName());

@@ -36,10 +36,15 @@ describe('Acompanhamento de status do ensaio', () => {
 
   beforeEach(async () => {
     service = jasmine.createSpyObj<EnsaiosService>('EnsaiosService', [
-      'get', 'statusHistory', 'updateStatus',
+      'get', 'statusHistory', 'updateStatus', 'reportsForTest', 'prepareReport',
     ]);
     service.get.and.returnValue(of(testDetail));
     service.statusHistory.and.returnValue(of(statusHistory));
+    service.reportsForTest.and.returnValue(of({ items: [], publishedDocumentAvailable: false }));
+    service.prepareReport.and.returnValue(of({
+      outcome: 'created', reportId: '91',
+      reports: [{ id: '91', validationStatus: 'pending-validation', published: false, publishedAt: null, version: 0 }],
+    }));
     service.updateStatus.and.returnValue(of({
       id: testDetail.id, status: 'validated', changedAt: '2026-11-01T15:00:00Z',
       responsible: testDetail.responsible, version: 5, changed: true,
@@ -50,7 +55,7 @@ describe('Acompanhamento de status do ensaio', () => {
     await TestBed.configureTestingModule({
       imports: [EnsaioStatusComponent],
       providers: [
-        provideRouter([]),
+        provideRouter([{ path: 'tecnico/relatorios/:id', children: [] }]),
         { provide: ActivatedRoute, useValue: { snapshot: { paramMap: { get: () => '42' } } } },
         { provide: EnsaiosService, useValue: service },
         { provide: AppDialogService, useValue: dialog },
@@ -141,9 +146,53 @@ describe('Acompanhamento de status do ensaio', () => {
     component.selectStatus('report-published');
 
     expect(component.selectedStatus()).toBeNull();
-    expect(fixture.nativeElement.textContent).toContain('Publicação do relatório ainda não disponível');
-    expect(fixture.nativeElement.textContent).toContain('não disponibiliza documento ao cliente');
+    expect(fixture.nativeElement.textContent).toContain('A etapa Relatório publicado só fica disponível');
+    expect(fixture.nativeElement.textContent).toContain('PDF acessível ao cliente');
+    expect(Array.from(fixture.nativeElement.querySelectorAll('.status-progress__label'),
+      (element: Element) => element.textContent?.trim()))
+      .not.toContain('Relatório publicado');
     expect(service.updateStatus).not.toHaveBeenCalled();
+  });
+
+  it('só oferece Relatório publicado depois de confirmar documento publicado e acessível', () => {
+    component.publishedDocumentAvailable.set(true);
+    fixture.detectChanges();
+    component.selectStatus('report-published');
+
+    expect(component.selectedStatus()).toBe('report-published');
+    expect(fixture.nativeElement.querySelector('#new-test-status option[value="report-published"]')).not.toBeNull();
+  });
+
+  it('prepara relatório somente na etapa Elaborando relatório e navega pelo ID retornado', () => {
+    const documento = { id: '91', validationStatus: 'pending-validation' as const, published: false, publishedAt: null, version: 0 };
+    service.reportsForTest.and.returnValue(of({ items: [documento], publishedDocumentAvailable: false }));
+    component.detail.set({ ...testDetail, status: 'drafting-report' });
+    fixture.detectChanges();
+    component.prepareReport();
+
+    expect(service.prepareReport).toHaveBeenCalledWith('42');
+    expect(component.reportDocuments()[0]?.id).toBe('91');
+  });
+
+  it('mostra seleção explícita quando a preparação encontra vários relatórios', () => {
+    const reports = [
+      { id: '91', validationStatus: 'pending-validation' as const, published: false, publishedAt: null, version: 0 },
+      { id: '92', validationStatus: 'validated' as const, published: true, publishedAt: '2026-11-07T15:00:00Z', version: 2 },
+    ];
+    service.reportsForTest.and.returnValue(of({ items: reports, publishedDocumentAvailable: true }));
+    service.prepareReport.and.returnValue(of({
+      outcome: 'selection-required', reportId: null,
+      reports,
+    }));
+    component.detail.set({ ...testDetail, status: 'drafting-report' });
+    fixture.detectChanges();
+    component.prepareReport();
+    fixture.detectChanges();
+
+    expect(component.reportDocuments().length).toBe(2);
+    expect(fixture.nativeElement.textContent).toContain('Selecione um dos documentos existentes');
+    expect(fixture.nativeElement.textContent).toContain('Registro 91');
+    expect(fixture.nativeElement.textContent).toContain('Registro 92');
   });
 
   it('mantém Relatório publicado no progresso e permite retornar para uma etapa ativa', () => {

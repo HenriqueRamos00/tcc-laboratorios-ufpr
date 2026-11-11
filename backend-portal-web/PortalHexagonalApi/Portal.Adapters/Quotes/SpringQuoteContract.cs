@@ -57,6 +57,9 @@ internal static class SpringQuoteContract
         [JsonRequired, JsonPropertyName("companyName")]
         public string? CompanyName { get; init; }
 
+        [JsonRequired, JsonPropertyName("protocol")]
+        public string? Protocol { get; init; }
+
         [JsonRequired, JsonPropertyName("externalContactName")]
         public string? ExternalContactName { get; init; }
 
@@ -85,7 +88,8 @@ internal static class SpringQuoteContract
                 ExternalContactName ?? string.Empty,
                 ExternalContactEmail ?? string.Empty,
                 TotalPrice ?? throw new JsonException("Campo totalPrice ausente ou inválido."),
-                CreatedDate);
+                CreatedDate,
+                RequiredText(Protocol, "protocol"));
         }
     }
 

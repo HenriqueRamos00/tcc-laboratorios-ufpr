@@ -2,6 +2,7 @@ import {
   ChangeDetectionStrategy,
   Component,
   computed,
+  DestroyRef,
   inject,
   input,
   signal,
@@ -11,6 +12,7 @@ import { MatIconModule } from '@angular/material/icon';
 import { catchError, EMPTY, switchMap, tap } from 'rxjs';
 
 import { EmptyStateComponent } from '@shared/components/empty-state/empty-state.component';
+import { handFileToTheBrowser } from '@shared/file-download';
 import {
   PageHeaderComponent,
   type Breadcrumb,
@@ -22,7 +24,7 @@ import {
 } from '@shared/components/status-stepper/status-stepper.component';
 
 import { stageIndex, PIPELINE_STAGES } from '@/app/model/analysis-pipeline';
-import type { AnalysisConclusion } from '@/app/model/report';
+import type { AnalysisConclusion, PublishedReport } from '@/app/model/report';
 import { ReportsService } from '@/app/services/reports.service';
 
 // Esta tela é o fim da linha de um orçamento: mostra o trecho final do
@@ -51,6 +53,7 @@ export class QuoteReportsComponent {
   readonly quoteId = input.required<string>();
 
   private readonly reports = inject(ReportsService);
+  private readonly destroyRef = inject(DestroyRef);
 
   protected readonly stages = ETAPAS;
   protected readonly etapaAtual = stageIndex('relatorio-publicado');
@@ -59,6 +62,7 @@ export class QuoteReportsComponent {
   protected readonly conclusion = signal<AnalysisConclusion | null>(null);
   protected readonly loading = signal(true);
   protected readonly failed = signal(false);
+  protected readonly downloadFailed = signal(false);
 
   protected readonly breadcrumbs = computed<readonly Breadcrumb[]>(() => [
     { label: 'Relatórios', route: '/cliente/relatorios' },
@@ -85,6 +89,7 @@ export class QuoteReportsComponent {
           this.failed.set(false);
           this.loading.set(true);
           this.searchTerm.set('');
+          this.downloadFailed.set(false);
         }),
         switchMap((id) =>
           this.reports.analysisConclusion(id).pipe(
@@ -100,6 +105,17 @@ export class QuoteReportsComponent {
       .subscribe((conclusion) => {
         this.conclusion.set(conclusion);
         this.loading.set(false);
+      });
+  }
+
+  protected downloadReport(report: PublishedReport): void {
+    this.downloadFailed.set(false);
+    this.reports
+      .downloadReport(report.id)
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: (file) => handFileToTheBrowser(file, `relatorio-${report.id}.pdf`),
+        error: () => this.downloadFailed.set(true),
       });
   }
 }

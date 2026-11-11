@@ -12,21 +12,22 @@ export interface Breadcrumb {
   standalone: true,
   imports: [MatIconModule, RouterLink],
   host: { class: 'block' },
+  styleUrl: './page-header.component.css',
   template: `
     @if (breadcrumbs().length) {
-      <nav class="mb-2 flex items-center gap-1 text-sm" aria-label="Trilha de navegação">
+      <nav class="page-breadcrumbs" aria-label="Trilha de navegação">
         @for (breadcrumb of breadcrumbs(); track breadcrumb.label; let last = $last) {
           @if (breadcrumb.route && !last) {
-            <a [routerLink]="breadcrumb.route" class="text-lactec-primary hover:underline">
+            <a [routerLink]="breadcrumb.route" class="page-breadcrumbs__link">
               {{ breadcrumb.label }}
             </a>
           } @else {
-            <span class="text-lactec-ink-soft" [attr.aria-current]="last ? 'page' : null">
+            <span class="page-breadcrumbs__current" [attr.aria-current]="last ? 'page' : null">
               {{ breadcrumb.label }}
             </span>
           }
           @if (!last) {
-            <mat-icon class="icone-16 text-lactec-muted" aria-hidden="true">
+            <mat-icon class="icone-16 page-breadcrumbs__separator" aria-hidden="true">
               chevron_right
             </mat-icon>
           }

@@ -27,6 +27,7 @@
       </div>
 
       <nav
+        id="shell-primary-nav"
         class="flex flex-col gap-1 px-2 py-3 flex-1 overflow-y-auto"
         aria-label="Navegação principal"
       >
@@ -86,30 +87,60 @@
           </button>
         }
       </nav>
+
+      @if (!handset) {
+        <div class="px-2 py-3 border-t border-white/10 shrink-0">
+          <button
+            type="button"
+            (click)="toggleCollapse()"
+            [attr.aria-expanded]="!isCollapsed"
+            aria-controls="shell-primary-nav"
+            [attr.aria-label]="isCollapsed ? 'Expandir menu' : 'Recolher menu'"
+            [matTooltip]="isCollapsed ? 'Expandir menu' : ''"
+            matTooltipPosition="right"
+            matTooltipShowDelay="120"
+            class="w-full flex items-center gap-3 h-11 rounded-lg hover:bg-white/5
+                   hover:text-white transition-colors text-left"
+            [class.justify-center]="isCollapsed"
+            [class.px-3]="!isCollapsed"
+          >
+            <mat-icon
+              class="shrink-0 transition-transform duration-200"
+              [class.rotate-180]="isCollapsed"
+              aria-hidden="true"
+            >chevron_left</mat-icon>
+            @if (showLabels) {
+              <span class="font-medium text-sm truncate">Recolher menu</span>
+            }
+          </button>
+        </div>
+      }
     </div>
   </mat-sidenav>
 
   <mat-sidenav-content>
     <div class="h-full flex flex-col min-w-0">
       <header
-        class="flex items-center h-14 px-3 md:px-6 shrink-0 border-b"
+        class="flex items-center justify-between gap-2 h-14 px-3 md:px-6 shrink-0 border-b"
         [ngClass]="handset
-          ? 'surface-dark bg-lactec-nav border-white/10 justify-end'
-          : 'bg-lactec-paper border-lactec-line justify-between'"
+          ? 'surface-dark bg-lactec-nav border-white/10'
+          : 'bg-lactec-paper border-lactec-line'"
       >
+        <div class="flex items-center min-w-0">
+          @if (backTarget(); as back) {
+            <a
+              class="shell-back"
+              [class.shell-back--dark]="handset"
+              [routerLink]="back.url"
+              [attr.aria-label]="back.label"
+            >
+              <mat-icon class="shrink-0" aria-hidden="true">arrow_back</mat-icon>
+              <span>Voltar</span>
+            </a>
+          }
+        </div>
+
         @if (!handset) {
-          <button
-            mat-icon-button
-            type="button"
-            (click)="toggleCollapse()"
-            [attr.aria-expanded]="!isCollapsed"
-            [attr.aria-label]="isCollapsed ? 'Expandir menu' : 'Recolher menu'"
-          >
-            <mat-icon
-              class="transition-transform duration-200"
-              [class.rotate-180]="isCollapsed"
-            >chevron_left</mat-icon>
-          </button>
           <button
             mat-icon-button
             type="button"

@@ -3,12 +3,13 @@
   align-items: flex-start;
   gap: 0;
   width: 100%;
+  min-width: 0;
 }
 
 .status-progress__step {
   display: flex;
   min-width: 0;
-  flex: 1 1 0;
+  flex: 0 1 140px;
   flex-direction: column;
   align-items: center;
   gap: 8px;
@@ -52,7 +53,9 @@
 }
 
 .status-progress__label {
+  width: 100%;
   max-width: 140px;
+  min-width: 0;
   color: var(--color-lactec-muted);
   font-size: 10px;
   font-weight: 600;

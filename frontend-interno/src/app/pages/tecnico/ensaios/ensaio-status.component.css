@@ -1,3 +1,8 @@
+:host {
+  display: block;
+  min-width: 0;
+}
+
 .status-edit__select {
   width: 100%;
   min-width: 0;
@@ -20,4 +25,21 @@
   cursor: not-allowed;
   background: var(--color-lactec-line-soft);
   color: var(--color-lactec-muted);
+}
+
+.report-preparation__header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.report-preparation__copy {
+  flex: 1 1 14rem;
+  min-width: 0;
+}
+
+.report-preparation__button {
+  flex: 0 0 auto;
 }

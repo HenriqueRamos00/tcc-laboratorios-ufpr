@@ -85,4 +85,19 @@ describe('Serviço de ensaios', () => {
     expect(request.request.method).toBe('GET');
     request.flush([]);
   });
+
+  it('consulta documentos publicados vinculados a uma execução sem baixar o PDF', () => {
+    service.reportsForTest('42').subscribe();
+    const request = http.expectOne('/api/tests/42/reports');
+    expect(request.request.method).toBe('GET');
+    request.flush({ items: [], publishedDocumentAvailable: false });
+  });
+
+  it('prepara explicitamente o relatório da execução', () => {
+    service.prepareReport('42').subscribe();
+    const request = http.expectOne('/api/tests/42/reports/preparation');
+    expect(request.request.method).toBe('POST');
+    expect(request.request.body).toBeNull();
+    request.flush({ outcome: 'created', reportId: '91', reports: [] });
+  });
 });

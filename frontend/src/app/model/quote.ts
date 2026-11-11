@@ -8,6 +8,7 @@ export type Quote = {
   stage: string;
   description: string;
   companyName: string;
+  protocol?: string;
   externalContactName: string;
   externalContactEmail: string;
   totalPrice: number;

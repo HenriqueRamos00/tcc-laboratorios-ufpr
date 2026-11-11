@@ -243,6 +243,7 @@ describe('Drawer técnico de orçamento', () => {
     technicalStatus: 'complete',
     description: 'Caracterização físico-química de óleo isolante',
     laboratoryName: 'Laboratório de Materiais',
+    protocol: 'L-45482-2026-X',
     scope: 'Determinação de teor de água',
     items: [{ testType: 'Teor de água', sampleCount: 3, standard: 'ASTM D1533' }],
   };

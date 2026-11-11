@@ -125,7 +125,7 @@ export interface TestUpdateRequest extends TestRequest {
 
 export type TestStatusAction = 'set-status' | 'reject' | 'cancel';
 
-export type TestStatusTarget = Exclude<ProcessStatus, 'report-published' | 'cancelled'>;
+export type TestStatusTarget = Exclude<ProcessStatus, 'cancelled'>;
 
 export type TestStatusUpdateRequest =
   | { action: 'set-status'; targetStatus: TestStatusTarget; version: number }
