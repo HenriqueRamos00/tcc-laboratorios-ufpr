@@ -318,6 +318,8 @@ export interface SelectedAnalysis {
   readonly id: string;
   readonly date: string;
   readonly label: string;
+  readonly hasPhysicalChemical: boolean;
+  readonly hasDissolvedGases: boolean;
 }
 
 /**

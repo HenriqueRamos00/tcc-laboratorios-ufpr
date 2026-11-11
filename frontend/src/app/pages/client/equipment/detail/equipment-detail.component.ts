@@ -45,7 +45,7 @@ interface HistoryRow {
   readonly date: string;
   readonly analysisType: string;
   readonly status: string;
-  readonly tab: HealthTab;
+  readonly tab: HealthTab | null;
   readonly hasFile: boolean;
   readonly fileName: string;
 }

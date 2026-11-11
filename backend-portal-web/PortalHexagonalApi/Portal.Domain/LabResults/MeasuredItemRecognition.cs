@@ -1,16 +1,16 @@
-using Portal.Domain.LabResults.Exceptions;
-
 namespace Portal.Domain.LabResults;
 
 /// <summary>
 /// Identifica os itens medidos de um protocolo. A lista resolve o nome que ela conhece, e o
-/// que sobra passa pela aritmetica antes de ser recusado.
+/// que sobra passa pela aritmetica do totalizador. O que nem a lista nem a aritmetica
+/// reconhecem fica de fora: e ensaio de outra natureza, como PCB ou furfuraldeido, que nao
+/// e fisico-quimico nem cromatografia, e o laudo dele continua disponivel como documento.
 ///
 /// O motivo e que o nome do totalizador e a parte mais fragil da fonte. "Total de Gases" e
 /// rotulo de relatorio, escolhido pelo laboratorio, e nada no AutoLAB impede que amanha
 /// chegue "Soma dos Gases" ou "Gases Totais". Se o reconhecimento dependesse so do nome, um
-/// rotulo novo derrubaria o laudo inteiro por item medido desconhecido, ou pior, entraria na
-/// tabela como se fosse mais um gas medido e dobraria a soma do grafico. A soma, por outro
+/// rotulo novo sumiria da tabela, ou pior, entraria como se fosse mais um gas medido e
+/// dobraria a soma do grafico. A soma, por outro
 /// lado, nao depende de rotulo: se o valor publicado e exatamente a soma dos gases do
 /// protocolo, aquela linha e um totalizador, qualquer que seja o nome dela.
 ///
@@ -45,7 +45,7 @@ public static class MeasuredItemRecognition
 
     /// <summary>
     /// O que sobrou do nome so pode entrar como totalizador, e so se o valor publicado for
-    /// exatamente uma das duas somas. As somas sao calculadas uma vez, antes do laco: elas
+    /// exatamente uma das duas somas; o resto fica de fora. As somas sao calculadas uma vez, antes do laco: elas
     /// dependem dos gases ja reconhecidos pelo nome, e nenhum nome novo entra nesse grupo.
     ///
     /// Os codigos ja usados viajam junto porque um protocolo tem no maximo um total de gases
@@ -63,9 +63,8 @@ public static class MeasuredItemRecognition
 
         foreach (ResultBeforeRecognition result in leftOver)
         {
-            MeasuredItem totalizer =
-                RecognizeTotalizerBySum(result, everyGas, combustibles, taken)
-                ?? throw new ResultNameOutsideKnownListException(result.SourceName);
+            if (RecognizeTotalizerBySum(result, everyGas, combustibles, taken) is not MeasuredItem totalizer)
+                continue;
 
             taken.Add(totalizer.Code);
             recognized.Add(new Measurement(totalizer, result.Value));

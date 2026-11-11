@@ -1,13 +1,13 @@
-using Portal.Domain.LabResults.Exceptions;
-
 namespace Portal.Domain.LabResults;
 
 /// <summary>
 /// Lista de itens conhecidos, chaveada pela string exata da coluna <c>Name</c> da view. E a unica
 /// fonte de formula, unidade, papel, metodo e limite normativo, porque nenhuma dessas
-/// cinco informacoes existe no AutoLAB. Nome fora dessa lista falha em vez de virar um
-/// item medido sem unidade: Duval e a IEEE C57.104 sao definidos em ppm, e publicar numero sem
-/// unidade da lista deixaria a tela comparar ppm com miligrama por grama em silencio.
+/// cinco informacoes existe no AutoLAB. Nome fora dessa lista nao vira item medido: Duval e a
+/// IEEE C57.104 sao definidos em ppm, e publicar numero sem unidade da lista deixaria a tela
+/// comparar ppm com miligrama por grama em silencio. A lista cobre o que a tela de
+/// indicadores mostra, que e fisico-quimico e cromatografia de oleo isolante; os demais
+/// ensaios do laboratorio de oleos ficam so no laudo.
 ///
 /// A marca de gas combustivel foi conferida contra a soma publicada de
 /// "Total de Gases Combustiveis" nos dois protocolos de cromatografia da amostra real:
@@ -94,246 +94,6 @@ public static class KnownMeasuredItems
             "Estabilidade à oxidação - ACIDEZ",
             MethodNotCuratedYet,
             MethodNotCuratedYet,
-            LimitNotCuratedYet),
-        ["Aspecto visual em óleo mineral isolante"] = PhysicalChemicalProperty(
-            "aspectoVisual",
-            "Aspecto visual em óleo mineral isolante",
-            MethodNotCuratedYet,
-            MethodNotCuratedYet,
-            LimitNotCuratedYet),
-        ["Composição Ca"] = PhysicalChemicalProperty(
-            "composicaoCa",
-            "Composição Ca",
-            MethodNotCuratedYet,
-            MethodNotCuratedYet,
-            LimitNotCuratedYet),
-        ["Composição Cn"] = PhysicalChemicalProperty(
-            "composicaoCn",
-            "Composição Cn",
-            MethodNotCuratedYet,
-            MethodNotCuratedYet,
-            LimitNotCuratedYet),
-        ["Composição Cp"] = PhysicalChemicalProperty(
-            "composicaoCp",
-            "Composição Cp",
-            MethodNotCuratedYet,
-            MethodNotCuratedYet,
-            LimitNotCuratedYet),
-        ["Contagem de Particulas (OMI) > 10 μm"] = PhysicalChemicalProperty(
-            "particulas10Micrometros",
-            "Contagem de Particulas (OMI) > 10 μm",
-            MethodNotCuratedYet,
-            MethodNotCuratedYet,
-            LimitNotCuratedYet),
-        ["Contagem de Particulas (OMI) > 14 μm"] = PhysicalChemicalProperty(
-            "particulas14Micrometros",
-            "Contagem de Particulas (OMI) > 14 μm",
-            MethodNotCuratedYet,
-            MethodNotCuratedYet,
-            LimitNotCuratedYet),
-        ["Contagem de Particulas (OMI) > 21 μm"] = PhysicalChemicalProperty(
-            "particulas21Micrometros",
-            "Contagem de Particulas (OMI) > 21 μm",
-            MethodNotCuratedYet,
-            MethodNotCuratedYet,
-            LimitNotCuratedYet),
-        ["Contagem de Particulas (OMI) > 25 μm"] = PhysicalChemicalProperty(
-            "particulas25Micrometros",
-            "Contagem de Particulas (OMI) > 25 μm",
-            MethodNotCuratedYet,
-            MethodNotCuratedYet,
-            LimitNotCuratedYet),
-        ["Contagem de Particulas (OMI) > 38 μm"] = PhysicalChemicalProperty(
-            "particulas38Micrometros",
-            "Contagem de Particulas (OMI) > 38 μm",
-            MethodNotCuratedYet,
-            MethodNotCuratedYet,
-            LimitNotCuratedYet),
-        ["Contagem de Particulas (OMI) > 4 μm"] = PhysicalChemicalProperty(
-            "particulas4Micrometros",
-            "Contagem de Particulas (OMI) > 4 μm",
-            MethodNotCuratedYet,
-            MethodNotCuratedYet,
-            LimitNotCuratedYet),
-        ["Contagem de Particulas (OMI) > 6 μm"] = PhysicalChemicalProperty(
-            "particulas6Micrometros",
-            "Contagem de Particulas (OMI) > 6 μm",
-            MethodNotCuratedYet,
-            MethodNotCuratedYet,
-            LimitNotCuratedYet),
-        ["Contagem de Particulas (OMI) > 70 μm"] = PhysicalChemicalProperty(
-            "particulas70Micrometros",
-            "Contagem de Particulas (OMI) > 70 μm",
-            MethodNotCuratedYet,
-            MethodNotCuratedYet,
-            LimitNotCuratedYet),
-        ["Contagem de Particulas (OMI) ISO"] = PhysicalChemicalProperty(
-            "particulasIso",
-            "Contagem de Particulas (OMI) ISO",
-            MethodNotCuratedYet,
-            MethodNotCuratedYet,
-            LimitNotCuratedYet),
-        ["Densidade A 15,6°C"] = PhysicalChemicalProperty(
-            "densidade156",
-            "Densidade A 15,6°C",
-            MethodNotCuratedYet,
-            MethodNotCuratedYet,
-            LimitNotCuratedYet),
-        ["Determinação da Cor em amostras de óleo Lubrificante"] = PhysicalChemicalProperty(
-            "corLubrificante",
-            "Determinação da Cor em amostras de óleo Lubrificante",
-            MethodNotCuratedYet,
-            MethodNotCuratedYet,
-            LimitNotCuratedYet),
-        ["Determinação das características emulsionantes em amostras de óleo Lubrificante"] = PhysicalChemicalProperty(
-            "emulsaoLubrificante",
-            "Determinação das características emulsionantes em amostras de óleo Lubrificante",
-            MethodNotCuratedYet,
-            MethodNotCuratedYet,
-            LimitNotCuratedYet),
-        ["Determinação das Características espumantes (sequência II) em amostras de óleo Lubrificante"] = PhysicalChemicalProperty(
-            "espumaLubrificante",
-            "Determinação das Características espumantes (sequência II) em amostras de óleo Lubrificante",
-            MethodNotCuratedYet,
-            MethodNotCuratedYet,
-            LimitNotCuratedYet),
-        ["Determinação de 2-Furfuraldeído (2-Fal) em óleo mineral isolante"] = PhysicalChemicalProperty(
-            "furfuraldeido",
-            "Determinação de 2-Furfuraldeído (2-Fal) em óleo mineral isolante",
-            MethodNotCuratedYet,
-            MethodNotCuratedYet,
-            LimitNotCuratedYet),
-        ["Determinação de Índice de Neutralização em amostras de Óleo Lubrificante"] = PhysicalChemicalProperty(
-            "neutralizacaoLubrificante",
-            "Determinação de Índice de Neutralização em amostras de Óleo Lubrificante",
-            MethodNotCuratedYet,
-            MethodNotCuratedYet,
-            LimitNotCuratedYet),
-        ["Determinação de Teor de Água por centrifugação em amostras de Óleo Lubrificante"] = PhysicalChemicalProperty(
-            "aguaLubrificante",
-            "Determinação de Teor de Água por centrifugação em amostras de Óleo Lubrificante",
-            MethodNotCuratedYet,
-            MethodNotCuratedYet,
-            LimitNotCuratedYet),
-        ["Determinação de Teor de Passivador: BTA e IRGAMET em Óleo Mineral Isolante"] = PhysicalChemicalProperty(
-            "passivadorBtaIrgamet",
-            "Determinação de Teor de Passivador: BTA e IRGAMET em Óleo Mineral Isolante",
-            MethodNotCuratedYet,
-            MethodNotCuratedYet,
-            LimitNotCuratedYet),
-        ["Determinação de Teor de Sedimentos por centrifugação em amostras de Óleo Lubrificante"] = PhysicalChemicalProperty(
-            "sedimentosLubrificante",
-            "Determinação de Teor de Sedimentos por centrifugação em amostras de Óleo Lubrificante",
-            MethodNotCuratedYet,
-            MethodNotCuratedYet,
-            LimitNotCuratedYet),
-        ["Determinação de Teor Inibidor de Oxidação BHT (DBPC)"] = PhysicalChemicalProperty(
-            "inibidorDbpc",
-            "Determinação de Teor Inibidor de Oxidação BHT (DBPC)",
-            MethodNotCuratedYet,
-            MethodNotCuratedYet,
-            LimitNotCuratedYet),
-        ["Determinação de Viscosidade Cinemática a 40 °C em amostras de Óleo Lubrificante"] = PhysicalChemicalProperty(
-            "viscosidadeLubrificante",
-            "Determinação de Viscosidade Cinemática a 40 °C em amostras de Óleo Lubrificante",
-            MethodNotCuratedYet,
-            MethodNotCuratedYet,
-            LimitNotCuratedYet),
-        ["Determinação do Teor de Dibenzil Dissulfeto (DBDS) em óleo mineral isolante"] = PhysicalChemicalProperty(
-            "dbds",
-            "Determinação do Teor de Dibenzil Dissulfeto (DBDS) em óleo mineral isolante",
-            MethodNotCuratedYet,
-            MethodNotCuratedYet,
-            LimitNotCuratedYet),
-        ["Determinação quantitativa de bifenilas policloradas (PCB) em óleo mineral isolante"] = PhysicalChemicalProperty(
-            "pcbOleoMineral",
-            "Determinação quantitativa de bifenilas policloradas (PCB) em óleo mineral isolante",
-            MethodNotCuratedYet,
-            MethodNotCuratedYet,
-            LimitNotCuratedYet),
-        ["Determinação quantitativa de bifenilas policloradas (PCB) em óleo vegetal isolante"] = PhysicalChemicalProperty(
-            "pcbOleoVegetal",
-            "Determinação quantitativa de bifenilas policloradas (PCB) em óleo vegetal isolante",
-            MethodNotCuratedYet,
-            MethodNotCuratedYet,
-            LimitNotCuratedYet),
-        ["Ensaio De Cor em Óleo Mineral Isolante"] = PhysicalChemicalProperty(
-            "cor",
-            "Ensaio De Cor em Óleo Mineral Isolante",
-            MethodNotCuratedYet,
-            MethodNotCuratedYet,
-            LimitNotCuratedYet),
-        ["Ensaio de Enxofre Corrosivo em Óleo Mineral Isolante"] = PhysicalChemicalProperty(
-            "enxofreCorrosivo",
-            "Ensaio de Enxofre Corrosivo em Óleo Mineral Isolante",
-            MethodNotCuratedYet,
-            MethodNotCuratedYet,
-            LimitNotCuratedYet),
-        ["Ensaio Índice de Refração a 20ºC em Óleo Mineral Isolante"] = PhysicalChemicalProperty(
-            "indiceDeRefracao",
-            "Ensaio Índice de Refração a 20ºC em Óleo Mineral Isolante",
-            MethodNotCuratedYet,
-            MethodNotCuratedYet,
-            LimitNotCuratedYet),
-        ["Ensaio Ponto de Anilina em Óleo Mineral Isolante"] = PhysicalChemicalProperty(
-            "pontoDeAnilina",
-            "Ensaio Ponto de Anilina em Óleo Mineral Isolante",
-            MethodNotCuratedYet,
-            MethodNotCuratedYet,
-            LimitNotCuratedYet),
-        ["Ensaio Ponto de Combustão em Óleo Mineral Isolante"] = PhysicalChemicalProperty(
-            "pontoDeCombustao",
-            "Ensaio Ponto de Combustão em Óleo Mineral Isolante",
-            MethodNotCuratedYet,
-            MethodNotCuratedYet,
-            LimitNotCuratedYet),
-        ["Ensaio Ponto de Fulgor em Óleo Mineral Isolante"] = PhysicalChemicalProperty(
-            "pontoDeFulgor",
-            "Ensaio Ponto de Fulgor em Óleo Mineral Isolante",
-            MethodNotCuratedYet,
-            MethodNotCuratedYet,
-            LimitNotCuratedYet),
-        ["Ensaio Viscosidade Cinemática a 40ºC em Óleo Mineral Isolante"] = PhysicalChemicalProperty(
-            "viscosidade",
-            "Ensaio Viscosidade Cinemática a 40ºC em Óleo Mineral Isolante",
-            MethodNotCuratedYet,
-            MethodNotCuratedYet,
-            LimitNotCuratedYet),
-        ["Estabilidade à oxidação - BORRA"] = PhysicalChemicalProperty(
-            "estabilidadeAOxidacaoBorra",
-            "Estabilidade à oxidação - BORRA",
-            MethodNotCuratedYet,
-            MethodNotCuratedYet,
-            LimitNotCuratedYet),
-        ["Ponto de Fluidez em Óleo Mineral Isolante"] = PhysicalChemicalProperty(
-            "pontoDeFluidez",
-            "Ponto de Fluidez em Óleo Mineral Isolante",
-            MethodNotCuratedYet,
-            MethodNotCuratedYet,
-            LimitNotCuratedYet),
-        ["Rigidez Dielétrica - disco (kV)"] = PhysicalChemicalProperty(
-            "rigidezDisco",
-            "Rigidez Dielétrica - disco (kV)",
-            "kV",
-            MethodNotCuratedYet,
-            LimitNotCuratedYet),
-        ["Teor de Água (ppm m/m)"] = PhysicalChemicalProperty(
-            "aguaPpm",
-            "Teor de Água (ppm m/m)",
-            "ppm m/m",
-            MethodNotCuratedYet,
-            LimitNotCuratedYet),
-        ["Teor de PCB - Conforme Laudo"] = PhysicalChemicalProperty(
-            "pcbConformeLaudo",
-            "Teor de PCB - Conforme Laudo",
-            MethodNotCuratedYet,
-            MethodNotCuratedYet,
-            LimitNotCuratedYet),
-        ["Teor Total de Passivador (mg/kg)"] = PhysicalChemicalProperty(
-            "passivadorTotal",
-            "Teor Total de Passivador (mg/kg)",
-            "mg/kg",
-            MethodNotCuratedYet,
             LimitNotCuratedYet)
     };
 
@@ -364,7 +124,7 @@ public static class KnownMeasuredItems
         if (BySourceName.TryGetValue(sourceName?.Trim() ?? string.Empty, out MeasuredItem? measuredItem))
             return measuredItem;
 
-        throw new ResultNameOutsideKnownListException(sourceName ?? string.Empty);
+        throw new ArgumentException($"Nome fora da lista de itens conhecidos: '{sourceName}'.", nameof(sourceName));
     }
 
     public static bool Knows(string? sourceName)

@@ -44,6 +44,10 @@ public sealed record SelectedAnalysisResponse
     public required string Date { get; init; }
 
     public required string Label { get; init; }
+
+    public required bool HasPhysicalChemical { get; init; }
+
+    public required bool HasDissolvedGases { get; init; }
 }
 
 public sealed record TestReportResponse

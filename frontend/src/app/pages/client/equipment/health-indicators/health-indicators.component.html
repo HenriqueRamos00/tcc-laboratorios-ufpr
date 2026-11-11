@@ -26,10 +26,15 @@
       aria-controls="painel-fisico-quimico"
       [attr.aria-selected]="activeTab() === 'fisico-quimico'"
       [attr.tabindex]="activeTab() === 'fisico-quimico' ? 0 : -1"
+      [attr.aria-disabled]="lockedTabReason()['fisico-quimico'] ? true : null"
+      [matTooltip]="lockedTabReason()['fisico-quimico'] ?? ''"
+      matTooltipShowDelay="120"
       class="px-4 py-3 text-sm"
       [class.font-semibold]="activeTab() === 'fisico-quimico'"
       [class.text-lactec-ink]="activeTab() === 'fisico-quimico'"
       [class.text-lactec-muted]="activeTab() !== 'fisico-quimico'"
+      [class.cursor-not-allowed]="!!lockedTabReason()['fisico-quimico']"
+      [class.opacity-50]="!!lockedTabReason()['fisico-quimico']"
       (click)="selectTab('fisico-quimico')"
     >
       Fisico Quimico
@@ -41,10 +46,15 @@
       aria-controls="painel-gases"
       [attr.aria-selected]="activeTab() === 'gases'"
       [attr.tabindex]="activeTab() === 'gases' ? 0 : -1"
+      [attr.aria-disabled]="lockedTabReason()['gases'] ? true : null"
+      [matTooltip]="lockedTabReason()['gases'] ?? ''"
+      matTooltipShowDelay="120"
       class="px-4 py-3 text-sm"
       [class.font-semibold]="activeTab() === 'gases'"
       [class.text-lactec-ink]="activeTab() === 'gases'"
       [class.text-lactec-muted]="activeTab() !== 'gases'"
+      [class.cursor-not-allowed]="!!lockedTabReason()['gases']"
+      [class.opacity-50]="!!lockedTabReason()['gases']"
       (click)="selectTab('gases')"
     >
       Gases Dissolvidos

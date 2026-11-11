@@ -5,7 +5,6 @@ using Portal.Application.LabResults.Exceptions;
 using Portal.Application.Nameplate.Exceptions;
 using Portal.Application.ReportDocuments.Exceptions;
 using Portal.Application.Visibility;
-using Portal.Domain.LabResults.Exceptions;
 using Portal.Application.LabResults;
 using Portal.Domain.LabResults;
 
@@ -81,11 +80,10 @@ public sealed class HealthIndicatorsController : ControllerBase
         {
             return this.ReportDocumentSourceUnavailable();
         }
-        catch (Exception failure) when (failure is ResultNameOutsideKnownListException
-            or LabTestSourceUnavailableException
+        catch (Exception failure) when (failure is LabTestSourceUnavailableException
             or NameplateSourceUnavailableException)
         {
-            return this.LabTestSourceUnavailable(failure);
+            return this.LabTestSourceUnavailable();
         }
     }
 }

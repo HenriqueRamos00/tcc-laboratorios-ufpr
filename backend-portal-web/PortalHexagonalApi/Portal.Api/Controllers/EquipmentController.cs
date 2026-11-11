@@ -5,7 +5,6 @@ using Portal.Api.Nameplate;
 using Portal.Api.ReportDocuments;
 using Portal.Application.LabResults.Exceptions;
 using Portal.Application.Nameplate.Exceptions;
-using Portal.Domain.LabResults.Exceptions;
 using Portal.Application.LabResults;
 using Portal.Application.Paging;
 using Portal.Application.ReportDocuments;
@@ -191,7 +190,7 @@ public sealed class EquipmentController : ControllerBase
         }
         catch (Exception failure) when (IsSourceFailure(failure))
         {
-            return this.LabTestSourceUnavailable(failure);
+            return this.LabTestSourceUnavailable();
         }
     }
 
@@ -248,8 +247,7 @@ public sealed class EquipmentController : ControllerBase
     /// </summary>
     private static bool IsSourceFailure(Exception exception)
     {
-        return exception is ResultNameOutsideKnownListException
-            or LabTestSourceUnavailableException
+        return exception is LabTestSourceUnavailableException
             or NameplateSourceUnavailableException;
     }
 }

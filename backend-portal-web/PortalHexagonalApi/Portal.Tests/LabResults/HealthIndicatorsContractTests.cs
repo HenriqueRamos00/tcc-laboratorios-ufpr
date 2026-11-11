@@ -213,6 +213,9 @@ public sealed class HealthIndicatorsContractTests : IClassFixture<RunningPortal>
         Assert.Equal(analysis, (string?)selected["id"]);
         Assert.Equal("2026-06-23", (string?)selected["date"]);
         Assert.Equal("LACTEC-02272/2026", (string?)selected["label"]);
+        bool hasPhysicalChemical = selected["hasPhysicalChemical"]!.GetValue<bool>();
+        bool hasDissolvedGases = selected["hasDissolvedGases"]!.GetValue<bool>();
+        Assert.True(hasPhysicalChemical || hasDissolvedGases);
 
         // O identificador da analise selecionada tem que ser o mesmo que o historico de
         // laudos publica para aquele laudo. Voltava o protocolo cru, com barra, enquanto o

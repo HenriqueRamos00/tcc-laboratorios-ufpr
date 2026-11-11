@@ -65,11 +65,12 @@ export interface EquipmentDetail extends Equipment {
  * `ANALYSIS_TYPE_LABEL`: antes o tipo era texto livre acentuado, e decidir para onde a
  * linha do histórico navega exigia casar "Análise Físico-Química" com a chave da aba.
  */
-export type ReportAnalysisType = 'physical-chemical' | 'chromatography';
+export type ReportAnalysisType = 'physical-chemical' | 'chromatography' | 'other';
 
 export const ANALYSIS_TYPE_LABEL: Record<ReportAnalysisType, string> = {
   'physical-chemical': 'Análise Físico-Química',
   chromatography: 'Cromatografia',
+  other: 'Outros ensaios',
 };
 
 /**

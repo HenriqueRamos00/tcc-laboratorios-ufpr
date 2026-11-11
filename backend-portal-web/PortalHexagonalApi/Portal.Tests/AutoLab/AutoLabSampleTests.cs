@@ -5,7 +5,6 @@ using Portal.Application.Paging;
 using Portal.Application.ReportDocuments;
 using Portal.Application.Visibility;
 using Portal.Domain.LabResults;
-using Portal.Domain.LabResults.Exceptions;
 
 using UglyToad.PdfPig;
 
@@ -86,7 +85,7 @@ public sealed class AutoLabSampleTests : IDisposable
     }
 
     [Fact]
-    public void AnItemNameOutsideTheKnownListFailsLoudly()
+    public void AProtocolWithOnlyTestsOutsideTheKnownListIsKeptWithoutMeasuredItems()
     {
         VwDadosEnsaiosRecord row = new()
         {
@@ -100,10 +99,10 @@ public sealed class AutoLabSampleTests : IDisposable
             DataFinalAnalise = new DateTime(2026, 6, 23)
         };
 
-        ResultNameOutsideKnownListException failure = Assert.Throws<ResultNameOutsideKnownListException>(
-            () => AutoLabLabTestRepository.BuildAnalyses([row]));
+        SampleAnalysis analysis = Assert.Single(AutoLabLabTestRepository.BuildAnalyses([row]));
 
-        Assert.Equal("Furfuraldeído", failure.SourceName);
+        Assert.Equal("09999/2026-001", analysis.ProtocoloLactec);
+        Assert.Empty(analysis.Measurements);
     }
 
     [Fact]

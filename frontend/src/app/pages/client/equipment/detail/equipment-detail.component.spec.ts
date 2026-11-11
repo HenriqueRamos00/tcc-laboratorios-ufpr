@@ -99,6 +99,27 @@ describe('EquipmentDetailComponent', () => {
     );
   }));
 
+  it('laudo de outro ensaio só oferece o download, sem Ver Indicadores', fakeAsync(() => {
+    TestBed.configureTestingModule({
+      providers: [provideRouter([]), provideHttpClient(), provideHttpClientTesting()],
+    });
+
+    const fixture = TestBed.createComponent(EquipmentDetailComponent);
+    fixture.componentRef.setInput('id', EQUIPMENT_ID);
+    fixture.detectChanges();
+
+    const http = TestBed.inject(HttpTestingController);
+    http.expectOne(`${API_URL}/api/equipments/${EQUIPMENT_ID}`).flush(DETAIL);
+    http.expectOne(HISTORY_URL).flush([{ ...HISTORY[0], id: 'laudo-pcb', analysisType: 'other' }]);
+    fixture.detectChanges();
+
+    const tela: HTMLElement = fixture.nativeElement;
+
+    expect(tela.querySelector('tbody a')).toBeNull();
+    expect(tela.querySelector('tbody button')).not.toBeNull();
+    expect(tela.querySelector('tbody')?.textContent).toContain('Outros ensaios');
+  }));
+
   it('não oferece download quando a API diz que não há arquivo publicado', fakeAsync(() => {
     TestBed.configureTestingModule({
       providers: [provideRouter([]), provideHttpClient(), provideHttpClientTesting()],

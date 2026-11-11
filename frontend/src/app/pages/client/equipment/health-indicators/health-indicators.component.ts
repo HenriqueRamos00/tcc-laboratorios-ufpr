@@ -2,6 +2,7 @@ import { ChangeDetectionStrategy, Component, computed, inject, input, signal } f
 import { toObservable, toSignal } from '@angular/core/rxjs-interop';
 import { catchError, map, of, startWith, switchMap } from 'rxjs';
 import { MatIconModule } from '@angular/material/icon';
+import { MatTooltipModule } from '@angular/material/tooltip';
 import { ActivatedRoute, Router } from '@angular/router';
 
 import { readableDate } from '@shared/brazilian-date';
@@ -31,6 +32,7 @@ import {
 } from '@/app/model/health';
 import {
   DEFAULT_HEALTH_TAB,
+  HEALTH_TABS,
   isKnownTab,
   type HealthTab,
 } from '@/app/model/health-navigation';
@@ -39,6 +41,28 @@ import { DissolvedGasDiagnosisService } from '@/app/services/dissolved-gas-diagn
 import { HealthService } from '@/app/services/health.service';
 
 type GasSubTab = 'criterios' | 'metodos';
+
+/**
+ * Por que a aba está travada. Com um laudo escolhido no histórico, a aba que ele não mediu
+ * trava e diz qual foi o ensaio; sem laudo escolhido, trava a que o equipamento nunca mediu.
+ */
+const LOCKED_TAB_REASON: Record<HealthTab, { ofTheReport: string; ofTheEquipment: string }> = {
+  'fisico-quimico': {
+    ofTheReport: 'Indisponível pois o ensaio é de análise cromatográfica',
+    ofTheEquipment: 'Indisponível pois este equipamento não tem análise físico-química',
+  },
+  gases: {
+    ofTheReport: 'Indisponível pois o ensaio é de análise físico-química',
+    ofTheEquipment: 'Indisponível pois este equipamento não tem análise cromatográfica',
+  },
+};
+
+function availableTabs(data: HealthIndicators): Record<HealthTab, boolean> {
+  const selected = data.selectedAnalysis;
+  return selected
+    ? { 'fisico-quimico': selected.hasPhysicalChemical, gases: selected.hasDissolvedGases }
+    : { 'fisico-quimico': data.physicalChemical.tests.length > 0, gases: data.dissolvedGases.gases.length > 0 };
+}
 
 // Toda cor desta tela chega como classe utilitária inteira, nunca como tom: o
 // Tailwind só emite a utilitária que encontra escrita por extenso no fonte, e
@@ -74,6 +98,7 @@ import { DiagnosticMethodsComponent } from './diagnostic-methods/diagnostic-meth
   imports: [
     DiagnosticMethodsComponent,
     MatIconModule,
+    MatTooltipModule,
     PageHeaderComponent,
     EmptyStateComponent,
     ConformityGaugeComponent,
@@ -102,7 +127,20 @@ export class HealthIndicatorsComponent {
   // sincronia.
   protected readonly activeTab = computed<HealthTab>(() => {
     const requested = this.aba();
-    return isKnownTab(requested) ? requested : DEFAULT_HEALTH_TAB;
+    const wanted = isKnownTab(requested) ? requested : DEFAULT_HEALTH_TAB;
+    const reasons = this.lockedTabReason();
+    return reasons[wanted] ? HEALTH_TABS.find((tab) => !reasons[tab]) ?? wanted : wanted;
+  });
+
+  /** Aba travada e o motivo, que aparece ao passar o mouse; aba liberada não está aqui. */
+  protected readonly lockedTabReason = computed<Partial<Record<HealthTab, string>>>(() => {
+    const data = this.data();
+    if (!data) return {};
+    const available = availableTabs(data);
+    const reason = data.selectedAnalysis ? 'ofTheReport' : 'ofTheEquipment';
+    return Object.fromEntries(
+      HEALTH_TABS.filter((tab) => !available[tab]).map((tab) => [tab, LOCKED_TAB_REASON[tab][reason]]),
+    );
   });
 
   protected readonly gasSubTab = signal<GasSubTab>('criterios');
@@ -121,11 +159,10 @@ export class HealthIndicatorsComponent {
     toObservable(this.query).pipe(
       switchMap(({ id, reportId }) =>
         this.health.equipmentIndicators(id, reportId).pipe(
-          map((data) =>
-            data.physicalChemical.tests.length || data.dissolvedGases.gases.length
-              ? ok(data)
-              : empty,
-          ),
+          map((data) => {
+            const available = availableTabs(data);
+            return available['fisico-quimico'] || available.gases ? ok(data) : empty;
+          }),
           catchError(() => of(failure('A consulta ao AutoLAB falhou. Tente novamente em instantes.'))),
           startWith(loading),
         ),
@@ -280,6 +317,7 @@ export class HealthIndicatorsComponent {
   // direto para a aba certa. `replaceUrl` evita que cada clique de aba empilhe
   // uma entrada no botão Voltar.
   protected selectTab(aba: HealthTab): void {
+    if (this.lockedTabReason()[aba]) return;
     void this.router.navigate([], {
       relativeTo: this.currentRoute,
       queryParams: { aba },

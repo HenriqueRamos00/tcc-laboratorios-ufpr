@@ -59,7 +59,9 @@ public static class PositionalFlattening
         {
             Id = OpaqueIdentifier.Encode(analysis.ProtocoloLactec),
             Date = WireDate.From(analysis.AnalysisEndDate),
-            Label = analysis.Identification
+            Label = analysis.Identification,
+            HasPhysicalChemical = analysis.HasPhysicalChemicalProperty,
+            HasDissolvedGases = analysis.HasDissolvedGas
         };
     }
 
