@@ -165,6 +165,14 @@ export const routes: Routes = [
         title: 'Novo ensaio - Portal Interno Lactec',
       },
       {
+        path: 'ensaios/:id/status',
+        loadComponent: () =>
+          import('@/app/pages/tecnico/ensaios/ensaio-status.component').then(
+            (module) => module.EnsaioStatusComponent,
+          ),
+        title: 'Atualizar status do ensaio - Portal Interno Lactec',
+      },
+      {
         path: 'ensaios/:id/editar',
         canDeactivate: [
           (component: { canDeactivate: () => boolean }) =>

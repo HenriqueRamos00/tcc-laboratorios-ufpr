@@ -103,6 +103,7 @@ export class QuoteFormDialogComponent {
 
   readonly data = inject<QuoteFormDialogData>(MAT_DIALOG_DATA);
   readonly isEditing = this.data.quoteId !== null;
+  readonly rotuloStatusOrcamento = rotuloStatusOrcamento;
   readonly detalhe = signal<OrcamentoDetalhe | null>(null);
   readonly empresas = signal<readonly Empresa[]>([]);
   readonly statusOptions = signal<readonly StatusOption[]>(this.criarOpcoesStatus());

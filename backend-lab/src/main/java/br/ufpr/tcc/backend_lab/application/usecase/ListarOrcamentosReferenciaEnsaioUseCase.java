@@ -1,6 +1,7 @@
 package br.ufpr.tcc.backend_lab.application.usecase;
 
 import br.ufpr.tcc.backend_lab.application.dto.response.EnsaioDtos;
+import br.ufpr.tcc.backend_lab.domain.model.enums.StatusComercialOrcamento;
 import br.ufpr.tcc.backend_lab.domain.repository.OrcamentoRepository;
 import java.util.Locale;
 import org.springframework.data.domain.PageRequest;
@@ -21,9 +22,11 @@ public class ListarOrcamentosReferenciaEnsaioUseCase {
         ListarEnsaiosUseCase.validarPagina(pagina, tamanho);
         String termo = busca == null ? "" : busca.trim().toLowerCase(Locale.ROOT);
         String criterio = termo.isEmpty() ? null : "%" + ListarEnsaiosUseCase.escaparLike(termo) + "%";
-        var resultado = orcamentos.pesquisarReferenciasEnsaio(criterio,
-                PageRequest.of(pagina - 1, tamanho,
-                        Sort.by(Sort.Direction.ASC, "code").and(Sort.by("id"))));
+        var ordenacao = Sort.by(Sort.Direction.ASC, "code").and(Sort.by("id"));
+        var resultado = orcamentos.pesquisarReferenciasEnsaio(
+                criterio,
+                StatusComercialOrcamento.elegiveisParaNovosEnsaios(),
+                PageRequest.of(pagina - 1, tamanho, ordenacao));
         return new EnsaioDtos.Pagina<>(resultado.getContent().stream()
                 .map(EnsaioDtos::orcamento).toList(), pagina, tamanho, resultado.getTotalElements());
     }

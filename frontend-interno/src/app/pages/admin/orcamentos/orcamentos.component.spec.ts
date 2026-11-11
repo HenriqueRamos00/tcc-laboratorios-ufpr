@@ -225,8 +225,12 @@ describe('Página de orçamentos', () => {
     const seletor = fixture.nativeElement.querySelector('#orcamentos-status-filter') as HTMLSelectElement;
     const opcoesStatus = seletor.querySelectorAll<HTMLOptionElement>('option');
     const opcoes = Array.from(opcoesStatus, (option) => option.textContent?.trim());
-    expect(opcoes).toEqual(['Todos os status', 'Pendente de Aceite', 'Em Andamento', 'Finalizado', 'Recusado', 'Cancelado']);
-    expect(fixture.componentInstance.rotuloStatus('PendingAcceptance')).toBe('Pendente de Aceite');
+    expect(opcoes).toEqual(['Todos os status', 'Aguardando aceite', 'Aceito', 'Finalizado', 'Recusado', 'Cancelado']);
+    expect(Array.from(opcoesStatus, (option) => option.value)).toEqual([
+      'ALL', 'PendingAcceptance', 'InProgress', 'Finished', 'Refused', 'Cancelled',
+    ]);
+    expect(fixture.componentInstance.rotuloStatus('PendingAcceptance')).toBe('Aguardando aceite');
+    expect(fixture.componentInstance.rotuloStatus('InProgress')).toBe('Aceito');
     expect(fixture.componentInstance.rotuloStatus('constructor')).toBe('constructor');
     expect(fixture.componentInstance.rotuloStatus('toString')).toBe('toString');
     expect(fixture.componentInstance.classeStatus('constructor')).toContain('bg-lactec-line-soft');

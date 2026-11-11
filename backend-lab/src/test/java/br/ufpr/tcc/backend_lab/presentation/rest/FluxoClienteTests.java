@@ -15,6 +15,8 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import br.ufpr.tcc.backend_lab.application.dto.request.CreateClienteRequest;
 import br.ufpr.tcc.backend_lab.application.dto.request.CreateEmpresaRequest;
 import br.ufpr.tcc.backend_lab.application.dto.request.LoginRequest;
+import br.ufpr.tcc.backend_lab.application.dto.request.OrcamentoItemRequest;
+import br.ufpr.tcc.backend_lab.application.dto.request.OrcamentoRequest;
 import br.ufpr.tcc.backend_lab.application.dto.request.UpdateClienteRequest;
 import br.ufpr.tcc.backend_lab.application.dto.response.CadastroStatus;
 import br.ufpr.tcc.backend_lab.application.usecase.ChangeClienteStatusUseCase;
@@ -24,6 +26,7 @@ import br.ufpr.tcc.backend_lab.application.usecase.CreateEmpresaUseCase;
 import br.ufpr.tcc.backend_lab.application.usecase.LoginClienteUseCase;
 import br.ufpr.tcc.backend_lab.application.usecase.LoginUseCase;
 import br.ufpr.tcc.backend_lab.application.usecase.UpdateClienteUseCase;
+import br.ufpr.tcc.backend_lab.application.usecase.UpdateOrcamentoUseCase;
 import br.ufpr.tcc.backend_lab.domain.exception.CredenciaisInvalidasException;
 import br.ufpr.tcc.backend_lab.domain.exception.EmailJaCadastradoException;
 import br.ufpr.tcc.backend_lab.domain.exception.RegraNegocioException;
@@ -84,6 +87,7 @@ class FluxoClienteTests {
     @Autowired CreateEmpresaUseCase criarEmpresa;
     @Autowired CreateClienteUseCase criarCliente;
     @Autowired UpdateClienteUseCase editarCliente;
+    @Autowired UpdateOrcamentoUseCase editarOrcamento;
     @Autowired ChangeClienteStatusUseCase statusCliente;
     @Autowired ChangeEmpresaStatusUseCase statusEmpresa;
     @Autowired LoginClienteUseCase loginCliente;
@@ -270,7 +274,10 @@ class FluxoClienteTests {
     }
 
     @Test
-    void criarEnsaioIniciaAcompanhamentoEEditarNaoReiniciaNemAceitaProposta() throws Exception {
+    void criarEnsaioIniciaAcompanhamentoSemAlterarStatusComercial() throws Exception {
+        orcamentoA.setStatus(StatusComercialOrcamento.IN_PROGRESS);
+        orcamentoA.setStage("Recebido");
+        orcamentos.saveAndFlush(orcamentoA);
         String dados = """
                 {"newSample":{"quoteId":"%s","code":"A-INICIO","description":"Amostra"},
                  "type":"Análise de teste","analysisType":"chromatography",
@@ -290,7 +297,7 @@ class FluxoClienteTests {
                         .header("Authorization", tokenClienteA))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.stage").value("Em execução"))
-                .andExpect(jsonPath("$.status").value("PendingAcceptance"));
+                .andExpect(jsonPath("$.status").value("InProgress"));
 
         execucao.setStatus(StatusEnsaio.VALIDATED);
         ensaios.saveAndFlush(execucao);
@@ -307,7 +314,35 @@ class FluxoClienteTests {
                         .header("Authorization", tokenClienteA))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.stage").value("Validado"))
-                .andExpect(jsonPath("$.status").value("PendingAcceptance"));
+                .andExpect(jsonPath("$.status").value("InProgress"));
+    }
+
+    @Test
+    void aceiteSemExecucaoApresentaRecebidoEPreservaEtapasPreExecucaoValidas() throws Exception {
+        editarOrcamento.execute(orcamentoA.getId(), requestAceite(orcamentoA), null);
+        mockMvc.perform(get("/api/client/quotes/{id}", orcamentoA.getId())
+                        .header("Authorization", tokenClienteA))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.stage").value("Recebido"))
+                .andExpect(jsonPath("$.status").value("InProgress"));
+        assertEquals(0, ensaios.count());
+
+        for (String etapa : List.of(
+                "Aprovado pelo cliente",
+                "Aguardando entrega da amostra",
+                "Protocolado")) {
+            orcamentoA.setStatus(StatusComercialOrcamento.PENDING_ACCEPTANCE);
+            orcamentoA.setStage(etapa);
+            orcamentos.saveAndFlush(orcamentoA);
+            editarOrcamento.execute(orcamentoA.getId(), requestAceite(orcamentoA), null);
+
+            mockMvc.perform(get("/api/client/quotes/{id}", orcamentoA.getId())
+                            .header("Authorization", tokenClienteA))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.stage").value(etapa))
+                    .andExpect(jsonPath("$.status").value("InProgress"));
+        }
+        assertEquals(0, ensaios.count());
     }
 
     @Test
@@ -687,6 +722,21 @@ class FluxoClienteTests {
         documento.setContent("%PDF-1.4 demo".getBytes());
         documentos.saveAndFlush(documento);
         return orcamento;
+    }
+
+    private OrcamentoRequest requestAceite(Orcamento orcamento) {
+        return new OrcamentoRequest(
+                orcamento.getCode(),
+                orcamento.getEmpresa().getId().toString(),
+                orcamento.getName(),
+                "Laboratório de teste",
+                orcamento.getDescription(),
+                null,
+                "Contato de teste",
+                "contato@example.test",
+                StatusComercialOrcamento.IN_PROGRESS.codigo(),
+                BigDecimal.TEN,
+                List.of(new OrcamentoItemRequest("Ensaio", BigDecimal.ONE, "ABNT", BigDecimal.TEN)));
     }
 
     private ExecucaoEnsaio criarExecucao(Orcamento orcamento, StatusEnsaio status) {

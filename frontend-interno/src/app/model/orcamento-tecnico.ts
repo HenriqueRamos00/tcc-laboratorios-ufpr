@@ -1,4 +1,5 @@
 export const STATUS_TECNICO_ORCAMENTO = [
+  'not-started',
   'incomplete',
   'complete',
   'validated',

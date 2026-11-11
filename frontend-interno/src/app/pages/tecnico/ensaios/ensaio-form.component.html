@@ -214,9 +214,16 @@
           </mat-select>
         </label>
         @if (detail()) {
-          <label class="grid min-w-0 gap-1 text-sm font-medium">Estado do processo
-            <input readonly [value]="processStatusLabel(detail()!.status)" class="h-11 min-w-0 w-full rounded-lg border border-lactec-line bg-slate-50 px-3" />
-          </label>
+          <div class="grid min-w-0 content-start gap-2 text-sm font-medium">
+            <label class="grid min-w-0 gap-1">Estado do processo
+              <input readonly [value]="processStatusLabel(detail()!.status)" class="h-11 min-w-0 w-full rounded-lg border border-lactec-line bg-slate-50 px-3" />
+            </label>
+            @if (editId()) {
+              <button mat-stroked-button type="button" class="justify-self-start" (click)="openStatus()" [disabled]="formLocked">
+                <mat-icon>swap_horiz</mat-icon>Alterar status
+              </button>
+            }
+          </div>
         }
       </div>
     </section>
@@ -285,7 +292,7 @@
 
       <label class="mt-6 grid min-w-0 gap-2 text-sm font-medium">Texto técnico do laudo - rascunho
         <textarea id="report-text" formControlName="reportText" rows="5" maxlength="10000" [attr.aria-invalid]="form.controls.reportText.invalid && form.controls.reportText.touched" aria-describedby="report-text-error" class="w-full resize-y rounded-lg border border-lactec-line p-3" placeholder="Registre observações técnicas ainda não publicadas."></textarea>
-        <span id="report-text-error" class="font-normal text-lactec-muted">{{ form.controls.reportText.invalid ? "O texto aceita até 10000 caracteres." : "Não é um laudo assinado ou publicado." }}</span>
+        <span id="report-text-error" class="font-normal text-lactec-muted">{{ form.controls.reportText.invalid ? "O texto aceita até 10000 caracteres." : "Salvar mantém este texto como rascunho e não gera nem disponibiliza PDF ao cliente." }}</span>
       </label>
     </section>
 

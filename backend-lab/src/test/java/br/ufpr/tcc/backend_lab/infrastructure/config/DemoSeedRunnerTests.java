@@ -51,6 +51,32 @@ class DemoSeedRunnerTests {
         assertEquals(23, contar("execucoes_ensaios"));
         assertEquals(18, contar("medicoes_ensaios"));
         assertEquals(
+                0,
+                jdbc.queryForObject(
+                        "SELECT COUNT(*) FROM execucoes_ensaios e "
+                                + "JOIN orcamentos o ON o.id = e.orcamento_id "
+                                + "WHERE o.status NOT IN ('InProgress', 'Finished')",
+                        Integer.class));
+        assertEquals(
+                0,
+                jdbc.queryForObject(
+                        "SELECT COUNT(*) FROM orcamentos o "
+                                + "WHERE o.code LIKE 'DEMO-SEED-2026-%' "
+                                + "AND o.stage IN ('Em execução', 'Completo', 'Validado', 'Finalizado', "
+                                + "'Elaborando relatório', 'Relatório publicado') "
+                                + "AND NOT EXISTS (SELECT 1 FROM execucoes_ensaios e "
+                                + "WHERE e.orcamento_id = o.id)",
+                        Integer.class));
+        assertEquals(
+                1,
+                jdbc.queryForObject(
+                        "SELECT COUNT(*) FROM orcamentos o "
+                                + "WHERE o.code = 'DEMO-PIPE-2026-005' "
+                                + "AND o.status = 'InProgress' AND o.stage = 'Aprovado pelo cliente' "
+                                + "AND NOT EXISTS (SELECT 1 FROM execucoes_ensaios e "
+                                + "WHERE e.orcamento_id = o.id)",
+                        Integer.class));
+        assertEquals(
                 16,
                 jdbc.queryForObject(
                         "SELECT COUNT(DISTINCT stage) FROM orcamentos WHERE code LIKE 'DEMO-PIPE-2026-%'",

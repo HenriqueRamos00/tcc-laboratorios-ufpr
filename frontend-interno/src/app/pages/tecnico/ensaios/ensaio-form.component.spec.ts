@@ -1,4 +1,5 @@
 import { By } from '@angular/platform-browser';
+import { OverlayContainer } from '@angular/cdk/overlay';
 import { MatSelect, MatSelectChange } from '@angular/material/select';
 import { HttpErrorResponse } from '@angular/common/http';
 import { ComponentFixture, fakeAsync, TestBed, tick } from '@angular/core/testing';
@@ -12,6 +13,7 @@ import {
 } from '@/app/model/ensaio';
 import { AppDialogService } from '@/app/services/app-dialog.service';
 import { EnsaiosService } from '@/app/services/ensaios.service';
+import { ReferenceSearchComponent } from '@shared/components/reference-search/reference-search.component';
 import { EnsaioFormComponent } from './ensaio-form.component';
 
 const quote: QuoteReference = {
@@ -26,6 +28,11 @@ const sample: SampleReference = {
   description: 'Óleo do transformador TR-01',
   quote,
   analyzedEquipment: null,
+};
+const analyzedEquipment = {
+  id: '55',
+  tag: 'DEMO-TR-HU25-01',
+  serialNumber: '111.594/1',
 };
 const saved: TestDetail = {
   id: '42',
@@ -105,6 +112,58 @@ describe('Formulário de ensaio', () => {
     expect(service.quotes).not.toHaveBeenCalled();
   });
 
+  it('seleciona uma amostra existente pelo seletor compartilhado sem salvar o ensaio', () => {
+    component.selectedQuote.set(quote);
+    component.samples.set([sample]);
+    component.sampleTotal.set(1);
+    component.sampleLoading.set(false);
+    component.sampleChooserOpen.set(true);
+    fixture.detectChanges();
+
+    const search = findReferenceSearch('sample-search');
+    search.opened.set(true);
+    fixture.detectChanges();
+    const option = TestBed.inject(OverlayContainer).getContainerElement()
+      .querySelector<HTMLButtonElement>('#sample-search-panel .reference-option')!;
+    option.click();
+    fixture.detectChanges();
+
+    expect(component.form.controls.sampleId.value).toBe(sample.id);
+    expect(component.selectedSample).toEqual(sample);
+    expect(component.sampleChooserOpen()).toBeFalse();
+    expect(service.create).not.toHaveBeenCalled();
+    expect(service.update).not.toHaveBeenCalled();
+  });
+
+  it('associa equipamento analisado na nova identificação sem salvar o ensaio', () => {
+    component.selectedQuote.set(quote);
+    component.identificationMode.set('new');
+    component.sampleChooserOpen.set(true);
+    component.analyzedEquipment.set([analyzedEquipment]);
+    component.equipmentTotal.set(1);
+    component.equipmentLoading.set(false);
+    component.form.patchValue({
+      newSampleCode: 'A-HU25-NOVA/2026',
+      newSampleDescription: 'Óleo do transformador TR-02',
+      analyzedEquipmentId: null,
+    });
+    fixture.detectChanges();
+
+    const search = findReferenceSearch('analyzed-equipment-search');
+    search.opened.set(true);
+    fixture.detectChanges();
+    const option = TestBed.inject(OverlayContainer).getContainerElement()
+      .querySelector<HTMLButtonElement>('#analyzed-equipment-search-panel .reference-option')!;
+    option.click();
+    fixture.detectChanges();
+
+    expect(component.form.controls.analyzedEquipmentId.value).toBe(analyzedEquipment.id);
+    expect(component.currentAnalyzedEquipment()).toEqual(analyzedEquipment);
+    expect(component.equipmentSearch.value).toBe(analyzedEquipment.tag);
+    expect(service.create).not.toHaveBeenCalled();
+    expect(service.update).not.toHaveBeenCalled();
+  });
+
   it('confirma a troca de orçamento antes de descartar a identificação nova', () => {
     prepareNewSample();
     const otherQuote = { ...quote, id: '99' };
@@ -126,6 +185,10 @@ describe('Formulário de ensaio', () => {
     expect(heading.textContent).not.toContain(saved.code);
     expect(fixture.nativeElement.textContent).not.toContain('Gerado após salvar');
     expect(fixture.nativeElement.textContent).not.toContain('Código do ensaio');
+    expect(statusAction()).toBeNull();
+    expect(fixture.nativeElement.textContent).toContain(
+      'Salvar mantém este texto como rascunho e não gera nem disponibiliza PDF ao cliente.',
+    );
   });
 
   it('mostra o código em badge junto ao título na edição', () => {
@@ -138,6 +201,98 @@ describe('Formulário de ensaio', () => {
     expect(heading.textContent).toContain('Código do ensaio:');
     expect(heading.textContent).toContain(saved.code);
     expect(heading.querySelector('.font-mono')?.textContent).toContain(saved.code);
+  });
+
+  it('abre a alteração de status pela edição de um ensaio persistido sem mudanças', () => {
+    loadSavedEdit();
+    fixture.detectChanges();
+
+    expect(statusAction()?.disabled).toBeFalse();
+    statusAction()?.click();
+
+    expect(router.navigate).toHaveBeenCalledWith([
+      '/tecnico/ensaios', saved.id, 'status',
+    ]);
+    expect(dialog.open).not.toHaveBeenCalled();
+  });
+
+  it('mantém o rascunho quando a pessoa continua editando antes de alterar o status', () => {
+    loadSavedEdit();
+    component.form.controls.reportText.setValue('Observação técnica ainda não salva');
+    dialog.open.and.returnValue({ afterClosed: () => of(false) } as never);
+
+    component.openStatus();
+
+    expect(dialog.open).toHaveBeenCalledWith(
+      jasmine.anything(),
+      jasmine.objectContaining({
+        titulo: 'Descartar alterações do ensaio?',
+        mensagem: jasmine.stringMatching(/texto técnico em rascunho/),
+        textoCancelar: 'Continuar editando',
+        textoConfirmar: 'Descartar e alterar status',
+        perigo: true,
+      }),
+      'Confirmar descarte das alterações do ensaio',
+    );
+    expect(router.navigate).not.toHaveBeenCalled();
+    expect(component.form.controls.reportText.value).toBe('Observação técnica ainda não salva');
+    expect(service.update).not.toHaveBeenCalled();
+  });
+
+  it('descarta alterações somente após confirmação e não salva o rascunho automaticamente', () => {
+    loadSavedEdit();
+    component.form.controls.reportText.setValue('Rascunho que será descartado');
+    dialog.open.and.returnValue({ afterClosed: () => of(true) } as never);
+
+    component.openStatus();
+
+    expect(router.navigate).toHaveBeenCalledWith([
+      '/tecnico/ensaios', saved.id, 'status',
+    ]);
+    expect(component.form.controls.reportText.value).toBe('Rascunho que será descartado');
+    expect(service.update).not.toHaveBeenCalled();
+  });
+
+  it('bloqueia o acesso ao status enquanto o ensaio está salvando ou carregando', () => {
+    component.editId.set(saved.id);
+    component.detail.set(saved);
+    component.saving.set(true);
+    fixture.detectChanges();
+
+    expect(statusAction()?.disabled).toBeTrue();
+    component.openStatus();
+    expect(dialog.open).not.toHaveBeenCalled();
+    expect(router.navigate).not.toHaveBeenCalled();
+
+    component.saving.set(false);
+    component.detailLoading.set(true);
+    fixture.detectChanges();
+    expect(statusAction()?.disabled).toBeTrue();
+    component.openStatus();
+    expect(dialog.open).not.toHaveBeenCalled();
+    expect(router.navigate).not.toHaveBeenCalled();
+  });
+
+  it('carrega e permite editar um ensaio mantendo o orçamento histórico', () => {
+    const orcamentoHistorico = { ...quote, code: 'ORC-CANCELADO-001' };
+    const detalheHistorico = { ...saved, quote: orcamentoHistorico };
+    service.get.and.returnValue(of(detalheHistorico));
+    service.update.and.returnValue(of(detalheHistorico));
+    component.editId.set(saved.id);
+    component.reloadCurrent();
+    fixture.detectChanges();
+
+    expect(component.selectedQuote()).toEqual(orcamentoHistorico);
+    expect(fixture.nativeElement.textContent).toContain('ORC-CANCELADO-001');
+    expect(service.quotes).not.toHaveBeenCalled();
+
+    component.save();
+
+    expect(service.update).toHaveBeenCalledWith(saved.id, jasmine.objectContaining({
+      sampleId: sample.id,
+      newSample: null,
+    }));
+    expect(component.selectedQuote()).toEqual(orcamentoHistorico);
   });
 
   function prepareExistingSample(): void {
@@ -155,6 +310,17 @@ describe('Formulário de ensaio', () => {
       responsibleId: '7',
       reportText: '',
     });
+  }
+
+  function loadSavedEdit(): void {
+    component.editId.set(saved.id);
+    component.reloadCurrent();
+  }
+
+  function statusAction(): HTMLButtonElement | null {
+    const host = fixture.nativeElement as HTMLElement;
+    return Array.from(host.querySelectorAll('button'))
+      .find((button) => button.textContent?.includes('Alterar status')) ?? null;
   }
 
   function prepareNewSample(): void {
@@ -175,6 +341,14 @@ describe('Formulário de ensaio', () => {
       reportText: '',
     });
     component.confirmedNewSampleCode.set('A-HU25-NOVA/2026');
+  }
+
+  function findReferenceSearch(fieldId: string): ReferenceSearchComponent {
+    const search = fixture.debugElement.queryAll(By.directive(ReferenceSearchComponent))
+      .map((debugElement) => debugElement.componentInstance as ReferenceSearchComponent)
+      .find((candidate) => candidate.fieldId() === fieldId);
+    if (!search) throw new Error(`Seletor não encontrado: ${fieldId}`);
+    return search;
   }
 
   it('envia a amostra existente escolhida e preserva ND como texto', () => {
@@ -272,6 +446,40 @@ describe('Formulário de ensaio', () => {
     expect(component.saveError()).toContain('código de amostra');
     expect(component.form.controls.newSampleCode.value).toBe('A-HU25-NOVA/2026');
     expect(component.form.controls.newSampleDescription.value).toBe('Óleo do transformador TR-02');
+  });
+
+  it('mostra a mensagem não vazia do conflito da API e preserva o rascunho', () => {
+    prepareNewSample();
+    service.create.and.returnValue(throwError(() => new HttpErrorResponse({
+      status: 409,
+      error: { message: '  O orçamento foi alterado enquanto o ensaio era preenchido.  ' },
+    })));
+
+    component.save();
+    fixture.detectChanges();
+
+    expect(component.saving()).toBeFalse();
+    expect(component.form.enabled).toBeTrue();
+    expect(component.saveError()).toBe('O orçamento foi alterado enquanto o ensaio era preenchido.');
+    expect(fixture.nativeElement.textContent).toContain('O orçamento foi alterado enquanto o ensaio era preenchido.');
+    expect(component.form.controls.newSampleCode.value).toBe('A-HU25-NOVA/2026');
+    expect(component.form.controls.newSampleDescription.value).toBe('Óleo do transformador TR-02');
+    expect(component.selectedQuote()).toEqual(quote);
+  });
+
+  it('usa a mensagem genérica para conflito sem mensagem da API e preserva o rascunho', () => {
+    prepareNewSample();
+    service.create.and.returnValue(throwError(() => new HttpErrorResponse({
+      status: 409,
+      error: {},
+    })));
+
+    component.save();
+
+    expect(component.saveError()).toBe('O salvamento encontrou um conflito. Seus dados continuam no formulário.');
+    expect(component.form.controls.newSampleCode.value).toBe('A-HU25-NOVA/2026');
+    expect(component.form.controls.newSampleDescription.value).toBe('Óleo do transformador TR-02');
+    expect(component.selectedQuote()).toEqual(quote);
   });
 
   it('atualiza a busca por referência após conflito mesmo com o termo inalterado', fakeAsync(() => {

@@ -996,6 +996,9 @@ export class EnsaioFormComponent {
         this.saving.set(false);
         this.updateFormDisabledState();
         const code = error.error?.code as string | undefined;
+        const mensagemApi = typeof error.error?.message === 'string'
+          ? error.error.message.trim()
+          : '';
         this.conflictType.set(error.status === 409
           ? code === 'test-version-conflict'
             ? 'version'
@@ -1008,7 +1011,7 @@ export class EnsaioFormComponent {
             ? 'Este código de amostra já foi cadastrado. Pesquise uma referência existente ou escolha outro código.'
             : code === 'test-version-conflict'
               ? 'Este ensaio foi alterado em outra sessão. Seus dados continuam no formulário.'
-              : 'O salvamento encontrou um conflito. Seus dados continuam no formulário.'
+              : mensagemApi || 'O salvamento encontrou um conflito. Seus dados continuam no formulário.'
           : error.status === 400
             ? 'A API recusou alguns dados. Revise os campos e tente novamente.'
             : error.status === 404
@@ -1035,6 +1038,65 @@ export class EnsaioFormComponent {
 
   cancel(): void {
     if (!this.saving()) void this.router.navigate(['/tecnico/ensaios']);
+  }
+
+  openStatus(): void {
+    const id = this.editId();
+    if (!id || !this.detail() || this.formLocked) return;
+
+    const navigateToStatus = (): void => {
+      const currentId = this.editId();
+      if (!currentId || !this.detail() || this.formLocked) return;
+      void this.router.navigate(['/tecnico/ensaios', currentId, 'status']);
+    };
+
+    if (!this.hasUnsavedChanges()) {
+      navigateToStatus();
+      return;
+    }
+
+    const data: ConfirmacaoDialogData = {
+      titulo: 'Descartar alterações do ensaio?',
+      mensagem: 'Este ensaio tem alterações não salvas, incluindo o texto técnico em rascunho. Se continuar editando, os dados serão mantidos. Se confirmar, essas alterações serão descartadas antes de abrir o acompanhamento.',
+      textoCancelar: 'Continuar editando',
+      textoConfirmar: 'Descartar e alterar status',
+      perigo: true,
+    };
+    this.dialog.open<ConfirmacaoDialogComponent, ConfirmacaoDialogData, boolean>(
+      ConfirmacaoDialogComponent,
+      data,
+      'Confirmar descarte das alterações do ensaio',
+    ).afterClosed().pipe(takeUntilDestroyed(this.destroyRef)).subscribe((confirmed) => {
+      if (confirmed) navigateToStatus();
+    });
+  }
+
+  private hasUnsavedChanges(): boolean {
+    const detail = this.detail();
+    if (!detail) return this.form.dirty || this.measurements.dirty;
+
+    const value = this.form.getRawValue();
+    const equipmentIds = value.equipmentIds ?? [];
+    const savedEquipmentIds = detail.equipmentIds;
+    const equipmentSelectionChanged = equipmentIds.length !== savedEquipmentIds.length ||
+      equipmentIds.some((id) => !savedEquipmentIds.includes(id));
+
+    return this.form.dirty || this.measurements.dirty ||
+      this.selectedQuote()?.id !== detail.quote.id ||
+      this.identificationMode() !== 'existing' ||
+      value.sampleId !== detail.sample.id ||
+      value.newSampleCode !== '' ||
+      value.newSampleDescription !== '' ||
+      value.analyzedEquipmentId !== (detail.analyzedEquipment?.id ?? null) ||
+      value.type !== detail.type ||
+      value.analysisType !== (detail.analysisType ?? 'other') ||
+      value.method !== detail.method ||
+      value.standard !== detail.standard ||
+      value.scheduledDate !== detail.scheduledDate ||
+      value.responsibleId !== detail.responsible.id ||
+      equipmentSelectionChanged ||
+      value.analysisClassification !== detail.analysisClassification ||
+      value.reportText !== (detail.reportText ?? '');
   }
 
   canDeactivate(): boolean {

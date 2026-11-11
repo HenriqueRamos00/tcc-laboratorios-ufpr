@@ -245,6 +245,28 @@ describe('Formulário de orçamento', () => {
     fixture.destroy();
   }));
 
+  it('apresenta o mesmo rótulo de aceite pendente na criação, edição e listagem', fakeAsync(() => {
+    const criacao = criarFormulario();
+    const textosStatus = Array.from(criacao.nativeElement.querySelectorAll(
+      '[aria-live="polite"] p',
+    ) as NodeListOf<HTMLParagraphElement>)
+      .map((element) => element.textContent?.trim());
+    expect(textosStatus).toContain('Aguardando aceite');
+    expect(criacao.nativeElement.textContent).not.toContain('Pendente de Aceite');
+    criacao.destroy();
+
+    const edicao = criarFormulario({ quoteId: 'quote-1', quoteCode: detalhe.code });
+    const status = edicao.nativeElement.querySelector(
+      '#orcamento-status',
+    ) as HTMLSelectElement;
+    const rotuloPendente = Array.from(status.options)
+      .find((option) => option.value === 'PendingAcceptance')?.textContent?.trim() ?? '';
+    expect(rotuloPendente).toBe('Aguardando aceite');
+    expect(edicao.componentInstance.rotuloStatusOrcamento('PendingAcceptance'))
+      .toBe(rotuloPendente);
+    edicao.destroy();
+  }));
+
   it('carrega detalhe antes de editar e preserva o PDF atual sem nova parte de arquivo', fakeAsync(() => {
     const fixture = criarFormulario({ quoteId: 'quote-1', quoteCode: detalhe.code });
     const component = fixture.componentInstance;

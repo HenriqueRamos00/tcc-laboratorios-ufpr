@@ -21,6 +21,18 @@ public enum StatusComercialOrcamento {
         return codigo;
     }
 
+    public boolean aceitaNovosEnsaios() {
+        return this == IN_PROGRESS || this == FINISHED;
+    }
+
+    public static List<StatusComercialOrcamento> elegiveisParaNovosEnsaios() {
+        return List.of(IN_PROGRESS, FINISHED);
+    }
+
+    public static List<String> codigosElegiveisParaNovosEnsaios() {
+        return elegiveisParaNovosEnsaios().stream().map(StatusComercialOrcamento::codigo).toList();
+    }
+
     public static List<String> codigos() {
         return Arrays.stream(values()).map(StatusComercialOrcamento::codigo).toList();
     }

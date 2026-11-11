@@ -26,7 +26,9 @@ public class AplicadorDadosEnsaio {
     public void aplicar(ExecucaoEnsaio ensaio, EnsaioRequest request, boolean atualizar) {
         var metadados = validador.validarMetadados(request);
         List<MedicaoEnsaio> medicoes = validador.validarMedicoes(request.measurements());
-        var referenciasResolvidas = referencias.resolver(request, atualizar ? ensaio.getResponsavel() : null);
+        Long orcamentoOriginalId = atualizar ? ensaio.getOrcamento().getId() : null;
+        var referenciasResolvidas = referencias.resolver(
+                request, atualizar ? ensaio.getResponsavel() : null, orcamentoOriginalId);
         ensaio.setAmostra(referenciasResolvidas.amostra());
         ensaio.setOrcamento(referenciasResolvidas.amostra().getOrcamento());
         ensaio.setResponsavel(referenciasResolvidas.responsavel());

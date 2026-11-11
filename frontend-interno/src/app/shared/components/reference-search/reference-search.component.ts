@@ -18,7 +18,7 @@ export interface ReferenceSearchOption {
   imports: [OverlayModule, ReactiveFormsModule, MatButtonModule, MatIconModule, MatProgressSpinnerModule],
   templateUrl: './reference-search.component.html',
   styleUrl: './reference-search.component.css',
-  host: { class: 'block min-w-0', '(focusout)': 'checkFocus()' },
+  host: { class: 'block min-w-0', '(focusout)': 'checkFocus($event)' },
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class ReferenceSearchComponent {
@@ -72,13 +72,13 @@ export class ReferenceSearchComponent {
     if (!this.host.nativeElement.contains(event.target as Node)) this.opened.set(false);
   }
 
-  checkFocus(): void {
-    queueMicrotask(() => {
-      const active = this.document.activeElement;
-      if (!this.host.nativeElement.contains(active) && !this.panel()?.nativeElement.contains(active)) {
-        this.opened.set(false);
-      }
-    });
+  checkFocus(event: FocusEvent): void {
+    const next = event.relatedTarget;
+    if (next instanceof Node &&
+      (this.host.nativeElement.contains(next) || this.panel()?.nativeElement.contains(next))) {
+      return;
+    }
+    this.opened.set(false);
   }
 
   inputKeydown(event: KeyboardEvent): void {
@@ -91,10 +91,18 @@ export class ReferenceSearchComponent {
 
   panelKeydown(event: KeyboardEvent): void {
     if (event.key === 'Escape') { event.preventDefault(); this.close(); return; }
+    if (event.key === 'Enter' && event.target instanceof HTMLButtonElement &&
+      event.target.classList.contains('reference-option')) {
+      event.preventDefault();
+      event.target.click();
+      return;
+    }
     if (!['ArrowDown', 'ArrowUp', 'Home', 'End'].includes(event.key)) return;
-    const buttons = Array.from(this.panel()!.nativeElement.querySelectorAll<HTMLButtonElement>('button:not(:disabled)'));
+    const buttons = Array.from(this.panel()!.nativeElement.querySelectorAll<HTMLButtonElement>('.reference-option:not(:disabled)'));
+    if (!buttons.length) return;
     const index = buttons.indexOf(this.document.activeElement as HTMLButtonElement);
-    const next = event.key === 'Home' ? 0 : event.key === 'End' ? buttons.length - 1 :
+    const next = event.key === 'Home' ? 0 : event.key === 'End' ? buttons.length - 1 : index < 0 ?
+      event.key === 'ArrowUp' ? buttons.length - 1 : 0 :
       (index + (event.key === 'ArrowDown' ? 1 : -1) + buttons.length) % buttons.length;
     event.preventDefault();
     buttons[next]?.focus();

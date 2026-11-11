@@ -7,7 +7,8 @@ import {
 
 describe('Apresentação de orçamentos técnicos', () => {
   it('apresenta os rótulos dos estados técnicos previstos', () => {
-    expect(apresentarStatusTecnico('incomplete').label).toBe('Incompleto');
+    expect(apresentarStatusTecnico('not-started').label).toBe('Não iniciado');
+    expect(apresentarStatusTecnico('incomplete').label).toBe('Em execução');
     expect(apresentarStatusTecnico('complete').label).toBe('Completo');
     expect(apresentarStatusTecnico('validated').label).toBe('Validado');
     expect(apresentarStatusTecnico('report-published').label).toBe('Publicado');
@@ -21,7 +22,15 @@ describe('Apresentação de orçamentos técnicos', () => {
     expect(status.className).toContain('bg-lactec-line-soft');
   });
 
-  it('inclui Cancelado entre as opções de filtro técnico', () => {
+  it('apresenta orçamento sem ensaios com estilo neutro', () => {
+    const status = apresentarStatusTecnico('not-started');
+
+    expect(status.label).toBe('Não iniciado');
+    expect(status.className).toContain('bg-lactec-line-soft');
+  });
+
+  it('inclui Não iniciado e Cancelado entre as opções de filtro técnico', () => {
+    expect(OPCOES_STATUS_TECNICO).toContain({ value: 'not-started', label: 'Não iniciado' });
     expect(OPCOES_STATUS_TECNICO).toContain({ value: 'cancelled', label: 'Cancelado' });
   });
 

@@ -26,7 +26,7 @@ export const ANALYSIS_CLASSIFICATIONS: {
   { value: 'nao-conforme', label: 'Não conforme' },
 ];
 const processLabels: Record<ProcessStatus, string> = {
-  incomplete: 'Incompleto',
+  incomplete: 'Em execução',
   complete: 'Completo',
   validated: 'Validado',
   finalized: 'Finalizado',
