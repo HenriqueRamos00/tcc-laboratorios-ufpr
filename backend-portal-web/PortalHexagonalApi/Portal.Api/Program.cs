@@ -1,7 +1,6 @@
 using System.Text.Json;
 using System.Text.Json.Serialization;
 
-using Portal.Adapters.Salesforce;
 using Portal.Api.Configuration;
 using Portal.Api.Authentication;
 using Portal.Api.LabResults;
@@ -63,10 +62,6 @@ builder.Services.AddLabTestRepository(builder.Configuration);
 builder.Services.AddEquipmentRegistrySource(builder.Configuration);
 builder.Services.AddLaboratoryProgressSource(builder.Configuration);
 builder.Services.AddReportDocumentSource(builder.Configuration);
-builder.Services.AddSingleton(
-    builder.Configuration.GetSection(SalesforceOptions.SectionName).Get<SalesforceOptions>() ?? new SalesforceOptions());
-builder.Services.AddHttpClient<ISalesforceTokenClient, SalesforceTokenClient>();
-builder.Services.AddSingleton<ISalesforceTokenProvider, SalesforceTokenProvider>();
 
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddOpenApi(options => options.AddDocumentTransformer<PortalBearerDocumentTransformer>());

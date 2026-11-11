@@ -1,6 +1,7 @@
 using System.Net;
 using System.Text.Json;
 
+using Portal.Application.Paging;
 using Portal.Application.Quotes;
 using Portal.Application.Quotes.Exceptions;
 using Portal.Domain.Quotes;
@@ -9,7 +10,19 @@ namespace Portal.Adapters.Quotes;
 
 public sealed class SpringQuoteRepository(HttpClient httpClient) : IQuoteRepository
 {
-    public async Task<IReadOnlyList<Quote>> GetQuotesAsync(CancellationToken cancellationToken)
+    /// <summary>
+    /// O contrato <c>GET /api/client/quotes</c> do Spring devolve a lista inteira do cliente,
+    /// sem parametros de pagina. A pagina e recortada aqui, sobre essa lista, para a porta ter
+    /// o mesmo formato nas tres fontes; quando o Spring paginar, o recorte desce para la.
+    /// </summary>
+    public async Task<Page<Quote>> GetQuotesAsync(PageRequest page, CancellationToken cancellationToken)
+    {
+        ArgumentNullException.ThrowIfNull(page);
+
+        return Page<Quote>.Of(await GetAllQuotesAsync(cancellationToken), page);
+    }
+
+    private async Task<IReadOnlyList<Quote>> GetAllQuotesAsync(CancellationToken cancellationToken)
     {
         using CancellationTokenSource operation = CreateOperationTimeout(cancellationToken);
         using HttpResponseMessage response = await SendAsync("api/client/quotes", operation.Token, cancellationToken);

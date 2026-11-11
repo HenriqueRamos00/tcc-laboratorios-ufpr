@@ -64,6 +64,30 @@ public sealed class SpringModeContractTests
         Assert.All(origin.Authorizations, value => Assert.Equal("Bearer client-session", value));
     }
 
+    /// <summary>
+    /// O Spring nao pagina a lista de orcamentos; a API recorta a pagina e publica o total
+    /// nos mesmos cabecalhos das demais listas. O filtro quoteCode de /api/reports procura o
+    /// orcamento autorizado pelo codigo publico, percorrendo as paginas.
+    /// </summary>
+    [Fact]
+    public async Task SpringQuoteListIsPagedAndReportsAreFoundByThePublicCode()
+    {
+        using Origin origin = new();
+        using SpringPortal portal = new(origin);
+        using HttpClient client = portal.CreateClient();
+        client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", "client-session");
+
+        using HttpResponseMessage quotes = await client.GetAsync("/api/quotes?page=2&pageSize=1");
+        Assert.Equal(HttpStatusCode.OK, quotes.StatusCode);
+        Assert.Equal("2", quotes.Headers.GetValues("X-Total-Count").Single());
+        Assert.Equal("52", (string?)JsonNode.Parse(await quotes.Content.ReadAsStringAsync())!.AsArray().Single()!["id"]);
+
+        using HttpResponseMessage ofQuote = await client.GetAsync("/api/reports?quoteCode=ORC-52");
+        Assert.Equal("804", (string?)JsonNode.Parse(await ofQuote.Content.ReadAsStringAsync())!.AsArray().Single()!["id"]);
+        using HttpResponseMessage ofUnknown = await client.GetAsync("/api/reports?quoteCode=ORC-99");
+        Assert.Empty(JsonNode.Parse(await ofUnknown.Content.ReadAsStringAsync())!.AsArray());
+    }
+
     [Theory]
     [InlineData("/api/equipments")]
     [InlineData("/api/equipments/NTcxMjg5")]
@@ -125,6 +149,12 @@ public sealed class SpringModeContractTests
             """;
         public List<string?> Authorizations { get; } = [];
 
+        private static string QuoteJson(string id, string code) => $$"""
+            {"id":"{{id}}","code":"{{code}}","name":"Análise","status":"InProgress","stage":"Em execução",
+            "description":"Óleo","companyName":"Empresa","protocol":"P-52","externalContactName":"",
+            "externalContactEmail":"","totalPrice":10,"createdDate":null}
+            """;
+
         protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
         {
             Authorizations.Add(request.Headers.Authorization?.ToString());
@@ -134,11 +164,8 @@ public sealed class SpringModeContractTests
             string json = path switch
             {
                 "/api/client/reports" => $"[{Report}]",
-                "/api/client/quotes/52" => """
-                    {"id":"52","code":"ORC-52","name":"Análise","status":"InProgress","stage":"Em execução",
-                    "description":"Óleo","companyName":"Empresa","protocol":"P-52","externalContactName":"",
-                    "externalContactEmail":"","totalPrice":10,"createdDate":null}
-                    """,
+                "/api/client/quotes" => $"[{QuoteJson("51", "ORC-51")},{QuoteJson("52", "ORC-52")}]",
+                "/api/client/quotes/52" => QuoteJson("52", "ORC-52"),
                 "/api/client/quotes/52/reports" => $$"""
                     {"protocol":"P-52","testType":"Análise cromatográfica","summary":"Publicado","reports":[{{Report}}]}
                     """,

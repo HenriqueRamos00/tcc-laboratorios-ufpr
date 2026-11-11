@@ -8,6 +8,7 @@ using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.AspNetCore.TestHost;
 using Microsoft.Extensions.DependencyInjection;
 
+using Portal.Application.Paging;
 using Portal.Application.Pipeline;
 using Portal.Application.Pipeline.Exceptions;
 using Portal.Application.Quotes;
@@ -84,6 +85,27 @@ public sealed class QuoteStageContractTests
 
         Assert.True(commercial.AsObject().ContainsKey("laboratoryStage"));
         Assert.Null((string?)commercial["laboratoryStage"]);
+    }
+
+    /// <summary>
+    /// O codigo publico nao e a chave do laboratorio. Um orcamento cujo codigo publico e
+    /// exatamente o OrcamentoCRM de uma linha do AutoLAB, mas sem codigo de cotacao, continua
+    /// sem etapa de laboratorio, na lista e no detalhe.
+    /// </summary>
+    [Fact]
+    public async Task ThePublicCodeIsNeverUsedAsTheLaboratoryKey()
+    {
+        using var portal = PortalWithQuotes("sql-server");
+        using HttpClient client = portal.CreateClient();
+        await Login(client);
+
+        JsonNode listed = (await Quotes(client)).Single(quote => (string?)quote!["id"] == "quote-without-quotation")!;
+        using var response = await client.GetAsync("/api/quotes/quote-without-quotation");
+        JsonNode detail = JsonNode.Parse(await response.Content.ReadAsStringAsync())!;
+
+        Assert.Equal("2026_45494", (string?)listed["code"]);
+        Assert.Null((string?)listed["laboratoryStage"]);
+        Assert.Null((string?)detail["laboratoryStage"]);
     }
 
     [Fact]
@@ -195,13 +217,14 @@ public sealed class QuoteStageContractTests
     {
         private static readonly Quote[] Quotes =
         [
-            QuoteOf("quote-lab", LaboratoryQuoteCode),
-            QuoteOf("quote-commercial", CommercialQuoteCode)
+            QuoteOf("quote-lab", LaboratoryQuoteCode, LaboratoryQuoteCode),
+            QuoteOf("quote-commercial", CommercialQuoteCode, CommercialQuoteCode),
+            QuoteOf("quote-without-quotation", "2026_45494", quotationCode: null)
         ];
 
-        public Task<IReadOnlyList<Quote>> GetQuotesAsync(CancellationToken cancellationToken)
+        public Task<Page<Quote>> GetQuotesAsync(PageRequest page, CancellationToken cancellationToken)
         {
-            return Task.FromResult<IReadOnlyList<Quote>>([.. Quotes]);
+            return Task.FromResult(Page<Quote>.Of(Quotes, page));
         }
 
         public Task<Quote?> GetQuoteByIdAsync(string id, CancellationToken cancellationToken)
@@ -209,7 +232,7 @@ public sealed class QuoteStageContractTests
             return Task.FromResult(Quotes.FirstOrDefault(quote => quote.Id == id));
         }
 
-        private static Quote QuoteOf(string id, string code)
+        private static Quote QuoteOf(string id, string code, string? quotationCode)
         {
             return new Quote(
                 id: id,
@@ -223,7 +246,8 @@ public sealed class QuoteStageContractTests
                 externalContactName: "Equipe Comercial",
                 externalContactEmail: "comercial@exemplo.com",
                 totalPrice: 1000m,
-                createdDate: new DateTimeOffset(2026, 5, 5, 8, 30, 0, TimeSpan.Zero));
+                createdDate: new DateTimeOffset(2026, 5, 5, 8, 30, 0, TimeSpan.Zero),
+                quotationCode: quotationCode);
         }
     }
 

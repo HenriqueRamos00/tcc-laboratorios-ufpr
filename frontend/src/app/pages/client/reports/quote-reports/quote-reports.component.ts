@@ -130,7 +130,9 @@ export class QuoteReportsComponent {
       .pipe(
         tap(() => this.reportsLoading.set(true)),
         switchMap(([loaded, page]) =>
-          this.reports.list({ quoteId: loaded.id, quoteCode: loaded.code, page, pageSize: this.pageSize }).pipe(
+          // Só o ID: a API resolve o orçamento autorizado e o liga ao AutoLAB pelo código da
+          // cotação. O `code` exibido não é a chave do laboratório.
+          this.reports.list({ quoteId: loaded.id, page, pageSize: this.pageSize }).pipe(
             catchError(() => {
               this.failed.set(true);
               this.loading.set(false);

@@ -169,7 +169,7 @@ public sealed class AutoLabSqlServerQueryTextTests
             "SignedDocumentOf" => AutoLabQueries.SignedDocumentOf(database, "LACTEC-02272/2026").ToQueryString(),
             "IdentificationsWithSignedDocument" => AutoLabQueries.IdentificationsWithSignedDocument(database, values, 501).ToQueryString(),
             "CurrentIssueOf" => AutoLabQueries.CurrentIssueOf(database, "LACTEC-02272/2026").ToQueryString(),
-            "Reports" => AutoLabQueries.Reports(database, VisibilityScope.All, "EAQ_2026_45499_V_1").OnlyThePage(page).ToQueryString(),
+            "Reports" => AutoLabQueries.Reports(database, VisibilityScope.All, "2026_45499").OnlyThePage(page).ToQueryString(),
             "SignedDocumentOfReport" => AutoLabQueries.SignedDocumentOfReport(database, company, Guid.Empty).ToQueryString(),
             _ => throw new ArgumentOutOfRangeException(nameof(name))
         };

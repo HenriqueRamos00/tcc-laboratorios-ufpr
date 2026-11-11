@@ -164,7 +164,7 @@ public sealed class AutoLabSampleTests : IDisposable
     public async Task TheReportListingFiltersByQuoteAndByCompany()
     {
         Page<LabReport> ofQuote = await Issues().ListReportsAsync(
-            VisibilityScope.All, "EAQ_2026_45496_V_1", PageRequest.First, CancellationToken.None);
+            VisibilityScope.All, "2026_45496", PageRequest.First, CancellationToken.None);
         Page<LabReport> ofCompetitor = await Issues().ListReportsAsync(
             Competitor, null, PageRequest.First, CancellationToken.None);
         Page<LabReport> ofEnergy = await Issues().ListReportsAsync(
@@ -181,7 +181,7 @@ public sealed class AutoLabSampleTests : IDisposable
     public async Task TheReportOfAnotherCompanyIsNotDownloaded()
     {
         Page<LabReport> reports = await Issues().ListReportsAsync(
-            VisibilityScope.All, "EAQ_2026_45496_V_1", PageRequest.First, CancellationToken.None);
+            VisibilityScope.All, "2026_45496", PageRequest.First, CancellationToken.None);
 
         Assert.Null(await Issues().GetSignedDocumentOfReportAsync(
             Energy, reports.Items[0].Id, CancellationToken.None));

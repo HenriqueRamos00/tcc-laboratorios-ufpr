@@ -1,8 +1,9 @@
 import { HttpClient } from '@angular/common/http';
 import { inject, Injectable } from '@angular/core';
-import { Observable } from 'rxjs';
+import { map, Observable } from 'rxjs';
 
 import { API_URL } from '@/app/environment/env';
+import { pageParams, toPage, type Page, type PageRequest } from '@/app/model/page';
 import { Quote } from '@/app/model/quote';
 
 @Injectable({ providedIn: 'root' })
@@ -10,8 +11,18 @@ export class QuotesService {
   private readonly http = inject(HttpClient);
   private readonly baseUrl = `${API_URL}/api/quotes`;
 
-  getQuotes(): Observable<Quote[]> {
-    return this.http.get<Quote[]>(this.baseUrl);
+  /**
+   * GET /api/quotes?page=&pageSize=
+   *
+   * A lista é paginada na origem (o Salesforce aplica LIMIT/OFFSET), como as
+   * demais listas do portal: o corpo é o array da página e o total vem em
+   * `X-Total-Count`. Pedir sem página traria só a primeira, e o cliente com
+   * mais orçamentos do que isso deixaria de alcançar os outros.
+   */
+  list(request: PageRequest): Observable<Page<Quote>> {
+    return this.http
+      .get<Quote[]>(this.baseUrl, { params: pageParams(request), observe: 'response' })
+      .pipe(map((response) => toPage(response, request)));
   }
 
   /**

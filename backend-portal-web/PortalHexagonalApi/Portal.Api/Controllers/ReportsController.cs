@@ -44,6 +44,9 @@ public sealed class ReportsController(
         if (!paging.TryToRequest(out PageRequest request))
             return Task.FromResult(this.InvalidPage());
 
+        // No AutoLAB, quoteCode filtra pelo campo quoteCode do proprio relatorio (OrcamentoCRM
+        // exato, dentro do escopo de visibilidade). Nao e o codigo publico do orcamento; o
+        // vinculo orcamento -> relatorios passa por /api/quotes/{id}/reports.
         if (UsesAutoLab)
             return AnswerAutoLabAsync(async scope =>
             {
@@ -60,8 +63,7 @@ public sealed class ReportsController(
                 published = await springReports.ListPublishedAsync(cancellationToken);
             else
             {
-                IReadOnlyList<Quote> authorized = await quotes.GetQuotesAsync(cancellationToken);
-                Quote? quote = authorized.FirstOrDefault(item => string.Equals(item.Code, quoteCode, StringComparison.Ordinal));
+                Quote? quote = await FindAuthorizedQuoteByCodeAsync(quoteCode, cancellationToken);
                 SpringReports.QuoteReportConclusion? conclusion = quote is null
                     ? null
                     : await springReports.GetPublishedOfQuoteAsync(quote.Id, cancellationToken);
@@ -89,7 +91,11 @@ public sealed class ReportsController(
                 // Resolve the authorized quote first; an arbitrary quote code must not select another quote's reports.
                 Quote? quote = await quotes.GetQuoteByIdAsync(quoteId, cancellationToken);
                 if (quote is null) return this.QuoteNotFound();
-                Page<LabReport> page = await autoLabReports.ListReportsAsync(scope, quote.Code, request, cancellationToken);
+                // O AutoLAB conhece o orcamento pela chave de laboratorio, e nao pelo codigo publico.
+                // Sem chave valida nao ha relatorio a pedir, e o AutoLAB nem e consultado.
+                Page<LabReport> page = quote.LaboratoryKey is { } key
+                    ? await autoLabReports.ListReportsAsync(scope, key.Value, request, cancellationToken)
+                    : Page<LabReport>.Empty(request);
                 PageQuery.WriteHeaders(Response, page);
                 return page.TotalCount == 0
                     ? NoContent()
@@ -144,6 +150,24 @@ public sealed class ReportsController(
                 ? this.ReportDocumentNotFound()
                 : File(document.Content, "application/pdf", $"relatorio-{id}.pdf", enableRangeProcessing: true);
         });
+    }
+
+    /// <summary>
+    /// O orcamento autorizado com este codigo publico, procurado pagina a pagina na fonte
+    /// comercial. A busca para no primeiro encontrado; a lista inteira so e percorrida quando
+    /// o codigo nao pertence ao cliente.
+    /// </summary>
+    private async Task<Quote?> FindAuthorizedQuoteByCodeAsync(string quoteCode, CancellationToken cancellationToken)
+    {
+        for (int number = 1; number <= PageRequest.MaxPage; number++)
+        {
+            Page<Quote> page = await quotes.GetQuotesAsync(
+                new PageRequest(number, PageRequest.MaxPageSize), cancellationToken);
+            Quote? quote = page.Items.FirstOrDefault(item => string.Equals(item.Code, quoteCode, StringComparison.Ordinal));
+            if (quote is not null || !page.HasNext || page.Items.Count == 0) return quote;
+        }
+
+        return null;
     }
 
     private Task<IActionResult> AnswerAutoLabAsync(Func<VisibilityScope, Task<IActionResult>> answer)

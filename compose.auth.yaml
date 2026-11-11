@@ -92,7 +92,9 @@ services:
       ASPNETCORE_ENVIRONMENT: Development
       ASPNETCORE_URLS: http://+:8080
       Portal__DataSource: lactec
-      Portal__UseDemoData: "true"
+      # true (padrão): orçamentos de demonstração. false: Salesforce real, com as
+      # credenciais Salesforce__* de backend-portal-web/.env.
+      Portal__UseDemoData: ${PORTAL_USE_DEMO_DATA:-true}
       LabResults__Source: sql-server
       LabResults__Scope: all
       LabResults__DevelopmentTenant: ""
