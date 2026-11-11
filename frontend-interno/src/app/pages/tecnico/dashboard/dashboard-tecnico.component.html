@@ -1,0 +1,206 @@
+<div class="space-y-8 [overflow-wrap:anywhere]">
+  <app-page-header
+    [title]="saudacao()"
+    subtitle="Dashboard de técnico"
+    [breadcrumbs]="trilha"
+  />
+
+  @if (estado() === 'carregando') {
+    <section aria-label="Indicadores do dashboard" aria-busy="true">
+      <p class="sr-only" role="status">Carregando indicadores do painel técnico.</p>
+      <div class="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
+        @for (indicador of indicadores; track indicador.chave) {
+          <article class="min-w-0 rounded-xl border border-lactec-line bg-lactec-paper p-5" aria-hidden="true">
+            <div class="mb-5 h-4 w-2/3 animate-pulse rounded bg-lactec-line-soft"></div>
+            <div class="h-8 w-1/2 animate-pulse rounded bg-lactec-line-soft"></div>
+          </article>
+        }
+      </div>
+    </section>
+  } @else if (estado() === 'erro') {
+    <app-empty-state
+      title="Não foi possível carregar o dashboard"
+      descricao="Verifique sua conexão e tente carregar o painel novamente."
+      icon="error_outline"
+      tom="erro"
+    >
+      <button mat-stroked-button type="button" (click)="tentarNovamente()">
+        <mat-icon aria-hidden="true">refresh</mat-icon>
+        Tentar novamente
+      </button>
+    </app-empty-state>
+  } @else {
+    @if (dados(); as painel) {
+      <section
+        class="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3"
+        aria-label="Indicadores do dashboard"
+      >
+        @for (indicador of indicadores; track indicador.chave) {
+          <article
+            class="flex min-w-0 flex-col rounded-xl border border-lactec-line bg-lactec-paper p-5 shadow-sm"
+            [attr.aria-labelledby]="'indicador-' + indicador.chave"
+          >
+            <div class="mb-5 flex min-w-0 items-start justify-between gap-3">
+              <h2
+                class="m-0 min-w-0 text-sm font-medium uppercase leading-snug text-lactec-muted"
+                [id]="'indicador-' + indicador.chave"
+              >
+                {{ indicador.rotulo }}
+              </h2>
+              <mat-icon class="shrink-0 text-lactec-faint" aria-hidden="true">
+                {{ indicador.icone }}
+              </mat-icon>
+            </div>
+            <p class="mt-auto mb-0 min-w-0 text-3xl font-semibold leading-tight tabular-nums text-lactec-ink [overflow-wrap:anywhere]">
+              {{ painel[indicador.chave] | number: '1.0-0' }}
+            </p>
+          </article>
+        }
+      </section>
+      }
+  }
+
+  <nav
+    class="mx-auto grid w-full max-w-5xl grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4"
+    aria-label="Acesso rápido aos módulos técnicos"
+  >
+    @for (atalho of atalhos; track atalho.rota) {
+      <a
+        class="group flex min-h-40 min-w-0 flex-col justify-between gap-4 rounded-xl border border-lactec-line bg-lactec-paper p-5 shadow-sm transition-colors hover:border-lactec-primary hover:shadow-md focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-lactec-primary"
+        [routerLink]="atalho.rota"
+        [attr.aria-label]="'Acessar ' + atalho.rotulo"
+      >
+        <span class="flex min-w-0 items-start gap-3">
+          <mat-icon class="shrink-0 text-lactec-primary" aria-hidden="true">{{ atalho.icone }}</mat-icon>
+          <span class="min-w-0">
+            <span class="block font-semibold text-lactec-ink">{{ atalho.rotulo }}</span>
+            <span class="mt-1 block text-sm leading-snug text-lactec-muted">{{ atalho.descricao }}</span>
+          </span>
+        </span>
+        <span class="inline-flex items-center gap-1 text-sm font-medium text-lactec-primary-dark">
+          Acessar
+          <mat-icon class="icone-16" aria-hidden="true">arrow_forward</mat-icon>
+        </span>
+      </a>
+    }
+  </nav>
+
+  @if (estado() === 'sucesso' && dados(); as painel) {
+    <section
+      class="min-w-0 rounded-xl border border-lactec-line bg-lactec-paper shadow-sm"
+      aria-labelledby="laudos-pendentes-titulo"
+    >
+      <header class="flex flex-wrap items-start justify-between gap-4 border-b border-lactec-line px-5 py-4 sm:px-6">
+        <div class="min-w-0">
+          <h2 id="laudos-pendentes-titulo" class="m-0 text-lg font-semibold text-lactec-ink">
+            Laudos pendentes de validação
+          </h2>
+          <p class="mt-1 mb-0 text-sm text-lactec-muted">Resultados aguardando sua revisão técnica.</p>
+          @if (resumoPendencias()) {
+            <p class="mt-2 mb-0 text-sm text-lactec-muted" aria-live="polite">{{ resumoPendencias() }}</p>
+          }
+        </div>
+        <a
+          routerLink="/tecnico/relatorios"
+          class="inline-flex min-h-10 shrink-0 items-center gap-2 rounded-lg px-3 text-sm font-semibold text-lactec-primary-dark hover:bg-lactec-line-soft focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-lactec-primary"
+          aria-label="Ver todos os relatórios"
+        >
+          <mat-icon class="icone-20" aria-hidden="true">search</mat-icon>
+          Ver todos
+        </a>
+      </header>
+
+      @if (painel.pendingReports.length === 0) {
+        <div class="p-4 sm:p-6">
+          <app-empty-state
+            title="Nenhum laudo pendente de validação"
+            descricao="Quando houver documentos aguardando revisão técnica, eles aparecerão aqui."
+            icon="description"
+          />
+        </div>
+      } @else {
+        <div
+          class="overflow-x-auto focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-lactec-primary"
+          tabindex="0"
+          role="region"
+          aria-label="Tabela de laudos pendentes; role horizontalmente para ver todas as colunas"
+        >
+          <table class="w-full min-w-[42rem] border-collapse text-left text-sm">
+            <caption class="sr-only">Laudos que aguardam validação técnica</caption>
+            <thead class="whitespace-nowrap text-xs font-semibold uppercase tracking-wide text-lactec-muted">
+              <tr class="border-b border-lactec-line">
+                <th scope="col" class="px-5 py-3 sm:px-6">Laudo</th>
+                <th scope="col" class="px-5 py-3 sm:px-6">Cliente</th>
+                <th scope="col" class="px-5 py-3 sm:px-6">Tipo</th>
+                <th scope="col" class="px-5 py-3 sm:px-6">Status</th>
+                <th scope="col" class="px-5 py-3 sm:px-6"><span class="sr-only">Ações</span></th>
+              </tr>
+            </thead>
+            <tbody>
+              @for (laudo of painel.pendingReports; track laudo.id) {
+                <tr class="border-b border-lactec-line last:border-b-0">
+                  <td class="mono break-all px-5 py-4 font-medium text-lactec-ink sm:px-6">
+                    {{ laudo.id }}
+                  </td>
+                  <td class="max-w-64 whitespace-normal px-5 py-4 text-lactec-ink sm:px-6 [overflow-wrap:anywhere]">
+                    {{ laudo.companyName }}
+                  </td>
+                  <td class="max-w-80 whitespace-normal px-5 py-4 text-lactec-ink sm:px-6 [overflow-wrap:anywhere]">
+                    {{ laudo.type }}
+                  </td>
+                  <td class="px-5 py-4 sm:px-6">
+                    <span
+                      [class]="classeStatus(laudo.validationStatus)"
+                    >
+                      {{ rotuloStatus(laudo.validationStatus) }}
+                    </span>
+                  </td>
+                  <td class="px-5 py-4 sm:px-6">
+                    <a mat-stroked-button
+                      [routerLink]="['/tecnico/relatorios', laudo.id]"
+                      [attr.aria-label]="'Abrir laudo ' + laudo.id"
+                      class="whitespace-nowrap">
+                      <span class="inline-flex items-center gap-2">
+                        <mat-icon class="icone-20" aria-hidden="true">visibility</mat-icon>
+                        <span>Abrir laudo</span>
+                      </span>
+                    </a>
+                  </td>
+                </tr>
+              }
+            </tbody>
+          </table>
+        </div>
+      }
+    </section>
+
+    <div class="grid min-w-0 gap-5 xl:grid-cols-2" aria-label="Análises dos relatórios">
+      <section class="min-w-0 rounded-xl border border-lactec-line bg-lactec-paper p-5 shadow-sm sm:p-6"
+        aria-labelledby="atividade-laudos-titulo">
+        <h2 id="atividade-laudos-titulo" class="m-0 text-lg font-semibold text-lactec-ink">Laudos validados e publicados</h2>
+        <p class="mt-1 mb-5 text-sm text-lactec-muted">Últimos seis meses. Mês atual parcial até a consulta.</p>
+        <app-bar-chart label="Laudos validados e publicados por mês"
+          [rows]="atividadeLaudos()" [series]="seriesAtividade" />
+        <p class="mt-5 mb-0 text-xs leading-relaxed text-lactec-muted">
+          Cada série considera a data do respectivo evento, no fuso de São Paulo.
+          Um laudo pode ser validado em um mês e publicado em outro.
+        </p>
+      </section>
+      <section class="min-w-0 rounded-xl border border-lactec-line bg-lactec-paper p-5 shadow-sm sm:p-6"
+        aria-labelledby="idade-laudos-titulo">
+        <h2 id="idade-laudos-titulo" class="m-0 text-lg font-semibold text-lactec-ink">Idade dos laudos pendentes</h2>
+        <p class="mt-1 mb-5 text-sm text-lactec-muted">Dias corridos desde a preparação, no fuso de São Paulo.</p>
+        <app-bar-chart label="Laudos aguardando validação por faixa de dias"
+          [rows]="idadeLaudos()" [series]="seriesIdade" />
+        @if (painel.reportAnalytics.pendingReportAge.oldestCreatedOn; as oldest) {
+          <p class="mt-5 mb-0 text-sm text-lactec-ink-soft">
+            Laudo pendente mais antigo preparado em <strong>{{ oldest | date: 'dd/MM/yyyy' : 'UTC' }}</strong>.
+          </p>
+        } @else {
+          <p class="mt-5 mb-0 text-sm text-lactec-muted">Nenhum laudo aguardando validação.</p>
+        }
+        <p class="mt-3 mb-0 text-xs text-lactec-muted">As faixas mostram o tempo de espera e não representam prazos de atraso.</p>
+      </section>
+    </div>
+  }
+</div>

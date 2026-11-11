@@ -10,9 +10,9 @@ import {
 import { authGuard } from '@core/guards/auth.guard';
 import { UserRole } from '@core/store/user-role.store';
 import { DashboardAdministradorComponent } from '@/app/pages/admin/dashboard/dashboard-administrador.component';
+import { DashboardTecnicoComponent } from '@/app/pages/tecnico/dashboard/dashboard-tecnico.component';
 import { OrcamentosComponent } from '@/app/pages/admin/orcamentos/orcamentos.component';
 import { OrcamentosTecnicosComponent } from '@/app/pages/tecnico/orcamentos/orcamentos.component';
-import { PlaceholderComponent } from '@/app/pages/placeholder/placeholder.component';
 import { EnsaiosComponent } from '@/app/pages/tecnico/ensaios/ensaios.component';
 import { EnsaioFormComponent } from '@/app/pages/tecnico/ensaios/ensaio-form.component';
 import { EnsaioStatusComponent } from '@/app/pages/tecnico/ensaios/ensaio-status.component';
@@ -106,16 +106,15 @@ describe('Rotas do Portal Interno', () => {
     expect(filhos.find((rota) => rota.path === 'ensaios-amostras')).toBeUndefined();
   });
 
-  it('mantém o dashboard técnico como página provisória', async () => {
-    const rotaTecnico = routes.find((rota) => rota.path === 'tecnico');
+  it('carrega o dashboard técnico protegido na rota raiz', async () => {
     const dashboardTecnico = rotaTecnico?.children?.find(
       (rota) => rota.path === '',
     );
 
     expect(rotaTecnico?.data?.['role']).toBe('TECNICO');
-    expect(await dashboardTecnico?.loadComponent?.()).toBe(
-      PlaceholderComponent,
-    );
+    expect(rotaTecnico?.canActivate).toContain(authGuard);
+    expect(dashboardTecnico?.title).toBe('Dashboard - Portal Interno Lactec');
+    expect(await dashboardTecnico?.loadComponent?.()).toBe(DashboardTecnicoComponent);
   });
 
   it('redireciona para o painel do perfil atual quando o perfil não é ADMIN', () => {

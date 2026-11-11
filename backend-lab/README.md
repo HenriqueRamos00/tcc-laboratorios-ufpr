@@ -171,6 +171,18 @@ Para criar o administrador inicial, preencha `AUTH_SEED_ADMIN_*` no arquivo `.en
 
 Sem autenticação válida, a API retorna 401. Técnicos autenticados recebem 403. Tokens de clientes são recusados pelo filtro de autenticação nas rotas internas e recebem 401.
 
+### Dashboard do Técnico
+
+`GET /api/technician/dashboard` é exclusivo do perfil TECNICO e consulta o PostgreSQL da aplicação. Retorna três contagens de execuções: `testsInExecution` considera `INCOMPLETE`; `testsAwaitingApproval` considera `COMPLETE`; `testsFinished` reúne `FINALIZED`, `DRAFTING_REPORT` e `REPORT_PUBLISHED`. `VALIDATED` e `CANCELLED` ficam fora desses indicadores, que não representam uma divisão de todos os ensaios.
+
+`pendingReportsTotal` conta os relatórios em `PENDING_VALIDATION`. `pendingReports` apresenta até seis deles, por ID decrescente, com `id`, `companyName`, `type` e `validationStatus`. O total independe do limite da prévia; medições e documentos adicionais não multiplicam as contagens de ensaios. A consulta não altera dados nem retorna PDFs ou snapshots.
+
+Sem registros, a resposta é 200 com contagens zero e lista vazia. Sem autenticação válida, retorna 401; administradores recebem 403 e tokens de clientes são recusados pelo filtro de autenticação interno. A fonte atual é o banco Spring; a integração real com o AutoLAB permanece pendente.
+
+`reportAnalytics` acrescenta `referenceDate`, `monthlyReports` e `pendingReportAge`. A atividade mensal cobre os seis meses até a consulta, incluindo o mês atual parcial, no fuso `America/Sao_Paulo`. Cada documento é contado pela sua data de validação e, separadamente, pela data de publicação; meses sem eventos retornam zero. Eventos posteriores à consulta ficam fora da janela. Alterações no status técnico do ensaio não mudam esses eventos documentais.
+
+A idade considera apenas documentos aguardando validação, desde a preparação (`created_at`), em dias de calendário de São Paulo. As faixas são até 7 dias, de 8 a 15 dias e 16 dias ou mais. Elas abrangem todas as pendências, independentemente do limite de seis itens da prévia. `oldestCreatedOn` informa a data de preparação mais antiga e é nulo quando não há pendências. As faixas não definem prazo contratual nem atraso.
+
 ### Consulta de orçamentos do cliente
 
 `GET /api/client/quotes` lista os orçamentos das empresas ativas vinculadas ao cliente autenticado. `GET /api/client/quotes/{id}` consulta um orçamento e `GET /api/client/quotes/{id}/document` retorna o PDF anexado ou gera um PDF a partir dos dados persistidos quando não há anexo. A autorização considera os vínculos atuais do cliente antes de consultar ou gerar o documento; orçamento de empresa sem vínculo retorna 403 e orçamento inexistente retorna 404.

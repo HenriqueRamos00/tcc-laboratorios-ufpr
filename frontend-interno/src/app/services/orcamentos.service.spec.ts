@@ -36,6 +36,7 @@ describe('Serviço de orçamentos', () => {
 
   const requisicao: OrcamentoRequest = {
     code: 'EAQ_2026_45482_V_1',
+    protocol: 'L-45482-2026-X',
     companyId: 'company-1',
     name: 'Análise de óleo isolante',
     laboratoryName: 'Laboratório de Ensaios',
