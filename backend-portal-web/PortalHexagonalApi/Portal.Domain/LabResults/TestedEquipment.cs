@@ -95,8 +95,8 @@ public sealed class TestedEquipment
             analysis.Identification,
             analysis.AnalysisEndDate,
             analysis.IssueDate,
-            analysis.HasDissolvedGas
-                ? ReportAnalysisType.Chromatography
-                : ReportAnalysisType.PhysicalChemical);
+            analysis.HasDissolvedGas ? ReportAnalysisType.Chromatography
+            : analysis.HasPhysicalChemicalProperty ? ReportAnalysisType.PhysicalChemical
+            : ReportAnalysisType.Other);
     }
 }

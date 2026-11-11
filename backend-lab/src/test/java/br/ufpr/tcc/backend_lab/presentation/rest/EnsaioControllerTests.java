@@ -67,7 +67,7 @@ import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.support.TransactionTemplate;
 
-@SpringBootTest
+@SpringBootTest(properties = "spring.datasource.url=jdbc:h2:mem:ensaios_controller;MODE=PostgreSQL;DB_CLOSE_DELAY=-1")
 @AutoConfigureMockMvc
 class EnsaioControllerTests {
     private static final String PATH = "/api/tests";

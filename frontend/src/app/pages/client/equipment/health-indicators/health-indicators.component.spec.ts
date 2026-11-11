@@ -1,5 +1,7 @@
 import type { ComponentFixture } from '@angular/core/testing';
 import { TestBed } from '@angular/core/testing';
+import { By } from '@angular/platform-browser';
+import { MatTooltip } from '@angular/material/tooltip';
 import { provideRouter } from '@angular/router';
 import { of } from 'rxjs';
 
@@ -126,7 +128,7 @@ describe('HealthIndicatorsComponent, tabela físico-química', () => {
   // O AutoLAB entrega valor medido, não parecer: enquanto o núcleo normativo não
   // roda, `classificacao`, `conformidade` e `veredito` chegam nulos em todo laudo
   // físico-químico. A tela precisa dizer isso, e não calar nem quebrar.
-  it('diz que o ensaio não foi avaliado quando o laudo vem sem classificação', () => {
+  it('avisa que os dados não estão disponíveis quando o laudo vem sem classificação', () => {
     const semParecer = indicadoresCom(['2025-10-26'], [38]);
     const raiz = raizDe({
       ...semParecer,
@@ -138,10 +140,55 @@ describe('HealthIndicatorsComponent, tabela físico-química', () => {
       },
     });
 
-    expect(celulasDaPrimeiraLinha(raiz).at(-1)).toBe('Não avaliado');
+    expect(celulasDaPrimeiraLinha(raiz).at(-1)).toBe('Classificação: Dados não disponíveis');
     expect(raiz.querySelector('app-conformity-banner')?.textContent?.trim())
-      .toBe('Não avaliado');
-    expect(raiz.querySelector('app-conformity-gauge')?.textContent).toContain('Não avaliado');
+      .toBe('Conformidade do resultado: Dados não disponíveis');
+    expect(raiz.querySelector('app-conformity-gauge')?.textContent).toContain('Dados não disponíveis');
+    expect(raiz.querySelector('app-conformity-gauge ul')).toBeNull();
+  });
+
+  it('avisa que a tensão nominal não está disponível quando a placa não a informa', () => {
+    const base = indicadoresCom(['2025-10-26'], [38]);
+    const raiz = raizDe({
+      ...base,
+      physicalChemical: { ...base.physicalChemical, nominalVoltage: null },
+    });
+    const cabecalho = [...raiz.querySelectorAll('thead th')]
+      .find((th) => th.textContent?.includes('ABNT NBR 10576/17'));
+
+    expect(cabecalho?.querySelector('app-data-unavailable')).not.toBeNull();
+    expect(cabecalho?.textContent).not.toContain('null');
+  });
+
+  it('avisa que método e valor-limite não estão disponíveis quando chegam como hífen', () => {
+    const base = indicadoresCom(['2025-10-26'], [38]);
+    const raiz = raizDe({
+      ...base,
+      physicalChemical: {
+        ...base.physicalChemical,
+        tests: base.physicalChemical.tests.map((test) => ({ ...test, method: '-', limit: '-' })),
+      },
+    });
+    const celulas = celulasDaPrimeiraLinha(raiz);
+
+    expect(celulas[1]).toBe('Método: Dados não disponíveis');
+    expect(celulas[2]).toBe('Valor-limite: Dados não disponíveis');
+  });
+
+  it('avisa que o relatório não está disponível quando não há título nem conclusão', () => {
+    const raiz = raizDe({
+      ...HEALTH_INDICATORS,
+      physicalChemical: {
+        ...HEALTH_INDICATORS.physicalChemical,
+        report: { title: null, paragraphs: [] },
+      },
+    });
+    const regiao = raiz.querySelector('[aria-labelledby="report-title-physical-chemical"]');
+
+    expect(regiao?.querySelector('h2')?.textContent?.trim())
+      .toBe('Título do relatório: Dados não disponíveis');
+    expect(regiao?.querySelector('p')?.textContent?.trim())
+      .toBe('Conclusão do relatório: Dados não disponíveis');
   });
 
   it('separa ensaio não detectado de coleta não realizada', () => {
@@ -173,7 +220,7 @@ describe('HealthIndicatorsComponent, tabela físico-química', () => {
     const regiao = raiz.querySelector('[aria-labelledby="report-title-physical-chemical"]');
     const paragraphs = [...(regiao?.querySelectorAll('p') ?? [])].map((p) => p.textContent?.trim());
 
-    expect(regiao?.querySelector('h2')?.textContent?.trim()).toBe(report.title);
+    expect(regiao?.querySelector('h2')?.textContent?.trim()).toBe(report.title ?? undefined);
     expect(paragraphs).toEqual(report.paragraphs.map((paragraph) => paragraph));
   });
 
@@ -229,6 +276,50 @@ describe('HealthIndicatorsComponent, aba de métodos de diagnóstico', () => {
     },
   };
 
+  const laudoSoDeCromatografia: HealthIndicators = {
+    ...HEALTH_INDICATORS,
+    selectedAnalysis: {
+      id: 'MDI2NDcvMjAyNi0wMDE',
+      date: '2026-11-09',
+      label: 'LACTEC-02647/2026',
+      hasPhysicalChemical: false,
+      hasDissolvedGases: true,
+    },
+  };
+
+  it('trava a aba físico-química do laudo só de cromatografia e explica o motivo', () => {
+    const fixture = montarCom(laudoSoDeCromatografia, 'fisico-quimico');
+    const raiz = fixture.nativeElement as HTMLElement;
+    const fisicoQuimico = raiz.querySelector('#aba-fisico-quimico') as HTMLButtonElement;
+    const dica = fixture.debugElement.query(By.css('#aba-fisico-quimico')).injector.get(MatTooltip);
+
+    expect(fisicoQuimico.getAttribute('aria-disabled')).toBe('true');
+    expect(fisicoQuimico.classList).toContain('cursor-not-allowed');
+    expect(dica.message).toBe('Indisponível pois o ensaio é de análise cromatográfica');
+    expect(raiz.querySelector('#painel-fisico-quimico')).toBeNull();
+    expect(raiz.querySelector('#painel-gases')).not.toBeNull();
+  });
+
+  it('deixa as duas abas livres no laudo que mediu as duas coisas', () => {
+    const fixture = montarCom({
+      ...laudoSoDeCromatografia,
+      selectedAnalysis: { ...laudoSoDeCromatografia.selectedAnalysis!, hasPhysicalChemical: true },
+    });
+    const raiz = fixture.nativeElement as HTMLElement;
+
+    expect(raiz.querySelector('[aria-disabled="true"]')).toBeNull();
+    expect(raiz.querySelector('#painel-fisico-quimico')).not.toBeNull();
+  });
+
+  it('mostra o estado vazio quando o laudo escolhido não é físico-químico nem cromatografia', () => {
+    const raiz = raizDe({
+      ...laudoSoDeCromatografia,
+      selectedAnalysis: { ...laudoSoDeCromatografia.selectedAnalysis!, hasDissolvedGases: false },
+    });
+
+    expect(raiz.querySelector('[role="tablist"]')).toBeNull();
+  });
+
   it('desenha os três triângulos de Duval com o bloco de diagnóstico nulo no corpo', () => {
     const raiz = abrirAbaDeMetodos(HEALTH_INDICATORS);
 
@@ -283,17 +374,19 @@ describe('HealthIndicatorsComponent, aba de métodos de diagnóstico', () => {
     expect(conclusoes.at(-1)).toContain('IEEE C57.104');
   });
 
-  it('abre a aba de métodos sem derrubar a tela em laudo sem gás dissolvido', () => {
-    const raiz = abrirAbaDeMetodos(semGasDissolvido);
+  it('trava a aba de gases do equipamento sem cromatografia e abre a físico-química', () => {
+    const fixture = montarCom(semGasDissolvido, 'gases');
+    const raiz = fixture.nativeElement as HTMLElement;
+    const gases = raiz.querySelector('#aba-gases') as HTMLButtonElement;
 
-    expect(raiz.querySelector('#painel-metodos')).not.toBeNull();
-    expect(raiz.querySelector('app-duval-triangle')).toBeNull();
-  });
+    expect(gases.getAttribute('aria-disabled')).toBe('true');
+    expect(gases.classList).toContain('cursor-not-allowed');
+    expect(raiz.querySelector('#painel-gases')).toBeNull();
+    expect(raiz.querySelector('#painel-fisico-quimico')).not.toBeNull();
 
-  it('diz que o laudo sem gás dissolvido não traz diagnóstico', () => {
-    const painel = abrirAbaDeMetodos(semGasDissolvido).querySelector('#painel-metodos');
-
-    expect(painel?.textContent).toContain('não traz diagnóstico');
+    gases.click();
+    fixture.detectChanges();
+    expect(raiz.querySelector('#painel-gases')).toBeNull();
   });
 
   // No dia em que o núcleo normativo migrar, o bloco servido vence o cálculo da

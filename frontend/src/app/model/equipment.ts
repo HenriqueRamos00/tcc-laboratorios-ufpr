@@ -65,11 +65,12 @@ export interface EquipmentDetail extends Equipment {
  * `ANALYSIS_TYPE_LABEL`: antes o tipo era texto livre acentuado, e decidir para onde a
  * linha do histórico navega exigia casar "Análise Físico-Química" com a chave da aba.
  */
-export type ReportAnalysisType = 'physical-chemical' | 'chromatography';
+export type ReportAnalysisType = 'physical-chemical' | 'chromatography' | 'other';
 
 export const ANALYSIS_TYPE_LABEL: Record<ReportAnalysisType, string> = {
   'physical-chemical': 'Análise Físico-Química',
   chromatography: 'Cromatografia',
+  other: 'Outros ensaios',
 };
 
 /**
@@ -90,10 +91,5 @@ export interface EquipmentReport {
   readonly date: string;
   readonly analysisType: ReportAnalysisType;
   readonly status: ReportStatus;
-  /**
-   * Endereço do arquivo publicado, quando já existe um. `null` enquanto o AutoLAB desta
-   * fatia serve resultado de ensaio e não o PDF assinado, e aí a tela não oferece download
-   * em vez de oferecer um botão que só sabe falhar.
-   */
-  readonly reportUrl: string | null;
+  readonly hasSignedDocument: boolean;
 }

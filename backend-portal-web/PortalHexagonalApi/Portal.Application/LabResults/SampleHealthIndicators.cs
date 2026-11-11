@@ -1,3 +1,4 @@
+using Portal.Application.ReportDocuments;
 using Portal.Domain.LabResults;
 
 namespace Portal.Application.LabResults;
@@ -14,4 +15,11 @@ public sealed record SampleHealthIndicators(
     AnalysisSeries GasSeries,
     SampleAnalysis? SelectedAnalysis,
     IReadOnlyList<UnreadableResult> UnreadableResults,
-    IReadOnlyList<TotalizerCheck> TotalizerChecks);
+    IReadOnlyList<TotalizerCheck> TotalizerChecks)
+{
+    public string? NominalVoltage { get; init; }
+
+    public ReportIssue? PhysicalChemicalReport { get; init; }
+
+    public ReportIssue? GasReport { get; init; }
+}

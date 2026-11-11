@@ -1,10 +1,7 @@
 import { ChangeDetectionStrategy, Component, computed, input } from '@angular/core';
 
-import {
-  type Classification,
-  CLASSIFICATION_LABEL,
-  NOT_ASSESSED_LABEL,
-} from '@/app/model/health';
+import { type Classification, CLASSIFICATION_LABEL } from '@/app/model/health';
+import { DataUnavailableComponent } from '@shared/components/data-unavailable/data-unavailable.component';
 
 // A tarja que o laudo impresso traz dentro do cabeçalho RESULTADO: um bloco
 // sólido com a palavra escrita por cima. É outra forma que a marca de
@@ -28,6 +25,7 @@ const NOT_ASSESSED_COLOR_PAIR = 'bg-lactec-line-soft text-lactec-ink-soft';
 @Component({
   selector: 'app-conformity-banner',
   standalone: true,
+  imports: [DataUnavailableComponent],
   host: { class: 'block' },
   template: `
     <span
@@ -35,7 +33,11 @@ const NOT_ASSESSED_COLOR_PAIR = 'bg-lactec-line-soft text-lactec-ink-soft';
              tracking-wide uppercase"
       [class]="colorPair()"
     >
-      {{ label() }}
+      @if (label(); as text) {
+        {{ text }}
+      } @else {
+        <app-data-unavailable subject="Conformidade do resultado" />
+      }
     </span>
   `,
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -50,6 +52,6 @@ export class ConformityBannerComponent {
 
   protected readonly label = computed(() => {
     const classification = this.classification();
-    return classification ? CLASSIFICATION_LABEL[classification] : NOT_ASSESSED_LABEL;
+    return classification ? CLASSIFICATION_LABEL[classification] : null;
   });
 }

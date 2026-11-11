@@ -1,32 +1,28 @@
-import { HttpErrorResponse, provideHttpClient } from '@angular/common/http';
+import { provideHttpClient } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { TestBed } from '@angular/core/testing';
 
 import { API_URL } from '@/app/environment/env';
-import type { AnalysisConclusion, PublishedReport } from '@/app/model/report';
+import type { Report } from '@/app/model/report';
+
 import { ReportsService } from './reports.service';
 
-const RELATORIOS: readonly PublishedReport[] = [
-  {
-    id: '804',
-    code: '804',
-    protocol: 'L-45490-2026-X',
-    sample: 'AM-2026-0142 - Óleo isolante',
-    laboratory: 'Laboratório de Ensaios',
-    publishedOn: '07/11/2026',
-  },
-];
-
-const CONCLUSAO: AnalysisConclusion = {
-  quoteId: '512',
-  quoteCode: 'ORC-2026-0091',
-  protocol: 'L-45490-2026-X',
-  testType: 'Análise cromatográfica',
-  summary: '1 relatório publicado disponível para consulta e download.',
-  reports: RELATORIOS,
+const REPORT: Report = {
+  id: 'b2lkLTE',
+  identification: 'LACTEC-00307/2026',
+  requestNumber: 'S-00307/2026',
+  quoteCode: 'EAQ_2026_45496_V_1',
+  sampleId: 'AM-1',
+  sampleName: 'Transformador TR-01',
+  client: 'EMPRESA DE ENERGIA',
+  status: 'Publicado',
+  scheduledDate: '2026-03-10',
+  issueDate: '2026-03-07',
+  publicationDate: '2026-03-08',
+  hasSignedDocument: true,
 };
 
-describe('ReportsService, consulta de relatórios publicados', () => {
+describe('ReportsService', () => {
   let service: ReportsService;
   let http: HttpTestingController;
 
@@ -40,73 +36,70 @@ describe('ReportsService, consulta de relatórios publicados', () => {
 
   afterEach(() => http.verify());
 
-  it('consulta a lista geral de relatórios publicados', () => {
-    let result: readonly PublishedReport[] | undefined;
-    service.publishedReports().subscribe((reports) => (result = reports));
-
-    const request = http.expectOne(`${API_URL}/api/reports`);
-    expect(request.request.method).toBe('GET');
-    request.flush(RELATORIOS);
-
-    expect(result).toEqual(RELATORIOS);
-  });
-
-  it('consulta os relatórios do orçamento', () => {
-    let result: AnalysisConclusion | null | undefined;
-    service.analysisConclusion('512').subscribe((conclusion) => (result = conclusion));
-
-    const request = http.expectOne(`${API_URL}/api/quotes/512/reports`);
-    expect(request.request.method).toBe('GET');
-    request.flush(CONCLUSAO);
-
-    expect(result).toEqual(CONCLUSAO);
-  });
-
-  it('preserva resposta sem relatório publicado para o orçamento', () => {
-    let result: AnalysisConclusion | null | undefined;
-    service.analysisConclusion('512').subscribe((conclusion) => (result = conclusion));
-
-    http.expectOne(`${API_URL}/api/quotes/512/reports`).flush(null, {
-      status: 204,
-      statusText: 'No Content',
+  it('lista a página pedida e lê o total do cabeçalho', () => {
+    let total = -1;
+    let items: readonly Report[] = [];
+    service.list({ page: 2, pageSize: 50 }).subscribe((page) => {
+      total = page.total;
+      items = page.items;
     });
 
-    expect(result).toBeNull();
+    http
+      .expectOne(`${API_URL}/api/reports?page=2&pageSize=50`)
+      .flush([REPORT], { headers: { 'X-Total-Count': '51', 'X-Page': '2', 'X-Page-Size': '50' } });
+
+    expect(total).toBe(51);
+    expect(items).toEqual([REPORT]);
   });
 
-  it('solicita os bytes do PDF pelo identificador próprio do relatório', () => {
-    const pdf = new Blob(['%PDF-1.4'], { type: 'application/pdf' });
-    let result: Blob | undefined;
-    service.downloadReport('804').subscribe((file) => (result = file));
+  it('filtra pelo código do orçamento quando ele é informado', () => {
+    service.list({ quoteCode: 'EAQ_2026_45496_V_1', page: 1, pageSize: 50 }).subscribe();
 
-    const request = http.expectOne(`${API_URL}/api/reports/804/file`);
-    expect(request.request.method).toBe('GET');
-    expect(request.request.responseType).toBe('blob');
-    request.flush(pdf);
-
-    expect(result).toBe(pdf);
+    const request = http.expectOne((req) => req.url === `${API_URL}/api/reports`);
+    expect(request.request.params.get('quoteCode')).toBe('EAQ_2026_45496_V_1');
+    request.flush([]);
   });
 
-  it('propaga falhas da fonte sem voltar a dados de demonstração', () => {
-    let received: unknown;
-    service.publishedReports().subscribe({ error: (error) => (received = error) });
-
-    http.expectOne(`${API_URL}/api/reports`).flush(null, { status: 502, statusText: 'Bad Gateway' });
-
-    expect(received).toBeInstanceOf(HttpErrorResponse);
-    expect((received as HttpErrorResponse).status).toBe(502);
+  it('consulta os laudos pelo ID autorizado do orçamento e preserva a conclusão do Spring', () => {
+    let result: import('./reports.service').ReportPage | undefined;
+    service.list({ quoteId: '52', quoteCode: 'ORC-52', page: 2, pageSize: 1 })
+      .subscribe((page) => (result = page));
+    const request = http.expectOne(`${API_URL}/api/quotes/52/reports?page=2&pageSize=1`);
+    request.flush({ reports: [REPORT], testType: 'Cromatografia', summary: 'Resultado publicado' },
+      { headers: { 'X-Total-Count': '3' } });
+    expect(result?.items).toEqual([REPORT]);
+    expect(result?.total).toBe(3);
+    expect(result?.summary).toBe('Resultado publicado');
+    expect(result?.testType).toBe('Cromatografia');
   });
 
-  it('propaga a ausência de PDF publicado sem criar um arquivo substituto', () => {
-    let received: unknown;
-    service.downloadReport('inexistente').subscribe({ error: (error) => (received = error) });
+  it('204 do orçamento representa ausência de laudos, sem consultar a listagem geral', () => {
+    let count = -1;
+    service.list({ quoteId: '52', page: 1, pageSize: 50 }).subscribe((page) => (count = page.items.length));
+    http.expectOne(`${API_URL}/api/quotes/52/reports?page=1&pageSize=50`)
+      .flush(null, { status: 204, statusText: 'No Content' });
+    expect(count).toBe(0);
+  });
 
-    http.expectOne(`${API_URL}/api/reports/inexistente/file`).flush(null, {
-      status: 404,
-      statusText: 'Not Found',
-    });
+  it('baixa o PDF assinado com o nome do Content-Disposition', () => {
+    let name: string | null = null;
+    service.signedDocument('b2lkLTE').subscribe((file) => (name = file.name));
 
-    expect(received).toEqual(jasmine.any(HttpErrorResponse));
-    expect((received as HttpErrorResponse).status).toBe(404);
+    http
+      .expectOne(`${API_URL}/api/reports/b2lkLTE/document`)
+      .flush(new Blob(['%PDF-1.4']), {
+        headers: { 'Content-Disposition': "attachment; filename*=UTF-8''LACTEC-00307%2F2026.pdf" },
+      });
+
+    expect(name as string | null).toBe('LACTEC-00307/2026.pdf');
+  });
+
+  it('sem Content-Disposition, devolve o arquivo sem nome para a tela escolher um', () => {
+    let name: string | null = 'x';
+    service.signedDocument('b2lkLTE').subscribe((file) => (name = file.name));
+
+    http.expectOne(`${API_URL}/api/reports/b2lkLTE/document`).flush(new Blob(['%PDF-1.4']));
+
+    expect(name as string | null).toBeNull();
   });
 });

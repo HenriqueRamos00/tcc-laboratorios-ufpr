@@ -7,6 +7,7 @@ x-demo-sql-password: &demo-sql-password ${SQLSERVER_SA_PASSWORD:-LactecDemo2026!
 
 services:
   sqlserver:
+    restart: unless-stopped
     image: mcr.microsoft.com/mssql/server:2022-latest
     environment:
       ACCEPT_EULA: "Y"
@@ -36,12 +37,6 @@ services:
       sqlserver:
         condition: service_healthy
 
-  # O banco do AutoLAB para desenvolvimento, na mesma instancia que o backend-auth ja usa.
-  # Trocar pelo SQL Server de producao e trocar a cadeia de conexao da api, sem mexer aqui.
-  #
-  # O DDL e a carga sao provisorios enquanto o laboratorio nao envia o esquema real: os nomes
-  # das colunas vieram dos extratos, os tipos sao suposicao, e a massa e sintetica porque o
-  # extrato verdadeiro carrega nome de cliente. Esta pasta diz isso em cada arquivo.
   autolab-init:
     image: mcr.microsoft.com/mssql/server:2022-latest
     entrypoint: ["/bin/bash", "-c"]
@@ -59,6 +54,7 @@ services:
         condition: service_healthy
 
   backend-auth:
+    restart: unless-stopped
     build:
       context: ./backend-auth
     environment:
@@ -84,15 +80,25 @@ services:
       start_period: 20s
 
   portal-api:
+    restart: unless-stopped
     build:
       context: ./backend-portal-web
+    env_file:
+      # Local defaults first; the user's AutoLAB connection takes precedence.
+      - path: ./backend-portal-web/docker/autolab/demo.env
+      - path: ./backend-portal-web/.env
+        required: false
     environment:
       ASPNETCORE_ENVIRONMENT: Development
       ASPNETCORE_URLS: http://+:8080
       Portal__DataSource: lactec
       Portal__UseDemoData: "true"
-      LabResults__Source: embedded-sample
+      LabResults__Source: sql-server
+      LabResults__Scope: all
       LabResults__DevelopmentTenant: ""
+      EquipmentRegistry__Source: sql-server
+      LaboratoryProgress__Source: sql-server
+      ReportDocuments__Source: sql-server
       BackendAuth__BaseUrl: http://backend-auth:8080
       BackendAuth__ServiceToken: *demo-service-token
       BackendAuth__ServiceCode: portal-web
@@ -105,8 +111,11 @@ services:
     depends_on:
       backend-auth:
         condition: service_healthy
+      autolab-init:
+        condition: service_completed_successfully
 
   frontend:
+    restart: unless-stopped
     build:
       context: ./frontend
       target: dev

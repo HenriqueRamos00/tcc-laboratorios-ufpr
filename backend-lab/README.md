@@ -340,3 +340,12 @@ O seed fica desativado por padrão e deve ser usado apenas no desenvolvimento lo
 ### Status técnico de execução
 
 `execucoes_ensaios.status` persiste os sete códigos técnicos do Apêndice E (`incomplete`, `complete`, `validated`, `finalized`, `drafting-report`, `report-published`, `cancelled`). A aplicação converte os códigos estritamente; valor desconhecido causa erro de leitura, sem status substituto.
+
+
+## Integração futura de equipamentos e análises do cliente
+
+As consultas de equipamentos e medições liberadas em `/api/client/**` estão previstas no
+[plano de integração do Portal do Cliente](docs/integracao-portal-cliente.md). No Compose
+regular, a API C# mantém login, orçamentos e relatórios publicados do Spring e responde
+501 (`lab-integration-pending`) para equipamentos e indicadores enquanto essa integração
+não estiver disponível.

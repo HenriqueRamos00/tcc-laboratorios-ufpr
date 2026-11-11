@@ -1,9 +1,10 @@
 using Microsoft.AspNetCore.Mvc;
 
 using Portal.Api.LabResults;
-using Portal.Api.Configuration;
 using Portal.Application.LabResults.Exceptions;
-using Portal.Domain.LabResults.Exceptions;
+using Portal.Application.Nameplate.Exceptions;
+using Portal.Application.ReportDocuments.Exceptions;
+using Portal.Application.Visibility;
 using Portal.Application.LabResults;
 using Portal.Domain.LabResults;
 
@@ -11,7 +12,7 @@ namespace Portal.Api.Controllers;
 
 /// <summary>
 /// Os dois caminhos que o frontend ja promete no JSDoc do servico de saude. O controller e
-/// adaptador condutor: resolve endereco, resolve inquilino, chama a porta condutora e
+/// adaptador condutor: resolve endereco, resolve o escopo, chama a porta condutora e
 /// achata a resposta. Nenhuma regra de laudo passa por aqui.
 /// </summary>
 [ApiController]
@@ -20,16 +21,13 @@ public sealed class HealthIndicatorsController : ControllerBase
 {
     private readonly IForConsultingLabResults _labResults;
     private readonly LabResultsOptions _labResultsOptions;
-    private readonly PortalOptions _portalOptions;
 
     public HealthIndicatorsController(
         IForConsultingLabResults labResults,
-        LabResultsOptions labResultsOptions,
-        PortalOptions portalOptions)
+        LabResultsOptions labResultsOptions)
     {
         _labResults = labResults;
         _labResultsOptions = labResultsOptions;
-        _portalOptions = portalOptions;
     }
 
     [HttpGet("{id}/health")]
@@ -56,6 +54,9 @@ public sealed class HealthIndicatorsController : ControllerBase
         string? reportId,
         CancellationToken cancellationToken)
     {
+        if (_labResultsOptions.Source == LabResultsOptions.NotConnectedSource)
+            return this.LabIntegrationPending();
+
         if (!OpaqueIdentifier.TryDecode(id, out string equipmentKey))
             return this.UnreadableEquipmentIdentifier();
 
@@ -64,25 +65,28 @@ public sealed class HealthIndicatorsController : ControllerBase
         if (reportId is not null && !OpaqueIdentifier.TryDecode(reportId, out selectedProtocol))
             return this.UnreadableReportIdentifier();
 
-        string? tenant = TenantResolution.Resolve(User, _labResultsOptions, _portalOptions);
+        VisibilityScope? scope = VisibilityScopeResolution.Resolve(User, _labResultsOptions);
 
-        if (tenant is null) return this.TenantNotIdentified();
+        if (scope is null) return this.TenantNotIdentified();
 
         try
         {
             SampleHealthIndicators? indicators = await _labResults.GetHealthIndicatorsAsync(
-                new HealthIndicatorsQuery(tenant, equipmentKey, selectedProtocol),
+                new HealthIndicatorsQuery(scope, equipmentKey, selectedProtocol),
                 cancellationToken);
 
             return indicators is null
-                || (_portalOptions is { UseDemoData: true, DataSource: PortalOptions.LactecSource }
-                    && selectedProtocol is not null && indicators.SelectedAnalysis is null)
                 ? this.EquipmentWithoutAnalysis()
                 : Ok(PositionalFlattening.Flatten(indicators, id));
         }
-        catch (Exception failure) when (failure is ResultNameOutsideKnownListException or LabTestSourceUnavailableException)
+        catch (ReportDocumentSourceUnavailableException)
         {
-            return this.LabTestSourceUnavailable(failure);
+            return this.ReportDocumentSourceUnavailable();
+        }
+        catch (Exception failure) when (failure is LabTestSourceUnavailableException
+            or NameplateSourceUnavailableException)
+        {
+            return this.LabTestSourceUnavailable();
         }
     }
 }

@@ -20,4 +20,5 @@ namespace Portal.Application.LabResults;
 /// </summary>
 public sealed record EquipmentWithNameplate(
     TestedEquipment Equipment,
-    EquipmentNameplate? Nameplate);
+    EquipmentNameplate? Nameplate,
+    int ReportCount);

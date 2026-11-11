@@ -37,10 +37,12 @@ public sealed class SampleAnalysis
     }
 
     /// <summary>
-    /// A lista de medicoes entra inteira ou nao entra. As tres recusas sao distintas e cada
-    /// uma tem nome proprio, porque cada uma manda procurar num lugar diferente: lista vazia
-    /// e erro de leitura da fonte, buraco no meio e erro de quem montou a lista, e item
-    /// repetido e divergencia entre a fonte e a tabela do laudo.
+    /// A lista de medicoes entra inteira ou nao entra. As duas recusas sao distintas e cada
+    /// uma tem nome proprio, porque cada uma manda procurar num lugar diferente: buraco no
+    /// meio e erro de quem montou a lista, e item repetido e divergencia entre a fonte e a
+    /// tabela do laudo. Lista vazia e aceita: e o laudo de um ensaio que nao e
+    /// fisico-quimico nem cromatografia, como PCB, que existe e tem documento, mas nao tem
+    /// indicador.
     /// </summary>
     private static IReadOnlyList<Measurement> Accept(IEnumerable<Measurement> measurements)
     {
@@ -48,7 +50,6 @@ public sealed class SampleAnalysis
 
         List<Measurement> received = [.. measurements];
 
-        if (received.Count == 0) throw new AnalysisWithoutMeasurementsException();
         if (received.Any(measurement => measurement is null)) throw new NullMeasurementException();
 
         string? repeated = FirstRepeatedItemCode(received);

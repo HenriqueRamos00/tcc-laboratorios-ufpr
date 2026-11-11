@@ -1,10 +1,12 @@
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Options;
 
 using Portal.Adapters.Nameplate;
 using Portal.Api.LabResults;
 using Portal.Api.Nameplate;
 using Portal.Application.Nameplate;
+using Portal.Tests.AutoLab;
 
 using Xunit;
 
@@ -33,43 +35,36 @@ public sealed class EquipmentRegistrySourceRegistrationTests
     }
 
     [Fact]
-    public void TheInMemorySampleSourceRegistersTheWrittenSampleAdapter()
+    public void TheSqlServerSourceRegistersTheAutoLabAdapter()
     {
-        ServiceProvider provider = Register("in-memory-sample").BuildServiceProvider();
+        IServiceCollection services = new ServiceCollection()
+            .AddEquipmentRegistrySource(AutoLabSettings.Configuration(AutoLabSettings.Complete("EquipmentRegistry:Source")));
 
-        Assert.IsType<InMemoryEquipmentRegistryRepository>(
-            provider.GetRequiredService<IEquipmentNameplateRepository>());
+        Assert.IsType<AutoLabEquipmentRegistryRepository>(AutoLabSettings.ResolveInScope<IEquipmentNameplateRepository>(services));
     }
 
     [Fact]
-    public void TheSqlServerSourceAnnouncesThatItHasNoAdapter()
+    public void TheSqlServerSourceWithoutTheAutoLabSettingsFailsValidation()
     {
-        Assert.Throws<NotSupportedException>(() => Register("sql-server"));
+        IServiceCollection services = new ServiceCollection()
+            .AddEquipmentRegistrySource(AutoLabSettings.Configuration(AutoLabSettings.WithoutDatabase("EquipmentRegistry:Source")));
+
+        Assert.Throws<OptionsValidationException>(() => AutoLabSettings.ResolveInScope<IEquipmentNameplateRepository>(services));
     }
 
     [Fact]
     public void AnUnknownSourceBringsStartupDownNamingTheValue()
     {
         InvalidOperationException failure = Assert.Throws<InvalidOperationException>(
-            () => Register("in-memory-sampl"));
+            () => Register("sqlserver"));
 
-        Assert.Contains("in-memory-sampl", failure.Message, StringComparison.Ordinal);
+        Assert.Contains("sqlserver", failure.Message, StringComparison.Ordinal);
     }
 
-    /// <summary>
-    /// A fonte do cadastro e ortogonal a fonte dos ensaios, e este caso prova que o portal
-    /// sobe com uma ligada e a outra desligada. E como ele roda em producao hoje, e e o que
-    /// torna esta fatia entregavel antes de existir conexao com o SQL Server.
-    /// </summary>
     [Fact]
     public void TheRegistryCanBeOffWhileTheLabTestSourceIsOn()
     {
-        IConfiguration configuration = new ConfigurationBuilder()
-            .AddInMemoryCollection(new Dictionary<string, string?>
-            {
-                ["LabResults:Source"] = "embedded-sample"
-            })
-            .Build();
+        IConfiguration configuration = AutoLabSettings.Configuration(AutoLabSettings.Complete("LabResults:Source"));
 
         ServiceProvider provider = new ServiceCollection()
             .AddLabTestRepository(configuration)

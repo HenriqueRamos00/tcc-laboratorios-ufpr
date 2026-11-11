@@ -10,6 +10,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Portal.Adapters.Quotes;
 using Portal.Application.Quotes;
 using Portal.Domain.Quotes;
+using Portal.Tests.AutoLab;
 using Xunit;
 
 namespace Portal.Tests.Quotes;
@@ -377,7 +378,7 @@ public sealed class SpringQuoteContractTests
     {
         protected override void ConfigureWebHost(IWebHostBuilder builder)
         {
-            builder.UseSetting("LabResults:Source", "embedded-sample");
+            builder.UseAutoLabSettings();
             builder.UseSetting("Portal:DataSource", "backend-lab");
             builder.UseSetting("BackendLab:BaseUrl", "https://spring.test/");
             builder.ConfigureTestServices(services =>

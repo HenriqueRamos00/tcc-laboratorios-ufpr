@@ -1,4 +1,5 @@
 using Portal.Application.LabResults;
+using Portal.Application.ReportDocuments;
 using Portal.Domain.LabResults;
 
 namespace Portal.Api.LabResults;
@@ -14,8 +15,6 @@ namespace Portal.Api.LabResults;
 /// </summary>
 public static class PositionalFlattening
 {
-    private const string PhysicalChemicalReportTitle = "Laudo das análises físico-químicas";
-    private const string ChromatographyReportTitle = "Laudo da análise cromatográfica";
     private const string NotDetectedText = "ND";
 
     public static HealthIndicatorsResponse Flatten(
@@ -29,8 +28,8 @@ public static class PositionalFlattening
             EquipmentId = opaqueIdentifier,
             Tag = indicators.SerialNumber ?? indicators.Identification,
             SelectedAnalysis = FindSelectedAnalysis(indicators.SelectedAnalysis),
-            PhysicalChemical = BuildPhysicalChemicalBlock(indicators.PhysicalChemicalSeries),
-            DissolvedGases = BuildGasBlock(indicators.GasSeries),
+            PhysicalChemical = BuildPhysicalChemicalBlock(indicators),
+            DissolvedGases = BuildGasBlock(indicators),
             Diagnosis = null,
             UnreadableResults = [.. indicators.UnreadableResults.Select(measuredItem =>
                 new UnreadableResultResponse
@@ -60,17 +59,21 @@ public static class PositionalFlattening
         {
             Id = OpaqueIdentifier.Encode(analysis.ProtocoloLactec),
             Date = WireDate.From(analysis.AnalysisEndDate),
-            Label = analysis.Identification
+            Label = analysis.Identification,
+            HasPhysicalChemical = analysis.HasPhysicalChemicalProperty,
+            HasDissolvedGases = analysis.HasDissolvedGas
         };
     }
 
-    private static PhysicalChemicalBlockResponse BuildPhysicalChemicalBlock(AnalysisSeries series)
+    private static PhysicalChemicalBlockResponse BuildPhysicalChemicalBlock(SampleHealthIndicators indicators)
     {
+        AnalysisSeries series = indicators.PhysicalChemicalSeries;
+
         return new PhysicalChemicalBlockResponse
         {
             Conformity = null,
             Verdict = null,
-            NominalVoltage = string.Empty,
+            NominalVoltage = string.IsNullOrWhiteSpace(indicators.NominalVoltage) ? null : indicators.NominalVoltage,
             Columns = BuildColumns(series),
             Analyses = BuildReadings(series),
             Tests = [.. series.ItemsOf(MeasuredItemKind.PhysicalChemicalProperty)
@@ -83,16 +86,13 @@ public static class PositionalFlattening
                     ValuesByAnalysis = BuildItemValues(series, measuredItem.Code),
                     Classification = null
                 })],
-            Report = new TestReportResponse
-            {
-                Title = PhysicalChemicalReportTitle,
-                Paragraphs = []
-            }
+            Report = ReportOf(indicators.PhysicalChemicalReport)
         };
     }
 
-    private static DissolvedGasBlockResponse BuildGasBlock(AnalysisSeries series)
+    private static DissolvedGasBlockResponse BuildGasBlock(SampleHealthIndicators indicators)
     {
+        AnalysisSeries series = indicators.GasSeries;
         List<MeasuredItem> gases = [.. series.ItemsOf(MeasuredItemKind.DissolvedGas)];
         List<MeasuredItem> totalizers = [.. series.ItemsOf(MeasuredItemKind.GasTotalizer)];
 
@@ -109,11 +109,16 @@ public static class PositionalFlattening
                 Formula = measuredItem.Formula,
                 Results = BuildItemValues(series, measuredItem.Code)
             })],
-            Report = new TestReportResponse
-            {
-                Title = ChromatographyReportTitle,
-                Paragraphs = []
-            }
+            Report = ReportOf(indicators.GasReport)
+        };
+    }
+
+    private static TestReportResponse ReportOf(ReportIssue? issue)
+    {
+        return new TestReportResponse
+        {
+            Title = issue?.Title,
+            Paragraphs = issue?.Paragraphs ?? []
         };
     }
 

@@ -36,7 +36,13 @@
           </span>
           <div class="min-w-0">
             <dt class="text-sm text-lactec-muted">{{ card.label }}</dt>
-            <dd class="m-0 text-base font-semibold text-lactec-ink">{{ card.value }}</dd>
+            <dd class="m-0 text-base font-semibold text-lactec-ink">
+              @if (card.value; as value) {
+                {{ value }}
+              } @else {
+                <app-data-unavailable />
+              }
+            </dd>
           </div>
         </div>
       }
@@ -46,7 +52,7 @@
   <section class="mt-6 rounded-2xl border border-lactec-line bg-lactec-paper p-6">
     <h2 class="display m-0 text-xl font-semibold text-lactec-ink">Histórico de Relatórios</h2>
 
-    @if (history().length) {
+    @if (visible().length) {
       <div class="mt-4 overflow-x-auto">
         <table class="w-full border-collapse text-sm">
           <caption class="sr-only">
@@ -68,14 +74,16 @@
                 <td class="px-4 py-3 text-lactec-ink">{{ row.status }}</td>
                 <td class="px-4 py-3">
                   <div class="flex justify-end gap-2">
-                    <a
-                      [routerLink]="['/cliente/equipamentos', data.id, 'indicadores', row.id]"
-                      [queryParams]="{ aba: row.tab }"
-                      class="rounded-lg bg-lactec-primary px-3 py-2 text-xs font-semibold
-                             text-lactec-on-primary hover:bg-lactec-primary-dark"
-                    >
-                      Ver Indicadores
-                    </a>
+                    @if (row.tab) {
+                      <a
+                        [routerLink]="['/cliente/equipamentos', data.id, 'indicadores', row.id]"
+                        [queryParams]="{ aba: row.tab }"
+                        class="rounded-lg bg-lactec-primary px-3 py-2 text-xs font-semibold
+                               text-lactec-on-primary hover:bg-lactec-primary-dark"
+                      >
+                        Ver Indicadores
+                      </a>
+                    }
                     <button
                       type="button"
                       class="inline-flex items-center gap-1 rounded-lg border border-lactec-line
@@ -100,31 +108,17 @@
         <p class="mt-4 text-sm text-lactec-danger" role="alert">{{ downloadFailure() }}</p>
       }
 
-      <div
-        class="mt-4 flex flex-wrap items-center justify-end gap-3"
-        role="group"
-        aria-label="Paginação do histórico de relatórios"
-      >
-        <span class="text-sm text-lactec-muted" aria-live="polite">{{ range() }}</span>
-        <button
-          type="button"
-          class="rounded-lg border border-lactec-line px-3 py-2 text-sm text-lactec-ink
-                 disabled:opacity-40"
-          [disabled]="page() === 0"
-          (click)="previous()"
-        >
-          Anterior
-        </button>
-        <button
-          type="button"
-          class="rounded-lg border border-lactec-line px-3 py-2 text-sm text-lactec-ink
-                 disabled:opacity-40"
-          [disabled]="page() >= totalPages() - 1"
-          (click)="next()"
-        >
-          Próximo
-        </button>
-      </div>
+      <app-pagination
+        class="mt-4"
+        label="Paginação do histórico de relatórios"
+        [page]="page()"
+        [pageSize]="perPage"
+        [total]="historyTotal()"
+        [disabled]="historyLoading()"
+        (pageChange)="goToPage($event)"
+      />
+    } @else if (history() === null) {
+      <p class="mt-4 text-sm text-lactec-muted" role="status">Carregando histórico…</p>
     } @else {
       <app-empty-state
         class="mt-4"
@@ -133,12 +127,18 @@
       />
     }
   </section>
+} @else if (unavailable()) {
+  <app-empty-state
+    icon="info"
+    title="Consulta de equipamentos indisponível"
+    descricao="A consulta de equipamentos e indicadores ainda não está disponível neste ambiente."
+  />
 } @else if (failed()) {
   <app-empty-state
     tom="erro"
     icon="cloud_off"
     title="Não foi possível carregar o equipamento no momento"
-    descricao="A consulta ao AutoLAB falhou. Tente novamente em instantes."
+    descricao="A consulta falhou. Tente novamente em instantes."
   />
 } @else {
   <p class="text-sm text-lactec-muted" role="status">Carregando equipamento…</p>

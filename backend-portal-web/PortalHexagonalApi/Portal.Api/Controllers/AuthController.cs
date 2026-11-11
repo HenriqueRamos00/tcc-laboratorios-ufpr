@@ -1,5 +1,9 @@
+using System.Net.Http.Headers;
+
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.Extensions.Options;
+using Portal.Adapters.BackendAuth;
 using Portal.Api.Configuration;
 
 using Portal.Api.Authentication;
@@ -53,6 +57,36 @@ public sealed class AuthController(
                 StatusCodes.Status502BadGateway, "authentication-source-unavailable",
                 "Login indisponível.", "Não foi possível entrar no momento. Tente novamente em instantes.");
         }
+    }
+
+    [HttpPost("refresh")]
+    [AllowAnonymous]
+    [NoStore]
+    [ProducesResponseType<LoginResponse>(StatusCodes.Status200OK)]
+    [ProducesResponseType<ProblemDetails>(StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType<ProblemDetails>(StatusCodes.Status501NotImplemented)]
+    public async Task<IActionResult> Refresh()
+    {
+        PortalJwtService? jwt = HttpContext.RequestServices.GetService<PortalJwtService>();
+        IOptions<BackendAuthOptions>? backend = HttpContext.RequestServices.GetService<IOptions<BackendAuthOptions>>();
+
+        if (source.DataSource != PortalOptions.LactecSource || jwt is null || backend is null)
+            return this.AsProblem(501, "session-renewal-not-available", "Renovação de sessão indisponível.",
+                "Esta operação está disponível no modo lactec.");
+
+        bool presented = AuthenticationHeaderValue.TryParse(Request.Headers.Authorization.ToString(), out var header)
+            && string.Equals(header.Scheme, "Bearer", StringComparison.OrdinalIgnoreCase)
+            && !string.IsNullOrWhiteSpace(header.Parameter);
+        ClientSession? renewed = presented ? await jwt.RenewAsync(header!.Parameter!, backend.Value.ServiceCode) : null;
+
+        if (renewed is null)
+        {
+            Response.Headers.WWWAuthenticate = presented ? "Bearer error=\"invalid_token\"" : "Bearer";
+            return this.AsProblem(StatusCodes.Status401Unauthorized, "session-expired",
+                "Sessão expirada.", "Entre novamente para continuar.");
+        }
+
+        return Ok(new LoginResponse(renewed.AccessToken, renewed.TokenType, renewed.ExpiresIn, ClientUserResponse.From(renewed.User)));
     }
 
     [HttpGet("me")]

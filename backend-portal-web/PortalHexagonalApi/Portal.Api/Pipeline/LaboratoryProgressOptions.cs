@@ -20,7 +20,6 @@ public sealed class LaboratoryProgressOptions
     public const string SectionName = "LaboratoryProgress";
 
     public const string NotConnectedSource = "not-connected";
-    public const string InMemorySampleSource = "in-memory-sample";
     public const string SqlServerSource = "sql-server";
 
     public string? Source { get; init; }

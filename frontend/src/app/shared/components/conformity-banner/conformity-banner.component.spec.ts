@@ -31,4 +31,13 @@ describe('ConformityBannerComponent', () => {
   it('não pinta texto claro sobre o amarelo de alerta', () => {
     expect(renderizarCom('alerta').className).not.toContain('text-lactec-on-primary');
   });
+
+  it('avisa que o dado não está disponível quando a classificação vem nula', () => {
+    const fixture = TestBed.createComponent(ConformityBannerComponent);
+    fixture.componentRef.setInput('classification', null);
+    fixture.detectChanges();
+    const raiz: HTMLElement = fixture.nativeElement;
+
+    expect(raiz.querySelector('app-data-unavailable')?.textContent).toContain('Dados não disponíveis');
+  });
 });

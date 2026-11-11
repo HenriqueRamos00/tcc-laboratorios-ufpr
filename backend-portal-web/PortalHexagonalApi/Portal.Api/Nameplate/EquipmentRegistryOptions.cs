@@ -19,7 +19,6 @@ public sealed class EquipmentRegistryOptions
     public const string SectionName = "EquipmentRegistry";
 
     public const string NotConnectedSource = "not-connected";
-    public const string InMemorySampleSource = "in-memory-sample";
     public const string SqlServerSource = "sql-server";
 
     public string? Source { get; init; }

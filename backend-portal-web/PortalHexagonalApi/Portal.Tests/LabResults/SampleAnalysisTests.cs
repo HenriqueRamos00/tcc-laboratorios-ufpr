@@ -33,9 +33,13 @@ public sealed class SampleAnalysisTests
     }
 
     [Fact]
-    public void AnAnalysisWithoutAnyMeasurementIsNotBuilt()
+    public void AnAnalysisWithoutAnyRecognizedItemIsNeitherPhysicalChemicalNorChromatography()
     {
-        Assert.Throws<AnalysisWithoutMeasurementsException>(() => AnalysisBuilder.Valid(measurements: []));
+        SampleAnalysis analysis = AnalysisBuilder.Valid(measurements: []);
+
+        Assert.Empty(analysis.Measurements);
+        Assert.False(analysis.HasPhysicalChemicalProperty);
+        Assert.False(analysis.HasDissolvedGas);
     }
 
     [Fact]

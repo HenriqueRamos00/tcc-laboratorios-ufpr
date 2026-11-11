@@ -12,6 +12,7 @@ import { clientToken } from '@/app/model/client-session.spec-util';
 import { HEALTH_INDICATORS } from '@/app/services/fixtures/health-indicators.fixture';
 import { LS_TOKEN } from '@/app/services/login.service';
 import { HealthService } from '@/app/services/health.service';
+import { QuotesService } from '@/app/services/quotes.service';
 import { ReportsService } from '@/app/services/reports.service';
 
 import { routes } from './app.routes';
@@ -46,12 +47,22 @@ describe('Rotas da área do cliente, ligação dos parâmetros', () => {
           useValue: { role: () => CLIENT_ROLE, dashboardPath: () => '/cliente', clear: () => {}, setRoleFromTokenClaim: () => {} },
         },
         {
+          provide: QuotesService,
+          useValue: {
+            getQuoteById: (quoteId: string) => {
+              orcamentosPedidos.push(quoteId);
+              return of({
+                id: quoteId, code: quoteId, name: '', status: '', stage: 'Relatório publicado',
+                description: '', companyName: '', externalContactName: '',
+                externalContactEmail: '', totalPrice: 0, createdDate: null,
+              });
+            },
+          },
+        },
+        {
           provide: ReportsService,
           useValue: {
-            analysisConclusion: (quoteId: string) => {
-              orcamentosPedidos.push(quoteId);
-              return of(null);
-            },
+            list: () => of({ items: [], total: 0, page: 1, pageSize: 50 }),
           },
         },
         {

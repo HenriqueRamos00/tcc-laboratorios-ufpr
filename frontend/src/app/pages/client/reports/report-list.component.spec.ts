@@ -2,30 +2,35 @@ import { TestBed } from '@angular/core/testing';
 import { provideRouter } from '@angular/router';
 import { of } from 'rxjs';
 
+import type { PageRequest } from '@/app/model/page';
 import type { Quote } from '@/app/model/quote';
-import type { PublishedReport } from '@/app/model/report';
+import type { Report } from '@/app/model/report';
 import { QuotesService } from '@/app/services/quotes.service';
 import { ReportsService } from '@/app/services/reports.service';
 
 import { ReportListComponent } from './report-list.component';
 
-function laudo(code: string, protocol: string, publishedOn = '08/11/2026'): PublishedReport {
+function laudo(identification: string, hasSignedDocument = true): Report {
   return {
-    id: `laudo-${code}`,
-    code,
-    protocol,
-    sample: 'Transformador TR-01',
-    laboratory: 'Lab. de Óleos',
-    publishedOn,
+    id: `id-${identification}`,
+    identification,
+    requestNumber: 'S-1',
+    quoteCode: 'EAQ_2026_45496_V_1',
+    sampleId: null,
+    sampleName: 'Transformador TR-01',
+    client: 'EMPRESA DE ENERGIA',
+    status: 'Publicado',
+    scheduledDate: null,
+    issueDate: '2026-03-07',
+    publicationDate: '2026-03-08',
+    hasSignedDocument,
   };
 }
 
-// Laudos de dois orçamentos diferentes: a aba de todos tem que trazer os dois,
-// e não só os do primeiro orçamento que a API devolver.
-const TODOS_OS_LAUDOS: readonly PublishedReport[] = [
-  laudo('LACTEC-00307/2026', '00307/2026'),
-  laudo('LACTEC-00308/2026', '00307/2026'),
-  laudo('L-45490-2026-X', 'L-45490-2026-X', '07/11/2026'),
+const TODOS_OS_LAUDOS: readonly Report[] = [
+  laudo('LACTEC-00307/2026'),
+  laudo('LACTEC-00308/2026', false),
+  laudo('LACTEC-00412/2026'),
 ];
 
 function quote(id: string, code: string, stage: string): Quote {
@@ -37,7 +42,6 @@ function quote(id: string, code: string, stage: string): Quote {
     stage,
     description: `Proposta ${code}`,
     companyName: 'Empresa Exemplo Alfa Ltda',
-    protocol: 'L-45496-2026-X',
     externalContactName: 'Fulano de Tal',
     externalContactEmail: 'fulano@exemplo.com',
     totalPrice: 1000,
@@ -52,16 +56,20 @@ const ORCAMENTOS: ReadonlyArray<Quote> = [
   quote('quote-16', 'EAQ_2026_45497_V_1', 'Fechado perdido'),
 ];
 
-function montarTela() {
-  const downloadReport = jasmine.createSpy('downloadReport').and.returnValue(of(new Blob(['%PDF-1.4'])));
-
+function montarTela(total = TODOS_OS_LAUDOS.length) {
+  const pedidos: PageRequest[] = [];
   TestBed.configureTestingModule({
     providers: [
       provideRouter([]),
       { provide: QuotesService, useValue: { getQuotes: () => of([...ORCAMENTOS]) } },
       {
         provide: ReportsService,
-        useValue: { publishedReports: () => of(TODOS_OS_LAUDOS), downloadReport },
+        useValue: {
+          list: (request: PageRequest) => {
+            pedidos.push(request);
+            return of({ items: TODOS_OS_LAUDOS, total, page: request.page, pageSize: request.pageSize });
+          },
+        },
       },
     ],
   });
@@ -75,34 +83,51 @@ function montarTela() {
     fixture.detectChanges();
   }
 
-  return { fixture, tela, abrirAba, downloadReport };
+  return { fixture, tela, abrirAba, pedidos };
 }
 
 describe('ReportListComponent, as duas portas de entrada dos laudos', () => {
-  it('a aba de todos os relatórios traz os laudos de todos os orçamentos', () => {
-    const { tela } = montarTela();
+  it('a aba de todos os relatórios traz os laudos que a API devolve', () => {
+    const { tela, pedidos } = montarTela();
 
     const codigos = Array.from(
       tela.querySelectorAll('#panel-reports tbody tr td:first-child'),
     ).map((celula) => celula.textContent?.trim());
 
-    expect(codigos).toEqual(TODOS_OS_LAUDOS.map((relatorio) => relatorio.code));
+    expect(pedidos).toEqual([{ page: 1, pageSize: 50 }]);
+    expect(codigos).toEqual(TODOS_OS_LAUDOS.map((relatorio) => relatorio.identification ?? undefined));
   });
 
-  it('exibe a data de publicação formatada recebida da API', () => {
+  it('o laboratório, que não tem coluna no AutoLAB, aparece como dado não disponível', () => {
     const { tela } = montarTela();
 
-    const publicacao = tela.querySelector('#panel-reports tbody tr:nth-child(3) td:nth-child(5)');
+    const laboratorios = Array.from(
+      tela.querySelectorAll('#panel-reports tbody tr td:nth-child(4)'),
+    ).map((celula) => celula.textContent?.trim());
 
-    expect(publicacao?.textContent?.trim()).toBe('07/11/2026');
+    expect(laboratorios).toEqual(Array(3).fill('Dados não disponíveis'));
   });
 
-  it('preserva a data civil Lactec recebida da API', () => {
+  it('só habilita o download do laudo que tem PDF assinado', () => {
     const { tela } = montarTela();
 
-    const publicacao = tela.querySelector('#panel-reports tbody tr:first-child td:nth-child(5)');
+    const habilitados = Array.from(
+      tela.querySelectorAll<HTMLButtonElement>('#panel-reports tbody button'),
+    ).map((botao) => !botao.disabled);
 
-    expect(publicacao?.textContent?.trim()).toBe('08/11/2026');
+    expect(habilitados).toEqual([true, false, true]);
+  });
+
+  it('pede ao servidor a página seguinte', () => {
+    const { fixture, tela, pedidos } = montarTela(120);
+
+    const proximo = Array.from(tela.querySelectorAll('app-pagination button')).find((botao) =>
+      botao.textContent?.includes('Próximo'),
+    ) as HTMLButtonElement;
+    proximo.click();
+    fixture.detectChanges();
+
+    expect(pedidos.at(-1)).toEqual({ page: 2, pageSize: 50 });
   });
 
   it('a aba de orçamentos lista só os que têm relatório publicado', () => {
@@ -140,16 +165,5 @@ describe('ReportListComponent, as duas portas de entrada dos laudos', () => {
 
     expect(naAbaDeLaudos).toBeNull();
     expect(naAbaDeOrcamentos).toBeNull();
-  });
-
-  it('pede o arquivo pelo identificador próprio do relatório ao baixar', () => {
-    spyOn(URL, 'createObjectURL').and.returnValue('blob:relatorio');
-    spyOn(HTMLAnchorElement.prototype, 'click');
-    const { tela, downloadReport } = montarTela();
-
-    tela.querySelector<HTMLButtonElement>('#panel-reports tbody button')!.click();
-
-    expect(downloadReport).toHaveBeenCalledWith('laudo-LACTEC-00307/2026');
-    expect(URL.createObjectURL).toHaveBeenCalled();
   });
 });

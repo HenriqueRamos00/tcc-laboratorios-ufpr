@@ -55,7 +55,7 @@ const LIST: Equipment[] = [
   },
 ];
 
-function montarListagem() {
+function montarListagem(total = LIST.length) {
   TestBed.configureTestingModule({
     providers: [provideRouter([]), provideHttpClient(), provideHttpClientTesting()],
   });
@@ -63,7 +63,9 @@ function montarListagem() {
   const fixture = TestBed.createComponent(EquipmentListComponent);
   fixture.detectChanges();
 
-  TestBed.inject(HttpTestingController).expectOne(`${API_URL}/api/equipments`).flush(LIST);
+  TestBed.inject(HttpTestingController)
+    .expectOne(`${API_URL}/api/equipments?page=1&pageSize=50`)
+    .flush(LIST, { headers: { 'X-Total-Count': String(total) } });
   fixture.detectChanges();
   return fixture;
 }
@@ -76,6 +78,24 @@ function celulas(fixture: ReturnType<typeof montarListagem>, coluna: number): st
 }
 
 describe('EquipmentListComponent', () => {
+  it('distingue integração pendente de lista vazia e de uma falha temporária', () => {
+    TestBed.configureTestingModule({
+      providers: [provideRouter([]), provideHttpClient(), provideHttpClientTesting()],
+    });
+    const fixture = TestBed.createComponent(EquipmentListComponent);
+    fixture.detectChanges();
+    const http = TestBed.inject(HttpTestingController);
+    http.expectOne(`${API_URL}/api/equipments?page=1&pageSize=50`)
+      .flush({ code: 'lab-integration-pending' }, { status: 501, statusText: 'Not Implemented' });
+    fixture.detectChanges();
+    const text = (fixture.nativeElement as HTMLElement).textContent;
+    expect(text).toContain('Consulta de equipamentos indisponível');
+    expect(text).toContain('ainda não está disponível neste ambiente');
+    expect(text).not.toContain('Nenhum equipamento encontrado');
+    expect(text).not.toContain('AutoLAB');
+    http.verify();
+  });
+
   /**
    * A coluna de TAG prefere a TAG de placa e cai na identificação do laudo. Imprimir só
    * `tag` deixaria a coluna mostrando o número de série nas 55% de linhas em que o cadastro
@@ -104,7 +124,31 @@ describe('EquipmentListComponent', () => {
   it('anuncia a ausência da localização em toda linha, inclusive com placa completa', fakeAsync(() => {
     const fixture = montarListagem();
 
-    expect(celulas(fixture, 3)).toEqual(['Não informado', 'Não informado', 'Não informado']);
+    expect(celulas(fixture, 3)).toEqual([
+      'Dados não disponíveis',
+      'Dados não disponíveis',
+      'Dados não disponíveis',
+    ]);
+  }));
+
+  it('pede a página seguinte ao servidor e mostra o total que o cabeçalho informa', fakeAsync(() => {
+    const fixture = montarListagem(120);
+    const tela: HTMLElement = fixture.nativeElement;
+
+    expect(tela.querySelector('app-pagination')?.textContent).toContain('1-50 de 120');
+
+    const proximo = Array.from(tela.querySelectorAll('app-pagination button')).find((botao) =>
+      botao.textContent?.includes('Próximo'),
+    ) as HTMLButtonElement;
+    proximo.click();
+    fixture.detectChanges();
+
+    TestBed.inject(HttpTestingController)
+      .expectOne(`${API_URL}/api/equipments?page=2&pageSize=50`)
+      .flush(LIST, { headers: { 'X-Total-Count': '120' } });
+    fixture.detectChanges();
+
+    expect(tela.querySelector('app-pagination')?.textContent).toContain('51-100 de 120');
   }));
 
   /**

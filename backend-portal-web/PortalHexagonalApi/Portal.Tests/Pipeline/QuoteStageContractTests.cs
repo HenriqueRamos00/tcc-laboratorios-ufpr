@@ -35,7 +35,7 @@ public sealed class QuoteStageContractTests
     [Fact]
     public async Task TheQuoteBodyKeepsEveryFieldTheScreenAlreadyReads()
     {
-        using var portal = PortalWithQuotes("in-memory-sample");
+        using var portal = PortalWithQuotes("sql-server");
         using HttpClient client = portal.CreateClient();
         await Login(client);
 
@@ -58,7 +58,7 @@ public sealed class QuoteStageContractTests
     [Fact]
     public async Task TheQuoteBodyCarriesTheLaboratoryStageAsTheKeyTheScreenUses()
     {
-        using var portal = PortalWithQuotes("in-memory-sample");
+        using var portal = PortalWithQuotes("sql-server");
         using HttpClient client = portal.CreateClient();
         await Login(client);
 
@@ -75,7 +75,7 @@ public sealed class QuoteStageContractTests
     [Fact]
     public async Task AQuoteOutsideTheLaboratoryCarriesTheFieldAsNull()
     {
-        using var portal = PortalWithQuotes("in-memory-sample");
+        using var portal = PortalWithQuotes("sql-server");
         using HttpClient client = portal.CreateClient();
         await Login(client);
 
@@ -101,7 +101,7 @@ public sealed class QuoteStageContractTests
     [Fact]
     public async Task TheDetailOfOneQuoteCarriesTheSameLaboratoryStage()
     {
-        using var portal = PortalWithQuotes("in-memory-sample");
+        using var portal = PortalWithQuotes("sql-server");
         using HttpClient client = portal.CreateClient();
         await Login(client);
 
@@ -137,8 +137,7 @@ public sealed class QuoteStageContractTests
         ILaboratoryProgressRepository? laboratory = null)
     {
         // A chave viaja sempre, e a cadeia vazia e o que diz "fonte nao configurada". Omitir a
-        // chave deixaria o appsettings de desenvolvimento responder pelo teste, e foi o que
-        // aconteceu: o caso da fonte ausente passou a ler "in-memory-sample" do arquivo.
+        // chave deixaria o appsettings de desenvolvimento responder pelo teste.
         AuthPortal portal = new(
             new AuthHandler(HttpStatusCode.OK, Identity()),
             "LaboratoryProgress:Source",

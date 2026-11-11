@@ -21,9 +21,12 @@ public sealed record PublishedReportResponse(
         report.Protocol,
         report.Sample,
         report.Laboratory,
-        (report.PublishedAt is { } publishedAt
+        PublicationDateOf(report).ToString("dd/MM/yyyy", CultureInfo.InvariantCulture));
+
+    public static DateTimeOffset PublicationDateOf(PublishedReport report) =>
+        report.PublishedAt is { } publishedAt
             ? TimeZoneInfo.ConvertTime(publishedAt, PublicationTimeZone)
-            : report.PublishedOn).ToString("dd/MM/yyyy", CultureInfo.InvariantCulture));
+            : report.PublishedOn;
 }
 
 public sealed record QuoteReportConclusionResponse(
@@ -32,7 +35,7 @@ public sealed record QuoteReportConclusionResponse(
     string Protocol,
     string TestType,
     string Summary,
-    IReadOnlyList<PublishedReportResponse> Reports)
+    IReadOnlyList<ReportResponse> Reports)
 {
     public static QuoteReportConclusionResponse From(QuoteReportConclusion conclusion) => new(
         conclusion.QuoteId,
@@ -40,5 +43,8 @@ public sealed record QuoteReportConclusionResponse(
         conclusion.Protocol,
         conclusion.TestType,
         conclusion.Summary,
-        conclusion.Reports.Select(PublishedReportResponse.From).ToArray());
+        conclusion.Reports.Select(report => ReportResponse.From(report) with
+        {
+            QuoteCode = conclusion.QuoteCode
+        }).ToArray());
 }

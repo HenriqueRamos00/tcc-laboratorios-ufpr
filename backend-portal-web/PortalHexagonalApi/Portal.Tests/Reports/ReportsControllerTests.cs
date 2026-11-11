@@ -111,8 +111,8 @@ public sealed class ReportsControllerTests
     {
         protected override void ConfigureWebHost(IWebHostBuilder builder)
         {
-            builder.UseSetting("LabResults:Source", "embedded-sample");
-            builder.UseSetting("EquipmentRegistry:Source", "in-memory-sample");
+            builder.UseSetting("LabResults:Source", "not-connected");
+            builder.UseSetting("EquipmentRegistry:Source", "not-connected");
             builder.UseSetting("Portal:DataSource", "backend-lab");
             builder.UseSetting("BackendLab:BaseUrl", "https://spring.test/");
             builder.ConfigureTestServices(services =>

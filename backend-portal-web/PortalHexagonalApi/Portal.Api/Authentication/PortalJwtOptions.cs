@@ -7,6 +7,8 @@ public sealed class PortalJwtOptions
     public string Audience { get; set; } = string.Empty;
     public string SigningKey { get; set; } = string.Empty;
     public int ExpirationSeconds { get; set; } = 900;
+    public int RenewalWindowSeconds { get; set; } = 3600;
+    public int MaxSessionSeconds { get; set; } = 43200;
 
     public static bool HasValidSigningKey(PortalJwtOptions options)
     {

@@ -60,6 +60,24 @@ internal static class ProblemResponses
             "O identificador do laudo no endereco nao pode ser lido.");
     }
 
+    public static IActionResult InvalidPage(this ControllerBase controller)
+    {
+        return controller.AsProblem(
+            StatusCodes.Status400BadRequest,
+            "invalid-page",
+            "Pagina invalida.",
+            "Os parametros page e pageSize precisam ser inteiros: page de 1 a 100000 e pageSize de 1 a 200.");
+    }
+
+    public static IActionResult ReportDocumentSourceUnavailable(this ControllerBase controller)
+    {
+        return controller.AsProblem(
+            StatusCodes.Status502BadGateway,
+            "report-document-source-unavailable",
+            "Fonte de laudos assinados indisponivel.",
+            "A fonte dos laudos assinados nao respondeu a esta consulta.");
+    }
+
     public static IActionResult TenantNotIdentified(this ControllerBase controller)
     {
         return controller.AsProblem(
@@ -84,24 +102,26 @@ internal static class ProblemResponses
     }
 
     /// <summary>
-    /// O item medido fora da lista de itens conhecidos viaja com a mensagem da excecao porque
-    /// ela e vocabulario de laboratorio: nomeia o item medido que o laudo trouxe e a lista
-    /// nao conhece, e e disso que quem atende precisa. A falha de servico externo viaja com
-    /// frase fixa: a mensagem dela vem da infraestrutura e pode carregar nome de servidor e
-    /// endereco interno, que nao sao assunto de quem fez a requisicao. A mensagem continua
-    /// inteira no log.
+    /// A falha de servico externo viaja com frase fixa: a mensagem dela vem da infraestrutura
+    /// e pode carregar nome de servidor e endereco interno, que nao sao assunto de quem fez a
+    /// requisicao. A mensagem continua inteira no log.
     /// </summary>
-    public static IActionResult LabTestSourceUnavailable(this ControllerBase controller, Exception failure)
+    public static IActionResult LabIntegrationPending(this ControllerBase controller)
     {
-        bool outsideTheKnownList = failure is Portal.Domain.LabResults.Exceptions.ResultNameOutsideKnownListException;
+        return controller.AsProblem(
+            StatusCodes.Status501NotImplemented,
+            "lab-integration-pending",
+            "Consulta de equipamentos e indicadores indisponível.",
+            "A consulta de equipamentos e indicadores ainda não está disponível neste ambiente.");
+    }
 
+    public static IActionResult LabTestSourceUnavailable(this ControllerBase controller)
+    {
         return controller.AsProblem(
             StatusCodes.Status502BadGateway,
-            outsideTheKnownList ? "measuredItem-outside-catalog" : "lab-test-source-unavailable",
-            outsideTheKnownList ? "Item medido fora da lista de itens conhecidos." : "Fonte de ensaios indisponivel.",
-            outsideTheKnownList
-                ? failure.Message
-                : "A fonte de ensaios laboratoriais nao respondeu a esta consulta.");
+            "lab-test-source-unavailable",
+            "Fonte de ensaios indisponivel.",
+            "A fonte de ensaios laboratoriais nao respondeu a esta consulta.");
     }
 
     public static IActionResult QuoteSourceUnavailable(this ControllerBase controller)

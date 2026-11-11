@@ -16,7 +16,7 @@ describe('Interceptors de autorização do portal', () => {
     localStorage.setItem(LS_TOKEN, 'portal-token');
     TestBed.configureTestingModule({ providers: [
       provideHttpClient(withInterceptors([authTokenInterceptor, authErrorInterceptor])), provideHttpClientTesting(),
-      provideRouter([]), { provide: LoginService, useValue: { logout } },
+      provideRouter([]), { provide: LoginService, useValue: { logout, canRenew: () => false, renewalDue: () => false } },
     ] });
     client = TestBed.inject(HttpClient);
     http = TestBed.inject(HttpTestingController);
