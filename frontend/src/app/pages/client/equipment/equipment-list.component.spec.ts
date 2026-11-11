@@ -78,6 +78,24 @@ function celulas(fixture: ReturnType<typeof montarListagem>, coluna: number): st
 }
 
 describe('EquipmentListComponent', () => {
+  it('distingue integração pendente de lista vazia e de uma falha temporária', () => {
+    TestBed.configureTestingModule({
+      providers: [provideRouter([]), provideHttpClient(), provideHttpClientTesting()],
+    });
+    const fixture = TestBed.createComponent(EquipmentListComponent);
+    fixture.detectChanges();
+    const http = TestBed.inject(HttpTestingController);
+    http.expectOne(`${API_URL}/api/equipments?page=1&pageSize=50`)
+      .flush({ code: 'lab-integration-pending' }, { status: 501, statusText: 'Not Implemented' });
+    fixture.detectChanges();
+    const text = (fixture.nativeElement as HTMLElement).textContent;
+    expect(text).toContain('Consulta de equipamentos indisponível');
+    expect(text).toContain('ainda não está disponível neste ambiente');
+    expect(text).not.toContain('Nenhum equipamento encontrado');
+    expect(text).not.toContain('AutoLAB');
+    http.verify();
+  });
+
   /**
    * A coluna de TAG prefere a TAG de placa e cai na identificação do laudo. Imprimir só
    * `tag` deixaria a coluna mostrando o número de série nas 55% de linhas em que o cadastro

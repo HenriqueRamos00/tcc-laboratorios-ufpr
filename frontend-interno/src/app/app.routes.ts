@@ -1,12 +1,17 @@
-import { Routes } from '@angular/router';
+import { inject } from '@angular/core';
+import { RedirectFunction, Router, Routes } from '@angular/router';
 
 import { authGuard, guestGuard } from '@core/guards/auth.guard';
 
-const placeholder = (title: string, description: string, icon: string) => ({
-  pageTitle: title,
-  pageDescription: description,
-  pageIcon: icon,
-});
+const redirectLegacyReports: RedirectFunction = (route) => {
+  const router = inject(Router);
+  const reportId = route.params['id'] as string | undefined;
+
+  return router.createUrlTree(
+    reportId ? ['/tecnico/relatorios', reportId] : ['/tecnico/relatorios'],
+    { queryParams: route.queryParams, fragment: route.fragment ?? undefined },
+  );
+};
 
 export const routes: Routes = [
   { path: '', pathMatch: 'full', redirectTo: 'login' },
@@ -104,46 +109,37 @@ export const routes: Routes = [
         path: '',
         pathMatch: 'full',
         loadComponent: () =>
-          import('@/app/pages/placeholder/placeholder.component').then(
-            (module) => module.PlaceholderComponent,
+          import('@/app/pages/tecnico/dashboard/dashboard-tecnico.component').then(
+            (module) => module.DashboardTecnicoComponent,
           ),
-        data: placeholder(
-          'Dashboard',
-          'Resumo das atividades técnicas e ensaios do laboratório.',
-          'dashboard',
-        ),
         title: 'Dashboard - Portal Interno Lactec',
       },
-      ...(
-        [
-          [
-            'ensaios-amostras',
-            'Pesquisar Ensaios e Amostras',
-            'Pesquise ensaios e amostras disponíveis no laboratório.',
-            'search',
-          ],
-          [
-            'resultados',
-            'Resultados',
-            'Consulta e manutenção de resultados de ensaios.',
-            'fact_check',
-          ],
-          [
-            'relatorios',
-            'Pesquisar Relatório',
-            'Pesquise os relatórios técnicos.',
-            'description',
-          ],
-        ] as const
-      ).map(([path, title, description, icon]) => ({
-        path,
+      {
+        path: 'resultados/:id',
+        pathMatch: 'full',
+        redirectTo: redirectLegacyReports,
+      },
+      {
+        path: 'resultados',
+        pathMatch: 'full',
+        redirectTo: redirectLegacyReports,
+      },
+      {
+        path: 'relatorios/:id',
         loadComponent: () =>
-          import('@/app/pages/placeholder/placeholder.component').then(
-            (module) => module.PlaceholderComponent,
+          import('@/app/pages/tecnico/relatorios/relatorios.component').then(
+            (module) => module.RelatoriosComponent,
           ),
-        data: placeholder(title, description, icon),
-        title: title + ' - Portal Interno Lactec',
-      })),
+        title: 'Relatórios - Portal Interno Lactec',
+      },
+      {
+        path: 'relatorios',
+        loadComponent: () =>
+          import('@/app/pages/tecnico/relatorios/relatorios.component').then(
+            (module) => module.RelatoriosComponent,
+          ),
+        title: 'Relatórios - Portal Interno Lactec',
+      },
       {
         path: 'ensaios',
         loadComponent: () =>
@@ -163,6 +159,14 @@ export const routes: Routes = [
             (module) => module.EnsaioFormComponent,
           ),
         title: 'Novo ensaio - Portal Interno Lactec',
+      },
+      {
+        path: 'ensaios/:id/status',
+        loadComponent: () =>
+          import('@/app/pages/tecnico/ensaios/ensaio-status.component').then(
+            (module) => module.EnsaioStatusComponent,
+          ),
+        title: 'Atualizar status do ensaio - Portal Interno Lactec',
       },
       {
         path: 'ensaios/:id/editar',

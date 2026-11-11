@@ -171,6 +171,18 @@ Para criar o administrador inicial, preencha `AUTH_SEED_ADMIN_*` no arquivo `.en
 
 Sem autenticação válida, a API retorna 401. Técnicos autenticados recebem 403. Tokens de clientes são recusados pelo filtro de autenticação nas rotas internas e recebem 401.
 
+### Dashboard do Técnico
+
+`GET /api/technician/dashboard` é exclusivo do perfil TECNICO e consulta o PostgreSQL da aplicação. Retorna três contagens de execuções: `testsInExecution` considera `INCOMPLETE`; `testsAwaitingApproval` considera `COMPLETE`; `testsFinished` reúne `FINALIZED`, `DRAFTING_REPORT` e `REPORT_PUBLISHED`. `VALIDATED` e `CANCELLED` ficam fora desses indicadores, que não representam uma divisão de todos os ensaios.
+
+`pendingReportsTotal` conta os relatórios em `PENDING_VALIDATION`. `pendingReports` apresenta até seis deles, por ID decrescente, com `id`, `companyName`, `type` e `validationStatus`. O total independe do limite da prévia; medições e documentos adicionais não multiplicam as contagens de ensaios. A consulta não altera dados nem retorna PDFs ou snapshots.
+
+Sem registros, a resposta é 200 com contagens zero e lista vazia. Sem autenticação válida, retorna 401; administradores recebem 403 e tokens de clientes são recusados pelo filtro de autenticação interno. A fonte atual é o banco Spring; a integração real com o AutoLAB permanece pendente.
+
+`reportAnalytics` acrescenta `referenceDate`, `monthlyReports` e `pendingReportAge`. A atividade mensal cobre os seis meses até a consulta, incluindo o mês atual parcial, no fuso `America/Sao_Paulo`. Cada documento é contado pela sua data de validação e, separadamente, pela data de publicação; meses sem eventos retornam zero. Eventos posteriores à consulta ficam fora da janela. Alterações no status técnico do ensaio não mudam esses eventos documentais.
+
+A idade considera apenas documentos aguardando validação, desde a preparação (`created_at`), em dias de calendário de São Paulo. As faixas são até 7 dias, de 8 a 15 dias e 16 dias ou mais. Elas abrangem todas as pendências, independentemente do limite de seis itens da prévia. `oldestCreatedOn` informa a data de preparação mais antiga e é nulo quando não há pendências. As faixas não definem prazo contratual nem atraso.
+
 ### Consulta de orçamentos do cliente
 
 `GET /api/client/quotes` lista os orçamentos das empresas ativas vinculadas ao cliente autenticado. `GET /api/client/quotes/{id}` consulta um orçamento e `GET /api/client/quotes/{id}/document` retorna o PDF anexado ou gera um PDF a partir dos dados persistidos quando não há anexo. A autorização considera os vínculos atuais do cliente antes de consultar ou gerar o documento; orçamento de empresa sem vínculo retorna 403 e orçamento inexistente retorna 404.
@@ -219,6 +231,8 @@ O arquivo `.env` é local e não deve conter credenciais reais versionadas. Use 
 O Portal Interno consulta `GET /api/tests`, abre `GET /api/tests/{id}` e usa `POST`/`PUT` para criar ou substituir uma execução. As consultas de seleção ficam em `/api/tests/references/quotes`, `/samples`, `/analyzed-equipment`, `/technicians` e `/instruments`; os formatos conhecidos usam `/api/tests/measurement-templates/{analysisType}`. Todas essas rotas exigem um usuário ativo com perfil TECNICO.
 
 O request identifica a amostra por `sampleId` existente ou por `newSample` com orçamento, código, descrição e equipamento analisado opcional. As alternativas são mutuamente exclusivas. A amostra nova e a execução são gravadas na mesma transação; não há CRUD independente nem gestão de coleta, recebimento, estoque ou descarte. O código de amostra mantém a unicidade global existente. Equipamentos analisados são filtrados pela empresa do orçamento e não se confundem com instrumentos laboratoriais utilizados.
+
+As opções de orçamento e as novas associações aceitam somente propostas em `InProgress` ou `Finished`. Criação e troca para proposta pendente, recusada ou cancelada retornam 409. A edição pode manter o orçamento original mesmo que seu status comercial tenha se tornado inelegível; o detalhe histórico continua carregando esse vínculo.
 
 Uma execução mantém suas medições, instrumentos laboratoriais, classificação informada e texto técnico em rascunho na base PostgreSQL. A manutenção usa a base própria Spring/PostgreSQL; integração com AutoLAB não faz parte do escopo. O código do ensaio é gerado no servidor. A edição exige `version` e usa controle otimista; conflitos retornam `test-version-conflict`, enquanto colisões do código de amostra retornam `sample-code-conflict`, ambos em 409. Quantidades são decimais em texto JSON, com limite de 16 dígitos inteiros e 8 casas. O tipo de cada resultado é informado explicitamente para preservar texto como `ND` ou `12,30`. Resultados `quantity`, `not-detected`, `not-performed` e `text` mantêm significados distintos. A classificação não é calculada automaticamente e o texto não é relatório publicado.
 
@@ -270,6 +284,8 @@ As rotas administrativas de `/api/quotes` são exclusivas de ADMIN. O parâmetro
 
 O código é obrigatório, tem até 80 caracteres, é aparado nas extremidades, mantém a caixa informada e é único. A criação exige empresa ativa, status `PendingAcceptance` e define a etapa `Negociação` e a data no servidor. A atualização preserva etapa e data e exige um dos cinco estados comerciais. O status é um enum no domínio e na persistência; valores armazenados fora dos cinco códigos impedem a leitura do orçamento e devem ser migrados antes da inicialização do serviço. A empresa original pode ser mantida se ficou inativa; trocar de empresa exige uma empresa ativa. Nome, laboratório, descrição, escopo e contato obedecem aos limites do contrato. Contato próprio é normalizado no salvamento, enquanto orçamentos anteriores preservam o contato da empresa até serem editados.
 
+Ao mudar de `PendingAcceptance` para `InProgress`, a atualização mantém uma etapa técnica resolvida quando já existem ensaios. Sem ensaios, conserva `Aprovado pelo cliente`, `Aguardando entrega da amostra`, `Recebido` ou `Protocolado`; outras etapas iniciais passam a `Recebido`. A criação de um ensaio inicia o andamento técnico sem alterar o status comercial.
+
 É obrigatório informar ao menos um item, com quantidade inteira positiva, preço unitário não negativo de até duas casas decimais e norma opcional. O backend calcula `totalPrice` como a soma de `sampleCount * unitPrice`; o valor enviado deve coincidir com a soma sem arredondamento. Dados inválidos retornam 400 e código duplicado retorna 409.
 
 O documento é opcional e limitado a 50 MiB; a API valida extensão `.pdf` e assinatura `%PDF-`. Na atualização, omitir a parte `document` preserva o arquivo atual; enviar outro PDF o substitui. Dados do orçamento, itens e documento são gravados na mesma transação. Arquivo acima do limite retorna 413. As consultas do cliente permanecem disponíveis em `/api/client/quotes` com seu contrato atual.
@@ -282,6 +298,8 @@ Nas respostas de orçamento, `id` identifica o orçamento persistido no Spring. 
 
 Técnicos podem listar propostas em `GET /api/technician/quotes` e consultar os detalhes em `GET /api/technician/quotes/{id}`. As duas rotas exigem perfil TECNICO e permitem apenas consulta.
 
+A lista inclui somente propostas em `InProgress` ou `Finished`; pendentes, recusadas e canceladas ficam fora antes da busca, dos filtros, da contagem e da paginação. O mesmo conjunto comercial limita as opções em `GET /api/tests/references/quotes`. Para uma proposta elegível sem execuções, `technicalStatus` retorna `not-started`.
+
 A listagem aceita `search`, `status`, `from`, `to`, `page` e `pageSize`. A busca encontra trechos do código, nome da proposta ou razão social, sem diferenciar maiúsculas de minúsculas. As datas usam `YYYY-MM-DD` e incluem o dia inteiro no fuso `America/Sao_Paulo`; é possível informar só o início ou só o fim do período. A página inicial é 1, com 20 itens por padrão e limite de 100 por página. Os resultados vêm dos mais recentes para os mais antigos, com desempate pelo maior ID.
 
 A resposta contém `items`, `page`, `pageSize` e `totalItems`. Cada proposta traz `id`, `code`, `name`, `companyName`, `createdDate` e `technicalStatus`. O detalhe acrescenta `description`, `laboratoryName`, `scope` e itens com `testType`, `sampleCount` e `standard`. A consulta técnica não retorna valores, contatos comerciais, etapa, status comercial ou PDF. As rotas administrativas `/api/quotes` e seus documentos exigem perfil ADMIN.
@@ -291,12 +309,13 @@ O status técnico acompanha o andamento das execuções vinculadas à proposta. 
 | Status técnico | Condição |
 | --- | --- |
 | `incomplete` | Há uma execução ativa incompleta. |
+| `not-started` | A proposta é elegível e ainda não tem execuções vinculadas. |
 | `complete` | Todas chegaram pelo menos a completo, mas alguma ainda não foi validada. |
 | `validated` | Todas chegaram pelo menos a validado, mas ainda falta concluir a publicação de algum relatório. Inclui execuções em `finalized` e `drafting-report`. |
 | `report-published` | Todas as execuções ativas estão publicadas, com referência de relatório preenchida e data em `publishedAt`. |
 | `cancelled` | Todas as execuções foram canceladas. |
 
-Sem execuções, `technicalStatus` é nulo. Uma execução marcada como publicada precisa ter referência e data do relatório; sem esses dados, a consulta falha em vez de classificá-la como validada.
+Para proposta fora das etapas comerciais elegíveis, `technicalStatus` pode ser nulo quando não há execuções. Uma execução marcada como publicada precisa ter referência e data do relatório; sem esses dados, a consulta falha em vez de classificá-la como validada.
 
 Os itens do orçamento descrevem os serviços propostos; as execuções registram seu andamento técnico separadamente. Cada execução pode guardar a referência e a data de publicação de um relatório. O cadastro completo de laudos e seu histórico ainda não estão implementados.
 
@@ -321,3 +340,12 @@ O seed fica desativado por padrão e deve ser usado apenas no desenvolvimento lo
 ### Status técnico de execução
 
 `execucoes_ensaios.status` persiste os sete códigos técnicos do Apêndice E (`incomplete`, `complete`, `validated`, `finalized`, `drafting-report`, `report-published`, `cancelled`). A aplicação converte os códigos estritamente; valor desconhecido causa erro de leitura, sem status substituto.
+
+
+## Integração futura de equipamentos e análises do cliente
+
+As consultas de equipamentos e medições liberadas em `/api/client/**` estão previstas no
+[plano de integração do Portal do Cliente](docs/integracao-portal-cliente.md). No Compose
+regular, a API C# mantém login, orçamentos e relatórios publicados do Spring e responde
+501 (`lab-integration-pending`) para equipamentos e indicadores enquanto essa integração
+não estiver disponível.

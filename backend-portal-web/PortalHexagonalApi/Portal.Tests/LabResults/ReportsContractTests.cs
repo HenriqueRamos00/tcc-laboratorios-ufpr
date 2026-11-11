@@ -23,8 +23,9 @@ public sealed class ReportsContractTests : IClassFixture<RunningPortal>
 
         Assert.NotEmpty(reports);
         Assert.All(reports, report => Assert.Equal(
-            ["client", "hasSignedDocument", "id", "identification", "issueDate", "publicationDate",
-             "quoteCode", "requestNumber", "sampleId", "sampleName", "scheduledDate", "status"],
+            ["client", "code", "hasSignedDocument", "id", "identification", "issueDate", "laboratory",
+             "pdfAvailable", "protocol", "publicationDate", "publishedOn", "quoteCode", "requestNumber",
+             "sample", "sampleId", "sampleName", "scheduledDate", "status"],
             report!.AsObject().Select(pair => pair.Key).Order(StringComparer.Ordinal)));
     }
 

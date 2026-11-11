@@ -1,4 +1,5 @@
 export const STATUS_TECNICO_ORCAMENTO = [
+  'not-started',
   'incomplete',
   'complete',
   'validated',
@@ -26,6 +27,7 @@ export interface OrcamentoTecnicoItem {
 export interface OrcamentoTecnicoDetalhe extends OrcamentoTecnico {
   readonly description: string | null;
   readonly laboratoryName: string | null;
+  readonly protocol: string;
   readonly scope: string | null;
   readonly items: readonly OrcamentoTecnicoItem[];
 }

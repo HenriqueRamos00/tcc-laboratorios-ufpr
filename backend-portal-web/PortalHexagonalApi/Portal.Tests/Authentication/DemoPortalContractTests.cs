@@ -58,10 +58,30 @@ public sealed class DemoPortalContractTests
             Assert.Equal(HttpStatusCode.OK, report.StatusCode);
         }
         Assert.Equal(11, totalReports);
-        Assert.Equal(11, (await client.GetFromJsonAsync<JsonArray>("/api/reports"))!.Count);
+        JsonArray allReports = (await client.GetFromJsonAsync<JsonArray>("/api/reports"))!;
+        Assert.Equal(11, allReports.Count);
+        foreach (JsonNode? quote in quotes)
+        {
+            string code = (string)quote!["code"]!;
+            int count = allReports.Count(report => (string?)report!["quoteCode"] == code);
+            using var response = await client.GetAsync($"/api/quotes/{(string)quote["id"]!}/reports");
+            Assert.Equal(count == 0 ? HttpStatusCode.NoContent : HttpStatusCode.OK, response.StatusCode);
+            if (count == 0) continue;
+            JsonObject conclusion = (await response.Content.ReadFromJsonAsync<JsonObject>())!;
+            JsonArray reports = conclusion["reports"]!.AsArray();
+            Assert.Equal(count, reports.Count);
+            Assert.All(reports, report => Assert.Equal(code, (string?)report!["quoteCode"]));
+        }
+        JsonNode downloadable = allReports.First(report => (bool)report!["pdfAvailable"]!)!;
+        string reportId = (string)downloadable["id"]!;
+        using var signedDocument = await client.GetAsync($"/api/reports/{reportId}/document");
+        using var compatibleFile = await client.GetAsync($"/api/reports/{reportId}/file");
+        Assert.Equal(HttpStatusCode.OK, signedDocument.StatusCode);
+        Assert.Equal(HttpStatusCode.OK, compatibleFile.StatusCode);
+        Assert.Equal(await signedDocument.Content.ReadAsByteArrayAsync(), await compatibleFile.Content.ReadAsByteArrayAsync());
 
         string foreignQuote = cnpj == FakeSalesforceQuoteRepository.EnergyCnpj ? "quote-4" : "quote-3";
-        foreach (string path in new[] { $"/api/quotes/{foreignQuote}", $"/api/quotes/{foreignQuote}/document" })
+        foreach (string path in new[] { $"/api/quotes/{foreignQuote}", $"/api/quotes/{foreignQuote}/document", $"/api/quotes/{foreignQuote}/reports" })
         {
             using var response = await client.GetAsync(path);
             Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);

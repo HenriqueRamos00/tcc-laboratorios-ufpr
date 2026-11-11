@@ -56,8 +56,14 @@ services:
     environment:
       ASPNETCORE_ENVIRONMENT: Development
       ASPNETCORE_URLS: http://+:8080
-      Portal__DataSource: ${Portal__DataSource}
-      BackendLab__BaseUrl: ${BACKEND_LAB_BASE_URL-}
+      Portal__DataSource: backend-lab
+      BackendLab__BaseUrl: ${BACKEND_LAB_BASE_URL:-http://backend-lab:8080}
+      LabResults__Source: not-connected
+      LabResults__Scope: ""
+      LabResults__DevelopmentTenant: ""
+      EquipmentRegistry__Source: not-connected
+      LaboratoryProgress__Source: not-connected
+      ReportDocuments__Source: not-connected
     ports:
       - "${PORTAL_API_PORT:-5125}:8080"
 

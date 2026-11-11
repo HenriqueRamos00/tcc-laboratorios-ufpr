@@ -29,6 +29,9 @@ public record OrcamentoRequest(
         @NotBlank(message = "Nome do laboratório é obrigatório")
                 @Size(max = 120, message = "Nome do laboratório deve ter no máximo 120 caracteres")
                 String laboratoryName,
+        @NotBlank(message = "Protocolo do laboratório é obrigatório")
+                @Size(max = 80, message = "Protocolo do laboratório deve ter no máximo 80 caracteres")
+                String protocol,
         @NotBlank(message = "Descrição é obrigatória")
                 @Size(max = 2000, message = "Descrição deve ter no máximo 2000 caracteres")
                 String description,
@@ -57,6 +60,7 @@ public record OrcamentoRequest(
         companyId = companyId == null ? null : companyId.trim();
         name = name == null ? null : name.trim();
         laboratoryName = laboratoryName == null ? null : laboratoryName.trim();
+        protocol = protocol == null ? null : protocol.trim();
         description = description == null ? null : description.trim();
         scope = scope == null ? null : scope.trim();
         externalContactName = externalContactName == null ? null : externalContactName.trim();

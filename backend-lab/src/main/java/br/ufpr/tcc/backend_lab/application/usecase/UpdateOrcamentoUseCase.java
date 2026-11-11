@@ -3,23 +3,27 @@ package br.ufpr.tcc.backend_lab.application.usecase;
 import br.ufpr.tcc.backend_lab.application.dto.request.OrcamentoRequest;
 import br.ufpr.tcc.backend_lab.application.dto.response.OrcamentoDetalheInternoResponse;
 import br.ufpr.tcc.backend_lab.application.mapper.MapeadorItensOrcamento;
+import br.ufpr.tcc.backend_lab.application.service.AcompanhamentoOrcamentosCliente;
 import br.ufpr.tcc.backend_lab.application.validation.ValidadorDocumentoOrcamento;
 import br.ufpr.tcc.backend_lab.application.validation.ValidadorOrcamento;
 import br.ufpr.tcc.backend_lab.domain.exception.RegraNegocioException;
 import br.ufpr.tcc.backend_lab.domain.model.entity.DocumentoOrcamento;
 import br.ufpr.tcc.backend_lab.domain.model.entity.Empresa;
 import br.ufpr.tcc.backend_lab.domain.model.entity.Orcamento;
+import br.ufpr.tcc.backend_lab.domain.model.enums.EtapaAcompanhamentoOrcamento;
 import br.ufpr.tcc.backend_lab.domain.model.enums.StatusComercialOrcamento;
 import br.ufpr.tcc.backend_lab.domain.repository.DocumentoOrcamentoRepository;
 import br.ufpr.tcc.backend_lab.domain.repository.EmpresaRepository;
+import br.ufpr.tcc.backend_lab.domain.repository.ExecucaoEnsaioRepository;
 import br.ufpr.tcc.backend_lab.domain.repository.OrcamentoRepository;
 import br.ufpr.tcc.backend_lab.infrastructure.persistence.ViolacaoUnicidade;
+import java.util.List;
 
 import lombok.RequiredArgsConstructor;
 
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.web.multipart.MultipartFile;
 
 @Service
@@ -31,13 +35,15 @@ public class UpdateOrcamentoUseCase {
     private final MapeadorItensOrcamento mapeadorItensOrcamento;
     private final ValidadorDocumentoOrcamento validadorDocumentoOrcamento;
     private final ValidadorOrcamento validadorOrcamento;
+    private final ExecucaoEnsaioRepository execucoes;
+    private final AcompanhamentoOrcamentosCliente acompanhamentoCliente;
 
     @Transactional
     public OrcamentoDetalheInternoResponse execute(
             Long orcamentoId, OrcamentoRequest request, MultipartFile documento) {
         Orcamento orcamento =
                 orcamentoRepository
-                        .buscarDetalhePorId(orcamentoId)
+                        .buscarPorIdComBloqueio(orcamentoId)
                         .orElseThrow(
                                 () ->
                                         RegraNegocioException.naoEncontrado(
@@ -49,6 +55,7 @@ public class UpdateOrcamentoUseCase {
                                 () ->
                                         RegraNegocioException.dadosInvalidos(
                                                 "Status de orçamento inválido"));
+        StatusComercialOrcamento statusAnterior = orcamento.getStatus();
         if (orcamentoRepository.existsByCodeAndIdNot(request.code(), orcamentoId)) {
             throw RegraNegocioException.conflito("Código de orçamento já cadastrado");
         }
@@ -61,11 +68,16 @@ public class UpdateOrcamentoUseCase {
         orcamento.setCode(request.code());
         orcamento.setName(request.name());
         orcamento.setLaboratoryName(request.laboratoryName());
+        orcamento.setProtocol(request.protocol());
         orcamento.setDescription(request.description());
         orcamento.setScope(request.scope());
         orcamento.setExternalContactName(request.externalContactName());
         orcamento.setExternalContactEmail(request.externalContactEmail());
         orcamento.setStatus(status);
+        if (statusAnterior == StatusComercialOrcamento.PENDING_ACCEPTANCE
+                && status == StatusComercialOrcamento.IN_PROGRESS) {
+            ajustarEtapaAposAceite(orcamento);
+        }
         orcamento.setTotalPrice(totalPrice);
         mapeadorItensOrcamento.substituirItens(orcamento, request.items());
 
@@ -84,6 +96,23 @@ public class UpdateOrcamentoUseCase {
         boolean hasDocument =
                 conteudoDocumento != null || documentoOrcamentoRepository.existsById(orcamentoId);
         return OrcamentoDetalheInternoResponse.from(orcamento, hasDocument);
+    }
+
+    private void ajustarEtapaAposAceite(Orcamento orcamento) {
+        if (execucoes.existsByOrcamentoId(orcamento.getId())) {
+            EtapaAcompanhamentoOrcamento etapaTecnica =
+                    acompanhamentoCliente.resolver(List.of(orcamento)).get(orcamento.getId());
+            orcamento.setStage(etapaTecnica.texto());
+            return;
+        }
+
+        EtapaAcompanhamentoOrcamento etapaAtual =
+                EtapaAcompanhamentoOrcamento.deTexto(orcamento.getStage());
+        if (!etapaAtual.adequadaAposAceiteSemExecucao()) {
+            orcamento.setStage(EtapaAcompanhamentoOrcamento.RECEBIDO.texto());
+        } else {
+            orcamento.setStage(etapaAtual.texto());
+        }
     }
 
     private Empresa resolverEmpresa(String companyId, Empresa empresaAtual) {

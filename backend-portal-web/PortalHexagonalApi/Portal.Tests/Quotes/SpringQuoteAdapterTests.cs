@@ -13,6 +13,7 @@ public sealed class SpringQuoteAdapterTests
     private const string QuoteJson = """
         {"id":"52","code":"ORC-52","name":"Análise de óleo","status":"InProgress",
         "stage":"Em execução","description":"Análise físico-química","companyName":"EMPRESA DE ENERGIA",
+        "protocol":"L-45490-2026-X",
         "externalContactName":"Ana","externalContactEmail":"ana@example.test",
         "totalPrice":1234.56,"createdDate":"2026-10-20T13:45:00-03:00"}
         """;
@@ -33,6 +34,7 @@ public sealed class SpringQuoteAdapterTests
         Assert.Equal("52", quote.Id);
         Assert.Equal(string.Empty, quote.OpportunityId);
         Assert.Equal("Em execução", quote.Stage);
+        Assert.Equal("L-45490-2026-X", quote.Protocol);
         Assert.Equal(1234.56m, quote.TotalPrice);
         Assert.Equal(string.Empty, quote.ExternalContactName);
         Assert.Equal(string.Empty, quote.ExternalContactEmail);

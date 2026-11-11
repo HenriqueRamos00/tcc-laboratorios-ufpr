@@ -1,3 +1,4 @@
+import { HttpErrorResponse } from '@angular/common/http';
 import {
   ChangeDetectionStrategy,
   Component,
@@ -106,6 +107,7 @@ export class EquipmentDetailComponent {
   protected readonly history = signal<Page<EquipmentReport> | null>(null);
   protected readonly historyLoading = signal(false);
   protected readonly failed = signal(false);
+  protected readonly unavailable = signal(false);
   protected readonly page = signal(1);
   protected readonly perPage = PER_PAGE;
 
@@ -154,13 +156,15 @@ export class EquipmentDetailComponent {
       tap(() => {
         this.equipment.set(null);
         this.failed.set(false);
+        this.unavailable.set(false);
         this.history.set(null);
         this.page.set(1);
         this.downloadFailure.set('');
       }),
       switchMap((value) =>
         this.equipments.findById(value).pipe(
-          catchError(() => {
+          catchError((error: unknown) => {
+            this.unavailable.set(error instanceof HttpErrorResponse && error.status === 501);
             this.failed.set(true);
             return EMPTY;
           }),

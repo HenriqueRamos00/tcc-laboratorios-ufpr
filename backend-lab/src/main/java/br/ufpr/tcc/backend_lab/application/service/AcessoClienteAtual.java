@@ -2,6 +2,7 @@ package br.ufpr.tcc.backend_lab.application.service;
 
 import br.ufpr.tcc.backend_lab.domain.exception.RegraNegocioException;
 import br.ufpr.tcc.backend_lab.domain.model.entity.Cliente;
+import br.ufpr.tcc.backend_lab.domain.model.entity.Empresa;
 import br.ufpr.tcc.backend_lab.domain.model.entity.Orcamento;
 import br.ufpr.tcc.backend_lab.domain.model.entity.PerfilUsuario;
 import br.ufpr.tcc.backend_lab.domain.model.entity.Usuario;
@@ -33,9 +34,13 @@ public class AcessoClienteAtual {
     }
 
     public void autorizar(Cliente cliente, Orcamento quote) {
-        if (!quote.getEmpresa().isAtivo()
+        autorizar(cliente, quote.getEmpresa());
+    }
+
+    public void autorizar(Cliente cliente, Empresa empresa) {
+        if (!empresa.isAtivo()
                 || cliente.getEmpresas().stream()
-                        .noneMatch(e -> e.getId().equals(quote.getEmpresa().getId()))) {
+                        .noneMatch(e -> e.getId().equals(empresa.getId()))) {
             throw RegraNegocioException.acessoNegado("Sem permissão para este orçamento");
         }
     }

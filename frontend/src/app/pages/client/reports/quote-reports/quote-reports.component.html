@@ -26,10 +26,10 @@
     <mat-icon class="shrink-0 text-lactec-nav" aria-hidden="true">description</mat-icon>
     <div class="min-w-0">
       <h2 class="m-0 text-sm font-semibold text-lactec-ink">
-        <app-data-unavailable subject="Tipo de ensaio" />
+        @if (testType()) { Tipo de ensaio: {{ testType() }} } @else { <app-data-unavailable subject="Tipo de ensaio" /> }
       </h2>
       <p class="mt-1 mb-0 text-sm text-lactec-ink-soft">
-        <app-data-unavailable subject="Resumo da análise" />
+        @if (summary()) { Resumo da análise: {{ summary() }} } @else { <app-data-unavailable subject="Resumo da análise" /> }
       </p>
     </div>
   </section>

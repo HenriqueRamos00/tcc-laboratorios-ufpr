@@ -1,18 +1,19 @@
+using System.Text.Json.Serialization;
+
 using Portal.Api.Pipeline;
 using Portal.Domain.Quotes;
 
 namespace Portal.Api.Quotes;
 
 /// <summary>
-/// O corpo de um orcamento, campo por campo igual ao que
-/// <c>frontend/src/app/model/quote.ts</c> ja le, mais <see cref="LaboratoryStage"/>.
+/// O corpo de um orcamento com os campos comerciais existentes, o protocolo registrado
+/// na fonte e <see cref="LaboratoryStage"/>.
 ///
 /// A rota servia a entidade de dominio direto. Agora ha um corpo declarado, porque a tela
 /// passa a receber um campo que a entidade comercial nao tem e que nenhum dos tres
 /// adaptadores de orcamento sabe preencher.
 ///
-/// A mudanca e aditiva: os doze campos anteriores saem com o mesmo nome, o mesmo tipo e o
-/// mesmo valor. <see cref="CreatedDate"/> continua <c>DateTimeOffset</c> e nao passa por
+/// <see cref="CreatedDate"/> continua <c>DateTimeOffset</c> e nao passa por
 /// <c>WireDate</c>, que serve data sem hora: trocar o formato aqui quebraria a leitura que
 /// a tela ja faz do ISO 8601 com deslocamento que o Salesforce manda.
 ///
@@ -42,6 +43,10 @@ public sealed record QuoteResponse
     public required string Description { get; init; }
 
     public required string CompanyName { get; init; }
+
+    /// <summary>Protocolo cadastrado no orçamento; omitido quando a fonte não o fornece.</summary>
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public string? Protocol { get; init; }
 
     public required string ExternalContactName { get; init; }
 
@@ -73,6 +78,7 @@ public sealed record QuoteResponse
             Stage = quote.Quote.Stage,
             Description = quote.Quote.Description,
             CompanyName = quote.Quote.CompanyName,
+            Protocol = quote.Quote.Protocol,
             ExternalContactName = quote.Quote.ExternalContactName,
             ExternalContactEmail = quote.Quote.ExternalContactEmail,
             TotalPrice = quote.Quote.TotalPrice,

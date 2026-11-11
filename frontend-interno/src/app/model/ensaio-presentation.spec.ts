@@ -53,6 +53,6 @@ describe('Apresentação de ensaios', () => {
   });
   it('separa rótulos de classificação e de estado de processo', () => {
     expect(classificationLabel(null)).toBe('Não classificada');
-    expect(processStatusLabel('incomplete')).toBe('Incompleto');
+    expect(processStatusLabel('incomplete')).toBe('Em execução');
   });
 });

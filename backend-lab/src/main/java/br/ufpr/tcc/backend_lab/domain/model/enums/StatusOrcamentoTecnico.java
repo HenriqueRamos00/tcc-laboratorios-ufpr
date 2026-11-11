@@ -4,6 +4,7 @@ import java.util.Arrays;
 import java.util.Optional;
 
 public enum StatusOrcamentoTecnico {
+    NOT_STARTED("not-started"),
     INCOMPLETE("incomplete"),
     COMPLETE("complete"),
     VALIDATED("validated"),

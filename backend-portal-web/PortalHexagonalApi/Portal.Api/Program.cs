@@ -8,6 +8,8 @@ using Portal.Api.LabResults;
 using Portal.Api.Nameplate;
 using Portal.Api.Pipeline;
 using Portal.Api.ReportDocuments;
+using Portal.Api.Reports;
+using SpringReports = Portal.Application.Reports;
 using Portal.Application.Authentication;
 using Portal.Application.LabResults;
 using Portal.Application.Quotes;
@@ -52,7 +54,10 @@ builder.Services.AddScoped<IForConsultingLabResults, LabResultsConsultation>();
 builder.Services.AddScoped<IForDownloadingSignedReports, SignedReportDownload>();
 builder.Services.AddScoped<IForConsultingReports, ReportsConsultation>();
 
+builder.Services.AddScoped<SpringReports.IForConsultingReports, SpringReports.ReportsConsultation>();
+
 builder.Services.AddPortalDataSource(builder.Configuration);
+builder.Services.AddReportDocumentRepository(builder.Configuration);
 
 builder.Services.AddLabTestRepository(builder.Configuration);
 builder.Services.AddEquipmentRegistrySource(builder.Configuration);

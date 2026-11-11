@@ -9,6 +9,8 @@ public sealed class LabResultsOptions
 {
     public const string SectionName = "LabResults";
 
+    public const string NotConnectedSource = "not-connected";
+
     public const string SqlServerSource = "sql-server";
 
     public const string AllScope = "all";

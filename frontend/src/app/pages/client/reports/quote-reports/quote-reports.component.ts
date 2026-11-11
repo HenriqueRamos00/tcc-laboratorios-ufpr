@@ -72,6 +72,8 @@ export class QuoteReportsComponent {
   protected readonly total = signal(0);
   protected readonly loading = signal(true);
   protected readonly reportsLoading = signal(false);
+  protected readonly testType = signal<string | null>(null);
+  protected readonly summary = signal<string | null>(null);
   protected readonly failed = signal(false);
 
   protected readonly stage = computed(() => {
@@ -104,6 +106,8 @@ export class QuoteReportsComponent {
     const quote = toObservable(this.quoteId).pipe(
       tap(() => {
         this.quote.set(null);
+        this.testType.set(null);
+        this.summary.set(null);
         this.reportList.set(null);
         this.failed.set(false);
         this.loading.set(true);
@@ -126,7 +130,7 @@ export class QuoteReportsComponent {
       .pipe(
         tap(() => this.reportsLoading.set(true)),
         switchMap(([loaded, page]) =>
-          this.reports.list({ quoteCode: loaded.code, page, pageSize: this.pageSize }).pipe(
+          this.reports.list({ quoteId: loaded.id, quoteCode: loaded.code, page, pageSize: this.pageSize }).pipe(
             catchError(() => {
               this.failed.set(true);
               this.loading.set(false);
@@ -139,6 +143,8 @@ export class QuoteReportsComponent {
       )
       .subscribe((result) => {
         this.reportList.set(result.items);
+        this.testType.set(result.testType ?? null);
+        this.summary.set(result.summary ?? null);
         this.total.set(result.total);
         this.loading.set(false);
         this.reportsLoading.set(false);

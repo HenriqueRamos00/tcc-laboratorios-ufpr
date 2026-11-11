@@ -180,6 +180,9 @@ public sealed class EquipmentController : ControllerBase
     /// </summary>
     private async Task<IActionResult> AnswerAsync(Func<VisibilityScope, Task<IActionResult>> answer)
     {
+        if (_labResultsOptions.Source == LabResultsOptions.NotConnectedSource)
+            return this.LabIntegrationPending();
+
         VisibilityScope? scope = VisibilityScopeResolution.Resolve(User, _labResultsOptions);
 
         if (scope is null) return this.TenantNotIdentified();

@@ -14,6 +14,8 @@ public static class ReportDocumentSourceRegistration
             .GetSection(ReportDocumentsOptions.SectionName)
             .Get<ReportDocumentsOptions>() ?? new ReportDocumentsOptions();
 
+        services.AddSingleton(options);
+
         string source = string.IsNullOrWhiteSpace(options.Source)
             ? ReportDocumentsOptions.NotConnectedSource
             : options.Source;

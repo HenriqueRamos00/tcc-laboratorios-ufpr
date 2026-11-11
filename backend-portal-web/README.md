@@ -94,7 +94,7 @@ requisição ou fallback entre os serviços. Valores ausentes e desconhecidos im
 a inicialização. As configurações da fonte inativa são ignoradas. No modo `lactec`,
 os orçamentos são consultados no Salesforce com os CNPJs autorizados no JWT.
 Com `Portal__UseDemoData=true`, o C# usa `FakeSalesforceQuoteRepository` para os
-orçamentos. A opção não afeta equipamentos, ensaios nem relatórios, que vêm sempre do
+orçamentos. A opção não afeta equipamentos, ensaios nem relatórios no modo Auth, que vêm do
 AutoLAB com o escopo de `LabResults__Scope` (ver [Escopo de visibilidade](#escopo-de-visibilidade)).
 
 `POST /auth/login` é público e recebe `{ "email": "...", "password": "..." }`.
@@ -135,8 +135,9 @@ No modo `lactec`, todas as rotas `/api/**` e `GET /auth/me` exigem
 audiência, validade sem tolerância extra, identidade, fonte, serviço e papel.
 `GET /auth/me` devolve o mesmo `user` usando os claims, sem consultar o Backend Auth.
 Login, OpenAPI e preflight CORS são públicos. No modo `backend-lab`, `/auth/me`
-retorna 501 e as consultas de orçamento encaminham o Bearer Spring à origem. As demais
-rotas mantêm suas integrações existentes. O OpenAPI descreve o Bearer quando `lactec`
+retorna 501 e as consultas de orçamento e relatórios encaminham o Bearer Spring à origem.
+No Compose regular, equipamentos e indicadores retornam 501 (`lab-integration-pending`)
+até a implementação dos endpoints de cliente no Spring. O OpenAPI descreve o Bearer quando `lactec`
 está ativo.
 
 No modo `backend-lab`, as rotas C# `/api/quotes`, `/api/quotes/{id}` e
@@ -155,6 +156,32 @@ do orçamento quando não há anexo. O C# apenas transporta os bytes. Falha de o
 timeout ou resposta inválida retorna 502; 401, 403 e orçamento inexistente permanecem
 distintos. Falhas nessa fonte não consultam Salesforce, fixtures ou PDFs gerados.
 Lactec mantém Salesforce, documentos locais e geração de proposta existentes.
+
+### Relatórios nas duas composições
+
+`GET /api/reports` devolve a lista paginada em array, com `X-Total-Count`, `X-Page`
+e `X-Page-Size`. O contrato inclui os metadados AutoLAB e mantém os campos de relatórios
+publicados usados pelos clientes Spring. `GET /api/quotes/{id}/reports` consulta o orçamento
+autorizado, devolve a conclusão e seus relatórios, ou 204 quando não há laudos.
+O frontend utiliza o ID do orçamento nessa consulta, preservando IDs próprios de cada fonte.
+
+Em `compose.yaml`, o adapter Spring consulta `/api/client/reports`, os relatórios por
+orçamento e `/api/client/reports/{id}/file`. `ReportDocuments__Source=not-connected`
+desliga apenas o provider AutoLAB; os relatórios publicados Spring permanecem disponíveis.
+Em `compose.auth.yaml`, `ReportDocuments__Source=sql-server` seleciona os relatórios AutoLAB.
+Não há fallback entre as duas origens.
+
+As rotas `/api/reports/{id}/document` e `/api/reports/{id}/file` devolvem o mesmo documento
+da fonte selecionada. IDs Spring são strings; IDs AutoLAB são GUIDs codificados.
+`pdfAvailable` informa se o documento pode ser baixado; `hasSignedDocument` identifica
+PDF assinado do AutoLAB e não é usado para declarar assinatura digital em documentos Spring.
+O download mantém o PDF persistido, o nome do arquivo e `Cache-Control: no-store`.
+
+`LabResults__Source=not-connected` registra explicitamente a integração laboratorial
+pendente, sem validar conexão SQL. `LaboratoryProgress__Source=not-connected` mantém a
+etapa enviada pelo Spring. Os detalhes das adições futuras estão no
+[plano do Backend Lab](../backend-lab/docs/integracao-portal-cliente.md).
+
 
 A sessão dura 900 segundos por padrão. Alterações de senha, empresas, estado da
 conta, serviço ou token de serviço só afetam JWTs já emitidos quando expiram.
@@ -358,7 +385,9 @@ views `vwDadosEnsaios`, `Equipamentos`, `SituaProcess` e `vwRelatoriosEnsaios` e
 tabelas `RelatorioEmissao` e `FileData`.
 
 As credenciais do AutoLAB real vem do ambiente ou do `.env` (nunca do `appsettings`
-versionado; o `appsettings.Development.json` so traz a senha publica do banco local):
+versionado). O `compose.auth.yaml` fornece explicitamente a conexão do banco local,
+incluindo a mesma senha configurada para seu SQL Server. O `appsettings.Development.json`
+usa fontes desconectadas e não define credenciais AutoLAB:
 
 ```env
 LabResults__Source=sql-server

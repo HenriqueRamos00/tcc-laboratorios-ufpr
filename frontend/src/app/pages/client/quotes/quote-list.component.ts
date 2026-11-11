@@ -196,7 +196,7 @@ export class QuoteListComponent {
         : notice?.text,
       callToAction: notice?.callToAction,
       shipping: notice?.shipping,
-      protocolo: group.key === 'proposta' ? undefined : `L-${quote.code}-X`,
+      protocolo: group.key === 'proposta' ? undefined : quote.protocol ?? undefined,
       contato: group.key === 'proposta' ? undefined : LABORATORY_CONTACT,
     };
 

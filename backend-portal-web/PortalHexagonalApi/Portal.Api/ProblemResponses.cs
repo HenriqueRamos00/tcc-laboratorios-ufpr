@@ -69,15 +69,6 @@ internal static class ProblemResponses
             "Os parametros page e pageSize precisam ser inteiros: page de 1 a 100000 e pageSize de 1 a 200.");
     }
 
-    public static IActionResult ReportDocumentNotFound(this ControllerBase controller)
-    {
-        return controller.AsProblem(
-            StatusCodes.Status404NotFound,
-            "report-document-not-found",
-            "Laudo assinado nao encontrado.",
-            "Nenhum PDF assinado foi encontrado para este laudo.");
-    }
-
     public static IActionResult ReportDocumentSourceUnavailable(this ControllerBase controller)
     {
         return controller.AsProblem(
@@ -115,6 +106,15 @@ internal static class ProblemResponses
     /// e pode carregar nome de servidor e endereco interno, que nao sao assunto de quem fez a
     /// requisicao. A mensagem continua inteira no log.
     /// </summary>
+    public static IActionResult LabIntegrationPending(this ControllerBase controller)
+    {
+        return controller.AsProblem(
+            StatusCodes.Status501NotImplemented,
+            "lab-integration-pending",
+            "Consulta de equipamentos e indicadores indisponível.",
+            "A consulta de equipamentos e indicadores ainda não está disponível neste ambiente.");
+    }
+
     public static IActionResult LabTestSourceUnavailable(this ControllerBase controller)
     {
         return controller.AsProblem(
@@ -204,5 +204,41 @@ internal static class ProblemResponses
             "quote-document-not-found",
             "Documento nao encontrado.",
             "Este orcamento nao tem documento publicado.");
+    }
+
+    public static IActionResult ReportAuthenticationRequired(this ControllerBase controller)
+    {
+        return controller.AsProblem(
+            StatusCodes.Status401Unauthorized,
+            "report-authentication-required",
+            "Autenticação necessária.",
+            "Entre novamente para consultar os relatórios publicados.");
+    }
+
+    public static IActionResult ReportAccessForbidden(this ControllerBase controller)
+    {
+        return controller.AsProblem(
+            StatusCodes.Status403Forbidden,
+            "report-access-forbidden",
+            "Acesso ao relatório proibido.",
+            "O usuário autenticado não tem acesso a este relatório.");
+    }
+
+    public static IActionResult ReportDocumentNotFound(this ControllerBase controller)
+    {
+        return controller.AsProblem(
+            StatusCodes.Status404NotFound,
+            "report-document-not-found",
+            "Relatório não encontrado.",
+            "Nenhum relatório publicado com este identificador.");
+    }
+
+    public static IActionResult ReportSourceUnavailable(this ControllerBase controller)
+    {
+        return controller.AsProblem(
+            StatusCodes.Status502BadGateway,
+            "report-source-unavailable",
+            "Fonte de relatórios indisponível.",
+            "A fonte de relatórios não respondeu à consulta.");
     }
 }

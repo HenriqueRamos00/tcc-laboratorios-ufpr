@@ -33,8 +33,9 @@ public class ResolvedorReferenciasEnsaio {
         this.equipamentos = equipamentos;
     }
 
-    public Referencias resolver(EnsaioRequest request, Usuario responsavelAnterior) {
-        Amostra amostra = amostraEnsaio.resolver(request);
+    public Referencias resolver(
+            EnsaioRequest request, Usuario responsavelAnterior, Long orcamentoOriginalId) {
+        Amostra amostra = amostraEnsaio.resolver(request, orcamentoOriginalId);
         validarEmpresaDoEquipamento(amostra);
         Usuario responsavel = usuarios.findById(id(request.responsibleId()))
                 .orElseThrow(() -> new EnsaioNaoEncontradoException("Técnico não encontrado"));

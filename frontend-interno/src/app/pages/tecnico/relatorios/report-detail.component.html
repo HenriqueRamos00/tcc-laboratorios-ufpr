@@ -1,0 +1,275 @@
+@let currentReport = report();
+<article class="report-detail" aria-labelledby="report-detail-title">
+  @if (validationMessage()) {
+    <div class="report-notice report-notice--success" role="status">
+      <mat-icon aria-hidden="true">check_circle</mat-icon>
+      <p>{{ validationMessage() }}</p>
+    </div>
+  }
+  @if (validationConflict()) {
+    <div class="report-notice report-notice--warning" role="alert">
+      <mat-icon aria-hidden="true">sync_problem</mat-icon>
+      <p>O relatório foi alterado ou validado em outra sessão. Recarregue os dados antes de tentar novamente.</p>
+      <button mat-button type="button" (click)="retry.emit()">Recarregar relatório</button>
+    </div>
+  }
+  @if (validationError()) {
+    <div class="report-notice report-notice--error" role="alert">
+      <mat-icon aria-hidden="true">error_outline</mat-icon>
+      <p>{{ validationError() }}</p>
+    </div>
+  }
+  @if (publicationMessage()) {
+    <div class="report-notice report-notice--success" role="status">
+      <mat-icon aria-hidden="true">public</mat-icon>
+      <p>{{ publicationMessage() }}</p>
+    </div>
+  }
+  @if (publicationConflict()) {
+    <div class="report-notice report-notice--warning" role="alert">
+      <mat-icon aria-hidden="true">sync_problem</mat-icon>
+      <p>O relatório foi alterado ou publicado em outra sessão. Recarregue os dados antes de tentar novamente.</p>
+      <button mat-button type="button" (click)="retry.emit()">Recarregar relatório</button>
+    </div>
+  }
+  @if (publicationError()) {
+    <div class="report-notice report-notice--error" role="alert">
+      <mat-icon aria-hidden="true">error_outline</mat-icon>
+      <p>{{ publicationError() }}</p>
+    </div>
+  }
+
+  <header class="report-detail-header">
+    <div class="report-detail-header-main">
+      <div class="min-w-0">
+        <p class="reports-overline">Relatório técnico</p>
+        <h2 id="report-detail-title" class="report-detail-title">
+          <span>Registro:</span> <span class="report-detail-id mono">{{ currentReport.id }}</span>
+        </h2>
+        <p class="report-detail-subtitle">
+          {{ currentReport.company.name }}<span aria-hidden="true"> · </span>{{ currentReport.type }}
+        </p>
+      </div>
+      <div class="report-detail-statuses" aria-label="Status do documento">
+        <span [class]="statusClass(currentReport.validationStatus)">
+          {{ statusLabel(currentReport.validationStatus) }}
+        </span>
+        <span [class]="publicationClass(currentReport.published)">
+          <mat-icon aria-hidden="true">{{ currentReport.published ? 'public' : 'public_off' }}</mat-icon>
+          {{ publicationLabel(currentReport.published) }}
+        </span>
+      </div>
+    </div>
+
+    <div class="report-detail-header-actions">
+      <div class="report-action-buttons">
+        @if (currentReport.validationStatus === 'pending-validation') {
+          <app-action-button
+            class="report-primary-action"
+            variant="primary"
+            icon="verified"
+            [label]="saving() ? 'Validando…' : 'Validar relatório'"
+            [loading]="saving()"
+            [disabled]="saving()"
+            [fullWidthOnMobile]="true"
+            (activated)="validate.emit()"
+          />
+        }
+        @if (currentReport.validationStatus === 'validated' && !currentReport.published && currentReport.pdfAvailable) {
+          <app-action-button
+            class="report-primary-action"
+            variant="primary"
+            icon="public"
+            [label]="publishing() ? 'Publicando…' : 'Publicar para o cliente'"
+            [loading]="publishing()"
+            [disabled]="publishing()"
+            [fullWidthOnMobile]="true"
+            (activated)="publish.emit()"
+          />
+        }
+        @if (currentReport.pdfAvailable) {
+          <app-action-button
+            variant="secondary"
+            icon="picture_as_pdf"
+            [label]="currentReport.validationStatus === 'pending-validation' ? 'Abrir rascunho PDF' : 'Abrir PDF validado'"
+            [disabled]="pdfLoading()"
+            [fullWidthOnMobile]="true"
+            (activated)="openPdf.emit()"
+          />
+          <app-action-button
+            variant="secondary"
+            icon="download"
+            label="Baixar PDF"
+            [disabled]="pdfLoading()"
+            [fullWidthOnMobile]="true"
+            (activated)="downloadPdf.emit()"
+          />
+        }
+      </div>
+    </div>
+
+    <div class="report-detail-header-note">
+      @if (currentReport.validationStatus === 'pending-validation') {
+        <p>Ao validar, o conteúdo do relatório será preservado com seu nome e a data da validação.</p>
+      } @else {
+        <p>Este documento preserva o conteúdo registrado na validação.</p>
+      }
+      @if (currentReport.pdfAvailable) {
+        <p>{{ currentReport.validationStatus === 'pending-validation' ? 'O PDF de rascunho apresenta o conteúdo atual para revisão.' : 'O PDF validado contém o conteúdo preservado na validação.' }}</p>
+      }
+      @if (currentReport.validationStatus === 'validated' && !currentReport.published) {
+        <p>{{ currentReport.pdfAvailable ? 'A publicação é uma ação separada e não altera o status técnico do ensaio.' : 'O PDF validado não está acessível. A publicação fica bloqueada até o documento estar disponível.' }}</p>
+      }
+      @if (currentReport.published && currentReport.pdfAvailable) {
+        <p>Este relatório está publicado e seu PDF validado está acessível ao cliente. A etapa técnica do ensaio é alterada separadamente.</p>
+      } @else if (currentReport.published) {
+        <p>O registro de publicação existe, mas o PDF não está acessível no momento.</p>
+      }
+      @if (pdfError()) {
+        <p class="report-pdf-error" role="alert">{{ pdfError() }}</p>
+      }
+    </div>
+  </header>
+
+  <section class="report-section" aria-labelledby="report-context-title">
+    <h3 id="report-context-title">Identificação do ensaio</h3>
+    <dl class="report-facts">
+      <div>
+        <dt>Orçamento</dt>
+        <dd class="mono">{{ currentReport.quote.code }}</dd>
+      </div>
+      <div>
+        <dt>Ensaio</dt>
+        <dd class="mono">{{ currentReport.test.code }}</dd>
+      </div>
+      <div>
+        <dt>Amostra</dt>
+        <dd><span class="mono">{{ currentReport.sample.code }}</span> · {{ currentReport.sample.description }}</dd>
+      </div>
+      @if (currentReport.test.analyzedEquipment) {
+        <div>
+          <dt>TAG do equipamento analisado</dt>
+          <dd class="mono">{{ currentReport.test.analyzedEquipment.tag }}</dd>
+        </div>
+        <div>
+          <dt>Número de série do equipamento</dt>
+          <dd class="mono">{{ currentReport.test.analyzedEquipment.serialNumber }}</dd>
+        </div>
+      }
+      <div>
+        <dt>Status do ensaio</dt>
+        <dd>{{ testStatusLabel(currentReport.test.technicalStatus) }}</dd>
+      </div>
+      <div>
+        <dt>Responsável técnico do ensaio</dt>
+        <dd>{{ currentReport.test.responsible?.name || 'Não informado' }}</dd>
+      </div>
+      <div>
+        <dt>Registro criado</dt>
+        <dd>{{ dateLabel(currentReport.createdAt) }}</dd>
+      </div>
+    </dl>
+  </section>
+
+  <section class="report-section" aria-labelledby="report-method-title">
+    <h3 id="report-method-title">Método e norma</h3>
+    <dl class="report-facts report-facts--two">
+      <div>
+        <dt>Método</dt>
+        <dd>{{ currentReport.test.method || 'Não informado' }}</dd>
+      </div>
+      <div>
+        <dt>Norma</dt>
+        <dd>{{ currentReport.test.standard || 'Não informada' }}</dd>
+      </div>
+      <div>
+        <dt>Data prevista do ensaio</dt>
+        <dd>{{ civilDateLabel(currentReport.test.scheduledDate) }}</dd>
+      </div>
+      <div>
+        <dt>Classificação registrada</dt>
+        <dd>{{ classificationLabel(currentReport.test.analysisClassification) }}</dd>
+      </div>
+    </dl>
+  </section>
+
+  <section class="report-section" aria-labelledby="report-summary-title">
+    <h3 id="report-summary-title">Resumo técnico e conclusão registrada</h3>
+    @if (currentReport.test.reportText) {
+      <p class="report-summary">{{ currentReport.test.reportText }}</p>
+    } @else {
+      <p class="report-muted">Nenhum texto técnico foi registrado para este ensaio.</p>
+    }
+  </section>
+
+  <section class="report-section" aria-labelledby="report-measurements-title">
+    <h3 id="report-measurements-title">Medições</h3>
+    @if (currentReport.test.measurements.length) {
+      <div class="report-table-scroll" tabindex="0" aria-label="Tabela de medições, com rolagem horizontal quando necessário">
+        <table class="report-measurements">
+          <thead>
+            <tr>
+              <th scope="col">Parâmetro</th>
+              <th scope="col">Resultado</th>
+              <th scope="col">Unidade</th>
+              <th scope="col">Método</th>
+              <th scope="col">Limite de referência</th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (measurement of currentReport.test.measurements; track measurement.code) {
+              <tr>
+                <th scope="row">{{ measurement.name }}</th>
+                <td>{{ resultLabel(measurement.result) }}</td>
+                <td>{{ measurement.unit || 'Não informada' }}</td>
+                <td>{{ measurement.method || 'Não informado' }}</td>
+                <td>{{ measurement.referenceLimit || 'Não informado' }}</td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+    } @else {
+      <p class="report-muted">Não há medições registradas neste relatório.</p>
+    }
+  </section>
+
+  <section class="report-section" aria-labelledby="report-validation-title">
+    <h3 id="report-validation-title">Eventos documentais</h3>
+    <dl class="report-facts report-facts--two">
+      <div>
+        <dt>Validado por</dt>
+        <dd>{{ currentReport.validatedBy?.name || 'Ainda não validado' }}</dd>
+      </div>
+      <div>
+        <dt>Data da validação</dt>
+        <dd>{{ eventDateLabel(currentReport.validatedAt) }}</dd>
+      </div>
+      <div>
+        <dt>Data da publicação</dt>
+        <dd>{{ eventDateLabel(currentReport.publishedAt) }}</dd>
+      </div>
+      <div>
+        <dt>Publicado por</dt>
+        <dd>{{ currentReport.publishedBy?.name || 'Ainda não publicado' }}</dd>
+      </div>
+    </dl>
+  </section>
+
+  @if (currentReport.test.instruments.length) {
+    <section class="report-section" aria-labelledby="report-instruments-title">
+      <h3 id="report-instruments-title">Instrumentos utilizados</h3>
+      <ul class="report-instrument-list">
+        @for (instrument of currentReport.test.instruments; track instrument.id) {
+          <li>
+            <span class="mono">{{ instrument.inventoryNumber }}</span>
+            <span>{{ instrument.name }}</span>
+            <span>Certificado: {{ instrument.calibrationCertificate || 'Não informado' }}</span>
+            <span>Calibração válida até {{ dateLabel(instrument.calibrationValidUntil) }}</span>
+          </li>
+        }
+      </ul>
+    </section>
+  }
+
+</article>

@@ -54,6 +54,9 @@ public sealed class HealthIndicatorsController : ControllerBase
         string? reportId,
         CancellationToken cancellationToken)
     {
+        if (_labResultsOptions.Source == LabResultsOptions.NotConnectedSource)
+            return this.LabIntegrationPending();
+
         if (!OpaqueIdentifier.TryDecode(id, out string equipmentKey))
             return this.UnreadableEquipmentIdentifier();
 

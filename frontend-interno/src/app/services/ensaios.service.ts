@@ -12,9 +12,16 @@ import {
   TechnicianReference,
   TestDetail,
   TestRequest,
+  TestStatusHistoryEntry,
+  TestStatusUpdateRequest,
+  TestStatusUpdateResponse,
   TestSummary,
   TestUpdateRequest,
 } from '@/app/model/ensaio';
+import {
+  ReportPreparationResponse,
+  TestReportsResponse,
+} from '@/app/model/relatorio';
 
 @Injectable({ providedIn: 'root' })
 export class EnsaiosService {
@@ -37,6 +44,31 @@ export class EnsaiosService {
     return this.http.put<TestDetail>(
       `${this.endpoint}/${encodeURIComponent(id)}`,
       request,
+    );
+  }
+  updateStatus(
+    id: string,
+    request: TestStatusUpdateRequest,
+  ): Observable<TestStatusUpdateResponse> {
+    return this.http.patch<TestStatusUpdateResponse>(
+      `${this.endpoint}/${encodeURIComponent(id)}/status`,
+      request,
+    );
+  }
+  statusHistory(id: string): Observable<TestStatusHistoryEntry[]> {
+    return this.http.get<TestStatusHistoryEntry[]>(
+      `${this.endpoint}/${encodeURIComponent(id)}/status-history`,
+    );
+  }
+  reportsForTest(id: string): Observable<TestReportsResponse> {
+    return this.http.get<TestReportsResponse>(
+      `${this.endpoint}/${encodeURIComponent(id)}/reports`,
+    );
+  }
+  prepareReport(id: string): Observable<ReportPreparationResponse> {
+    return this.http.post<ReportPreparationResponse>(
+      `${this.endpoint}/${encodeURIComponent(id)}/reports/preparation`,
+      null,
     );
   }
   samples(

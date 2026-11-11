@@ -1,22 +1,18 @@
-<nav class="mb-2 flex flex-wrap items-center gap-1 text-sm" aria-label="Trilha de navegação">
-  <a routerLink="/tecnico">Painel técnico</a>
-  <mat-icon class="icone-16" aria-hidden="true">chevron_right</mat-icon>
-  <a routerLink="/tecnico/ensaios">Ensaios</a>
-  <mat-icon class="icone-16" aria-hidden="true">chevron_right</mat-icon>
-  <span aria-current="page">{{ editId() ? "Editar ensaio" : "Novo ensaio" }}</span>
-</nav>
-
-<header class="mb-6">
-  <h1 class="m-0 flex flex-wrap items-center justify-start gap-x-3 gap-y-2 text-2xl font-semibold text-lactec-ink md:text-3xl">
-    <span>{{ editId() ? "Editar ensaio" : "Novo ensaio" }}</span>
-    @if (editId() && detail()?.code; as code) {
-      <span class="inline-flex max-w-full min-w-0 break-words rounded-md border border-lactec-line bg-lactec-line-soft px-2.5 py-1 font-mono text-sm font-medium leading-5 text-lactec-muted">
-        <span class="sr-only">Código do ensaio: </span>{{ code }}
-      </span>
-    }
-  </h1>
-  <p class="mt-1 text-sm text-lactec-muted">Registre os dados da análise e seus resultados.</p>
-</header>
+<app-page-header
+  [title]="editId() ? 'Editar ensaio' : 'Novo ensaio'"
+  subtitle="Registre os dados da análise e seus resultados."
+  [breadcrumbs]="[
+    { label: 'Painel técnico', route: '/tecnico' },
+    { label: 'Ensaios', route: '/tecnico/ensaios' },
+    { label: editId() ? 'Editar ensaio' : 'Novo ensaio' },
+  ]"
+>
+  @if (editId() && detail()?.code; as code) {
+    <span acoes class="inline-flex max-w-full min-w-0 break-words rounded-md border border-lactec-line bg-lactec-line-soft px-2.5 py-1 font-mono text-sm font-medium leading-5 text-lactec-muted">
+      <span class="sr-only">Código do ensaio: </span>{{ code }}
+    </span>
+  }
+</app-page-header>
 
 @if (detailLoading() && !detail()) {
   <div class="flex min-h-48 items-center justify-center gap-3" role="status" aria-live="polite">
@@ -214,9 +210,16 @@
           </mat-select>
         </label>
         @if (detail()) {
-          <label class="grid min-w-0 gap-1 text-sm font-medium">Estado do processo
-            <input readonly [value]="processStatusLabel(detail()!.status)" class="h-11 min-w-0 w-full rounded-lg border border-lactec-line bg-slate-50 px-3" />
-          </label>
+          <div class="grid min-w-0 content-start gap-2 text-sm font-medium">
+            <label class="grid min-w-0 gap-1">Estado do processo
+              <input readonly [value]="processStatusLabel(detail()!.status)" class="h-11 min-w-0 w-full rounded-lg border border-lactec-line bg-slate-50 px-3" />
+            </label>
+            @if (editId()) {
+              <button mat-stroked-button type="button" class="justify-self-start" (click)="openStatus()" [disabled]="formLocked">
+                <mat-icon>swap_horiz</mat-icon>Alterar status
+              </button>
+            }
+          </div>
         }
       </div>
     </section>
@@ -285,7 +288,7 @@
 
       <label class="mt-6 grid min-w-0 gap-2 text-sm font-medium">Texto técnico do laudo - rascunho
         <textarea id="report-text" formControlName="reportText" rows="5" maxlength="10000" [attr.aria-invalid]="form.controls.reportText.invalid && form.controls.reportText.touched" aria-describedby="report-text-error" class="w-full resize-y rounded-lg border border-lactec-line p-3" placeholder="Registre observações técnicas ainda não publicadas."></textarea>
-        <span id="report-text-error" class="font-normal text-lactec-muted">{{ form.controls.reportText.invalid ? "O texto aceita até 10000 caracteres." : "Não é um laudo assinado ou publicado." }}</span>
+        <span id="report-text-error" class="font-normal text-lactec-muted">{{ form.controls.reportText.invalid ? "O texto aceita até 10000 caracteres." : "Salvar mantém este texto como rascunho e não gera nem disponibiliza PDF ao cliente." }}</span>
       </label>
     </section>
 

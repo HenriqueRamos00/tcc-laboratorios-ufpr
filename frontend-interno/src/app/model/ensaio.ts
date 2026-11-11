@@ -122,3 +122,30 @@ export interface TestRequest {
 export interface TestUpdateRequest extends TestRequest {
   version: number;
 }
+
+export type TestStatusAction = 'set-status' | 'reject' | 'cancel';
+
+export type TestStatusTarget = Exclude<ProcessStatus, 'cancelled'>;
+
+export type TestStatusUpdateRequest =
+  | { action: 'set-status'; targetStatus: TestStatusTarget; version: number }
+  | { action: 'reject' | 'cancel'; justification: string; version: number };
+
+export interface TestStatusUpdateResponse {
+  id: string;
+  status: ProcessStatus;
+  changedAt: string | null;
+  responsible: TechnicianReference | null;
+  version: number;
+  changed: boolean;
+}
+
+export interface TestStatusHistoryEntry {
+  id: string;
+  previousStatus: ProcessStatus;
+  status: ProcessStatus;
+  action: TestStatusAction;
+  justification: string | null;
+  changedAt: string;
+  responsible: TechnicianReference;
+}

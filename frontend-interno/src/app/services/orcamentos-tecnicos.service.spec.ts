@@ -22,6 +22,7 @@ describe('Serviço de orçamentos técnicos', () => {
     ...orcamento,
     description: 'Análise físico-química de óleo isolante',
     laboratoryName: 'Laboratório de Materiais',
+    protocol: 'L-45482-2026-X',
     scope: 'Caracterização de óleo isolante',
     items: [{ testType: 'Teor de água', sampleCount: 3, standard: 'ASTM D1533' }],
   };

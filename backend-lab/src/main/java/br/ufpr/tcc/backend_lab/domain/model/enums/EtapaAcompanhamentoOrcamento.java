@@ -34,6 +34,13 @@ public enum EtapaAcompanhamentoOrcamento {
         return texto;
     }
 
+    public boolean adequadaAposAceiteSemExecucao() {
+        return this == APROVADO_PELO_CLIENTE
+                || this == AGUARDANDO_AMOSTRA
+                || this == RECEBIDO
+                || this == PROTOCOLADO;
+    }
+
     public static EtapaAcompanhamentoOrcamento deTexto(String texto) {
         if (texto == null || texto.isBlank()) {
             throw new IllegalArgumentException("Etapa de acompanhamento é obrigatória");

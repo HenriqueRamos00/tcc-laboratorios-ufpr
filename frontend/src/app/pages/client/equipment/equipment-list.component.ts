@@ -1,3 +1,4 @@
+import { HttpErrorResponse } from '@angular/common/http';
 import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
 import { takeUntilDestroyed, toObservable } from '@angular/core/rxjs-interop';
 import { MatIconModule } from '@angular/material/icon';
@@ -38,6 +39,7 @@ export class EquipmentListComponent {
   protected readonly searchTerm = signal('');
   protected readonly loading = signal(true);
   protected readonly failed = signal(false);
+  protected readonly unavailable = signal(false);
   protected readonly equipmentList = signal<readonly Equipment[]>([]);
 
   /**
@@ -64,10 +66,12 @@ export class EquipmentListComponent {
         tap(() => {
           this.loading.set(true);
           this.failed.set(false);
+          this.unavailable.set(false);
         }),
         switchMap((page) =>
           this.equipments.list({ page, pageSize: this.pageSize }).pipe(
-            catchError(() => {
+            catchError((error: unknown) => {
+              this.unavailable.set(error instanceof HttpErrorResponse && error.status === 501);
               this.failed.set(true);
               this.loading.set(false);
               return EMPTY;

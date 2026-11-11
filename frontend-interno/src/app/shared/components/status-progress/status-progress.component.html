@@ -1,0 +1,21 @@
+<div class="status-progress" role="list" [attr.aria-label]="label()">
+  @for (step of visibleSteps(); track step.key; let last = $last) {
+    <div class="status-progress__step" [attr.data-state]="step.state" [attr.aria-current]="step.state === 'active' ? 'step' : null" role="listitem">
+      <div class="status-progress__circle">
+        @if (step.state === 'completed') {
+          <mat-icon class="status-progress__icon" aria-hidden="true">check</mat-icon>
+        } @else {
+          <mat-icon class="status-progress__icon" aria-hidden="true">{{ step.icon }}</mat-icon>
+        }
+      </div>
+      <span class="status-progress__label">{{ step.label }}</span>
+    </div>
+    @if (!last) {
+      <span
+        class="status-progress__connector"
+        [attr.data-completed]="step.state === 'completed'"
+        aria-hidden="true"
+      ></span>
+    }
+  }
+</div>

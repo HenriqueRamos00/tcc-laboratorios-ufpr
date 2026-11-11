@@ -47,7 +47,7 @@ const LAUDOS_POR_CODIGO = new Map<string, Report[]>([
   ['EAQ_2026_45499_V_1', [laudo('LACTEC-00412/2026', 'EAQ_2026_45499_V_1')]],
 ]);
 
-function montarTela(quoteId: string) {
+function montarTela(quoteId: string, conclusion?: { testType: string; summary: string }) {
   const pedidos: ReportQuery[] = [];
 
   TestBed.configureTestingModule({
@@ -68,7 +68,7 @@ function montarTela(quoteId: string) {
           list: (query: ReportQuery) => {
             pedidos.push(query);
             const items = LAUDOS_POR_CODIGO.get(query.quoteCode ?? '') ?? [];
-            return of({ items, total: items.length, page: query.page, pageSize: query.pageSize });
+            return of({ items, total: items.length, page: query.page, pageSize: query.pageSize, ...conclusion });
           },
         },
       },
@@ -89,10 +89,16 @@ function relatoriosNaTabela(tela: HTMLElement): (string | undefined)[] {
 }
 
 describe('QuoteReportsComponent, os laudos de um orçamento só', () => {
+  it('mostra o tipo e a conclusão publicados quando o Spring os fornece', () => {
+    const { tela } = montarTela('quote-15', { testType: 'Cromatografia', summary: 'Resultado validado e publicado' });
+    expect(tela.textContent).toContain('Tipo de ensaio: Cromatografia');
+    expect(tela.textContent).toContain('Resumo da análise: Resultado validado e publicado');
+  });
+
   it('pede à API os laudos pelo código do orçamento que o endereço nomeia', () => {
     const { tela, pedidos } = montarTela('quote-18');
 
-    expect(pedidos).toEqual([{ quoteCode: 'EAQ_2026_45499_V_1', page: 1, pageSize: 50 }]);
+    expect(pedidos).toEqual([{ quoteId: 'quote-18', quoteCode: 'EAQ_2026_45499_V_1', page: 1, pageSize: 50 }]);
     expect(relatoriosNaTabela(tela)).toEqual(['LACTEC-00412/2026']);
   });
 

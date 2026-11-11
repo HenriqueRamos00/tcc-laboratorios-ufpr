@@ -31,6 +31,12 @@ public interface OrcamentoRepository extends JpaRepository<Orcamento, Long> {
     @Query("select orcamento from Orcamento orcamento where orcamento.id = :id")
     Optional<Orcamento> buscarDetalhePorId(Long id);
 
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("select orcamento from Orcamento orcamento where orcamento.id = :id")
+    Optional<Orcamento> buscarPorIdComBloqueio(@Param("id") Long id);
+
+    @Query(value = "select status from orcamentos where id = :id for update", nativeQuery = true)
+    Optional<String> buscarStatusComBloqueio(@Param("id") Long id);
     /**
      * Busca o orçamento travando a linha (SELECT ... FOR UPDATE) até o fim da transação.
      * Assim, dois pedidos simultâneos de aceite ou recusa do mesmo orçamento são atendidos
@@ -74,18 +80,23 @@ public interface OrcamentoRepository extends JpaRepository<Orcamento, Long> {
     @EntityGraph(attributePaths = "empresa")
     @Query(value = """
             select orcamento from Orcamento orcamento
-            where (:busca is null
+            where orcamento.status in :statusComercialElegivel
+                and (:busca is null
                 or lower(orcamento.code) like :busca escape '!'
                 or lower(orcamento.name) like :busca escape '!'
                 or lower(orcamento.empresa.legalName) like :busca escape '!')
             """, countQuery = """
             select count(orcamento) from Orcamento orcamento
-            where (:busca is null
+            where orcamento.status in :statusComercialElegivel
+                and (:busca is null
                 or lower(orcamento.code) like :busca escape '!'
                 or lower(orcamento.name) like :busca escape '!'
                 or lower(orcamento.empresa.legalName) like :busca escape '!')
             """)
-    Page<Orcamento> pesquisarReferenciasEnsaio(@Param("busca") String busca, Pageable pageable);
+    Page<Orcamento> pesquisarReferenciasEnsaio(
+            @Param("busca") String busca,
+            @Param("statusComercialElegivel") List<StatusComercialOrcamento> statusComercialElegivel,
+            Pageable pageable);
 
     @Query(
             """

@@ -139,6 +139,7 @@ class OrcamentoAtomicidadeTests {
         Orcamento orcamento = new Orcamento();
         orcamento.setEmpresa(empresa);
         orcamento.setCode(codigo);
+        orcamento.setProtocol("L-TEST-2026-" + codigo);
         orcamento.setName("Nome anterior");
         orcamento.setDescription("Descrição anterior");
         orcamento.setStatus(StatusComercialOrcamento.PENDING_ACCEPTANCE);
@@ -171,6 +172,7 @@ class OrcamentoAtomicidadeTests {
                   "companyId": "%s",
                   "name": "Nome atualizado",
                   "laboratoryName": "Laboratório atualizado",
+                  "protocol": "L-TEST-2026-001-X",
                   "description": "Descrição atualizada",
                   "scope": "Escopo atualizado",
                   "externalContactName": "Contato próprio",

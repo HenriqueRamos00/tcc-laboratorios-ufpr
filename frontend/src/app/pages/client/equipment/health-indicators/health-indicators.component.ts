@@ -1,3 +1,4 @@
+import { HttpErrorResponse } from '@angular/common/http';
 import { ChangeDetectionStrategy, Component, computed, inject, input, signal } from '@angular/core';
 import { toObservable, toSignal } from '@angular/core/rxjs-interop';
 import { catchError, map, of, startWith, switchMap } from 'rxjs';
@@ -163,7 +164,9 @@ export class HealthIndicatorsComponent {
             const available = availableTabs(data);
             return available['fisico-quimico'] || available.gases ? ok(data) : empty;
           }),
-          catchError(() => of(failure('A consulta ao AutoLAB falhou. Tente novamente em instantes.'))),
+          catchError((error: unknown) => of(failure(error instanceof HttpErrorResponse && error.status === 501
+            ? 'A consulta de equipamentos e indicadores ainda não está disponível neste ambiente.'
+            : 'A consulta falhou. Tente novamente em instantes.'))),
           startWith(loading),
         ),
       ),

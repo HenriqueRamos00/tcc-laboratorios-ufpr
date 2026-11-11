@@ -20,6 +20,12 @@ public static class LabTestSourceRegistration
 
         services.AddSingleton(options);
 
+        if (options.Source == LabResultsOptions.NotConnectedSource)
+        {
+            services.AddScoped<ILabTestRepository, NotConnectedLabTestRepository>();
+            return services;
+        }
+
         if (options.Scope is not (LabResultsOptions.AllScope or LabResultsOptions.CompanyScope))
             throw new InvalidOperationException(
                 $"Configuracao '{LabResultsOptions.SectionName}:Scope' ausente ou com valor desconhecido "
@@ -29,7 +35,7 @@ public static class LabTestSourceRegistration
         if (string.IsNullOrWhiteSpace(options.Source))
             throw new InvalidOperationException(
                 $"Configuracao '{LabResultsOptions.SectionName}:Source' nao definida. "
-                + $"Valor aceito: '{LabResultsOptions.SqlServerSource}'.");
+                + $"Valores aceitos: '{LabResultsOptions.NotConnectedSource}', '{LabResultsOptions.SqlServerSource}'.");
 
         if (options.Source != LabResultsOptions.SqlServerSource)
             throw new InvalidOperationException(

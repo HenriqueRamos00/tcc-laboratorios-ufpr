@@ -97,6 +97,13 @@ services:
       EquipmentRegistry__Source: sql-server
       LaboratoryProgress__Source: sql-server
       ReportDocuments__Source: sql-server
+      AutoLab__Server: sqlserver
+      AutoLab__Database: autolab
+      AutoLab__User: sa
+      AutoLab__Password: *demo-sql-password
+      AutoLab__Encrypt: "false"
+      AutoLab__TrustServerCertificate: "true"
+      AutoLab__ReadOnlyIntent: "false"
       BackendAuth__BaseUrl: http://backend-auth:8080
       BackendAuth__ServiceToken: *demo-service-token
       BackendAuth__ServiceCode: portal-web

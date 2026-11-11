@@ -305,12 +305,12 @@ class OrcamentoControllerTests {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.page").value(1))
                 .andExpect(jsonPath("$.pageSize").value(2))
-                .andExpect(jsonPath("$.totalItems").value(4))
+                .andExpect(jsonPath("$.totalItems").value(2))
                 .andExpect(jsonPath("$.items.length()").value(2))
                 .andExpect(jsonPath("$.items[0].id").value(orcamentoMesmoDia.getId().toString()))
                 .andExpect(jsonPath("$.items[0].code").value("EAQ_2026_33322_V_3"))
                 .andExpect(jsonPath("$.items[0].companyName").value("Sanepar"))
-                .andExpect(jsonPath("$.items[0].technicalStatus").value(nullValue()))
+                .andExpect(jsonPath("$.items[0].technicalStatus").value("not-started"))
                 .andExpect(jsonPath("$.items[0].totalPrice").doesNotExist())
                 .andExpect(jsonPath("$.items[0].externalContactName").doesNotExist())
                 .andExpect(jsonPath("$.items[0].externalContactEmail").doesNotExist())
@@ -318,6 +318,27 @@ class OrcamentoControllerTests {
                 .andExpect(jsonPath("$.items[0].stage").doesNotExist())
                 .andExpect(jsonPath("$.items[0].hasDocument").doesNotExist())
                 .andExpect(jsonPath("$.items[0].items").doesNotExist());
+
+        mockMvc.perform(
+                        get("/api/technician/quotes")
+                                .param("status", "not-started")
+                                .param("page", "1")
+                                .param("pageSize", "1")
+                                .header("Authorization", tokenTecnico))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.totalItems").value(2))
+                .andExpect(jsonPath("$.items.length()").value(1))
+                .andExpect(jsonPath("$.items[0].technicalStatus").value("not-started"));
+
+        mockMvc.perform(
+                        get("/api/technician/quotes")
+                                .param("status", "not-started")
+                                .param("page", "2")
+                                .param("pageSize", "1")
+                                .header("Authorization", tokenTecnico))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.totalItems").value(2))
+                .andExpect(jsonPath("$.items[0].code").value("EAQX2026X45482XVX1"));
 
         var resposta =
                 mockMvc.perform(
@@ -339,14 +360,14 @@ class OrcamentoControllerTests {
                 "TECNICO-INICIO",
                 "Limite inicial",
                 "Descrição fora da busca técnica",
-                StatusComercialOrcamento.CANCELLED,
+                StatusComercialOrcamento.FINISHED,
                 OffsetDateTime.parse("2026-10-15T03:00:00Z"));
         criarOrcamento(
                 copel,
                 "TECNICO-FIM",
                 "Limite final",
                 "Descrição fora da busca técnica",
-                StatusComercialOrcamento.CANCELLED,
+                StatusComercialOrcamento.FINISHED,
                 OffsetDateTime.parse("2026-10-16T03:00:00Z"));
 
         mockMvc.perform(
@@ -356,7 +377,7 @@ class OrcamentoControllerTests {
                                 .param("to", "2026-10-15")
                                 .header("Authorization", tokenTecnico))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.totalItems").value(2));
+                .andExpect(jsonPath("$.totalItems").value(1));
 
         mockMvc.perform(
                         get("/api/technician/quotes")
@@ -392,14 +413,14 @@ class OrcamentoControllerTests {
                                 .param("from", "2026-10-10")
                                 .header("Authorization", tokenTecnico))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.totalItems").value(3));
+                .andExpect(jsonPath("$.totalItems").value(1));
 
         mockMvc.perform(
                         get("/api/technician/quotes")
                                 .param("to", "2026-10-10")
                                 .header("Authorization", tokenTecnico))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.totalItems").value(2));
+                .andExpect(jsonPath("$.totalItems").value(1));
 
         mockMvc.perform(
                         get("/api/technician/quotes")
@@ -424,6 +445,8 @@ class OrcamentoControllerTests {
     @Test
     @DisplayName("valida status técnico sem converter status comercial")
     void validaFiltroDeStatusTecnico() throws Exception {
+        orcamentoMaisNovo.setStatus(StatusComercialOrcamento.IN_PROGRESS);
+        orcamentos.saveAndFlush(orcamentoMaisNovo);
         criarExecucao(
                 orcamentoMaisNovo,
                 StatusEnsaio.REPORT_PUBLISHED,
@@ -496,7 +519,7 @@ class OrcamentoControllerTests {
         assertEquals(
                 Set.of(
                         "id", "code", "name", "companyName", "createdDate", "technicalStatus",
-                        "description", "laboratoryName", "scope", "items"),
+                        "description", "laboratoryName", "protocol", "scope", "items"),
                 nomesDosCampos(raiz));
         assertEquals(
                 Set.of("testType", "sampleCount", "standard"),
@@ -540,6 +563,10 @@ class OrcamentoControllerTests {
     @Test
     @DisplayName("resume execução ativa, cancelamentos e evidência de publicação antes da paginação")
     void agregaStatusTecnicoEFiltraAntesDaPaginacao() throws Exception {
+        orcamentoMaisNovo.setStatus(StatusComercialOrcamento.IN_PROGRESS);
+        orcamentoAntigo.setStatus(StatusComercialOrcamento.FINISHED);
+        orcamentos.saveAndFlush(orcamentoMaisNovo);
+        orcamentos.saveAndFlush(orcamentoAntigo);
         criarExecucao(orcamentoMaisNovo, StatusEnsaio.REPORT_PUBLISHED,
                 "LAUDO-MAIS-NOVO", OffsetDateTime.parse("2026-10-16T10:00:00Z"));
         criarExecucao(orcamentoMaisNovo, StatusEnsaio.CANCELLED, null, null);
@@ -554,7 +581,7 @@ class OrcamentoControllerTests {
                         "TECNICO-FINALIZADO",
                         "Execução finalizada",
                         "Descrição finalizada",
-                        StatusComercialOrcamento.PENDING_ACCEPTANCE,
+                        StatusComercialOrcamento.IN_PROGRESS,
                         OffsetDateTime.parse("2026-10-08T10:00:00Z"));
         criarExecucao(finalizado, StatusEnsaio.FINALIZED, null, null);
         criarExecucao(finalizado, StatusEnsaio.DRAFTING_REPORT, null, null);
@@ -565,7 +592,7 @@ class OrcamentoControllerTests {
                         "TECNICO-TODOS-CANCELADOS",
                         "Execuções canceladas",
                         "Descrição cancelada",
-                        StatusComercialOrcamento.PENDING_ACCEPTANCE,
+                        StatusComercialOrcamento.IN_PROGRESS,
                         OffsetDateTime.parse("2026-10-07T10:00:00Z"));
         criarExecucao(cancelado, StatusEnsaio.CANCELLED, null, null);
         criarExecucao(cancelado, StatusEnsaio.CANCELLED, null, null);
@@ -576,7 +603,7 @@ class OrcamentoControllerTests {
                         "TECNICO-EVIDENCIA-INCOMPLETA",
                         "Publicação sem evidência completa",
                         "Descrição da publicação incompleta",
-                        StatusComercialOrcamento.PENDING_ACCEPTANCE,
+                        StatusComercialOrcamento.IN_PROGRESS,
                         OffsetDateTime.parse("2026-10-20T10:00:00Z"));
         criarExecucao(
                 evidenciasIncompletas,
@@ -590,7 +617,7 @@ class OrcamentoControllerTests {
         assertStatusTecnico("TECNICO-FINALIZADO", "validated");
         assertStatusTecnico("TECNICO-EVIDENCIA-INCOMPLETA", "validated");
         assertStatusTecnico("TECNICO-TODOS-CANCELADOS", "cancelled");
-        assertStatusTecnico("EAQX2026X45482XVX1", null);
+        assertStatusTecnico("EAQX2026X45482XVX1", "not-started");
 
         mockMvc.perform(
                         get("/api/technician/quotes")
@@ -712,6 +739,7 @@ class OrcamentoControllerTests {
                 .andExpect(jsonPath("$.stage").value("Negociação"))
                 .andExpect(jsonPath("$.companyId").value(copel.getId().toString()))
                 .andExpect(jsonPath("$.laboratoryName").value("Laboratório de Materiais"))
+                .andExpect(jsonPath("$.protocol").value("L-TEST-NOVO-001-X"))
                 .andExpect(jsonPath("$.scope").value("Ensaios de caracterização"))
                 .andExpect(jsonPath("$.externalContactName").value("Contato do orçamento"))
                 .andExpect(jsonPath("$.externalContactEmail").value("novo.contato@example.test"))
@@ -725,6 +753,20 @@ class OrcamentoControllerTests {
 
         executarBusca("NOVO-001")
                 .andExpect(jsonPath("$.items[0].items").doesNotExist());
+    }
+
+    @Test
+    @DisplayName("rejeita orçamento sem protocolo do laboratório")
+    void rejeitaOrcamentoSemProtocoloDoLaboratorio() throws Exception {
+        String corpoSemProtocolo = corpoOrcamento(
+                "SEM-PROTOCOLO-001", copel, "PendingAcceptance", "2", "15.00", "30.00")
+                .replace("\"protocol\": \"L-TEST-NOVO-001-X\",", "\"protocol\": \"   \",");
+
+        mockMvc.perform(post("/api/quotes")
+                        .header("Authorization", tokenAdministrador)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(corpoSemProtocolo))
+                .andExpect(status().isBadRequest());
     }
 
     @Test
@@ -808,6 +850,50 @@ class OrcamentoControllerTests {
 
         assertArrayEquals(
                 pdfAntes, documentos.findById(orcamentoMaisNovo.getId()).orElseThrow().getContent());
+    }
+
+    @Test
+    @DisplayName("separa aceite comercial de início técnico e preserva as etapas válidas")
+    void ajustaAcompanhamentoNaTransicaoDePendenteParaAceito() throws Exception {
+        String[][] etapasSemExecucao = {
+            {"Negociação", "Recebido"},
+            {"Em execução", "Recebido"},
+            {"Aprovado pelo cliente", "Aprovado pelo cliente"},
+            {"Aguardando entrega da amostra", "Aguardando entrega da amostra"},
+            {"Recebido", "Recebido"},
+            {"Protocolado", "Protocolado"}
+        };
+
+        for (String[] etapas : etapasSemExecucao) {
+            orcamentoMaisNovo.setStatus(StatusComercialOrcamento.PENDING_ACCEPTANCE);
+            orcamentoMaisNovo.setStage(etapas[0]);
+            orcamentos.saveAndFlush(orcamentoMaisNovo);
+
+            mockMvc.perform(
+                            put("/api/quotes/{id}", orcamentoMaisNovo.getId())
+                                    .header("Authorization", tokenAdministrador)
+                                    .contentType(MediaType.APPLICATION_JSON)
+                                    .content(corpoOrcamento(
+                                            "EAQ_2026_45482_V_1", copel, "InProgress", "1", "12500.00", "12500.00")))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.status").value("InProgress"))
+                    .andExpect(jsonPath("$.stage").value(etapas[1]));
+        }
+
+        orcamentoMaisNovo.setStatus(StatusComercialOrcamento.PENDING_ACCEPTANCE);
+        orcamentoMaisNovo.setStage("Negociação");
+        orcamentos.saveAndFlush(orcamentoMaisNovo);
+        criarExecucao(orcamentoMaisNovo, StatusEnsaio.VALIDATED, null, null);
+
+        mockMvc.perform(
+                        put("/api/quotes/{id}", orcamentoMaisNovo.getId())
+                                .header("Authorization", tokenAdministrador)
+                                .contentType(MediaType.APPLICATION_JSON)
+                                .content(corpoOrcamento(
+                                        "EAQ_2026_45482_V_1", copel, "InProgress", "1", "12500.00", "12500.00")))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.status").value("InProgress"))
+                .andExpect(jsonPath("$.stage").value("Validado"));
     }
 
     @Test
@@ -901,6 +987,7 @@ class OrcamentoControllerTests {
                   "companyId": "%s",
                   "name": "Proposta de ensaio",
                   "laboratoryName": "Laboratório de Materiais",
+                  "protocol": "L-TEST-NOVO-001-X",
                   "description": "Caracterização mecânica de amostras",
                   "scope": "Ensaios de caracterização",
                   "externalContactName": " Contato do orçamento ",
@@ -953,6 +1040,7 @@ class OrcamentoControllerTests {
         Orcamento orcamento = new Orcamento();
         orcamento.setEmpresa(empresa);
         orcamento.setCode(code);
+        orcamento.setProtocol("L-TEST-2026-" + code);
         orcamento.setName(name);
         orcamento.setStatus(status);
         orcamento.setStage("Negociação");

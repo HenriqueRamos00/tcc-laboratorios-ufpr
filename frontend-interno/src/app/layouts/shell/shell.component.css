@@ -1,0 +1,35 @@
+.shell-back {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  min-height: 2.75rem;
+  padding: 0.5rem 0.75rem;
+  border-radius: 0.5rem;
+  color: var(--color-lactec-nav);
+  font-weight: 600;
+  text-decoration: none;
+  transition: background-color 120ms ease, color 120ms ease;
+}
+
+.shell-back:hover {
+  color: var(--color-lactec-nav-dark);
+  background-color: var(--color-lactec-line-soft);
+}
+
+.shell-back:focus-visible {
+  outline: 2px solid var(--color-lactec-primary-dark);
+  outline-offset: 2px;
+}
+
+.shell-back--dark {
+  color: var(--color-lactec-on-primary);
+}
+
+.shell-back--dark:hover {
+  color: var(--color-lactec-on-primary);
+  background-color: rgba(255, 255, 255, 0.1);
+}
+
+.shell-back--dark:focus-visible {
+  outline-color: var(--color-lactec-primary);
+}

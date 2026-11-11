@@ -1,0 +1,311 @@
+<nav class="mb-2 flex flex-wrap items-center gap-1 text-sm" aria-label="Trilha de navegação">
+  <a routerLink="/tecnico" class="text-lactec-primary hover:underline">Painel técnico</a>
+  <mat-icon class="icone-16 text-lactec-muted" aria-hidden="true">chevron_right</mat-icon>
+  <a routerLink="/tecnico/ensaios" class="text-lactec-primary hover:underline">Ensaios</a>
+  <mat-icon class="icone-16 text-lactec-muted" aria-hidden="true">chevron_right</mat-icon>
+  <span aria-current="page">Status do ensaio</span>
+</nav>
+
+@if (detailLoading() && !detail()) {
+  <div class="flex min-h-48 items-center justify-center gap-3 rounded-2xl border border-lactec-line bg-white" role="status" aria-busy="true">
+    <mat-spinner diameter="24" />
+    <span>Carregando ensaio…</span>
+  </div>
+} @else if (detailError() || !detail()) {
+  <section class="flex min-h-52 flex-col items-center justify-center gap-3 rounded-2xl border border-red-200 bg-white px-6 text-center" role="alert">
+    <mat-icon class="icone-36 text-red-700" aria-hidden="true">cloud_off</mat-icon>
+    <div>
+      <h1 class="m-0 text-lg font-semibold text-lactec-ink">
+        @if (detailErrorStatus() === 403) { Acesso não autorizado }
+        @else if (detailErrorStatus() === 404) { Ensaio não encontrado }
+        @else { Não foi possível carregar o ensaio }
+      </h1>
+      <p class="mb-0 mt-1 text-sm text-lactec-muted">
+        @if (detailErrorStatus() === 403) { Sua conta não tem acesso a este ensaio. }
+        @else if (detailErrorStatus() === 404) { O ensaio solicitado não está disponível. }
+        @else { Confira sua conexão e tente novamente. }
+      </p>
+    </div>
+    <div class="flex flex-wrap justify-center gap-2">
+      @if (detailErrorStatus() !== 403 && detailErrorStatus() !== 404) {
+        <button mat-stroked-button type="button" (click)="retry()">Tentar novamente</button>
+      }
+      <a mat-button routerLink="/tecnico/ensaios">Voltar para ensaios</a>
+    </div>
+  </section>
+} @else {
+  <header class="flex flex-wrap items-start justify-between gap-4">
+    <div class="min-w-0">
+      <h1 class="m-0 flex flex-wrap items-center gap-x-3 gap-y-2 text-2xl font-semibold text-lactec-ink md:text-3xl">
+        <span>Atualizar status do ensaio</span>
+        <span class="inline-flex max-w-full min-w-0 break-words rounded-md border border-lactec-line bg-lactec-line-soft px-2.5 py-1 font-mono text-sm font-medium leading-5 text-lactec-muted">
+          <span class="sr-only">Código do ensaio: </span>{{ detail()!.code }}
+        </span>
+      </h1>
+      <p class="mb-0 mt-1 text-sm text-lactec-muted">Acompanhe as etapas, os equipamentos e as alterações deste ensaio.</p>
+    </div>
+    <div class="flex flex-wrap gap-2">
+      <a mat-stroked-button routerLink="/tecnico/ensaios">Voltar</a>
+      <a mat-flat-button [routerLink]="['/tecnico/ensaios', detail()!.id, 'editar']">
+        <mat-icon aria-hidden="true">edit</mat-icon>Editar ensaio
+      </a>
+    </div>
+  </header>
+
+  <section class="mt-6 rounded-2xl border border-lactec-line bg-white p-5 md:p-6" aria-labelledby="test-summary-heading">
+    <div class="flex flex-wrap items-start justify-between gap-4">
+      <div class="min-w-0">
+        <h2 id="test-summary-heading" class="m-0 text-lg font-semibold text-lactec-ink">Dados do ensaio</h2>
+        <p class="mb-0 mt-1 break-words text-sm text-lactec-muted">
+          {{ detail()!.sample.code }} - {{ detail()!.sample.description }}
+        </p>
+      </div>
+      <span class="inline-flex max-w-full break-words rounded-full bg-sky-100 px-3 py-1 text-sm font-semibold text-sky-900">
+        {{ statusLabel(detail()!.status) }}
+      </span>
+    </div>
+    <dl class="mt-5 grid grid-cols-1 gap-x-6 gap-y-4 sm:grid-cols-2 lg:grid-cols-4">
+      <div class="min-w-0">
+        <dt class="text-xs font-semibold uppercase tracking-wide text-lactec-muted">Orçamento</dt>
+        <dd class="mb-0 mt-1 break-words text-sm text-lactec-ink">{{ detail()!.quote.code }} - {{ detail()!.quote.companyName }}</dd>
+      </div>
+      <div class="min-w-0">
+        <dt class="text-xs font-semibold uppercase tracking-wide text-lactec-muted">Tipo de ensaio</dt>
+        <dd class="mb-0 mt-1 break-words text-sm text-lactec-ink">{{ detail()!.type }}</dd>
+      </div>
+      <div class="min-w-0">
+        <dt class="text-xs font-semibold uppercase tracking-wide text-lactec-muted">Agendamento</dt>
+        <dd class="mb-0 mt-1 text-sm text-lactec-ink">{{ formatDate(detail()!.scheduledDate) }}</dd>
+      </div>
+      <div class="min-w-0">
+        <dt class="text-xs font-semibold uppercase tracking-wide text-lactec-muted">Responsável</dt>
+        <dd class="mb-0 mt-1 break-words text-sm text-lactec-ink">{{ detail()!.responsible.name }}</dd>
+      </div>
+      <div class="min-w-0">
+        <dt class="text-xs font-semibold uppercase tracking-wide text-lactec-muted">Método</dt>
+        <dd class="mb-0 mt-1 break-words text-sm text-lactec-ink">{{ detail()!.method }}</dd>
+      </div>
+      <div class="min-w-0">
+        <dt class="text-xs font-semibold uppercase tracking-wide text-lactec-muted">Norma</dt>
+        <dd class="mb-0 mt-1 break-words text-sm text-lactec-ink">{{ detail()!.standard }}</dd>
+      </div>
+    </dl>
+  </section>
+
+  <section class="mt-5 rounded-2xl border border-lactec-line bg-white p-5 md:p-6" aria-labelledby="status-flow-heading">
+    <div>
+      <h2 id="status-flow-heading" class="m-0 text-lg font-semibold text-lactec-ink">Fluxo de status</h2>
+    <p class="mb-0 mt-1 text-sm text-lactec-muted">O progresso mostra o status salvo. Escolha uma nova etapa e aplique a alteração quando estiver pronto.</p>
+    </div>
+
+    <app-status-progress
+      class="mt-6 block"
+      [steps]="flowSteps()"
+      [currentIndex]="currentStageIndex()"
+      label="Progresso do status do ensaio"
+    />
+    @if (publishedDocumentAvailable()) {
+      <p class="mb-0 mt-4 rounded-lg border border-emerald-200 bg-emerald-50 p-3 text-sm text-emerald-900" role="status">
+        Há pelo menos um relatório validado, publicado e com PDF acessível ao cliente. A etapa Relatório publicado pode ser selecionada manualmente.
+      </p>
+    } @else if (reportsError()) {
+      <div class="mt-4 flex flex-wrap items-center justify-between gap-3 rounded-lg border border-amber-300 bg-amber-50 p-3 text-sm text-amber-950" role="alert">
+        <span>Não foi possível confirmar a disponibilidade de um relatório publicado. A etapa permanece bloqueada até a consulta ser concluída.</span>
+        <button mat-stroked-button type="button" [disabled]="reportsLoading()" (click)="retryReports()">Tentar novamente</button>
+      </div>
+    } @else {
+      <p class="mb-0 mt-4 text-sm text-lactec-muted">
+        A etapa Relatório publicado só fica disponível após a validação e publicação de um relatório com PDF acessível ao cliente.
+      </p>
+    }
+
+    @if (detail()!.status === 'drafting-report') {
+      <section class="mt-5 rounded-xl border border-lactec-line-soft bg-lactec-line-soft/40 p-4" aria-labelledby="test-reports-heading">
+        <div class="report-preparation__header">
+          <div class="report-preparation__copy">
+            <h3 id="test-reports-heading" class="m-0 text-base font-semibold text-lactec-ink">Relatório técnico</h3>
+            <p class="mb-0 mt-1 text-sm text-lactec-muted">Prepare o documento depois de salvar os dados do ensaio.</p>
+          </div>
+          @if (!reportsLoading() && !reportsError() && !reportDocuments().length) {
+            <app-action-button
+              class="report-preparation__button"
+              variant="primary"
+              icon="description"
+              [label]="preparingReport() ? 'Preparando…' : 'Preparar relatório'"
+              [disabled]="!canPrepareReport"
+              [loading]="preparingReport()"
+              [fullWidthOnMobile]="true"
+              (activated)="prepareReport()"
+            />
+          }
+        </div>
+        @if (reportsLoading()) {
+          <p class="mb-0 mt-3 flex items-center gap-2 text-sm text-lactec-muted" role="status"><mat-spinner diameter="18" />Consultando documentos…</p>
+        } @else if (reportsError()) {
+          <p class="mb-0 mt-3 text-sm text-red-700" role="alert">Não foi possível consultar os relatórios deste ensaio.</p>
+        } @else if (preparationError()) {
+          <p class="mb-0 mt-3 text-sm text-red-700" role="alert">{{ preparationError() }}</p>
+        }
+        @if (reportDocuments().length) {
+          @if (reportDocuments().length > 1) {
+            <p class="mb-0 mt-3 text-sm text-lactec-muted">Há vários relatórios vinculados. Selecione o documento que deseja abrir.</p>
+          } @else {
+            <p class="mb-0 mt-3 text-sm text-lactec-muted">O relatório deste ensaio já existe.</p>
+          }
+          <ul class="mb-0 mt-2 grid list-none gap-2 p-0" aria-label="Relatórios deste ensaio">
+            @for (report of reportDocuments(); track report.id) {
+              <li>
+                <button mat-stroked-button type="button" (click)="openReport(report.id)">
+                  <mat-icon aria-hidden="true">description</mat-icon>
+                  Registro {{ report.id }} - {{ report.validationStatus === 'validated' ? 'Validado' : 'Aguardando validação' }}{{ report.published ? ', publicado' : '' }}
+                </button>
+              </li>
+            }
+          </ul>
+        }
+      </section>
+    }
+
+    @if (detail()!.status === 'cancelled') {
+      <div class="mt-4 rounded-lg border border-amber-300 bg-amber-50 p-4 text-sm text-amber-950" role="status">
+        Este ensaio está cancelado. Para reabri-lo, escolha diretamente uma nova etapa; o histórico de status será preservado.
+      </div>
+    }
+    @if (conflict() || staleState()) {
+      <div class="mt-4 flex flex-wrap items-center justify-between gap-3 rounded-lg border border-amber-300 bg-amber-50 p-4 text-sm text-amber-950" role="alert">
+        <span>{{ saveError() }}</span>
+        <button mat-stroked-button type="button" (click)="reloadCurrentData()">Atualizar dados</button>
+      </div>
+    } @else if (saveError()) {
+      <div class="mt-4 rounded-lg border border-red-200 bg-red-50 p-4 text-sm text-red-800" role="alert">{{ saveError() }}</div>
+    }
+    @if (saveMessage()) {
+      <div class="mt-4 rounded-lg border border-emerald-200 bg-emerald-50 p-4 text-sm text-emerald-900" role="status" aria-live="polite">{{ saveMessage() }}</div>
+    }
+
+    <div class="mt-6 grid grid-cols-1 gap-5 border-t border-lactec-line-soft pt-5 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-end">
+      <div class="min-w-0">
+        <label for="new-test-status" class="mb-2 block text-sm font-semibold text-lactec-ink">Novo status</label>
+        <select
+          id="new-test-status"
+          class="status-edit__select"
+          [value]="selectedStatus() ?? ''"
+          [disabled]="!canChangeStatus"
+          aria-describedby="status-selection-hint"
+          (change)="onStatusControlChange($event)"
+        >
+          <option value="">Selecione uma etapa</option>
+          @for (stage of targetStatuses(); track stage) {
+            <option [value]="stage">
+              {{ statusLabel(stage) }}{{ isCurrentStage(stage) ? ' (status atual)' : '' }}
+            </option>
+          }
+        </select>
+        <p id="status-selection-hint" class="mb-0 mt-2 text-sm text-lactec-muted">
+          A escolha não altera o ensaio até você aplicar a mudança.
+        </p>
+        <div class="mt-3 flex flex-wrap gap-2">
+          <button mat-stroked-button type="button" [disabled]="!canPreparePreviousStage" (click)="preparePreviousStage()">
+            <mat-icon aria-hidden="true">arrow_back</mat-icon>Etapa anterior
+          </button>
+          <button mat-stroked-button type="button" [disabled]="!canPrepareNextStage" (click)="prepareNextStage()">
+            <mat-icon aria-hidden="true">arrow_forward</mat-icon>Próxima etapa
+          </button>
+        </div>
+      </div>
+      <button mat-flat-button type="button" class="justify-self-start lg:justify-self-end" [disabled]="!canSaveSelectedStatus" (click)="updateSelectedStatus()">
+        @if (saving()) { <mat-spinner diameter="18" /> Aplicando… }
+        @else { Aplicar alteração }
+      </button>
+    </div>
+
+    @if (selectedStatus()) {
+      <p class="mt-4 rounded-lg border border-lactec-primary/30 bg-lactec-primary/5 p-3 text-sm text-lactec-ink" role="status" aria-live="polite">
+        <strong>Alteração pendente:</strong>
+        {{ statusLabel(detail()!.status) }} -&gt; {{ statusLabel(selectedStatus()!) }}
+      </p>
+    }
+
+    @if (detail()!.status !== 'cancelled') {
+      <div class="mt-5 flex flex-wrap items-center gap-3 border-t border-lactec-line-soft pt-5">
+        <div class="flex flex-wrap gap-2">
+          <button mat-stroked-button type="button" [disabled]="!canChangeStatus || detail()!.status === 'incomplete'" (click)="reject()">
+            <mat-icon aria-hidden="true">undo</mat-icon>Rejeitar
+          </button>
+          <button mat-stroked-button type="button" class="text-red-800" [disabled]="!canChangeStatus" (click)="cancelTest()">
+            <mat-icon aria-hidden="true">block</mat-icon>Cancelar ensaio
+          </button>
+        </div>
+      </div>
+    }
+  </section>
+
+  <section class="mt-5 rounded-2xl border border-lactec-line bg-white p-5 md:p-6" aria-labelledby="equipment-heading">
+    <h2 id="equipment-heading" class="m-0 text-lg font-semibold text-lactec-ink">Equipamentos vinculados</h2>
+    @if (!detail()!.analyzedEquipment && !detail()!.equipment.length) {
+      <p class="mb-0 mt-3 text-sm text-lactec-muted">Nenhum equipamento está vinculado a este ensaio.</p>
+    } @else {
+      <div class="mt-4 grid grid-cols-1 gap-3 lg:grid-cols-2">
+        @if (detail()!.analyzedEquipment; as analyzed) {
+          <article class="min-w-0 rounded-lg border border-lactec-line-soft bg-lactec-line-soft/40 p-4">
+            <h3 class="m-0 break-words text-sm font-semibold text-lactec-ink">Equipamento analisado</h3>
+            <dl class="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-2">
+              <div><dt class="text-xs text-lactec-muted">TAG</dt><dd class="mb-0 mt-1 break-words text-sm">{{ analyzed.tag }}</dd></div>
+              <div><dt class="text-xs text-lactec-muted">Número de série</dt><dd class="mb-0 mt-1 break-words text-sm">{{ analyzed.serialNumber }}</dd></div>
+            </dl>
+          </article>
+        }
+        @for (equipment of detail()!.equipment; track equipment.id) {
+          <article class="min-w-0 rounded-lg border border-lactec-line-soft bg-lactec-line-soft/40 p-4">
+            <h3 class="m-0 break-words text-sm font-semibold text-lactec-ink">{{ equipment.inventoryNumber }} - {{ equipment.name }}</h3>
+            <dl class="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-2">
+              <div><dt class="text-xs text-lactec-muted">Certificado de calibração</dt><dd class="mb-0 mt-1 break-words text-sm">{{ equipment.calibrationCertificate ?? 'Não informado' }}</dd></div>
+              <div><dt class="text-xs text-lactec-muted">Validade da calibração</dt><dd class="mb-0 mt-1 text-sm">{{ equipment.calibrationValidUntil ? formatDate(equipment.calibrationValidUntil) : 'Não informada' }}</dd></div>
+            </dl>
+          </article>
+        }
+      </div>
+    }
+  </section>
+
+  <section class="mt-5 rounded-2xl border border-lactec-line bg-white p-5 md:p-6" aria-labelledby="history-heading">
+    <div class="flex flex-wrap items-center justify-between gap-3">
+      <div>
+        <h2 id="history-heading" class="m-0 text-lg font-semibold text-lactec-ink">Histórico de status</h2>
+        <p class="mb-0 mt-1 text-sm text-lactec-muted">Alterações registradas para esta execução.</p>
+      </div>
+      @if (historyError()) {
+        <button mat-stroked-button type="button" [disabled]="historyLoading()" (click)="retry()">Tentar carregar novamente</button>
+      }
+    </div>
+    @if (historyLoading()) {
+      <div class="mt-4 flex items-center gap-3 text-sm text-lactec-muted" role="status" aria-busy="true">
+        <mat-spinner diameter="20" />Carregando histórico…
+      </div>
+    } @else if (historyError()) {
+      <p class="mb-0 mt-4 text-sm text-red-700" role="alert">Não foi possível carregar o histórico. Tente novamente.</p>
+    } @else if (!history().length) {
+      <p class="mb-0 mt-4 text-sm text-lactec-muted" role="status">Ainda não há alterações de status registradas.</p>
+    } @else {
+      <ol class="mt-4 divide-y divide-lactec-line-soft" aria-label="Alterações de status em ordem cronológica">
+        @for (entry of history(); track entry.id) {
+          <li class="grid grid-cols-1 gap-2 py-4 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-start">
+            <div class="min-w-0">
+              <p class="mb-0 break-words text-sm font-semibold text-lactec-ink">
+                {{ entry.previousStatus ? statusLabel(entry.previousStatus) + ' → ' : '' }}{{ statusLabel(entry.status) }}
+              </p>
+              <p class="mb-0 mt-1 break-words text-sm text-lactec-muted">
+                {{ entry.action === 'reject' ? 'Rejeição' : entry.action === 'cancel' ? 'Cancelamento' : 'Atualização de status' }}
+                por {{ entry.responsible.name }}
+              </p>
+              @if (entry.justification) {
+                <p class="mb-0 mt-2 whitespace-pre-wrap break-words rounded-md bg-lactec-line-soft/50 p-3 text-sm text-lactec-ink-soft">{{ entry.justification }}</p>
+              }
+            </div>
+            <time class="text-sm text-lactec-muted" [attr.datetime]="entry.changedAt">{{ formatTimestamp(entry.changedAt) }}</time>
+          </li>
+        }
+      </ol>
+    }
+  </section>
+}

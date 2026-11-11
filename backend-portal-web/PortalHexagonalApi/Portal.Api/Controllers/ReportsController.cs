@@ -1,32 +1,40 @@
 using Microsoft.AspNetCore.Mvc;
 
+using Portal.Api.Configuration;
 using Portal.Api.LabResults;
 using Portal.Api.ReportDocuments;
 using Portal.Api.Reports;
 using Portal.Application.Paging;
+using Portal.Application.Quotes;
+using Portal.Application.Quotes.Exceptions;
 using Portal.Application.ReportDocuments;
 using Portal.Application.ReportDocuments.Exceptions;
+using Portal.Application.Reports.Exceptions;
 using Portal.Application.Visibility;
+using Portal.Domain.Quotes;
+using Portal.Domain.Reports;
+using SpringReports = Portal.Application.Reports;
 
 namespace Portal.Api.Controllers;
 
 [ApiController]
 [Route("api/reports")]
-public sealed class ReportsController : ControllerBase
+public sealed class ReportsController(
+    IForConsultingReports autoLabReports,
+    SpringReports.IForConsultingReports springReports,
+    IQuoteRepository quotes,
+    LabResultsOptions labResults,
+    ReportDocumentsOptions documents,
+    PortalOptions portal) : ControllerBase
 {
-    private readonly IForConsultingReports _reports;
-    private readonly LabResultsOptions _labResultsOptions;
-
-    public ReportsController(IForConsultingReports reports, LabResultsOptions labResultsOptions)
-    {
-        _reports = reports;
-        _labResultsOptions = labResultsOptions;
-    }
+    private bool UsesAutoLab => documents.Source == ReportDocumentsOptions.SqlServerSource;
+    private bool UsesSpring => !UsesAutoLab && portal.DataSource == PortalOptions.BackendLabSource;
 
     [HttpGet]
     [ProducesResponseType(typeof(IReadOnlyList<ReportResponse>), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
     [ProducesResponseType(StatusCodes.Status502BadGateway)]
     public Task<IActionResult> List(
         [FromQuery] PageQuery paging,
@@ -36,70 +44,131 @@ public sealed class ReportsController : ControllerBase
         if (!paging.TryToRequest(out PageRequest request))
             return Task.FromResult(this.InvalidPage());
 
-        return AnswerAsync(async scope =>
-        {
-            Page<LabReport> reports = await _reports
-                .ListReportsAsync(scope, quoteCode, request, cancellationToken);
-
-            PageQuery.WriteHeaders(Response, reports);
-
-            return Ok(reports.Items.Select(report => new ReportResponse
+        if (UsesAutoLab)
+            return AnswerAutoLabAsync(async scope =>
             {
-                Id = OpaqueIdentifier.Encode(report.Id.ToString("D")),
-                Identification = report.Identification,
-                RequestNumber = report.RequestNumber,
-                QuoteCode = report.QuoteCode,
-                SampleId = report.SampleId,
-                SampleName = report.SampleName,
-                Client = report.Client,
-                Status = report.Status,
-                ScheduledDate = WireDateOf(report.ScheduledDate),
-                IssueDate = WireDateOf(report.IssueDate),
-                PublicationDate = WireDateOf(report.PublicationDate),
-                HasSignedDocument = report.HasSignedDocument
-            }));
+                Page<LabReport> page = await autoLabReports.ListReportsAsync(scope, quoteCode, request, cancellationToken);
+                PageQuery.WriteHeaders(Response, page);
+                return Ok(page.Items.Select(ReportResponse.From));
+            });
+
+        return AnswerAsync(async () =>
+        {
+            if (!UsesSpring) return this.ReportDocumentSourceUnavailable();
+            IReadOnlyList<PublishedReport> published;
+            if (quoteCode is null)
+                published = await springReports.ListPublishedAsync(cancellationToken);
+            else
+            {
+                IReadOnlyList<Quote> authorized = await quotes.GetQuotesAsync(cancellationToken);
+                Quote? quote = authorized.FirstOrDefault(item => string.Equals(item.Code, quoteCode, StringComparison.Ordinal));
+                SpringReports.QuoteReportConclusion? conclusion = quote is null
+                    ? null
+                    : await springReports.GetPublishedOfQuoteAsync(quote.Id, cancellationToken);
+                published = conclusion?.Reports ?? [];
+            }
+            Page<PublishedReport> page = Page<PublishedReport>.Of(published, request);
+            PageQuery.WriteHeaders(Response, page);
+            return Ok(page.Items.Select(ReportResponse.From));
+        });
+    }
+
+    [HttpGet("/api/quotes/{quoteId}/reports")]
+    [ProducesResponseType(typeof(QuoteReportConclusionResponse), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status204NoContent)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public Task<IActionResult> ListOfQuote(
+        string quoteId, [FromQuery] PageQuery paging, CancellationToken cancellationToken)
+    {
+        if (!paging.TryToRequest(out PageRequest request))
+            return Task.FromResult(this.InvalidPage());
+
+        if (UsesAutoLab)
+            return AnswerAutoLabAsync(async scope =>
+            {
+                // Resolve the authorized quote first; an arbitrary quote code must not select another quote's reports.
+                Quote? quote = await quotes.GetQuoteByIdAsync(quoteId, cancellationToken);
+                if (quote is null) return this.QuoteNotFound();
+                Page<LabReport> page = await autoLabReports.ListReportsAsync(scope, quote.Code, request, cancellationToken);
+                PageQuery.WriteHeaders(Response, page);
+                return page.TotalCount == 0
+                    ? NoContent()
+                    : Ok(new QuoteReportConclusionResponse(
+                        quote.Id, quote.Code, quote.Protocol ?? string.Empty, string.Empty, string.Empty,
+                        page.Items.Select(ReportResponse.From).ToArray()));
+            });
+
+        return AnswerAsync(async () =>
+        {
+            if (!UsesSpring) return this.ReportDocumentSourceUnavailable();
+            SpringReports.QuoteReportConclusion? conclusion = await springReports.GetPublishedOfQuoteAsync(quoteId, cancellationToken);
+            if (conclusion is null) return this.QuoteNotFound();
+            Page<PublishedReport> page = Page<PublishedReport>.Of(conclusion.Reports, request);
+            PageQuery.WriteHeaders(Response, page);
+            return page.TotalCount == 0
+                ? NoContent()
+                : Ok(QuoteReportConclusionResponse.From(conclusion) with
+                {
+                    Reports = page.Items.Select(report => ReportResponse.From(report) with { QuoteCode = conclusion.QuoteCode }).ToArray()
+                });
         });
     }
 
     [HttpGet("{id}/document")]
+    [HttpGet("{id}/file")]
     [ProducesResponseType(typeof(FileContentResult), StatusCodes.Status200OK, "application/pdf")]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     [ProducesResponseType(StatusCodes.Status502BadGateway)]
-    public Task<IActionResult> GetSignedDocument(string id, CancellationToken cancellationToken)
+    public Task<IActionResult> GetDocument(string id, CancellationToken cancellationToken)
     {
-        if (!OpaqueIdentifier.TryDecode(id, out string decoded) || !Guid.TryParse(decoded, out Guid reportId))
-            return Task.FromResult(this.UnreadableReportIdentifier());
-
-        return AnswerAsync(async scope =>
+        if (UsesAutoLab)
         {
-            SignedReportDocument? document = await _reports
-                .GetSignedDocumentAsync(scope, reportId, cancellationToken);
-
+            if (!OpaqueIdentifier.TryDecode(id, out string decoded) || !Guid.TryParse(decoded, out Guid reportId))
+                return Task.FromResult(this.UnreadableReportIdentifier());
+            return AnswerAutoLabAsync(async scope =>
+            {
+                SignedReportDocument? document = await autoLabReports.GetSignedDocumentAsync(scope, reportId, cancellationToken);
+                Response.Headers.CacheControl = "no-store";
+                return document is null
+                    ? this.ReportDocumentNotFound()
+                    : File(document.Content, "application/pdf", SignedDocumentName.Of(document));
+            });
+        }
+        return AnswerAsync(async () =>
+        {
+            if (!UsesSpring) return this.ReportDocumentSourceUnavailable();
+            PublishedReportFile? document = await springReports.GetFileAsync(id, cancellationToken);
+            Response.Headers.CacheControl = "no-store";
             return document is null
                 ? this.ReportDocumentNotFound()
-                : File(document.Content, "application/pdf", SignedDocumentName.Of(document));
+                : File(document.Content, "application/pdf", $"relatorio-{id}.pdf", enableRangeProcessing: true);
         });
     }
 
-    private async Task<IActionResult> AnswerAsync(Func<VisibilityScope, Task<IActionResult>> answer)
+    private Task<IActionResult> AnswerAutoLabAsync(Func<VisibilityScope, Task<IActionResult>> answer)
     {
-        VisibilityScope? scope = VisibilityScopeResolution.Resolve(User, _labResultsOptions);
-
-        if (scope is null) return this.TenantNotIdentified();
-
-        try
-        {
-            return await answer(scope);
-        }
-        catch (ReportDocumentSourceUnavailableException)
-        {
-            return this.ReportDocumentSourceUnavailable();
-        }
+        VisibilityScope? scope = VisibilityScopeResolution.Resolve(User, labResults);
+        return scope is null ? Task.FromResult(this.TenantNotIdentified()) : AnswerAsync(() => answer(scope));
     }
 
-    private static string? WireDateOf(DateTime? moment)
+    private async Task<IActionResult> AnswerAsync(Func<Task<IActionResult>> answer)
     {
-        return moment is null ? null : WireDate.From(moment.Value);
+        try { return await answer(); }
+        catch (ReportAuthenticationRequiredException) { return AuthenticationRequired(); }
+        catch (QuoteAuthenticationRequiredException) { return AuthenticationRequired(); }
+        catch (ReportAccessForbiddenException) { return this.ReportAccessForbidden(); }
+        catch (QuoteAccessForbiddenException) { return this.ReportAccessForbidden(); }
+        catch (ReportSourceUnavailableException) { return this.ReportSourceUnavailable(); }
+        catch (QuoteSourceUnavailableException) { return this.ReportSourceUnavailable(); }
+        catch (ReportDocumentSourceUnavailableException) { return this.ReportDocumentSourceUnavailable(); }
+        catch (OperationCanceledException) when (!HttpContext.RequestAborted.IsCancellationRequested)
+        { return this.ReportSourceUnavailable(); }
+    }
+
+    private IActionResult AuthenticationRequired()
+    {
+        Response.Headers.WWWAuthenticate = "Bearer";
+        return this.ReportAuthenticationRequired();
     }
 }

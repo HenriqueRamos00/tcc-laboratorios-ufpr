@@ -47,6 +47,7 @@ import {
 const LIMITE_CODIGO_PROPOSTA = 80;
 const LIMITE_NOME_PROPOSTA = 200;
 const LIMITE_NOME_LABORATORIO = 120;
+const LIMITE_PROTOCOLO_LABORATORIO = 80;
 const LIMITE_DESCRICAO_SERVICO = 2000;
 const LIMITE_ESCOPO = 2000;
 const LIMITE_NOME_CONTATO = 150;
@@ -103,6 +104,7 @@ export class QuoteFormDialogComponent {
 
   readonly data = inject<QuoteFormDialogData>(MAT_DIALOG_DATA);
   readonly isEditing = this.data.quoteId !== null;
+  readonly rotuloStatusOrcamento = rotuloStatusOrcamento;
   readonly detalhe = signal<OrcamentoDetalhe | null>(null);
   readonly empresas = signal<readonly Empresa[]>([]);
   readonly statusOptions = signal<readonly StatusOption[]>(this.criarOpcoesStatus());
@@ -139,6 +141,10 @@ export class QuoteFormDialogComponent {
     laboratoryName: new FormControl('', {
       nonNullable: true,
       validators: [textoObrigatorioSemEspacos, Validators.maxLength(LIMITE_NOME_LABORATORIO)],
+    }),
+    protocol: new FormControl('', {
+      nonNullable: true,
+      validators: [textoObrigatorioSemEspacos, Validators.maxLength(LIMITE_PROTOCOLO_LABORATORIO)],
     }),
     description: new FormControl('', {
       nonNullable: true,
@@ -349,6 +355,7 @@ export class QuoteFormDialogComponent {
       companyId: detalhe.companyId,
       name: detalhe.name ?? '',
       laboratoryName: detalhe.laboratoryName ?? '',
+      protocol: detalhe.protocol,
       description: detalhe.description ?? '',
       scope: detalhe.scope ?? '',
       externalContactName: detalhe.externalContactName ?? '',
@@ -427,6 +434,7 @@ export class QuoteFormDialogComponent {
       companyId: valor.companyId,
       name: valor.name.trim(),
       laboratoryName: valor.laboratoryName.trim(),
+      protocol: valor.protocol.trim(),
       description: valor.description.trim(),
       scope: valor.scope.trim() || null,
       externalContactName: valor.externalContactName.trim(),

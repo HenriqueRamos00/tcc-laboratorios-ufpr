@@ -60,6 +60,27 @@ describe('ReportsService', () => {
     request.flush([]);
   });
 
+  it('consulta os laudos pelo ID autorizado do orçamento e preserva a conclusão do Spring', () => {
+    let result: import('./reports.service').ReportPage | undefined;
+    service.list({ quoteId: '52', quoteCode: 'ORC-52', page: 2, pageSize: 1 })
+      .subscribe((page) => (result = page));
+    const request = http.expectOne(`${API_URL}/api/quotes/52/reports?page=2&pageSize=1`);
+    request.flush({ reports: [REPORT], testType: 'Cromatografia', summary: 'Resultado publicado' },
+      { headers: { 'X-Total-Count': '3' } });
+    expect(result?.items).toEqual([REPORT]);
+    expect(result?.total).toBe(3);
+    expect(result?.summary).toBe('Resultado publicado');
+    expect(result?.testType).toBe('Cromatografia');
+  });
+
+  it('204 do orçamento representa ausência de laudos, sem consultar a listagem geral', () => {
+    let count = -1;
+    service.list({ quoteId: '52', page: 1, pageSize: 50 }).subscribe((page) => (count = page.items.length));
+    http.expectOne(`${API_URL}/api/quotes/52/reports?page=1&pageSize=50`)
+      .flush(null, { status: 204, statusText: 'No Content' });
+    expect(count).toBe(0);
+  });
+
   it('baixa o PDF assinado com o nome do Content-Disposition', () => {
     let name: string | null = null;
     service.signedDocument('b2lkLTE').subscribe((file) => (name = file.name));

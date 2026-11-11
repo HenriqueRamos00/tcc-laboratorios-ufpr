@@ -7,13 +7,20 @@
   [(termo)]="searchTerm"
 />
 
-@if (failed()) {
+@if (unavailable()) {
+  <app-empty-state
+    class="mt-6"
+    icon="info"
+    title="Consulta de equipamentos indisponível"
+    descricao="A consulta de equipamentos e indicadores ainda não está disponível neste ambiente."
+  />
+} @else if (failed()) {
   <app-empty-state
     class="mt-6"
     tom="erro"
     icon="cloud_off"
     title="Não foi possível carregar os equipamentos no momento"
-    descricao="A consulta ao AutoLAB falhou. Tente novamente em instantes."
+    descricao="A consulta falhou. Tente novamente em instantes."
   />
 } @else if (loading()) {
   <p class="mt-6 text-sm text-lactec-muted" role="status">Carregando equipamentos…</p>

@@ -10,11 +10,13 @@ import {
 import { authGuard } from '@core/guards/auth.guard';
 import { UserRole } from '@core/store/user-role.store';
 import { DashboardAdministradorComponent } from '@/app/pages/admin/dashboard/dashboard-administrador.component';
+import { DashboardTecnicoComponent } from '@/app/pages/tecnico/dashboard/dashboard-tecnico.component';
 import { OrcamentosComponent } from '@/app/pages/admin/orcamentos/orcamentos.component';
 import { OrcamentosTecnicosComponent } from '@/app/pages/tecnico/orcamentos/orcamentos.component';
-import { PlaceholderComponent } from '@/app/pages/placeholder/placeholder.component';
 import { EnsaiosComponent } from '@/app/pages/tecnico/ensaios/ensaios.component';
 import { EnsaioFormComponent } from '@/app/pages/tecnico/ensaios/ensaio-form.component';
+import { EnsaioStatusComponent } from '@/app/pages/tecnico/ensaios/ensaio-status.component';
+import { RelatoriosComponent } from '@/app/pages/tecnico/relatorios/relatorios.component';
 import { LoginService } from '@/app/services/login.service';
 import { routes } from './app.routes';
 
@@ -38,11 +40,13 @@ describe('Rotas do Portal Interno', () => {
     const filhos = tecnico?.children ?? [];
     const lista = filhos.find((rota) => rota.path === 'ensaios');
     const novo = filhos.find((rota) => rota.path === 'ensaios/novo');
+    const status = filhos.find((rota) => rota.path === 'ensaios/:id/status');
     const editar = filhos.find((rota) => rota.path === 'ensaios/:id/editar');
 
     expect(tecnico?.data?.['role']).toBe('TECNICO');
     expect(await lista?.loadComponent?.()).toBe(EnsaiosComponent);
     expect(await novo?.loadComponent?.()).toBe(EnsaioFormComponent);
+    expect(await status?.loadComponent?.()).toBe(EnsaioStatusComponent);
     expect(await editar?.loadComponent?.()).toBe(EnsaioFormComponent);
     expect(novo?.canDeactivate).toBeDefined();
     expect(editar?.canDeactivate).toBeDefined();
@@ -59,16 +63,58 @@ describe('Rotas do Portal Interno', () => {
     expect(await rotaOrcamentosTecnicos?.loadComponent?.()).toBe(OrcamentosTecnicosComponent);
   });
 
-  it('mantém o dashboard técnico como página provisória', async () => {
-    const rotaTecnico = routes.find((rota) => rota.path === 'tecnico');
+  it('mantém Relatórios como rota canônica e redireciona os endereços antigos', async () => {
+    const filhos = rotaTecnico?.children ?? [];
+    const resultados = filhos.find((rota) => rota.path === 'resultados');
+    const relatorios = filhos.find((rota) => rota.path === 'relatorios');
+    const resultadoPorId = filhos.find((rota) => rota.path === 'resultados/:id');
+    const relatorioPorId = filhos.find((rota) => rota.path === 'relatorios/:id');
+
+    expect(rotaTecnico?.data?.['role']).toBe('TECNICO');
+    expect(await relatorios?.loadComponent?.()).toBe(RelatoriosComponent);
+    expect(await relatorioPorId?.loadComponent?.()).toBe(RelatoriosComponent);
+    expect(resultados?.pathMatch).toBe('full');
+    expect(resultadoPorId?.pathMatch).toBe('full');
+    expect(typeof resultados?.redirectTo).toBe('function');
+    expect(typeof resultadoPorId?.redirectTo).toBe('function');
+
+    TestBed.configureTestingModule({ providers: [provideRouter([])] });
+    const router = TestBed.inject(Router);
+    const listRedirect = resultados?.redirectTo;
+    const detailRedirect = resultadoPorId?.redirectTo;
+    expect(typeof listRedirect).toBe('function');
+    expect(typeof detailRedirect).toBe('function');
+
+    const listUrl = TestBed.runInInjectionContext(() =>
+      (listRedirect as (snapshot: ActivatedRouteSnapshot) => UrlTree)({
+        params: {},
+        queryParams: { filtro: 'pendente' },
+        fragment: 'lista',
+      } as unknown as ActivatedRouteSnapshot),
+    );
+    const detailUrl = TestBed.runInInjectionContext(() =>
+      (detailRedirect as (snapshot: ActivatedRouteSnapshot) => UrlTree)({
+        params: { id: '804' },
+        queryParams: { aba: 'pdf' },
+        fragment: 'documento',
+      } as unknown as ActivatedRouteSnapshot),
+    );
+
+    expect(router.serializeUrl(listUrl)).toBe('/tecnico/relatorios?filtro=pendente#lista');
+    expect(router.serializeUrl(detailUrl)).toBe('/tecnico/relatorios/804?aba=pdf#documento');
+    expect(filhos.find((rota) => rota.path === 'ensaios')).toBeDefined();
+    expect(filhos.find((rota) => rota.path === 'ensaios-amostras')).toBeUndefined();
+  });
+
+  it('carrega o dashboard técnico protegido na rota raiz', async () => {
     const dashboardTecnico = rotaTecnico?.children?.find(
       (rota) => rota.path === '',
     );
 
     expect(rotaTecnico?.data?.['role']).toBe('TECNICO');
-    expect(await dashboardTecnico?.loadComponent?.()).toBe(
-      PlaceholderComponent,
-    );
+    expect(rotaTecnico?.canActivate).toContain(authGuard);
+    expect(dashboardTecnico?.title).toBe('Dashboard - Portal Interno Lactec');
+    expect(await dashboardTecnico?.loadComponent?.()).toBe(DashboardTecnicoComponent);
   });
 
   it('redireciona para o painel do perfil atual quando o perfil não é ADMIN', () => {

@@ -30,7 +30,8 @@ interface ReportRow {
   readonly sample: string;
   readonly status: string;
   readonly publishedOn: string;
-  readonly hasSignedDocument: boolean;
+  readonly laboratory: string | null;
+  readonly pdfAvailable: boolean;
   readonly fileName: string;
 }
 
@@ -44,7 +45,8 @@ function reportRow(report: Report): ReportRow {
     sample: sample || NOT_REPORTED,
     status: report.status ?? NOT_REPORTED,
     publishedOn: published ? readableDate(published) : NOT_REPORTED,
-    hasSignedDocument: report.hasSignedDocument,
+    pdfAvailable: report.pdfAvailable ?? report.hasSignedDocument,
+    laboratory: report.laboratory ?? null,
     fileName: `relatorio-${(report.identification ?? report.id).replace(/[^\w.-]+/g, '-')}.pdf`,
   };
 }
@@ -78,7 +80,9 @@ function reportRow(report: Report): ReportRow {
                 <td class="px-4 py-3 text-lactec-ink">{{ row.identification }}</td>
                 <td class="px-4 py-3 text-lactec-ink">{{ row.requestNumber }}</td>
                 <td class="px-4 py-3 text-lactec-ink">{{ row.sample }}</td>
-                <td class="px-4 py-3 text-lactec-ink"><app-data-unavailable /></td>
+                <td class="px-4 py-3 text-lactec-ink">
+                  @if (row.laboratory) { {{ row.laboratory }} } @else { <app-data-unavailable /> }
+                </td>
                 <td class="px-4 py-3 text-lactec-ink">{{ row.status }}</td>
                 <td class="px-4 py-3 text-lactec-ink">{{ row.publishedOn }}</td>
                 <td class="px-4 py-3 text-right">
@@ -87,11 +91,11 @@ function reportRow(report: Report): ReportRow {
                     class="inline-flex h-10 w-10 items-center justify-center rounded-lg
                            bg-lactec-nav text-lactec-on-primary hover:bg-lactec-nav-dark
                            disabled:opacity-40"
-                    [disabled]="!row.hasSignedDocument || downloading() === row.id"
+                    [disabled]="!row.pdfAvailable || downloading() === row.id"
                     [attr.aria-label]="
-                      row.hasSignedDocument
+                      row.pdfAvailable
                         ? 'Baixar o relatório ' + row.identification
-                        : 'O relatório ' + row.identification + ' ainda não tem PDF assinado'
+                        : 'O relatório ' + row.identification + ' ainda não tem PDF disponível'
                     "
                     [attr.aria-busy]="downloading() === row.id ? 'true' : null"
                     (click)="download(row)"
