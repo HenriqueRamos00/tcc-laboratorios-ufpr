@@ -65,7 +65,11 @@ const SIZES = {
 } as const;
 
 export type ChartShape = keyof typeof SIZES;
-const MARGIN = { top: 16, right: 16, bottom: 46, left: 56 };
+const MARGIN = { top: 16, right: 16, bottom: 58, left: 56 };
+const DATE_FONT_SIZE = 9;
+const DATE_FIRST_ROW = 14;
+const DATE_SECOND_ROW = 26;
+const DATE_GAP = 8;
 
 interface PlottedPoint {
   readonly x: number;
@@ -203,13 +207,30 @@ export class LineChartComponent {
    */
   protected readonly xAxisTicks = computed(() => {
     const labels = this.xAxisLabels();
+    const staggered = this.datesCollide(labels);
 
     return labels.map((label, index) => ({
       label,
       x: this.positionX(index),
+      y: this.chartHeight() - MARGIN.bottom + (staggered && index % 2 === 1 ? DATE_SECOND_ROW : DATE_FIRST_ROW),
       anchor: index === 0 ? 'start' : index === labels.length - 1 ? 'end' : 'middle',
     }));
   });
+
+  protected readonly DATE_FONT_SIZE = DATE_FONT_SIZE;
+
+  /**
+   * Datas vizinhas na mesma linha se sobrepõem quando o espaço entre elas é menor que a
+   * largura de uma data e meia: a primeira ancora pela borda e ocupa a largura inteira
+   * à direita do ponto. Nesse caso as datas alternam entre duas linhas, e cada linha
+   * fica com o dobro do espaço.
+   */
+  private datesCollide(labels: readonly string[]): boolean {
+    if (labels.length < 2) return false;
+    const widest = Math.max(...labels.map((label) => label.length)) * DATE_FONT_SIZE * 0.6;
+    const spacing = (this.chartWidth() - MARGIN.left - MARGIN.right) / (labels.length - 1);
+    return spacing < widest * 1.5 + DATE_GAP;
+  }
 
   protected readonly plottedSeries = computed<readonly PlottedSeries[]>(() =>
     this.series().map((serie, index) => {
