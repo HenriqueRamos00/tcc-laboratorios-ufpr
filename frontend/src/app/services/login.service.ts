@@ -1,7 +1,7 @@
 import { HttpClient } from '@angular/common/http';
 import { inject, Injectable, signal } from '@angular/core';
 import { JwtHelperService } from '@auth0/angular-jwt';
-import { catchError, finalize, map, Observable, of, shareReplay, tap } from 'rxjs';
+import { catchError, finalize, map, Observable, of, shareReplay, switchMap, tap } from 'rxjs';
 
 import { mapClaimToRole, UserRole } from '@core/store/user-role.store';
 import { API_URL } from '@/app/environment/env';
@@ -11,6 +11,8 @@ import { PortalUser, Token } from '@/app/model/token';
 export const LS_TOKEN = 'lactec.token';
 export const LS_USERNAME = 'lactec.username';
 export const LS_USER = 'lactec.user';
+
+const RENEW_AHEAD_MS = 30_000;
 
 export function tokenGetter(): string | null {
   return typeof localStorage === 'undefined'
@@ -52,6 +54,7 @@ export class LoginService {
   readonly currentUser = this.userName.asReadonly();
   private restoredToken: string | null = null;
   private restoring: { token: string; request: Observable<boolean> } | null = null;
+  private renewing: { token: string; request: Observable<boolean> } | null = null;
 
   login(credentials: Login, keepConnected = true): Observable<Token> {
     return this.http.post<Token>(`${this.baseUrl}/login`, {
@@ -74,10 +77,13 @@ export class LoginService {
 
   restoreSession(): Observable<boolean> {
     const token = tokenGetter();
-    const claims = this.clientClaims(token);
-    if (!token || !claims) {
+    const claims = this.clientClaims(token, true);
+    if (!token || !claims || (claims.authSource !== 'lactec' && this.expired(claims))) {
       this.logout();
       return of(false);
+    }
+    if (claims.authSource === 'lactec' && this.expired(claims)) {
+      return this.renew().pipe(switchMap(renewed => renewed ? this.restoreSession() : of(false)));
     }
     if (claims.authSource !== 'lactec') {
       const user = storedUser();
@@ -116,6 +122,51 @@ export class LoginService {
     return request;
   }
 
+  canRenew(): boolean {
+    return this.clientClaims(tokenGetter(), true)?.authSource === 'lactec';
+  }
+
+  renewalDue(): boolean {
+    const claims = this.clientClaims(tokenGetter(), true);
+    return claims?.authSource === 'lactec' && claims.exp! * 1000 - Date.now() <= RENEW_AHEAD_MS;
+  }
+
+  renew(): Observable<boolean> {
+    const token = tokenGetter();
+    const storage = sessionStorageForToken();
+    if (!token || !storage || !this.canRenew()) return of(false);
+    if (this.renewing?.token === token) return this.renewing.request;
+    const request = this.http.post<Token>(`${this.baseUrl}/refresh`, null, {
+      headers: { Authorization: `Bearer ${token}` },
+    }).pipe(
+      map(response => {
+        if (tokenGetter() !== token) return false;
+        const claims = this.clientClaims(response?.Token);
+        const current = this.identity();
+        if (!claims || claims.authSource !== 'lactec' || typeof response.tokenType !== 'string'
+            || response.tokenType.toLowerCase() !== 'bearer'
+            || !Number.isFinite(response.expiresIn) || response.expiresIn <= 0
+            || !this.validIdentity(response.user, claims)
+            || (current !== null && current.id !== response.user.id)) {
+          this.logout();
+          return false;
+        }
+        storage.setItem(LS_TOKEN, response.Token);
+        this.rememberUser(response.user);
+        this.restoredToken = response.Token;
+        return true;
+      }),
+      catchError(error => {
+        if ((error.status === 401 || error.status === 403) && tokenGetter() === token) this.logout();
+        return of(false);
+      }),
+      finalize(() => { if (this.renewing?.token === token) this.renewing = null; }),
+      shareReplay({ bufferSize: 1, refCount: true }),
+    );
+    this.renewing = { token, request };
+    return request;
+  }
+
   logout(): void {
     if (typeof localStorage !== 'undefined') {
       for (const storage of [localStorage, sessionStorage]) {
@@ -126,6 +177,7 @@ export class LoginService {
     this.userName.set(null);
     this.restoredToken = null;
     this.restoring = null;
+    this.renewing = null;
     this.userRole.clear();
   }
 
@@ -139,12 +191,16 @@ export class LoginService {
     this.userRole.setRoleFromTokenClaim(user.role, storage === localStorage);
   }
 
-  private clientClaims(token: unknown): PortalClaims | null {
+  private expired(claims: PortalClaims): boolean {
+    return claims.exp! * 1000 <= Date.now();
+  }
+
+  private clientClaims(token: unknown, allowExpired = false): PortalClaims | null {
     if (typeof token !== 'string' || token.split('.').length !== 3 || token.split('.').some(part => !part)) return null;
     try {
       const claims = this.jwt.decodeToken<PortalClaims>(token);
       if (!claims || typeof claims.exp !== 'number' || !Number.isFinite(claims.exp)
-          || claims.exp * 1000 <= Date.now()
+          || (!allowExpired && this.expired(claims))
           || (claims.authSource !== undefined && claims.authSource !== 'lactec')) return null;
 
       const role = claims.authSource === 'lactec' ? claims.roles : claims.role;

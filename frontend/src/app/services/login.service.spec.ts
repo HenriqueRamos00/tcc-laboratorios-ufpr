@@ -168,6 +168,11 @@ describe('Sessão do Portal do Cliente', () => {
         storage.setItem(ROLE_STORAGE_KEY, JSON.stringify({ id: 2, name: 'client' }));
       }
       service.restoreSession().subscribe(result => expect(result).toBeFalse());
+      if (label === 'expirado') {
+        http.expectOne(`${API_URL}/auth/refresh`).flush({}, { status: 401, statusText: 'Unauthorized' });
+      } else {
+        http.expectNone(`${API_URL}/auth/refresh`);
+      }
       for (const storage of [localStorage, sessionStorage]) {
         for (const key of [LS_TOKEN, LS_USERNAME, LS_USER, ROLE_STORAGE_KEY]) expect(storage.getItem(key)).toBeNull();
       }

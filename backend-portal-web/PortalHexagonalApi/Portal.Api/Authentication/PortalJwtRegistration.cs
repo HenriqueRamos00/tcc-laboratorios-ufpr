@@ -17,41 +17,25 @@ public static class PortalJwtRegistration
             .Validate(value => !string.IsNullOrWhiteSpace(value.Audience), "PortalJwt:Audience é obrigatório.")
             .Validate(PortalJwtOptions.HasValidSigningKey, "PortalJwt:SigningKey deve conter pelo menos 32 bytes aleatórios em Base64.")
             .Validate(value => value.ExpirationSeconds > 0, "PortalJwt:ExpirationSeconds deve ser positivo.")
+            .Validate(value => value.RenewalWindowSeconds >= 0, "PortalJwt:RenewalWindowSeconds não pode ser negativo.")
+            .Validate(value => value.MaxSessionSeconds >= value.ExpirationSeconds,
+                "PortalJwt:MaxSessionSeconds deve ser maior ou igual a PortalJwt:ExpirationSeconds.")
             .ValidateOnStart();
         services.AddSingleton(TimeProvider.System);
-        services.AddSingleton<IPortalSessionIssuer, PortalJwtService>();
+        services.AddSingleton<PortalJwtService>();
+        services.AddSingleton<IPortalSessionIssuer>(provider => provider.GetRequiredService<PortalJwtService>());
         services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme).AddJwtBearer();
         services.AddOptions<JwtBearerOptions>(JwtBearerDefaults.AuthenticationScheme)
             .Configure<IOptions<PortalJwtOptions>, IOptions<BackendAuthOptions>>((bearer, jwtOptions, backendOptions) =>
             {
-                PortalJwtOptions jwt = jwtOptions.Value;
                 bearer.MapInboundClaims = false;
                 bearer.IncludeErrorDetails = false;
-                bearer.TokenValidationParameters = new TokenValidationParameters
-                {
-                    ValidateIssuerSigningKey = true,
-                    RequireSignedTokens = true,
-                    IssuerSigningKey = new SymmetricSecurityKey(Convert.FromBase64String(jwt.SigningKey)),
-                    ValidAlgorithms = [SecurityAlgorithms.HmacSha256],
-                    ValidateIssuer = true,
-                    ValidIssuer = jwt.Issuer,
-                    ValidateAudience = true,
-                    ValidAudience = jwt.Audience,
-                    RequireExpirationTime = true,
-                    ValidateLifetime = true,
-                    ClockSkew = TimeSpan.Zero,
-                    NameClaimType = "nome",
-                    RoleClaimType = "roles"
-                };
+                bearer.TokenValidationParameters = PortalJwtService.ValidationParameters(jwtOptions.Value);
                 bearer.Events = new JwtBearerEvents
                 {
                     OnTokenValidated = context =>
                     {
-                        var user = context.Principal!;
-                        if (new[] { "sub", "nome", "email", "roles", "jti", "iat" }
-                                .Any(name => string.IsNullOrWhiteSpace(user.FindFirst(name)?.Value))
-                            || user.FindFirst("authSource")?.Value != "lactec"
-                            || user.FindFirst("serviceCode")?.Value != backendOptions.Value.ServiceCode)
+                        if (!PortalJwtService.HasPortalIdentity(context.Principal!, backendOptions.Value.ServiceCode))
                             context.Fail("Identidade do portal inválida.");
                         return Task.CompletedTask;
                     },
