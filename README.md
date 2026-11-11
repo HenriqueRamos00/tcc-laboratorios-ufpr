@@ -79,6 +79,8 @@ aguardam os endpoints de cliente do Spring: suas rotas retornam 501 com o códig
 [Integração do Portal do Cliente](backend-lab/docs/integracao-portal-cliente.md).
 O `compose.auth.yaml` seleciona Backend Auth, orçamentos demonstrativos e fontes AutoLAB
 SQL Server. Os dois arquivos configuram seus providers independentemente do `.env` compartilhado.
+No stack Auth, a conexão AutoLAB de `backend-portal-web/.env` prevalece sobre os padrões
+do banco demo local; a massa local é usada quando não há essa configuração.
 
 Na execução local, a API Spring é publicada em `127.0.0.1:8080` por padrão. `APP_BIND_ADDRESS` configura a interface de publicação; use `0.0.0.0` quando um Portal Interno em Compose separado acessar a API por `host.docker.internal`. O Compose integrado usa a rede Docker e dispensa esse ajuste. No navegador, o Portal Interno usa a origem da própria aplicação e seu proxy `/api`. Em implantação, disponibilize esse proxy por HTTPS e mantenha o PostgreSQL na rede privada.
 

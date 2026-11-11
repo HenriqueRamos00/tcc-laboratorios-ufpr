@@ -385,9 +385,12 @@ views `vwDadosEnsaios`, `Equipamentos`, `SituaProcess` e `vwRelatoriosEnsaios` e
 tabelas `RelatorioEmissao` e `FileData`.
 
 As credenciais do AutoLAB real vem do ambiente ou do `.env` (nunca do `appsettings`
-versionado). O `compose.auth.yaml` fornece explicitamente a conexão do banco local,
-incluindo a mesma senha configurada para seu SQL Server. O `appsettings.Development.json`
-usa fontes desconectadas e não define credenciais AutoLAB:
+versionado). O `compose.auth.yaml` carrega primeiro os padrões públicos do banco local em
+`docker/autolab/demo.env`, usando a mesma senha configurada para seu SQL Server. Depois
+carrega `backend-portal-web/.env`, cujos valores de conexão AutoLAB têm precedência.
+Sem esse arquivo, o demo local continua funcionando; com uma conexão externa configurada,
+a API consulta essa origem. O `appsettings.Development.json` usa fontes desconectadas e
+não define credenciais AutoLAB:
 
 ```env
 LabResults__Source=sql-server
