@@ -6,6 +6,8 @@ import br.ufpr.tcc.auth.credential.model.ServiceToken;
 import br.ufpr.tcc.auth.shared.security.ApplicationCaller;
 import br.ufpr.tcc.auth.shared.security.ApplicationCallerDirectory;
 import java.util.Optional;
+import lombok.AccessLevel;
+import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 
 /**
@@ -21,13 +23,10 @@ import org.springframework.stereotype.Component;
  * varredura em carga de consulta.
  */
 @Component
+@RequiredArgsConstructor(access = AccessLevel.PACKAGE)
 class ApplicationTokenDirectory implements ApplicationCallerDirectory {
 
     private final ApplicationTokenRepository tokens;
-
-    ApplicationTokenDirectory(ApplicationTokenRepository tokens) {
-        this.tokens = tokens;
-    }
 
     @Override
     public Optional<ApplicationCaller> resolve(String presentedToken) {

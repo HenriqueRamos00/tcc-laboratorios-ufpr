@@ -7,6 +7,8 @@ import java.security.SecureRandom;
 import java.util.Base64;
 import java.util.Optional;
 import java.util.regex.Pattern;
+import lombok.AccessLevel;
+import lombok.RequiredArgsConstructor;
 
 /**
  * Credencial de uso unico que viaja por e-mail.
@@ -14,6 +16,7 @@ import java.util.regex.Pattern;
  * Mesmo desenho dos outros tokens, com prefixo proprio: o prefixo diz onde procurar, e
  * adulterar o prefixo so faz a busca nao achar nada.
  */
+@RequiredArgsConstructor(access = AccessLevel.PRIVATE)
 public final class ConfirmationToken {
 
     public static final String PREFIX = "cnf_";
@@ -25,10 +28,6 @@ public final class ConfirmationToken {
     private static final SecureRandom RANDOM = new SecureRandom();
 
     private final String clearValue;
-
-    private ConfirmationToken(String clearValue) {
-        this.clearValue = clearValue;
-    }
 
     public static ConfirmationToken generate() {
         byte[] secret = new byte[SECRET_BYTE_COUNT];

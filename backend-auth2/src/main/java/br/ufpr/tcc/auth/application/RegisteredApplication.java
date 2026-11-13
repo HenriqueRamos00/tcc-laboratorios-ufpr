@@ -7,6 +7,10 @@ import jakarta.persistence.Id;
 import jakarta.persistence.Table;
 import jakarta.persistence.UniqueConstraint;
 import java.time.OffsetDateTime;
+import lombok.AccessLevel;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+import lombok.experimental.Accessors;
 
 /**
  * Aplicacao do Lactec registrada para consumir este servico. O contrato publico chama isto
@@ -20,6 +24,8 @@ import java.time.OffsetDateTime;
 @Entity
 @Table(name = "APPLICATION",
         uniqueConstraints = @UniqueConstraint(name = "UK_APPLICATION_CODE", columnNames = "CODE"))
+@NoArgsConstructor(access = AccessLevel.PROTECTED)
+@Accessors(fluent = true)
 class RegisteredApplication {
 
     @Id
@@ -28,9 +34,11 @@ class RegisteredApplication {
     private Long id;
 
     @Column(name = "CODE", length = 80)
+    @Getter(AccessLevel.PACKAGE)
     private String code;
 
     @Column(name = "NAME", length = 150)
+    @Getter(AccessLevel.PACKAGE)
     private String name;
 
     @Column(name = "ACTIVE")
@@ -41,9 +49,6 @@ class RegisteredApplication {
 
     @Column(name = "UPDATED_AT")
     private OffsetDateTime updatedAt;
-
-    protected RegisteredApplication() {
-    }
 
     /**
      * Aplicacao nova nasce ativa. O identificador fica nulo de proposito, para o gerador do
@@ -64,14 +69,6 @@ class RegisteredApplication {
 
     long id() {
         return id;
-    }
-
-    String code() {
-        return code;
-    }
-
-    String name() {
-        return name;
     }
 
     boolean active() {

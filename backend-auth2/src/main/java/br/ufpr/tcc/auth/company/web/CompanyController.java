@@ -9,6 +9,8 @@ import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Size;
 import java.util.List;
 import java.util.Optional;
+import lombok.AccessLevel;
+import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.DeleteMapping;
@@ -28,13 +30,10 @@ import org.springframework.web.bind.annotation.RestController;
  */
 @SecurityRequirement(name = "credencial-administrativa")
 @RestController
+@RequiredArgsConstructor(access = AccessLevel.PACKAGE)
 class CompanyController {
 
     private final CompanyRegistry registry;
-
-    CompanyController(CompanyRegistry registry) {
-        this.registry = registry;
-    }
 
     /**
      * Somente digito, sem mascara. O banco cobra a mesma coisa, e guardar com pontuacao

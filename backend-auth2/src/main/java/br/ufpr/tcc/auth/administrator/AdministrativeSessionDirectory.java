@@ -6,6 +6,8 @@ import br.ufpr.tcc.auth.shared.security.AdministratorCallerDirectory;
 import java.time.Duration;
 import java.time.OffsetDateTime;
 import java.util.Optional;
+import lombok.AccessLevel;
+import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 
 /**
@@ -17,13 +19,10 @@ import org.springframework.stereotype.Component;
  * ativo.
  */
 @Component
+@RequiredArgsConstructor(access = AccessLevel.PACKAGE)
 class AdministrativeSessionDirectory implements AdministratorCallerDirectory {
 
     private final AdministrativeSessionRepository sessions;
-
-    AdministrativeSessionDirectory(AdministrativeSessionRepository sessions) {
-        this.sessions = sessions;
-    }
 
     @Override
     public Optional<AdministratorCaller> resolve(String presentedToken) {

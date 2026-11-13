@@ -8,6 +8,8 @@ import jakarta.persistence.Index;
 import jakarta.persistence.Table;
 import java.io.Serializable;
 import java.util.Objects;
+import lombok.AccessLevel;
+import lombok.NoArgsConstructor;
 
 /**
  * Vinculo entre uma conta de cliente e uma empresa que ela representa.
@@ -25,6 +27,7 @@ import java.util.Objects;
 @Table(name = "CLIENT_ACCOUNT_COMPANY",
         indexes = @Index(name = "IX_ACCOUNT_COMPANY_COMPANY", columnList = "COMPANY_ID"))
 @IdClass(ClientAccountCompany.Key.class)
+@NoArgsConstructor(access = AccessLevel.PROTECTED)
 class ClientAccountCompany {
 
     @Id
@@ -34,9 +37,6 @@ class ClientAccountCompany {
     @Id
     @Column(name = "COMPANY_ID")
     private Long companyId;
-
-    protected ClientAccountCompany() {
-    }
 
     /** Chave composta, na forma que a especificacao de persistencia exige. */
     static class Key implements Serializable {

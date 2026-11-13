@@ -6,6 +6,8 @@ import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
 import java.util.Map;
+import lombok.AccessLevel;
+import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -20,13 +22,10 @@ import org.springframework.web.bind.annotation.RestController;
  * de credencial de pessoa, nao de integracao.
  */
 @RestController
+@RequiredArgsConstructor(access = AccessLevel.PACKAGE)
 class AdministratorLoginController {
 
     private final AdministratorAccess access;
-
-    AdministratorLoginController(AdministratorAccess access) {
-        this.access = access;
-    }
 
     record AdministratorLoginRequest(
             @NotBlank @Email @Size(max = 254) String email,

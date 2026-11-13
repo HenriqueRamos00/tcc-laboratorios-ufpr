@@ -4,6 +4,8 @@ import br.ufpr.tcc.auth.shared.observability.AuditTrail;
 import java.time.OffsetDateTime;
 import java.util.List;
 import java.util.Optional;
+import lombok.AccessLevel;
+import lombok.RequiredArgsConstructor;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.support.TransactionTemplate;
@@ -23,6 +25,7 @@ import org.springframework.transaction.support.TransactionTemplate;
  * onde o contrato promete 409.
  */
 @Service
+@RequiredArgsConstructor(access = AccessLevel.PACKAGE)
 public class CompanyRegistry {
 
     public record CompanyView(String id, String name, String cnpj) {
@@ -31,13 +34,6 @@ public class CompanyRegistry {
     private final CompanyRepository companies;
     private final AuditTrail auditTrail;
     private final TransactionTemplate transactions;
-
-    CompanyRegistry(CompanyRepository companies, AuditTrail auditTrail,
-            TransactionTemplate transactions) {
-        this.companies = companies;
-        this.auditTrail = auditTrail;
-        this.transactions = transactions;
-    }
 
     private static CompanyView toView(Company company) {
         return new CompanyView(Long.toString(company.id()), company.name(), company.cnpj());

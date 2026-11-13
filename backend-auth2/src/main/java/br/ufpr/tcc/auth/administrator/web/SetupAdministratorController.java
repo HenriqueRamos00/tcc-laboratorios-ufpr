@@ -6,6 +6,8 @@ import jakarta.validation.Valid;
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
+import lombok.AccessLevel;
+import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -21,15 +23,12 @@ import org.springframework.web.bind.annotation.RestController;
  * foi feita, e contar que ja existe administrador confirmaria que foi.
  */
 @RestController
+@RequiredArgsConstructor(access = AccessLevel.PACKAGE)
 class SetupAdministratorController {
 
     static final String SETUP_SECRET_HEADER = "X-Setup-Secret";
 
     private final AdministratorAccess access;
-
-    SetupAdministratorController(AdministratorAccess access) {
-        this.access = access;
-    }
 
     record SetupRequest(
             @NotBlank @Size(max = 150) String name,

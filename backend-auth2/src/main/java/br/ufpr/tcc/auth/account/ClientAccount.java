@@ -8,6 +8,10 @@ import jakarta.persistence.Id;
 import jakarta.persistence.Table;
 import jakarta.persistence.UniqueConstraint;
 import java.time.OffsetDateTime;
+import lombok.AccessLevel;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+import lombok.experimental.Accessors;
 import org.hibernate.annotations.ColumnTransformer;
 import org.hibernate.type.NumericBooleanConverter;
 
@@ -37,6 +41,8 @@ import org.hibernate.type.NumericBooleanConverter;
 @Table(name = "CLIENT_ACCOUNT",
         uniqueConstraints = @UniqueConstraint(name = "UK_CLIENT_ACCOUNT_EMAIL",
                 columnNames = {"APPLICATION_ID", "EMAIL_NORMALIZED"}))
+@NoArgsConstructor(access = AccessLevel.PROTECTED)
+@Accessors(fluent = true)
 class ClientAccount {
 
     @Id
@@ -48,9 +54,11 @@ class ClientAccount {
     private Long applicationId;
 
     @Column(name = "NAME", length = 150)
+    @Getter(AccessLevel.PACKAGE)
     private String name;
 
     @Column(name = "EMAIL", length = 254)
+    @Getter(AccessLevel.PACKAGE)
     private String email;
 
     @Column(name = "EMAIL_NORMALIZED", length = 254)
@@ -58,6 +66,7 @@ class ClientAccount {
     private String emailNormalized;
 
     @Column(name = "PASSWORD_HASH", length = 255)
+    @Getter(AccessLevel.PACKAGE)
     private String passwordHash;
 
     /**
@@ -68,10 +77,12 @@ class ClientAccount {
      */
     @Column(name = "EMAIL_CONFIRMED")
     @Convert(converter = NumericBooleanConverter.class)
+    @Getter(AccessLevel.PACKAGE)
     private boolean emailConfirmed;
 
     @Column(name = "ACTIVE")
     @Convert(converter = NumericBooleanConverter.class)
+    @Getter(AccessLevel.PACKAGE)
     private boolean active;
 
     @Column(name = "CREATED_AT")
@@ -79,9 +90,6 @@ class ClientAccount {
 
     @Column(name = "UPDATED_AT")
     private OffsetDateTime updatedAt;
-
-    protected ClientAccount() {
-    }
 
     /**
      * Conta nova nasce ativa e com o endereco por confirmar, que e a regra 7: ela existe,
@@ -113,26 +121,6 @@ class ClientAccount {
 
     long applicationId() {
         return applicationId;
-    }
-
-    String name() {
-        return name;
-    }
-
-    String email() {
-        return email;
-    }
-
-    String passwordHash() {
-        return passwordHash;
-    }
-
-    boolean emailConfirmed() {
-        return emailConfirmed;
-    }
-
-    boolean active() {
-        return active;
     }
 
     void rename(String name) {

@@ -6,6 +6,8 @@ import java.time.Duration;
 import java.time.OffsetDateTime;
 import java.util.List;
 import java.util.Optional;
+import lombok.AccessLevel;
+import lombok.RequiredArgsConstructor;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -25,21 +27,13 @@ import org.springframework.transaction.support.TransactionTemplate;
  * promete 409.
  */
 @Service
+@RequiredArgsConstructor(access = AccessLevel.PACKAGE)
 public class ApplicationRegistry {
 
     private final RegisteredApplicationRepository applications;
     private final ApplicationTokenRepository tokens;
     private final AuditTrail auditTrail;
     private final TransactionTemplate transactions;
-
-    ApplicationRegistry(RegisteredApplicationRepository applications,
-            ApplicationTokenRepository tokens, AuditTrail auditTrail,
-            TransactionTemplate transactions) {
-        this.applications = applications;
-        this.tokens = tokens;
-        this.auditTrail = auditTrail;
-        this.transactions = transactions;
-    }
 
     public record RegisteredApplicationView(String id, String name, String code, boolean active) {
     }

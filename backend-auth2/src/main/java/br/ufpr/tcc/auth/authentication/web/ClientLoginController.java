@@ -4,13 +4,15 @@ import br.ufpr.tcc.auth.authentication.ClientAuthenticationFacade;
 import br.ufpr.tcc.auth.authentication.ClientIdentity;
 import br.ufpr.tcc.auth.authentication.LoginDecision;
 import br.ufpr.tcc.auth.shared.security.ApplicationCaller;
-import jakarta.validation.Valid;
-import org.springframework.http.HttpHeaders;
-import org.springframework.http.HttpStatus;
-import io.swagger.v3.oas.annotations.security.SecurityRequirement;
-import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.Schema;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
+import io.swagger.v3.oas.annotations.security.SecurityRequirement;
+import jakarta.validation.Valid;
+import lombok.AccessLevel;
+import lombok.RequiredArgsConstructor;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -29,13 +31,10 @@ import org.springframework.web.bind.annotation.RestController;
  */
 @SecurityRequirement(name = "credencial-de-aplicacao")
 @RestController
+@RequiredArgsConstructor(access = AccessLevel.PACKAGE)
 class ClientLoginController {
 
     private final ClientAuthenticationFacade authentication;
-
-    ClientLoginController(ClientAuthenticationFacade authentication) {
-        this.authentication = authentication;
-    }
 
     @PostMapping("/api/auth/login")
     @ApiResponse(responseCode = "200", description = "Cliente autenticado",

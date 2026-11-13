@@ -3,12 +3,15 @@ package br.ufpr.tcc.auth.credential.model;
 import java.security.MessageDigest;
 import java.util.Arrays;
 import java.util.HexFormat;
+import lombok.AccessLevel;
+import lombok.RequiredArgsConstructor;
 
 /**
  * Digest SHA-256 de um token de aplicacao. E este valor que a tabela guarda, e e por ele
  * que a linha e encontrada: o token nao carrega identificador embutido, porque o formato
  * que o consumidor exige nao tem lugar para separador.
  */
+@RequiredArgsConstructor(access = AccessLevel.PRIVATE)
 public final class OpaqueTokenDigest {
 
     /** SHA-256 produz 256 bits, e o comprimento fixo e o que mantem a comparacao uniforme. */
@@ -17,10 +20,6 @@ public final class OpaqueTokenDigest {
     private static final int HEXADECIMAL_LENGTH = BYTE_COUNT * 2;
 
     private final byte[] value;
-
-    private OpaqueTokenDigest(byte[] value) {
-        this.value = value;
-    }
 
     public static OpaqueTokenDigest fromBytes(byte[] value) {
         if (value == null || value.length != BYTE_COUNT) {

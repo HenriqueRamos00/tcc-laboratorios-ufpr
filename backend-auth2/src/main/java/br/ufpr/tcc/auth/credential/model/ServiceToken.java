@@ -6,6 +6,8 @@ import java.security.NoSuchAlgorithmException;
 import java.security.SecureRandom;
 import java.util.Base64;
 import java.util.regex.Pattern;
+import lombok.AccessLevel;
+import lombok.RequiredArgsConstructor;
 
 /**
  * Token opaco que identifica uma aplicacao registrada. Ele vive em memoria pelo tempo de
@@ -19,6 +21,7 @@ import java.util.regex.Pattern;
  * que tornaria a divisao ambigua. A linha e encontrada pelo proprio digest, com restricao
  * unica na coluna, que e uma sondagem de indice.
  */
+@RequiredArgsConstructor(access = AccessLevel.PRIVATE)
 public final class ServiceToken {
 
     /**
@@ -48,10 +51,6 @@ public final class ServiceToken {
     private static final SecureRandom RANDOM = new SecureRandom();
 
     private final String clearValue;
-
-    private ServiceToken(String clearValue) {
-        this.clearValue = clearValue;
-    }
 
     /**
      * Emite um token novo. O valor devolvido e o unico momento em que ele existe em claro:

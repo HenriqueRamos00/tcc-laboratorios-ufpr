@@ -1,6 +1,8 @@
 package br.ufpr.tcc.auth.authentication;
 
 import br.ufpr.tcc.auth.shared.security.ApplicationCaller;
+import lombok.AccessLevel;
+import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
 /**
@@ -15,13 +17,10 @@ import org.springframework.stereotype.Service;
  * seguinte.
  */
 @Service
+@RequiredArgsConstructor(access = AccessLevel.PACKAGE)
 public class ClientAuthenticationFacade {
 
     private final AuthenticateClient authenticateClient;
-
-    ClientAuthenticationFacade(AuthenticateClient authenticateClient) {
-        this.authenticateClient = authenticateClient;
-    }
 
     public LoginDecision authenticate(ApplicationCaller caller, String email, String password) {
         ClientAuthentication outcome = authenticateClient.authenticate(caller, email, password);

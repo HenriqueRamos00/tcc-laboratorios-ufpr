@@ -5,6 +5,8 @@ import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.time.Duration;
 import java.util.Locale;
+import lombok.AccessLevel;
+import lombok.RequiredArgsConstructor;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Component;
 
@@ -25,16 +27,13 @@ import org.springframework.stereotype.Component;
  * duas instancias nao discordem sobre quando o bloqueio expira.
  */
 @Component
+@RequiredArgsConstructor(access = AccessLevel.PACKAGE)
 public class LoginAttemptLedger {
 
     /** Regra de negocio do Lactec: cinco tentativas. */
     private static final int MAXIMUM_FAILURES = 5;
 
     private final LoginAttemptRepository attempts;
-
-    LoginAttemptLedger(LoginAttemptRepository attempts) {
-        this.attempts = attempts;
-    }
 
     /**
      * Espaco de chave da entrada administrativa.

@@ -7,6 +7,8 @@ import java.security.SecureRandom;
 import java.util.Base64;
 import java.util.Optional;
 import java.util.regex.Pattern;
+import lombok.AccessLevel;
+import lombok.RequiredArgsConstructor;
 
 /**
  * Token opaco de uma sessao administrativa.
@@ -19,6 +21,7 @@ import java.util.regex.Pattern;
  * O formato segue o mesmo desenho do token de aplicacao, com a mesma entropia, porque a
  * credencial de quem administra nao pode ser mais fraca que a de quem consome.
  */
+@RequiredArgsConstructor(access = AccessLevel.PRIVATE)
 public final class AdministrativeToken {
 
     public static final String PREFIX = "adm_";
@@ -30,10 +33,6 @@ public final class AdministrativeToken {
     private static final SecureRandom RANDOM = new SecureRandom();
 
     private final String clearValue;
-
-    private AdministrativeToken(String clearValue) {
-        this.clearValue = clearValue;
-    }
 
     public static AdministrativeToken generate() {
         byte[] secret = new byte[SECRET_BYTE_COUNT];

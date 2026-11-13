@@ -2,17 +2,16 @@ package br.ufpr.tcc.auth.administrator;
 
 import java.util.List;
 import java.util.Optional;
+import lombok.AccessLevel;
+import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 
 /** Leitura e gravacao de administradores. */
 @Component
+@RequiredArgsConstructor(access = AccessLevel.PACKAGE)
 class AdministratorRegistry {
 
     private final AdministratorRepository administrators;
-
-    AdministratorRegistry(AdministratorRepository administrators) {
-        this.administrators = administrators;
-    }
 
     boolean noneRegistered() {
         return administrators.count() == 0L;

@@ -13,6 +13,8 @@ import jakarta.persistence.Table;
 import jakarta.persistence.UniqueConstraint;
 import java.time.Duration;
 import java.time.OffsetDateTime;
+import lombok.AccessLevel;
+import lombok.NoArgsConstructor;
 
 /**
  * Credencial de uso unico que vai no e-mail, para confirmar o cadastro ou para trocar a
@@ -34,6 +36,7 @@ import java.time.OffsetDateTime;
         uniqueConstraints = @UniqueConstraint(name = "UK_ACCOUNT_CONFIRMATION_DIGEST",
                 columnNames = "TOKEN_DIGEST"),
         indexes = @Index(name = "IX_ACCOUNT_CONFIRMATION_ACCOUNT", columnList = "CLIENT_ACCOUNT_ID"))
+@NoArgsConstructor(access = AccessLevel.PROTECTED)
 class AccountConfirmation {
 
     @Id
@@ -59,9 +62,6 @@ class AccountConfirmation {
 
     @Column(name = "USED_AT")
     private OffsetDateTime usedAt;
-
-    protected AccountConfirmation() {
-    }
 
     static AccountConfirmation issuedFor(long clientAccountId, ConfirmationToken token,
             OutboundMessage.Purpose purpose, Duration lifetime) {
