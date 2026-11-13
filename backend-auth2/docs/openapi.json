@@ -805,11 +805,11 @@
                 },
                 "responses": {
                     "200": {
-                        "description": "OK",
+                        "description": "Cliente autenticado",
                         "content": {
                             "*/*": {
                                 "schema": {
-                                    "type": "object"
+                                    "$ref": "#/components/schemas/ClientIdentity"
                                 }
                             }
                         }
@@ -1352,6 +1352,29 @@
                     "email",
                     "password"
                 ]
+            },
+            "ClientIdentity": {
+                "type": "object",
+                "properties": {
+                    "id": {
+                        "type": "string"
+                    },
+                    "name": {
+                        "type": "string"
+                    },
+                    "email": {
+                        "type": "string"
+                    },
+                    "role": {
+                        "type": "string"
+                    },
+                    "serviceCode": {
+                        "type": "string"
+                    },
+                    "authorizations": {
+                        "$ref": "#/components/schemas/Authorizations"
+                    }
+                }
             },
             "ConfirmationRequest": {
                 "type": "object",

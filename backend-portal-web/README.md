@@ -216,14 +216,14 @@ Execute na raiz do repositório:
 docker compose -f compose.auth.yaml up -d --build
 ```
 
-O arquivo é independente e inicia banco, Backend Auth, API C# e frontend. Abra
+O arquivo é independente e inicia Oracle, migrações Flyway, Backend Auth2, API C# e frontend. Abra
 http://localhost:4200. Não requer Salesforce, Backend Lab, `.env` nem cadastro manual.
-As senhas são iguais aos e-mails:
+As senhas locais são distintas e podem ser substituídas no `.env` da raiz:
 
-| Cliente | Empresa / CNPJ | Orçamentos | Equipamentos / laudos |
-| --- | --- | --- | --- |
-| `client1@lactec.com` | EMPRESA DE ENERGIA / `04252011000110` | `1, 3, 6, 8, 10, 12, 14, 16, 18` | 4 / 9 |
-| `client2@lactec.com` | DISTRIBUIDORA DE ENERGIA / `11222333000181` | `4, 5, 7, 9, 11, 13, 15, 17, 19` | 2 / 2 |
+| Cliente | Senha | Empresa / CNPJ | Orçamentos | Equipamentos / laudos |
+| --- | --- | --- | --- | --- |
+| `client1@lactec.com` | `Cliente1!6vT9qL2nW8sD` | EMPRESA DE ENERGIA / `30960572000183` | `1, 3, 6, 8, 10, 12, 14, 16, 18` | 4 / 9 |
+| `client2@lactec.com` | `Cliente2!3rK7wP5mH9zF` | DISTRIBUIDORA DE ENERGIA / `11222333000181` | `4, 5, 7, 9, 11, 13, 15, 17, 19` | 2 / 2 |
 
 Os IDs de orçamento usam o prefixo `quote-`. Os valores, códigos, situações e descrições
 são preservados; as empresas dos orçamentos correspondem às contas. O PDF de `quote-3`
@@ -241,10 +241,13 @@ ausência, CNPJ desconhecido ou várias empresas retornam 401, sem fallback para
 `LabResults__DevelopmentTenant`. Acesso a um orçamento, equipamento ou laudo de
 outra conta retorna 404. Requisições sem JWT continuam retornando 401.
 
-O seed cria também `lactec@lactec.com`, com a mesma senha, para administrar somente
-o Backend Auth pelo Swagger/API. O token de integração e a chave JWT ficam nos
+O seed cria também `lactec@lactec.com`, senha `Lactec!7uQ2mN9xR4pK`, para administrar
+somente o Backend Auth2 pela API. O Swagger está desativado por padrão no Auth2.
+O token de integração e a chave JWT ficam nos
 backends. O Compose tem padrões públicos para uso local, substituíveis por
 `BACKEND_AUTH_SERVICE_TOKEN` e `PORTAL_JWT_SIGNING_KEY` no `.env` da raiz.
+As senhas iniciais usam `AUTH_DEMO_ADMIN_PASSWORD`, `AUTH_DEMO_CLIENT1_PASSWORD` e
+`AUTH_DEMO_CLIENT2_PASSWORD`; elas não sobrescrevem contas já cadastradas.
 O Auth recebe o mesmo token configurado no C# e mantém apenas seu hash.
 
 Reinícios preservam os dados e não redefinem as senhas ou permissões editadas.

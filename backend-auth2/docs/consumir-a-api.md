@@ -38,15 +38,17 @@ Resposta **200**:
   "email": "pessoa@empresa.exemplo",
   "role": "CLIENTE",
   "serviceCode": "portal-web",
-  "companyCnpjs": ["12345678000199"]
+  "authorizations": {
+    "companyCnpjs": ["12345678000199"]
+  }
 }
 ```
 
 Quatro coisas sobre esse corpo:
 
-- **`companyCnpjs` fica na raiz, e nao dentro de um envelope.** Este documento prometia um
-  campo `authorizations` que nunca existiu, e quem programasse por ele leria indefinido. O
-  corpo acima foi copiado de uma resposta de verdade da aplicacao subida.
+- **Os CNPJs ficam em `authorizations.companyCnpjs`.** Este envelope segue o contrato
+  consumido pela API C# do Portal do Cliente. A lista pode estar vazia quando a conta
+  nao representa nenhuma empresa.
 
 - **`id` e texto, nao numero.** Ele tem 64 bits, e numero desse tamanho perde digito em
   JavaScript. Trate como texto do comeco ao fim.
