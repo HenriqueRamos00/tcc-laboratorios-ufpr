@@ -250,6 +250,14 @@ management:
       enabled: false
 
 auth:
+  demo:
+    seed:
+      enabled: ${AUTH_DEMO_SEED_ENABLED:false}
+      service-token: ${BACKEND_AUTH_SERVICE_TOKEN:}
+      admin-password: ${AUTH_DEMO_ADMIN_PASSWORD:}
+      client1-password: ${AUTH_DEMO_CLIENT1_PASSWORD:}
+      client2-password: ${AUTH_DEMO_CLIENT2_PASSWORD:}
+      token-expiration-seconds: ${SERVICE_TOKEN_EXPIRATION_SECONDS:2592000}
   request:
     # Teto do corpo da requisicao, em bytes. O maior pedido legitimo deste servico e o
     # cadastro de cliente, com nome de 150, endereco de 254 e senha de 72 caracteres: menos de

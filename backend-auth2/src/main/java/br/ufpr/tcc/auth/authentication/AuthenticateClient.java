@@ -3,7 +3,6 @@ package br.ufpr.tcc.auth.authentication;
 import br.ufpr.tcc.auth.shared.observability.AuditTrail;
 import br.ufpr.tcc.auth.shared.security.ApplicationCaller;
 import java.time.Duration;
-import java.util.List;
 import java.util.Optional;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -95,7 +94,7 @@ class AuthenticateClient {
             ClientCredentialDirectory.StoredClientCredentialView stored) {
         return new ClientIdentity(Long.toString(stored.id()), stored.name(), stored.email(),
                 ClientIdentity.CLIENT_ROLE, caller.applicationCode(),
-                List.copyOf(stored.companyCnpjs()));
+                new ClientIdentity.Authorizations(stored.companyCnpjs()));
     }
 
     /**

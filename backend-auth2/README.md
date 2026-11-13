@@ -6,6 +6,28 @@ que foi escrita por outro integrante. As duas atendem o mesmo contrato publico.
 
 Spring Boot 4.1.1, Java 21, Oracle 23ai, Maven.
 
+## Demonstracao do portal
+
+Na raiz do repositorio, `docker compose -f compose.auth.yaml up -d --build --remove-orphans`
+sobe Oracle, migracoes, Auth2, API C# e frontend com os dados demo. O seed fica desligado
+por padrao neste modulo e no seu Compose independente; so o Compose demo define
+`AUTH_DEMO_SEED_ENABLED=true` e as senhas iniciais.
+
+Ele cria `portal-web`, seu token de integracao, o administrador `lactec@lactec.com` e
+os clientes `client1@lactec.com` e `client2@lactec.com`, ativos e com e-mail confirmado.
+O client1 representa EMPRESA DE ENERGIA, CNPJ `30960572000183`; o client2 representa
+DISTRIBUIDORA DE ENERGIA, CNPJ `11222333000181`. As senhas distintas cumprem a politica
+de cadastro e sao guardadas com Argon2id. Os valores locais e suas variaveis de
+substituicao estao no [README da raiz](../README.md#demonstração-com-backend-auth2).
+
+O seed roda em uma transacao pela credencial restrita da aplicacao. Reiniciar nao
+redefine senha, nome, situacao ou vinculos de registros existentes. Tokens vencidos sao
+renovados, mas revogacao manual e preservada. Os dados demo nao entram nas migracoes Flyway.
+O demo nao configura SMTP; os clientes pre-cadastrados ja podem entrar, mas os fluxos
+de confirmacao e recuperacao de novos cadastros exigem configurar envio de e-mail.
+
+O login devolve os CNPJs em `authorizations.companyCnpjs`, seguindo o contrato do C#.
+
 ## Subir
 
 ```bash

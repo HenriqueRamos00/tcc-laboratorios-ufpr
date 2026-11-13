@@ -159,7 +159,7 @@ class AccountCompanyLinkContractIntegrationTest extends OracleIntegrationTestBas
                 .containsExactlyInAnyOrder(first.id(), second.id());
         assertThat(textsOf(body.get("authorizations").get("companyCnpjs")))
                 .containsExactlyInAnyOrder(first.cnpj(), second.cnpj());
-        assertThat(textsOf(loginAfterConfirming(email).get("companyCnpjs")))
+        assertThat(textsOf(loginAfterConfirming(email).get("authorizations").get("companyCnpjs")))
                 .as("a aplicacao recebe os CNPJ em ordem, quando o cliente entra")
                 .containsExactly(first.cnpj(), second.cnpj());
     }
@@ -197,7 +197,7 @@ class AccountCompanyLinkContractIntegrationTest extends OracleIntegrationTestBas
                 .andReturn();
 
         assertThat(created.getResponse().getStatus()).isEqualTo(201);
-        assertThat(loginAfterConfirming(email).get("companyCnpjs")).isEmpty();
+        assertThat(loginAfterConfirming(email).get("authorizations").get("companyCnpjs")).isEmpty();
     }
 
     @Test
@@ -258,7 +258,7 @@ class AccountCompanyLinkContractIntegrationTest extends OracleIntegrationTestBas
         assertThat(textsOf(readAccount(accountId, administrativeToken).get("companyIds")))
                 .as("o que a alteracao respondeu e o que ficou gravado")
                 .containsExactlyInAnyOrder(second.id(), third.id());
-        assertThat(textsOf(loginAfterConfirming(email).get("companyCnpjs")))
+        assertThat(textsOf(loginAfterConfirming(email).get("authorizations").get("companyCnpjs")))
                 .containsExactlyInAnyOrder(second.cnpj(), third.cnpj());
     }
 

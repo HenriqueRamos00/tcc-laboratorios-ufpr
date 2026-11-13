@@ -4,6 +4,7 @@ import br.ufpr.tcc.auth.shared.database.DatabaseProbe;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 
 import br.ufpr.tcc.auth.authentication.LoginAttemptLedger;
 import br.ufpr.tcc.auth.credential.model.ServiceToken;
@@ -109,6 +110,8 @@ class ClientLoginContractIntegrationTest extends OracleIntegrationTestBase {
                 .contains("\"companyCnpjs\"")
                 .doesNotContain("passwordHash").doesNotContain("Senha123");
         assertThat(body).matches(".*\"id\":\"[0-9]+\".*");
+        jsonPath("$.authorizations.companyCnpjs").isArray().match(result);
+        jsonPath("$.companyCnpjs").doesNotExist().match(result);
     }
 
     // O caso central: cinco motivos de recusa, uma resposta so, comparada inteira.

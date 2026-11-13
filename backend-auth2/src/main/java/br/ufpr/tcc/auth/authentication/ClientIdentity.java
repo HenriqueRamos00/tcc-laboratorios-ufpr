@@ -13,7 +13,14 @@ import java.util.List;
  * O identificador e texto porque numero de 64 bits perde precisao no navegador.
  */
 public record ClientIdentity(String id, String name, String email, String role,
-        String serviceCode, List<String> companyCnpjs) {
+        String serviceCode, Authorizations authorizations) {
 
     static final String CLIENT_ROLE = "CLIENTE";
+
+    public record Authorizations(List<String> companyCnpjs) {
+
+        public Authorizations {
+            companyCnpjs = List.copyOf(companyCnpjs);
+        }
+    }
 }

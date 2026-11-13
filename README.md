@@ -2,40 +2,45 @@
 
 TCC Portal Web Laboratórios.
 
-O [Backend Auth](backend-auth/README.md) é um serviço Spring Boot independente, com SQL Server, login do portal sem token e operações administrativas com Bearer tokens opacos, sem JWT. O primeiro administrador é cadastrado por um link gerado nos logs e administra somente esse serviço, com permissões independentes do Portal Web. O módulo tem seu próprio Compose; o frontend de administração será feito separadamente. A API C# usa esse serviço quando `Portal__DataSource=lactec` e emite o JWT do Portal do Cliente. Veja a [configuração da integração](backend-portal-web/README.md#configuração-e-execução-em-lactec).
+O [Backend Auth2](backend-auth2/README.md) é o serviço Spring Boot de autenticação usado pelo Compose de demonstração, com Oracle, login de clientes por token de aplicação e operações administrativas com Bearer tokens opacos. A API C# usa esse serviço quando `Portal__DataSource=lactec` e emite o JWT do Portal do Cliente. O administrador do Auth2 tem permissões independentes do Portal Web. A implementação anterior permanece em [Backend Auth](backend-auth/README.md), com SQL Server e Compose próprio. Veja a [configuração da integração](backend-portal-web/README.md#configuração-e-execução-em-lactec).
 
-## Demonstração com Backend Auth
+## Demonstração com Backend Auth2
 
 Na raiz, com Docker Engine e Compose v2, sem configurar `.env`:
 
 ```bash
-docker compose -f compose.auth.yaml up -d --build
+docker compose -f compose.auth.yaml up -d --build --remove-orphans
 ```
 
-Abra http://localhost:4200. O Compose inicia SQL Server, Backend Auth
-(http://localhost:8081/swagger-ui.html), API C# (http://localhost:5125) e frontend.
+Abra http://localhost:4200. O Compose inicia Oracle, migrações Flyway, Backend Auth2
+(http://localhost:8081), SQL Server do AutoLAB, API C# (http://localhost:5125) e frontend.
 Não inicia Backend Lab nem Portal Interno; encerre outros stacks que usem essas portas.
+O Oracle pode levar alguns minutos no primeiro início. A prontidão do Auth2 está em
+http://localhost:8081/health/readiness; o Swagger fica desativado por padrão.
 
 | Conta | Senha | Acesso |
 | --- | --- | --- |
-| `lactec@lactec.com` | `lactec@lactec.com` | Administrador do Backend Auth, pelo Swagger/API |
-| `client1@lactec.com` | `client1@lactec.com` | EMPRESA DE ENERGIA: nove orçamentos; seis equipamentos e onze laudos do AutoLAB demo |
-| `client2@lactec.com` | `client2@lactec.com` | DISTRIBUIDORA DE ENERGIA: nove orçamentos; seis equipamentos e onze laudos do AutoLAB demo |
+| `lactec@lactec.com` | `Lactec!7uQ2mN9xR4pK` | Administrador do Backend Auth2, pela API |
+| `client1@lactec.com` | `Cliente1!6vT9qL2nW8sD` | EMPRESA DE ENERGIA / `30960572000183`: nove orçamentos; seis equipamentos e onze laudos do AutoLAB demo |
+| `client2@lactec.com` | `Cliente2!3rK7wP5mH9zF` | DISTRIBUIDORA DE ENERGIA / `11222333000181`: nove orçamentos; seis equipamentos e onze laudos do AutoLAB demo |
 
 O seed cria o serviço `portal-web` e seu token de integração automaticamente. O portal
 autentica no Auth, emite JWT e filtra orçamentos e propostas PDF pelo CNPJ da conta.
 Equipamentos e análises do AutoLAB usam o escopo global explícito do demo (`LabResults__Scope=all`).
 As medidas e séries laboratoriais existentes são preservadas. O administrador não
-tem acesso de cliente ao portal. Veja os [detalhes do demo](backend-auth/README.md#seed-de-demonstração).
+tem acesso de cliente ao portal. Os clientes demo já nascem ativos e com e-mail confirmado.
+O envio de confirmação para novos cadastros e de recuperação de senha requer SMTP no Auth2.
+Veja os [detalhes do Auth2](backend-auth2/README.md).
 Os relatórios e PDFs laboratoriais vêm do banco AutoLAB local. A consulta por orçamento
 resolve primeiro o orçamento autorizado e usa seu código para selecionar os relatórios.
 
 As senhas e chaves padrão são públicas e exclusivas deste ambiente local. O `.env`
-da raiz permite substituir `SQLSERVER_SA_PASSWORD`, `BACKEND_AUTH_SERVICE_TOKEN`
-e `PORTAL_JWT_SIGNING_KEY`; nenhum desses valores é enviado ao frontend.
-O SQL Server fica somente na rede interna e usa o volume separado
-`tcc-auth-demo_auth-sqlserver-data`. Reiniciar preserva senhas, estado e vínculos
-editados; o seed apenas cria registros ausentes e renova seu token se estiver expirado.
+da raiz permite substituir `SQLSERVER_SA_PASSWORD`, `AUTH_ORACLE_PASSWORD`,
+`AUTH_SCHEMA_OWNER_PASSWORD`, `AUTH_DATASOURCE_PASSWORD`, as senhas iniciais das contas,
+`BACKEND_AUTH_SERVICE_TOKEN` e `PORTAL_JWT_SIGNING_KEY`; credenciais não são enviadas
+ao frontend. Oracle e SQL Server ficam somente na rede interna e usam volumes separados.
+Reiniciar preserva senhas, estado e vínculos editados; o seed apenas cria registros
+ausentes e renova seu token se estiver expirado, sem desfazer revogações manuais.
 
 ```bash
 docker compose -f compose.auth.yaml down     # preserva o banco
@@ -43,8 +48,8 @@ docker compose -f compose.auth.yaml down -v  # apaga o banco demo e os volumes d
 docker compose -f compose.auth.yaml up -d --build
 ```
 
-Ao mudar a senha SQL depois do primeiro início, mantenha a senha já usada pelo volume
-ou descarte somente os dados demo com o comando acima. O seed fica desativado por
+Ao mudar senhas de banco depois do primeiro início, mantenha as credenciais já usadas
+pelos volumes ou descarte os dados demo com o comando acima. O seed fica desativado por
 padrão fora deste Compose. O arquivo é independente; não deve ser combinado com `compose.yaml`.
 
 ## Docker Compose na raiz
@@ -77,7 +82,7 @@ relatórios publicados e PDFs. Não exige AutoLAB nem SQL Server. Equipamentos e
 aguardam os endpoints de cliente do Spring: suas rotas retornam 501 com o código
 `lab-integration-pending`, e o portal informa a indisponibilidade. O plano está em
 [Integração do Portal do Cliente](backend-lab/docs/integracao-portal-cliente.md).
-O `compose.auth.yaml` seleciona Backend Auth, orçamentos demonstrativos e fontes AutoLAB
+O `compose.auth.yaml` seleciona Backend Auth2, orçamentos demonstrativos e fontes AutoLAB
 SQL Server. Os dois arquivos configuram seus providers independentemente do `.env` compartilhado.
 No stack Auth, a conexão AutoLAB de `backend-portal-web/.env` prevalece sobre os padrões
 do banco demo local; a massa local é usada quando não há essa configuração.
@@ -136,8 +141,8 @@ docker compose up -d --build --renew-anon-volumes frontend frontend-interno
 
 O ADMIN mantém empresas e clientes em `/admin/empresas` e `/admin/clientes` no Portal Interno, que acessa diretamente a API Spring. O cadastro de cliente define a senha inicial e os vínculos com uma ou mais empresas ativas. O Spring armazena hashes BCrypt, aplica as regras de cadastro e preserva o histórico ao desativar registros.
 
-O Backend Lab também oferece autenticação de clientes em `POST /api/auth/login`, consulta de orçamentos em `/api/client/quotes` e download dos respectivos documentos. Com `Portal__DataSource=backend-lab`, o C# adapta o login em `POST /auth/login` e preserva o token Spring. Com `Portal__DataSource=lactec`, autentica no Backend Auth com um token de serviço restrito a `portal-web`, emite JWT próprio (15 minutos) e protege `/api/**` e `/auth/me`. As fontes são exclusivas e não há fallback. Angular guarda o JWT em localStorage, envia Bearer para o C# e restaura o perfil. Em `lactec`, os orçamentos são filtrados pelos CNPJs das empresas no JWT, incluindo detalhe e PDF; clientes sem empresas recebem lista vazia. `Portal__UseDemoData=true` seleciona apenas os orçamentos fictícios. Em `compose.yaml`, os relatórios publicados vêm do Spring; equipamentos e indicadores ainda estão indisponíveis. Em `compose.auth.yaml`, equipamentos, ensaios e relatórios vêm do SQL Server AutoLAB local, com massa sintética gerada por `tools/gerar-massa-autolab.mjs`, exibida de forma generalizada (`LabResults__Scope=all`).
+O Backend Lab também oferece autenticação de clientes em `POST /api/auth/login`, consulta de orçamentos em `/api/client/quotes` e download dos respectivos documentos. Com `Portal__DataSource=backend-lab`, o C# adapta o login em `POST /auth/login` e preserva o token Spring. Com `Portal__DataSource=lactec`, autentica no Backend Auth2 com um token de serviço restrito a `portal-web`, emite JWT próprio (15 minutos) e protege `/api/**` e `/auth/me`. As fontes são exclusivas e não há fallback. Angular guarda o JWT em localStorage, envia Bearer para o C# e restaura o perfil. Em `lactec`, os orçamentos são filtrados pelos CNPJs das empresas no JWT, incluindo detalhe e PDF; clientes sem empresas recebem lista vazia. `Portal__UseDemoData=true` seleciona apenas os orçamentos fictícios. Em `compose.yaml`, os relatórios publicados vêm do Spring; equipamentos e indicadores ainda estão indisponíveis. Em `compose.auth.yaml`, equipamentos, ensaios e relatórios vêm do SQL Server AutoLAB local, com massa sintética gerada por `tools/gerar-massa-autolab.mjs`, exibida de forma generalizada (`LabResults__Scope=all`).
 
-Para testar o Portal do Cliente com Backend Auth, use `docker compose -f compose.auth.yaml up -d --build`. Para integração com o Salesforce real, siga a [configuração do C#](backend-portal-web/README.md#configuração-e-execução-em-lactec) e mantenha `Portal__UseDemoData=false`.
+Para testar o Portal do Cliente com Backend Auth2, use `docker compose -f compose.auth.yaml up -d --build --remove-orphans`. Para integração com o Salesforce real, siga a [configuração do C#](backend-portal-web/README.md#configuração-e-execução-em-lactec) e mantenha `Portal__UseDemoData=false`.
 
 Para carregar os dados de demonstração do Backend Lab, configure `DEMO_SEED_ENABLED=true` no `.env` local e reinicie a API. O seed SQL cria uma empresa, a conta Spring `lactec@lactec.com` (senha `lactec`), um orçamento e seu PDF estático versionado. A flag fica desativada por padrão e deve ser habilitada somente em ambiente local.
