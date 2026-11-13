@@ -1,6 +1,8 @@
 package br.ufpr.tcc.auth.notification;
 
 import br.ufpr.tcc.auth.shared.observability.MdcKeys;
+import lombok.AccessLevel;
+import lombok.RequiredArgsConstructor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.slf4j.MDC;
@@ -31,6 +33,7 @@ import org.springframework.transaction.support.TransactionSynchronizationManager
  * sem deixar rastro nenhum.
  */
 @Component
+@RequiredArgsConstructor(access = AccessLevel.PACKAGE)
 class OutboundMessageDispatcher implements MessageDelivery {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(OutboundMessageDispatcher.class);
@@ -38,12 +41,6 @@ class OutboundMessageDispatcher implements MessageDelivery {
     private final RecordedMessages recordedMessages;
 
     private final ApplicationEventPublisher events;
-
-    OutboundMessageDispatcher(RecordedMessages recordedMessages,
-            ApplicationEventPublisher events) {
-        this.recordedMessages = recordedMessages;
-        this.events = events;
-    }
 
     @Override
     public void deliver(OutboundMessage message) {

@@ -1,5 +1,7 @@
 package br.ufpr.tcc.auth.notification;
 
+import lombok.AccessLevel;
+import lombok.RequiredArgsConstructor;
 import org.springframework.boot.health.contributor.Health;
 import org.springframework.boot.health.contributor.HealthIndicator;
 import org.springframework.stereotype.Component;
@@ -23,16 +25,12 @@ import org.springframework.stereotype.Component;
  * estado, se existe transporte, falhas em sequencia e contagem por desfecho.
  */
 @Component
+@RequiredArgsConstructor(access = AccessLevel.PACKAGE)
 class MailDeliveryHealthIndicator implements HealthIndicator {
 
     private final MailDeliveryCircuit circuit;
 
     private final OutboundMessageWorker worker;
-
-    MailDeliveryHealthIndicator(MailDeliveryCircuit circuit, OutboundMessageWorker worker) {
-        this.circuit = circuit;
-        this.worker = worker;
-    }
 
     @Override
     public Health health() {

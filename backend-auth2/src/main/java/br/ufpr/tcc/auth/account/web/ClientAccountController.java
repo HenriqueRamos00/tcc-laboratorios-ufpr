@@ -4,25 +4,27 @@ import br.ufpr.tcc.auth.account.AccountLifecycle;
 import br.ufpr.tcc.auth.shared.security.ApplicationCaller;
 import br.ufpr.tcc.auth.shared.security.CallerScope;
 import br.ufpr.tcc.auth.shared.web.ProblemDetailWriter;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Optional;
-import org.springframework.web.bind.annotation.DeleteMapping;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.PathVariable;
-import org.springframework.web.bind.annotation.PutMapping;
 import io.swagger.v3.oas.annotations.media.Schema;
+import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Size;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Optional;
+import lombok.AccessLevel;
+import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
-import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.web.bind.annotation.DeleteMapping;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RestController;
 
@@ -36,6 +38,7 @@ import org.springframework.web.bind.annotation.RestController;
  * cliente.
  */
 @RestController
+@RequiredArgsConstructor(access = AccessLevel.PACKAGE)
 class ClientAccountController {
 
     private static final String ADMINISTRATIVE = "credencial-administrativa";
@@ -46,11 +49,6 @@ class ClientAccountController {
 
     private final AccountLifecycle lifecycle;
     private final ProblemDetailWriter problemDetailWriter;
-
-    ClientAccountController(AccountLifecycle lifecycle, ProblemDetailWriter problemDetailWriter) {
-        this.lifecycle = lifecycle;
-        this.problemDetailWriter = problemDetailWriter;
-    }
 
     /**
      * A aplicacao e obrigatoria e vem no corpo: quem cadastra e o administrador, que

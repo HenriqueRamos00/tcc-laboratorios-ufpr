@@ -4,6 +4,8 @@ import br.ufpr.tcc.auth.authentication.ClientCredentialDirectory;
 import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
+import lombok.AccessLevel;
+import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 
 /**
@@ -14,13 +16,10 @@ import org.springframework.stereotype.Component;
  * que nao compila.
  */
 @Component
+@RequiredArgsConstructor(access = AccessLevel.PACKAGE)
 class ClientAccountDirectory implements ClientCredentialDirectory {
 
     private final ClientAccountRepository accounts;
-
-    ClientAccountDirectory(ClientAccountRepository accounts) {
-        this.accounts = accounts;
-    }
 
     /**
      * Os CNPJ saem em ordem, para que a resposta do login nao mude de uma chamada para a

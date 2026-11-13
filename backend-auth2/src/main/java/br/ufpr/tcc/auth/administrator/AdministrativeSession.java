@@ -10,6 +10,8 @@ import jakarta.persistence.Table;
 import jakarta.persistence.UniqueConstraint;
 import java.time.Duration;
 import java.time.OffsetDateTime;
+import lombok.AccessLevel;
+import lombok.NoArgsConstructor;
 
 /**
  * Sessao administrativa aberta, representada pelo digest do token entregue.
@@ -23,6 +25,7 @@ import java.time.OffsetDateTime;
         uniqueConstraints = @UniqueConstraint(name = "UK_ADMINISTRATIVE_SESSION_DIGEST",
                 columnNames = "TOKEN_DIGEST"),
         indexes = @Index(name = "IX_ADMINISTRATIVE_SESSION_ADMIN", columnList = "ADMINISTRATOR_ID"))
+@NoArgsConstructor(access = AccessLevel.PROTECTED)
 class AdministrativeSession {
 
     @Id
@@ -44,9 +47,6 @@ class AdministrativeSession {
 
     @Column(name = "REVOKED_AT")
     private OffsetDateTime revokedAt;
-
-    protected AdministrativeSession() {
-    }
 
     static AdministrativeSession openedFor(long administratorId, AdministrativeToken token,
             Duration lifetime) {

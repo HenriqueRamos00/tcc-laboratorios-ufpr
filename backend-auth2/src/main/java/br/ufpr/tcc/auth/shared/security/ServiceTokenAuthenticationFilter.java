@@ -7,6 +7,8 @@ import jakarta.servlet.http.HttpServletResponse;
 import java.io.IOException;
 import java.util.List;
 import java.util.Optional;
+import lombok.AccessLevel;
+import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpHeaders;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
@@ -27,6 +29,7 @@ import org.springframework.web.filter.OncePerRequestFilter;
  * encontrado. Adulterar o prefixo nao promove ninguem, so faz a busca nao achar nada.
  */
 @Component
+@RequiredArgsConstructor(access = AccessLevel.PACKAGE)
 public class ServiceTokenAuthenticationFilter extends OncePerRequestFilter {
 
     private static final String BEARER_PREFIX = "Bearer ";
@@ -37,12 +40,6 @@ public class ServiceTokenAuthenticationFilter extends OncePerRequestFilter {
 
     private final ApplicationCallerDirectory applications;
     private final AdministratorCallerDirectory administrators;
-
-    ServiceTokenAuthenticationFilter(ApplicationCallerDirectory applications,
-            AdministratorCallerDirectory administrators) {
-        this.applications = applications;
-        this.administrators = administrators;
-    }
 
     @Override
     protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response,

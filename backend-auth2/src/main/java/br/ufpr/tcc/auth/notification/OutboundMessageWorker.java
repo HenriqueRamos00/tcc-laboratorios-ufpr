@@ -4,6 +4,8 @@ import br.ufpr.tcc.auth.shared.observability.MdcKeys;
 import java.util.Optional;
 import java.util.concurrent.RejectedExecutionException;
 import java.util.concurrent.atomic.AtomicLong;
+import lombok.AccessLevel;
+import lombok.RequiredArgsConstructor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.slf4j.MDC;
@@ -33,6 +35,7 @@ import org.springframework.transaction.event.TransactionalEventListener;
  * correlacao, que a requisicao ja deixou na trilha de auditoria.
  */
 @Component
+@RequiredArgsConstructor(access = AccessLevel.PACKAGE)
 class OutboundMessageWorker {
 
     /** Contagem acumulada desde a subida, publicada pela sonda de saude. */
@@ -57,13 +60,6 @@ class OutboundMessageWorker {
     private final AtomicLong shortCircuited = new AtomicLong();
 
     private final AtomicLong withoutTransport = new AtomicLong();
-
-    OutboundMessageWorker(Optional<MessageTransport> transport, OutboundMessageExecutor executor,
-            MailDeliveryCircuit circuit) {
-        this.transport = transport;
-        this.executor = executor;
-        this.circuit = circuit;
-    }
 
     @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT, fallbackExecution = false)
     void deliverAfterCommit(OutboundMessageReady ready) {

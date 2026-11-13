@@ -1,14 +1,16 @@
 package br.ufpr.tcc.auth.shared.web;
 
 import java.util.List;
+import lombok.AccessLevel;
+import lombok.RequiredArgsConstructor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.dao.DataAccessResourceFailureException;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ProblemDetail;
 import org.springframework.http.ResponseEntity;
-import org.springframework.dao.DataAccessResourceFailureException;
-import org.springframework.http.HttpHeaders;
 import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.transaction.CannotCreateTransactionException;
 import org.springframework.validation.FieldError;
@@ -35,6 +37,7 @@ import org.springframework.web.bind.annotation.RestControllerAdvice;
  * matriz de codigos compara respostas irmas inteiras, e dois escritores divergem em silencio.
  */
 @RestControllerAdvice
+@RequiredArgsConstructor(access = AccessLevel.PACKAGE)
 class InvalidRequestAdvice {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(InvalidRequestAdvice.class);
@@ -46,10 +49,6 @@ class InvalidRequestAdvice {
     private static final long RETRY_AFTER_SECONDS = 2L;
 
     private final ProblemDetailWriter problemDetailWriter;
-
-    InvalidRequestAdvice(ProblemDetailWriter problemDetailWriter) {
-        this.problemDetailWriter = problemDetailWriter;
-    }
 
     @ExceptionHandler(MethodArgumentNotValidException.class)
     ResponseEntity<ProblemDetail> onInvalidField(MethodArgumentNotValidException refused) {

@@ -2,6 +2,7 @@ package br.ufpr.tcc.auth.application.web;
 
 import br.ufpr.tcc.auth.application.ApplicationRegistry;
 import io.swagger.v3.oas.annotations.media.Schema;
+import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
@@ -9,18 +10,19 @@ import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Positive;
 import jakarta.validation.constraints.Size;
 import java.time.Duration;
-import java.util.List;
-import java.util.Optional;
 import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
+import java.util.Optional;
+import lombok.AccessLevel;
+import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
-import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
-import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RestController;
 
@@ -34,13 +36,10 @@ import org.springframework.web.bind.annotation.RestController;
  */
 @SecurityRequirement(name = "credencial-administrativa")
 @RestController
+@RequiredArgsConstructor(access = AccessLevel.PACKAGE)
 class ApplicationController {
 
     private final ApplicationRegistry registry;
-
-    ApplicationController(ApplicationRegistry registry) {
-        this.registry = registry;
-    }
 
     /**
      * O formato do codigo nao e preferencia nossa: ele e o mesmo que o consumidor valida na

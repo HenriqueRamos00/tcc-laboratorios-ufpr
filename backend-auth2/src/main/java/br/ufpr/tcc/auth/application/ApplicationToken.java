@@ -10,6 +10,10 @@ import jakarta.persistence.Table;
 import jakarta.persistence.UniqueConstraint;
 import java.time.Duration;
 import java.time.OffsetDateTime;
+import lombok.AccessLevel;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+import lombok.experimental.Accessors;
 
 /**
  * Credencial que uma aplicacao apresenta para consumir este servico.
@@ -32,6 +36,8 @@ import java.time.OffsetDateTime;
         uniqueConstraints = @UniqueConstraint(name = "UK_APPLICATION_TOKEN_DIGEST",
                 columnNames = "TOKEN_DIGEST"),
         indexes = @Index(name = "IX_APPLICATION_TOKEN_APPLICATION", columnList = "APPLICATION_ID"))
+@NoArgsConstructor(access = AccessLevel.PROTECTED)
+@Accessors(fluent = true)
 public class ApplicationToken {
 
     @Id
@@ -43,22 +49,22 @@ public class ApplicationToken {
     private Long applicationId;
 
     @Column(name = "NAME", length = 150)
+    @Getter(AccessLevel.PACKAGE)
     private String name;
 
     @Column(name = "TOKEN_DIGEST", length = 32)
     private byte[] tokenDigest;
 
     @Column(name = "CREATED_AT")
+    @Getter(AccessLevel.PACKAGE)
     private OffsetDateTime createdAt;
 
     @Column(name = "EXPIRES_AT")
     private OffsetDateTime expiresAt;
 
     @Column(name = "REVOKED_AT")
+    @Getter(AccessLevel.PACKAGE)
     private OffsetDateTime revokedAt;
-
-    protected ApplicationToken() {
-    }
 
     /** Prazo nulo e token sem vencimento, e a coluna aceita ausencia de valor por isso. */
     static ApplicationToken issuedFor(long applicationId, String name, ServiceToken token,
@@ -79,18 +85,6 @@ public class ApplicationToken {
 
     long applicationId() {
         return applicationId;
-    }
-
-    String name() {
-        return name;
-    }
-
-    OffsetDateTime revokedAt() {
-        return revokedAt;
-    }
-
-    OffsetDateTime createdAt() {
-        return createdAt;
     }
 
     OffsetDateTime expiresAt() {

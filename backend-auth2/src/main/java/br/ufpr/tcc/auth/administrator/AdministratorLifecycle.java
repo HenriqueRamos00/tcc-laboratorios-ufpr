@@ -3,6 +3,8 @@ package br.ufpr.tcc.auth.administrator;
 import br.ufpr.tcc.auth.credential.model.PasswordPolicy;
 import br.ufpr.tcc.auth.shared.observability.AuditTrail;
 import java.util.Optional;
+import lombok.AccessLevel;
+import lombok.RequiredArgsConstructor;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
@@ -27,6 +29,7 @@ import org.springframework.transaction.support.TransactionTemplate;
  * promete 409.
  */
 @Service
+@RequiredArgsConstructor(access = AccessLevel.PACKAGE)
 public class AdministratorLifecycle {
 
     private final AdministratorRegistry registry;
@@ -34,16 +37,6 @@ public class AdministratorLifecycle {
     private final PasswordEncoder passwordEncoder;
     private final AuditTrail auditTrail;
     private final TransactionTemplate transactions;
-
-    AdministratorLifecycle(AdministratorRegistry registry, AdministrativeSessionDirectory sessions,
-            PasswordEncoder passwordEncoder, AuditTrail auditTrail,
-            TransactionTemplate transactions) {
-        this.registry = registry;
-        this.sessions = sessions;
-        this.passwordEncoder = passwordEncoder;
-        this.auditTrail = auditTrail;
-        this.transactions = transactions;
-    }
 
     /**
      * Desfecho do cadastro. O administrador criado viaja junto porque quem cadastra precisa

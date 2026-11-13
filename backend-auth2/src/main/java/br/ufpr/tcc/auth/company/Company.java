@@ -7,6 +7,10 @@ import jakarta.persistence.Id;
 import jakarta.persistence.Table;
 import jakarta.persistence.UniqueConstraint;
 import java.time.OffsetDateTime;
+import lombok.AccessLevel;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+import lombok.experimental.Accessors;
 
 /**
  * Empresa que uma conta de cliente pode representar.
@@ -19,6 +23,8 @@ import java.time.OffsetDateTime;
 @Entity
 @Table(name = "COMPANY", uniqueConstraints =
         @UniqueConstraint(name = "UK_COMPANY_CNPJ", columnNames = "CNPJ"))
+@NoArgsConstructor(access = AccessLevel.PROTECTED)
+@Accessors(fluent = true)
 class Company {
 
     @Id
@@ -27,6 +33,7 @@ class Company {
     private Long id;
 
     @Column(name = "NAME", length = 150)
+    @Getter(AccessLevel.PACKAGE)
     private String name;
 
     @Column(name = "CNPJ", length = 14)
@@ -37,9 +44,6 @@ class Company {
 
     @Column(name = "UPDATED_AT")
     private OffsetDateTime updatedAt;
-
-    protected Company() {
-    }
 
     /**
      * O identificador fica nulo de proposito, para o gerador do Hibernate atribui-lo antes
@@ -59,10 +63,6 @@ class Company {
 
     long id() {
         return id;
-    }
-
-    String name() {
-        return name;
     }
 
     String cnpj() {

@@ -7,6 +7,10 @@ import jakarta.persistence.Id;
 import jakarta.persistence.Table;
 import jakarta.persistence.UniqueConstraint;
 import java.time.OffsetDateTime;
+import lombok.AccessLevel;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+import lombok.experimental.Accessors;
 import org.hibernate.annotations.ColumnTransformer;
 
 /**
@@ -28,6 +32,8 @@ import org.hibernate.annotations.ColumnTransformer;
 @Table(name = "ADMINISTRATOR",
         uniqueConstraints = @UniqueConstraint(name = "UK_ADMINISTRATOR_EMAIL",
                 columnNames = "EMAIL_NORMALIZED"))
+@NoArgsConstructor(access = AccessLevel.PROTECTED)
+@Accessors(fluent = true)
 class Administrator {
 
     @Id
@@ -36,9 +42,11 @@ class Administrator {
     private Long id;
 
     @Column(name = "NAME", length = 150)
+    @Getter(AccessLevel.PACKAGE)
     private String name;
 
     @Column(name = "EMAIL", length = 254)
+    @Getter(AccessLevel.PACKAGE)
     private String email;
 
     @Column(name = "EMAIL_NORMALIZED", length = 254)
@@ -46,9 +54,11 @@ class Administrator {
     private String emailNormalized;
 
     @Column(name = "PASSWORD_HASH", length = 255)
+    @Getter(AccessLevel.PACKAGE)
     private String passwordHash;
 
     @Column(name = "ACTIVE")
+    @Getter(AccessLevel.PACKAGE)
     private boolean active;
 
     @Column(name = "CREATED_AT")
@@ -56,9 +66,6 @@ class Administrator {
 
     @Column(name = "UPDATED_AT")
     private OffsetDateTime updatedAt;
-
-    protected Administrator() {
-    }
 
     /**
      * Administrador novo nasce ativo. O identificador fica nulo de proposito, para o gerador
@@ -81,22 +88,6 @@ class Administrator {
 
     long id() {
         return id;
-    }
-
-    String name() {
-        return name;
-    }
-
-    String email() {
-        return email;
-    }
-
-    String passwordHash() {
-        return passwordHash;
-    }
-
-    boolean active() {
-        return active;
     }
 
     /**

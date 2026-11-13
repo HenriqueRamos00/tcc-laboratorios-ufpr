@@ -2,17 +2,16 @@ package br.ufpr.tcc.auth.administrator;
 
 import java.util.List;
 import java.util.Optional;
+import lombok.AccessLevel;
+import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
 /** Leitura do cadastro de administradores, sem nada de credencial. */
 @Service
+@RequiredArgsConstructor(access = AccessLevel.PACKAGE)
 public class AdministratorDirectoryService {
 
     private final AdministratorRegistry registry;
-
-    AdministratorDirectoryService(AdministratorRegistry registry) {
-        this.registry = registry;
-    }
 
     public List<AdministratorSummary> list() {
         return registry.list().stream().map(AdministratorDirectoryService::summaryOf).toList();

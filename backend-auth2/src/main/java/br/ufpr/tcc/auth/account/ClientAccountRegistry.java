@@ -10,10 +10,13 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.stream.Collectors;
+import lombok.AccessLevel;
+import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 
 /** Leitura e gravacao de conta de cliente e das credenciais de uso unico dela. */
 @Component
+@RequiredArgsConstructor(access = AccessLevel.PACKAGE)
 class ClientAccountRegistry {
 
     /**
@@ -25,14 +28,6 @@ class ClientAccountRegistry {
     private final ClientAccountRepository accounts;
     private final AccountConfirmationRepository confirmations;
     private final ClientAccountCompanyRepository companyLinks;
-
-    ClientAccountRegistry(ClientAccountRepository accounts,
-            AccountConfirmationRepository confirmations,
-            ClientAccountCompanyRepository companyLinks) {
-        this.accounts = accounts;
-        this.confirmations = confirmations;
-        this.companyLinks = companyLinks;
-    }
 
     /** A situacao da aplicacao em que a conta vai nascer: vazio quando ela nao existe. */
     Optional<Boolean> applicationSituation(long applicationId) {
