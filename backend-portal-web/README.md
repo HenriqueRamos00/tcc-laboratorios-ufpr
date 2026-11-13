@@ -86,16 +86,16 @@ Há duas fontes, selecionadas exclusivamente por `Portal__DataSource` na inicial
 
 | Fonte | Autenticação | Sessão do navegador |
 | --- | --- | --- |
-| `backend-lab` | `BackendLab__BaseUrl` → Spring Backend Lab | Token Spring preservado pelo C#; comportamento existente das demais rotas mantido |
+| `backend-lab` | `BackendLab__BaseUrl` → Spring Backend Lab | Token Spring preservado; orçamentos e documentos consultados pelos adapters C# |
 | `lactec` | `BackendAuth__BaseUrl` → Spring Backend Auth independente | JWT HS256 emitido e validado pela API C# |
 
 `lactec` é o modo Backend Auth. Não existe terceira fonte `backend-auth`, seleção por
 requisição ou fallback entre os serviços. Valores ausentes e desconhecidos impedem
 a inicialização. As configurações da fonte inativa são ignoradas. No modo `lactec`,
 os orçamentos são consultados no Salesforce com os CNPJs autorizados no JWT.
-Com `Portal__UseDemoData=true`, o C# usa `FakeSalesforceQuoteRepository` e resolve
-a empresa dos ensaios embutidos pelo CNPJ autenticado, conforme o demo abaixo.
-Sem essa opção, equipamentos e ensaios mantêm sua resolução de tenant existente.
+Com `Portal__UseDemoData=true`, o C# usa `FakeSalesforceQuoteRepository` para os
+orçamentos. A opção não afeta equipamentos, ensaios nem relatórios no modo Auth, que vêm do
+AutoLAB com o escopo de `LabResults__Scope` (ver [Escopo de visibilidade](#escopo-de-visibilidade)).
 
 `POST /auth/login` é público e recebe `{ "email": "...", "password": "..." }`.
 O controller chama `ILoginUseCase` → `LoginService` → `IClientAuthenticator`.
@@ -135,8 +135,53 @@ No modo `lactec`, todas as rotas `/api/**` e `GET /auth/me` exigem
 audiência, validade sem tolerância extra, identidade, fonte, serviço e papel.
 `GET /auth/me` devolve o mesmo `user` usando os claims, sem consultar o Backend Auth.
 Login, OpenAPI e preflight CORS são públicos. No modo `backend-lab`, `/auth/me`
-retorna 501 e as demais rotas conservam a autorização anterior. O OpenAPI descreve
-o Bearer quando `lactec` está ativo.
+retorna 501 e as consultas de orçamento e relatórios encaminham o Bearer Spring à origem.
+No Compose regular, equipamentos e indicadores retornam 501 (`lab-integration-pending`)
+até a implementação dos endpoints de cliente no Spring. O OpenAPI descreve o Bearer quando `lactec`
+está ativo.
+
+No modo `backend-lab`, as rotas C# `/api/quotes`, `/api/quotes/{id}` e
+`/api/quotes/{id}/document` adaptam, respectivamente, `GET /api/client/quotes` e suas
+rotas de detalhe e documento no Spring. As três exigem um Bearer sintaticamente válido
+antes de executar a consulta. Cada chamada encaminha somente o Bearer da requisição
+atual; o C# não interpreta claims desse token. O Spring verifica perfil,
+cliente, empresa e vínculos ativos a cada leitura. IDs continuam strings nos contratos
+públicos; a origem Spring usa identificadores numéricos positivos. `opportunityId` é
+uma string vazia quando não há equivalente na origem, os contatos nulos são expostos
+como strings vazias. `stage` é um texto obrigatório e não vazio preparado pelo Spring;
+resposta sem etapa válida no contrato de transporte resulta em 502, sem inventar progresso.
+
+No modo `backend-lab`, a origem Spring fornece o PDF anexado ou gera a representação
+do orçamento quando não há anexo. O C# apenas transporta os bytes. Falha de origem,
+timeout ou resposta inválida retorna 502; 401, 403 e orçamento inexistente permanecem
+distintos. Falhas nessa fonte não consultam Salesforce, fixtures ou PDFs gerados.
+Lactec mantém Salesforce, documentos locais e geração de proposta existentes.
+
+### Relatórios nas duas composições
+
+`GET /api/reports` devolve a lista paginada em array, com `X-Total-Count`, `X-Page`
+e `X-Page-Size`. O contrato inclui os metadados AutoLAB e mantém os campos de relatórios
+publicados usados pelos clientes Spring. `GET /api/quotes/{id}/reports` consulta o orçamento
+autorizado, devolve a conclusão e seus relatórios, ou 204 quando não há laudos.
+O frontend utiliza o ID do orçamento nessa consulta, preservando IDs próprios de cada fonte.
+
+Em `compose.yaml`, o adapter Spring consulta `/api/client/reports`, os relatórios por
+orçamento e `/api/client/reports/{id}/file`. `ReportDocuments__Source=not-connected`
+desliga apenas o provider AutoLAB; os relatórios publicados Spring permanecem disponíveis.
+Em `compose.auth.yaml`, `ReportDocuments__Source=sql-server` seleciona os relatórios AutoLAB.
+Não há fallback entre as duas origens.
+
+As rotas `/api/reports/{id}/document` e `/api/reports/{id}/file` devolvem o mesmo documento
+da fonte selecionada. IDs Spring são strings; IDs AutoLAB são GUIDs codificados.
+`pdfAvailable` informa se o documento pode ser baixado; `hasSignedDocument` identifica
+PDF assinado do AutoLAB e não é usado para declarar assinatura digital em documentos Spring.
+O download mantém o PDF persistido, o nome do arquivo e `Cache-Control: no-store`.
+
+`LabResults__Source=not-connected` registra explicitamente a integração laboratorial
+pendente, sem validar conexão SQL. `LaboratoryProgress__Source=not-connected` mantém a
+etapa enviada pelo Spring. Os detalhes das adições futuras estão no
+[plano do Backend Lab](../backend-lab/docs/integracao-portal-cliente.md).
+
 
 A sessão dura 900 segundos por padrão. Alterações de senha, empresas, estado da
 conta, serviço ou token de serviço só afetam JWTs já emitidos quando expiram.
@@ -147,7 +192,12 @@ Os CNPJs do JWT autorizam as consultas de orçamentos do Salesforce. A filtragem
 dos ensaios por empresa está disponível para as duas empresas do demo; a conexão
 com o AutoLAB real permanece fora desta integração.
 
-O Angular guarda o JWT em `localStorage` (`lactec.token`) e envia Bearer apenas às
+O Angular guarda o JWT em `localStorage` quando **Me mantenha conectado** está
+marcado, ou em `sessionStorage` quando desmarcado. Nome, identidade e papel usam o
+mesmo armazenamento; logout limpa ambos. A escolha vale para as duas fontes e não
+estende a validade do JWT. O frontend valida o formato da resposta, validade e
+perfil de cliente antes de persistir uma sessão; assinatura e autorização são
+verificadas pelo backend. Angular envia Bearer apenas às
 rotas protegidas da origem/caminho configurados em `API_URL`. Nome e papel vêm de
 `user`; ao recarregar uma sessão `lactec`, `/auth/me` restaura a identidade. A
 restauração do Backend Lab usa o seu perfil/claim `role`. O login de desenvolvimento
@@ -205,8 +255,10 @@ dos tokens do portal e do Backend Auth. Falhas de configuração, conexão, time
 ou resposta da origem retornam 502 sem expor seu corpo. Angular mostra o erro;
 nenhum dado de demonstração substitui uma consulta recusada ou indisponível.
 
-O modo `backend-lab` conserva o adapter de demonstração existente no C#. A mudança
-não implementa sua integração de orçamentos nem altera o módulo Backend Lab.
+No modo `backend-lab`, os orçamentos sempre vêm do Spring pelos adapters C#, mesmo
+com `Portal__UseDemoData=true`; essa opção não seleciona fixtures nem documentos
+substitutos para essa fonte. A demonstração do Salesforce e seus documentos locais
+permanece restrita ao modo `lactec`.
 
 ### Demonstração com duas contas
 
@@ -216,30 +268,29 @@ Execute na raiz do repositório:
 docker compose -f compose.auth.yaml up -d --build
 ```
 
-O arquivo é independente e inicia Oracle, migrações Flyway, Backend Auth2, API C# e frontend. Abra
+O arquivo é independente e inicia Oracle com Auth2 e migrações Flyway, SQL Server
+com AutoLAB local (`autolab-init`), API C# e frontend. Abra
 http://localhost:4200. Não requer Salesforce, Backend Lab, `.env` nem cadastro manual.
 As senhas locais são distintas e podem ser substituídas no `.env` da raiz:
 
 | Cliente | Senha | Empresa / CNPJ | Orçamentos | Equipamentos / laudos |
 | --- | --- | --- | --- | --- |
-| `client1@lactec.com` | `Cliente1!6vT9qL2nW8sD` | EMPRESA DE ENERGIA / `30960572000183` | `1, 3, 6, 8, 10, 12, 14, 16, 18` | 4 / 9 |
-| `client2@lactec.com` | `Cliente2!3rK7wP5mH9zF` | DISTRIBUIDORA DE ENERGIA / `11222333000181` | `4, 5, 7, 9, 11, 13, 15, 17, 19` | 2 / 2 |
+| `client1@lactec.com` | `Cliente1!6vT9qL2nW8sD` | EMPRESA DE ENERGIA / `30960572000183` | `1, 3, 6, 8, 10, 12, 14, 16, 18` | 6 / 11 |
+| `client2@lactec.com` | `Cliente2!3rK7wP5mH9zF` | DISTRIBUIDORA DE ENERGIA / `11222333000181` | `4, 5, 7, 9, 11, 13, 15, 17, 19` | 6 / 11 |
 
 Os IDs de orçamento usam o prefixo `quote-`. Os valores, códigos, situações e descrições
 são preservados; as empresas dos orçamentos correspondem às contas. O PDF de `quote-3`
-também usa a empresa correta. Os arquivos de medidas e séries laboratoriais permanecem
-intactos. O agrupamento é por empresa; não há um vínculo novo entre orçamento e laudo.
-Os relatórios comerciais já simulados pelo frontend mantêm os vínculos existentes
-com `quote-18` (quatro relatórios para client1) e `quote-15`/`quote-19` (cinco para
-client2). A listagem e a conclusão consultam os orçamentos autorizados na API antes
-de mostrar essas fixtures; falhas da API não liberam a lista completa.
+também é gerado com os dados do orçamento e o layout Lactec; o arquivo estático
+antigo foi removido. Equipamentos, laudos e relatórios aparecem de forma
+generalizada para as duas contas (`LabResults__Scope=all`): são os 6 equipamentos e
+11 laudos da massa local. Os relatórios de `vwRelatoriosEnsaios` levam os códigos
+`OrcamentoCRM` dos orçamentos fictícios, e `SituaProcess` usa os mesmos códigos, então
+a etapa do laboratório aparece nos orçamentos locais.
 
 `Portal__UseDemoData` é `false` por padrão e não altera o fluxo Backend Auth → JWT.
 Quando habilitado em `lactec`, lista, detalhe e PDF dos orçamentos usam o escopo de
-CNPJs autenticado. Ensaios exigem exatamente uma das empresas demo autorizadas;
-ausência, CNPJ desconhecido ou várias empresas retornam 401, sem fallback para
-`LabResults__DevelopmentTenant`. Acesso a um orçamento, equipamento ou laudo de
-outra conta retorna 404. Requisições sem JWT continuam retornando 401.
+CNPJs autenticado; orçamento de outra conta retorna 404. Requisições sem JWT
+continuam retornando 401.
 
 O seed cria também `lactec@lactec.com`, senha `Lactec!7uQ2mN9xR4pK`, para administrar
 somente o Backend Auth2 pela API. O Swagger está desativado por padrão no Auth2.
@@ -248,23 +299,28 @@ backends. O Compose tem padrões públicos para uso local, substituíveis por
 `BACKEND_AUTH_SERVICE_TOKEN` e `PORTAL_JWT_SIGNING_KEY` no `.env` da raiz.
 As senhas iniciais usam `AUTH_DEMO_ADMIN_PASSWORD`, `AUTH_DEMO_CLIENT1_PASSWORD` e
 `AUTH_DEMO_CLIENT2_PASSWORD`; elas não sobrescrevem contas já cadastradas.
-O Auth recebe o mesmo token configurado no C# e mantém apenas seu hash.
+O Auth2 recebe o mesmo token configurado no C# e mantém apenas seu hash.
+`AUTH_ORACLE_PASSWORD`, `AUTH_SCHEMA_OWNER_PASSWORD` e `AUTH_DATASOURCE_PASSWORD`
+configuram o Oracle; `SQLSERVER_SA_PASSWORD` configura o SQL Server local.
 
-Reinícios preservam os dados e não redefinem as senhas ou permissões editadas.
-`docker compose -f compose.auth.yaml down` preserva o banco; `down -v` apaga o
-ambiente demo, permitindo recriar as contas com os padrões. O volume é separado
-dos demais Composes. Este arquivo substitui o antigo overlay de rede externa e
+Reinícios preservam as contas do Auth2 e não redefinem senhas ou permissões editadas.
+O `autolab-init` recarrega a massa sintética do AutoLAB a cada execução.
+`docker compose -f compose.auth.yaml down` preserva os dois bancos; `down -v` apaga
+o Oracle, o SQL Server local (incluindo eventual banco Auth legado) e os volumes do frontend.
+Os volumes são separados dos demais Composes. Este arquivo substitui o antigo overlay de rede externa e
 não deve ser combinado com `compose.yaml`.
 
 ### Configuração e execução em lactec
 
-1. Suba o serviço independente seguindo o [README do Backend Auth](../backend-auth/README.md),
-   cadastre o primeiro administrador pelo link dos logs e entre no Swagger UI.
+1. Suba o serviço independente seguindo o [README do Backend Auth2](../backend-auth2/README.md).
+   Cadastre o primeiro administrador com o segredo de instalação e entre pela API
+   administrativa; a documentação do contrato fica em `backend-auth2/docs/openapi.json`.
 2. Crie o serviço com código `portal-web`, gere um token de serviço e crie um
-   cliente ativo vinculado a esse serviço e, opcionalmente, a empresas.
+   cliente ativo vinculado a esse serviço e, opcionalmente, a empresas. Confirme o
+   e-mail do cliente para habilitar seu login.
 3. Para usar o Salesforce real, mantenha `Portal__UseDemoData=false`, configure as
    credenciais Salesforce e exporte as variáveis abaixo no processo do C#.
-4. Com o Backend Auth já iniciado, execute `dotnet run --project PortalHexagonalApi/Portal.Api`
+4. Com o Backend Auth2 já iniciado, execute `dotnet run --project PortalHexagonalApi/Portal.Api`
    em `backend-portal-web/`. O `.env` sozinho não configura `dotnet run`.
 
 Para `dotnet run` fora do Docker, exporte as variáveis do processo:
@@ -305,7 +361,7 @@ Salesforce usam HTTP simulado e conferem o SOQL enviado, múltiplas empresas,
 ausência de vínculos, separação de clientes e bloqueio de detalhe/PDF fora do escopo. O frontend
 cobre armazenamento/restauração, envio restrito do Bearer, logout, mensagens e
 espera do login. Para um smoke real, mantenha o Backend Lab parado, use o Backend
-Auth com SQL Server, autentique pelo C#, consulte `/auth/me` e `/api/quotes` com o
+Auth2 com Oracle e AutoLAB com SQL Server, autentique pelo C#, consulte `/auth/me` e `/api/quotes` com o
 JWT e confirme 401 sem JWT e 429 após cinco senhas incorretas. Para verificar
 expiração sem esperar 15 minutos, reduza `PORTAL_JWT_EXPIRATION_SECONDS` no ambiente
 de teste e recrie a API.
@@ -327,6 +383,149 @@ Salesforce__ClientSecret=your-connected-app-client-secret
 
 O endpoint `POST /api/salesforce/token` chama o OAuth do Salesforce e retorna o
 token recebido.
+
+## Conexao ao AutoLAB (SQL Server)
+
+As fontes `LabResults`, `EquipmentRegistry`, `LaboratoryProgress` e `ReportDocuments`
+aceitam `sql-server`. Nesse modo a API le o banco `bdautolab_ensaios` pelo Entity
+Framework Core (provider `Microsoft.EntityFrameworkCore.SqlServer`), somente leitura: sem
+migrations, sem `SaveChanges` (o `DbContext` recusa), consultas LINQ sem tracking sobre as
+views `vwDadosEnsaios`, `Equipamentos`, `SituaProcess` e `vwRelatoriosEnsaios` e sobre as
+tabelas `RelatorioEmissao` e `FileData`.
+
+As credenciais do AutoLAB real vem do ambiente ou do `.env` (nunca do `appsettings`
+versionado). O `compose.auth.yaml` carrega primeiro os padrões públicos do banco local em
+`docker/autolab/demo.env`, usando a mesma senha configurada para seu SQL Server. Depois
+carrega `backend-portal-web/.env`, cujos valores de conexão AutoLAB têm precedência.
+Sem esse arquivo, o demo local continua funcionando; com uma conexão externa configurada,
+a API consulta essa origem. O `appsettings.Development.json` usa fontes desconectadas e
+não define credenciais AutoLAB:
+
+```env
+LabResults__Source=sql-server
+EquipmentRegistry__Source=sql-server
+LaboratoryProgress__Source=sql-server
+ReportDocuments__Source=sql-server
+
+AutoLab__Server=LACTECSQL10,49933
+AutoLab__Database=bdautolab_ensaios
+AutoLab__User=projeto_portal
+AutoLab__Password=<pedir ao responsavel pelo AutoLAB>
+AutoLab__Encrypt=false
+AutoLab__TrustServerCertificate=true
+AutoLab__ReadOnlyIntent=true
+AutoLab__CommandTimeoutSeconds=15
+AutoLab__ConnectTimeoutSeconds=10
+AutoLab__MaxPoolSize=10
+AutoLab__MaxRowsPerQuery=5000
+```
+
+A connection string e montada com `SqlConnectionStringBuilder` e validada na
+inicializacao (`ValidateOnStart`) quando alguma fonte e `sql-server`; com todas as fontes
+fora do banco, a secao `AutoLab` nao e exigida. O `DbContext` e registrado uma vez, em
+pool, mesmo com as quatro fontes ligadas.
+
+Protecoes para nao pesar no banco do laboratorio:
+
+- toda consulta tem limite no banco (`TOP` ou `OFFSET ... FETCH`) e, fora do escopo `all`,
+  `WHERE` (empresa, serie, protocolo, codigo do orcamento ou identificacao do laudo);
+- `AutoLab__MaxRowsPerQuery` limita as linhas de cada consulta; passar do limite responde
+  502 em vez de truncar o resultado em silencio;
+- listas grandes de series ou de orcamentos viram varios `IN` de ate 500 valores;
+- `AutoLab__CommandTimeoutSeconds` curto e `AutoLab__MaxPoolSize` limitam tempo e conexoes;
+- `ApplicationIntent=ReadOnly` (desligue com `AutoLab__ReadOnlyIntent=false` se a replica
+  recusar conexoes de intencao de leitura);
+- so as duas rotas de PDF leem coluna `varbinary` (`FileData.Content`); `PdfLiberado` nunca
+  e lido.
+
+### Paginacao
+
+`GET /api/equipments`, `GET /api/equipments/{id}/reports` e `GET /api/reports` aceitam `page` (a partir de 1)
+e `pageSize` (padrao 50, maximo 200). Valor invalido responde 400 com ProblemDetails. O
+corpo continua sendo o array da pagina; os cabecalhos `X-Total-Count`, `X-Page` e
+`X-Page-Size` (expostos no CORS, junto com `Content-Disposition` dos downloads) dizem o
+total e a pagina servida. A paginacao acontece no
+banco: primeiro as chaves (equipamentos do escopo, ou protocolos do equipamento) em
+ordem fixa, depois as linhas so das chaves da pagina.
+
+### PDF assinado do laudo
+
+`GET /api/equipments/{id}/reports/{reportId}/document` devolve `application/pdf`. O laudo
+e validado primeiro pelo caminho com escopo (o protocolo tem que estar no escopo e ser do
+equipamento da rota); so entao a identificacao dele busca em `RelatorioEmissao` a versao
+vigente (`GCRecord` nulo, sem substituto, maior revisao, mais recente) e o arquivo em
+`FileData` pelo `Oid`. Equipamento ou laudo fora do escopo, ou laudo sem PDF
+assinado, respondem 404.
+
+Cada linha do historico traz `hasSignedDocument`: existe `RelatorioEmissao` nao apagado
+com `PdfAssinado` cujo `FileData` nao esta apagado. A pagina inteira e resolvida numa
+consulta so, com `IN` das identificacoes. O antigo `reportUrl` saiu do contrato.
+
+### Relatorios (`vwRelatoriosEnsaios`)
+
+`GET /api/reports?quoteCode=` lista `vwRelatoriosEnsaios` (filtro opcional por
+`OrcamentoCRM` exato), ordenado por `DataPublicacao` desc, `DataEmissao` desc e `Oid`.
+Cada item: `id` (o `Oid`, opaco), `identification`, `requestNumber`, `quoteCode`,
+`sampleId`, `sampleName`, `client`, `status`, `scheduledDate`, `issueDate`,
+`publicationDate` (datas `yyyy-MM-dd` ou `null`) e `hasSignedDocument` (`PdfAssinado`
+preenchido). `GET /api/reports/{id}/document` segue `Oid` → `PdfAssinado` → `FileData`
+(`GCRecord` nulo) dentro do escopo; sem PDF responde 404. No escopo `company`, a empresa e
+comparada com `ClienteSolicitante`.
+
+### Indicadores: tensao nominal e texto do relatorio
+
+`physicalChemical.nominalVoltage` e `Equipamentos.Tensao` da placa, ou `null`.
+`physicalChemical.report` e `dissolvedGases.report` sao `{ title, paragraphs }` do
+`RelatorioEmissao` vigente da analise selecionada (sem selecao, da analise mais recente
+de cada serie): `TituloRelatorio` e `Conclusao` quebrada por linha em branco. Sem
+relatorio, `title` e `null` e `paragraphs` e vazio. Conformidade, veredito,
+classificacao, metodo e limite continuam podendo vir `null`/`-`.
+
+### Escopo de visibilidade
+
+`LabResults__Scope` e obrigatorio:
+
+- `all` (padrao do ambiente local): nenhuma consulta filtra empresa; todos os registros
+  aparecem para qualquer usuario autenticado.
+- `company`: filtra `vwDadosEnsaios.EmpresaTrafo` (e `ClienteSolicitante` nos relatorios)
+  pela claim `inquilino` ou, na falta dela, por `LabResults__DevelopmentTenant`; sem
+  nenhuma das duas responde 401.
+
+Caminho futuro do filtro por CNPJ (a autenticacao esta sendo refeita): claim
+`companyCnpjs` do JWT → `dbo.dCliente.Cnpj_Cpf` (colunas `Oid`, `Sigla`, `Nome`,
+`RazaoSocial`, `Cnpj_Cpf`) → ligacao ainda a investigar com `RelatorioEmissao.Solicitacao`,
+`vwRelatoriosEnsaios.ClienteSolicitante` ou `vwDadosEnsaios.EmpresaTrafo`. Casar por nome
+nao serve: dos 56 `EmpresaTrafo` distintos de uma amostra, so 2 casam com `dCliente.Nome` e
+1 com `RazaoSocial`.
+
+**Risco no AutoLAB real:** em `all`, a listagem de equipamentos agrupa a view
+`vwDadosEnsaios` inteira (`EmpresaTrafo` e `nvarchar(max)` sem indice, e nao ha filtro
+seletivo), e `GET /api/reports` sem `quoteCode` ordena `vwRelatoriosEnsaios` inteira. Uma
+consulta de levantamento que ordenou a view sem filtro levou 25,6 s em producao. Use
+`all` so no banco local ate existir o filtro por CNPJ.
+
+### Banco local do AutoLAB
+
+`docker/autolab/01-create-database.sql` cria `autolab` com `SQL_Latin1_General_CP1_CI_AS`;
+`02-create-objects.sql` cria `vwDadosEnsaios`, `Equipamentos`, `SituaProcess`,
+`vwRelatoriosEnsaios` e `dCliente` como views com os nomes, colunas, tipos e nulabilidade
+levantados em producao (sobre tabelas locais `*Local`), e `RelatorioEmissao`/`FileData`
+como as tabelas XPO, com os indices. `03-load-sample.sql` e gerado, junto com
+`PortalHexagonalApi/Portal.Tests/AutoLab/autolab-sample.json` (a mesma massa carregada no
+SQLite da suite), a partir de `tools/massa-autolab.mjs`:
+
+```bash
+node tools/gerar-massa-autolab.mjs
+```
+
+O cadastro local de EMPRESA DE ENERGIA usa CNPJ `30.960.572/0001-83`,
+alinhado ao cliente `client1` do Auth2 e aos orçamentos demonstrativos.
+A massa tem 11 laudos de 6 equipamentos (EMPRESA DE ENERGIA e DISTRIBUIDORA DE ENERGIA),
+o cadastro de placas, as linhas de `SituaProcess` com os codigos dos orcamentos ficticios,
+um relatorio por laudo com PDFs assinados de uma pagina, laudos sem PDF, uma revisao
+substituida, um relatorio apagado (`GCRecord`) e um sem titulo nem conclusao. Para
+recarregar: `docker compose -f compose.auth.yaml run --rm autolab-init`. Para `dotnet run`
+fora do Docker, troque `AutoLab__Server` pelo endereco publicado da instancia.
 
 ## Como rodar com Docker
 

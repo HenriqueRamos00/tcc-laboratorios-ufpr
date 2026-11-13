@@ -29,25 +29,110 @@ public sealed class EquipmentContractTests : IClassFixture<RunningPortal>
 
         Assert.NotEmpty(list);
         Assert.All(list, equipment => Assert.Equal(
-            ["company", "id", "identification", "location", "mostRecentReportDate",
-             "reportCount", "serialNumber", "tag", "type"],
+            ["company", "equipmentTag", "id", "identification", "location",
+             "mostRecentReportDate", "nameplateKnown", "reportCount", "serialNumber",
+             "tag", "type"],
             equipment!.AsObject().Select(pair => pair.Key).Order()));
     }
 
     /// <summary>
-    /// Tipo e localizacao nao existem no AutoLAB. A chave tem que continuar no corpo mesmo
-    /// nula: sem ela a tela imprime undefined na coluna em vez de dizer que o laboratorio
-    /// nao informa esse dado.
+    /// Localizacao nao existe no cadastro: sao dez colunas e nenhuma delas e lugar. A chave
+    /// tem que continuar no corpo mesmo nula, em toda linha: sem ela a tela imprime undefined
+    /// na coluna em vez de dizer que o dado nao e informado.
     /// </summary>
     [Fact]
-    public async Task AColumnAutoLabDoesNotHaveArrivesNullAndPresent()
+    public async Task LocationIsNullAndPresentInEveryRow()
     {
-        JsonObject first = (await ListAsync())[0]!.AsObject();
+        JsonArray list = await ListAsync();
 
-        Assert.True(first.ContainsKey("type"));
-        Assert.True(first.ContainsKey("location"));
-        Assert.Null(first["type"]);
-        Assert.Null(first["location"]);
+        Assert.All(list, equipment =>
+        {
+            Assert.True(equipment!.AsObject().ContainsKey("location"));
+            Assert.Null(equipment["location"]);
+        });
+    }
+
+    /// <summary>
+    /// O tipo de equipamento deixou de ser sempre nulo e sai como o cadastro escreve,
+    /// acentuado e sem fundir com o par quase igual. A serie 111.594/1 e uma das quatro da
+    /// amostra que o cadastro conhece.
+    /// </summary>
+    [Fact]
+    public async Task TheEquipmentTypeComesFromTheRegistryWrittenAsTheRegistryWroteIt()
+    {
+        JsonArray list = await ListAsync();
+
+        JsonObject known = OneWithSerialNumber(list, "111.594/1");
+
+        Assert.True((bool?)known["nameplateKnown"]);
+        Assert.Equal("TRANSFORMADOR DE POTÊNCIA", (string?)known["type"]);
+        Assert.Equal("TR-00002", (string?)known["equipmentTag"]);
+    }
+
+    /// <summary>
+    /// As duas series que este projeto inventou nao existem no cadastro, e o corpo diz isso
+    /// em vez de inventar placa. E a confirmacao independente de que a juncao e pelo numero
+    /// de serie de verdade: ela acerta em todo dado verdadeiro e falha so onde o numero e
+    /// nosso.
+    /// </summary>
+    [Fact]
+    public async Task AnInventedSerialNumberHasNoNameplateAndSaysSo()
+    {
+        JsonArray list = await ListAsync();
+
+        JsonObject unknown = OneWithSerialNumber(list, "884120");
+
+        Assert.False((bool?)unknown["nameplateKnown"]);
+        Assert.Null(unknown["type"]);
+        Assert.Null(unknown["equipmentTag"]);
+    }
+
+    /// <summary>
+    /// O cadastro nao tem coluna de empresa, e a serie 5233 esta nele com placa completa. O
+    /// equipamento e de outro cliente e continua inalcancavel, porque o cadastro so e
+    /// consultado depois de as analises do inquilino responderem. A placa daquele cliente nao
+    /// aparece em lugar nenhum do corpo servido a este.
+    /// </summary>
+    [Fact]
+    public async Task TheRegistryDoesNotBecomeAWayIntoAnotherTenantsEquipment()
+    {
+        HttpResponseMessage detail = await _portal.CreateClient()
+            .GetAsync($"/api/equipments/{OpaqueIdentifier.Encode("5233")}");
+
+        Assert.Equal(HttpStatusCode.NotFound, detail.StatusCode);
+
+        JsonArray list = await ListAsync();
+
+        Assert.DoesNotContain(
+            "TR-00004",
+            list.Select(equipment => (string?)equipment!["equipmentTag"]));
+    }
+
+    /// <summary>
+    /// O detalhe carrega os tres campos novos do cadastro, e a potencia vem com a unidade que
+    /// o cadastro escreveu. A listagem nao carrega nenhum dos tres: ela nao os imprime, e
+    /// mandar nove campos de placa em toda linha e peso sem leitor.
+    /// </summary>
+    [Fact]
+    public async Task TheDetailCarriesTheNameplateFieldsTheListingDoesNot()
+    {
+        JsonArray list = await ListAsync();
+        string identifier = (string)OneWithSerialNumber(list, "571289")["id"]!;
+
+        HttpResponseMessage response = await _portal.CreateClient()
+            .GetAsync($"/api/equipments/{identifier}");
+
+        response.EnsureSuccessStatusCode();
+
+        JsonObject detail = JsonNode.Parse(await response.Content.ReadAsStringAsync())!.AsObject();
+
+        Assert.Equal("50 MVA", (string?)detail["power"]);
+        Assert.Equal("220", (string?)detail["voltage"]);
+        Assert.Equal("FABRICANTE DE TRANSFORMADORES", (string?)detail["manufacturer"]);
+        Assert.Equal("1979", (string?)detail["manufacturingYear"]);
+        Assert.Equal("20570", (string?)detail["oilVolume"]);
+        Assert.False(list[0]!.AsObject().ContainsKey("power"));
+        Assert.False(list[0]!.AsObject().ContainsKey("manufacturer"));
     }
 
     [Fact]
@@ -191,8 +276,12 @@ public sealed class EquipmentContractTests : IClassFixture<RunningPortal>
         {
             Assert.Equal("chromatography", (string?)report!["analysisType"]);
             Assert.Equal("completed", (string?)report["status"]);
-            Assert.Null(report["reportUrl"]);
+            Assert.False(report!.AsObject().ContainsKey("reportUrl"));
         });
+
+        Assert.Equal(
+            [false, true, true, true],
+            reports.Select(report => (bool)report!["hasSignedDocument"]!).Order());
     }
 
     [Fact]
@@ -215,6 +304,18 @@ public sealed class EquipmentContractTests : IClassFixture<RunningPortal>
             .GetAsync("/api/equipments/nao-e-base-64-%2F%2F");
 
         Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+    }
+
+    /// <summary>
+    /// A linha da listagem de uma serie. Existe para o caso de teste dizer so o que importa
+    /// nele, e porque a listagem cresceu: tres casos desta classe precisam da mesma travessia.
+    /// </summary>
+    private static JsonObject OneWithSerialNumber(JsonArray list, string serialNumber)
+    {
+        return list
+            .OfType<JsonNode>()
+            .Select(equipment => equipment.AsObject())
+            .Single(equipment => (string?)equipment["serialNumber"] == serialNumber);
     }
 
     private async Task<JsonArray> ListAsync()

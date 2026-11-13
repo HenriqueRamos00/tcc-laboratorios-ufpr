@@ -1,5 +1,4 @@
 using Portal.Application.LabResults.Exceptions;
-using Portal.Domain.LabResults.Exceptions;
 using Portal.Domain.LabResults;
 
 using Xunit;
@@ -75,14 +74,13 @@ public sealed class MeasuredItemRecognitionTests
     [InlineData("161")]
     public void AValueNextToTheSumIsNotRecognizedAsATotalizer(string publishedValue)
     {
-        ResultNameOutsideKnownListException exception = Assert.Throws<ResultNameOutsideKnownListException>(() =>
-            MeasuredItemRecognition.Identify([
-                Raw("Hidrogênio", "60"),
-                Raw("Dióxido de Carbono", "100"),
-                Raw(NameOutsideTheCatalog, publishedValue)
-            ]));
+        IReadOnlyList<Measurement> measurements = MeasuredItemRecognition.Identify([
+            Raw("Hidrogênio", "60"),
+            Raw("Dióxido de Carbono", "100"),
+            Raw(NameOutsideTheCatalog, publishedValue)
+        ]);
 
-        Assert.Contains(NameOutsideTheCatalog, exception.Message);
+        Assert.Equal(["co2", "h2"], measurements.Select(measurement => measurement.MeasuredItem.Code).Order());
     }
 
     [Fact]
@@ -101,31 +99,52 @@ public sealed class MeasuredItemRecognitionTests
     [InlineData("ND")]
     [InlineData(null)]
     [InlineData("0,01%")]
-    public void AnUnknownNameWithoutAPublishedQuantityCannotBeRecognized(string? result)
+    public void AnUnknownNameWithoutAPublishedQuantityIsLeftOut(string? result)
     {
-        Assert.Throws<ResultNameOutsideKnownListException>(() =>
-            MeasuredItemRecognition.Identify([
-                Raw("Hidrogênio", "60"),
-                Raw(NameOutsideTheCatalog, result)
-            ]));
+        IReadOnlyList<Measurement> measurements = MeasuredItemRecognition.Identify([
+            Raw("Hidrogênio", "60"),
+            Raw(NameOutsideTheCatalog, result)
+        ]);
+
+        Assert.Equal("h2", Assert.Single(measurements).MeasuredItem.Code);
+    }
+
+    [Fact]
+    public void ATestOfAnotherKindIsLeftOutAndTheGasesStay()
+    {
+        IReadOnlyList<Measurement> measurements = MeasuredItemRecognition.Identify([
+            Raw("Hidrogênio", "60"),
+            Raw("Determinação quantitativa de bifenilas policloradas (PCB) em óleo mineral isolante", "2")
+        ]);
+
+        Assert.Equal("h2", Assert.Single(measurements).MeasuredItem.Code);
+    }
+
+    [Fact]
+    public void AProtocolWithOnlyTestsOfAnotherKindHasNoMeasuredItem()
+    {
+        Assert.Empty(MeasuredItemRecognition.Identify([
+            Raw("Determinação de 2-Furfuraldeído (2-Fal) em óleo mineral isolante", "12"),
+            Raw("Ensaio Ponto de Fulgor em Óleo Mineral Isolante", "150")
+        ]));
     }
 
     /// <summary>
-    /// Com a vaga ja ocupada pelo nome da lista de itens conhecidos, o rotulo desconhecido e recusado em vez
-    /// de virar um segundo totalizador do mesmo codigo. Dois itens medidos de codigo igual na
-    /// mesma analise sao erro de construcao, e e melhor falhar nomeando a linha que a fonte
-    /// trouxe do que falhar falando de codigo repetido.
+    /// Com a vaga ja ocupada pelo nome da lista de itens conhecidos, o rotulo desconhecido fica
+    /// de fora em vez de virar um segundo totalizador do mesmo codigo.
     /// </summary>
     [Fact]
     public void AnUnknownLabelDoesNotCompeteForATotalizerSlotAlreadyTaken()
     {
-        Assert.Throws<ResultNameOutsideKnownListException>(() =>
-            MeasuredItemRecognition.Identify([
-                Raw("Hidrogênio", "60"),
-                Raw("Dióxido de Carbono", "100"),
-                Raw("Total de Gases", "160"),
-                Raw(NameOutsideTheCatalog, "160")
-            ]));
+        IReadOnlyList<Measurement> measurements = MeasuredItemRecognition.Identify([
+            Raw("Hidrogênio", "60"),
+            Raw("Dióxido de Carbono", "100"),
+            Raw("Total de Gases", "160"),
+            Raw(NameOutsideTheCatalog, "160")
+        ]);
+
+        Measurement total = Assert.Single(measurements, measurement => measurement.MeasuredItem.Role == MeasuredItemKind.GasTotalizer);
+        Assert.Equal("Total de Gases", total.MeasuredItem.Label);
     }
 
     /// <summary>

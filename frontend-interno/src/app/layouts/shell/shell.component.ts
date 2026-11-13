@@ -6,12 +6,13 @@ import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 import { MatSidenavModule } from '@angular/material/sidenav';
 import { MatTooltipModule } from '@angular/material/tooltip';
-import { Router, RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
-import { map } from 'rxjs';
+import { NavigationEnd, Router, RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
+import { filter, map } from 'rxjs';
 
 import { LogoComponent } from '@shared/components/logo/logo.component';
 import { LoginService } from '@/app/services/login.service';
 import { UserRole } from '@core/store/user-role.store';
+import { backTargetFor, type BackTarget } from './parent-path';
 
 interface NavItem {
   label: string;
@@ -44,9 +45,8 @@ const ADMIN_NAV: readonly NavItem[] = [
 
 const TECHNICIAN_NAV: readonly NavItem[] = [
   { label: 'Dashboard', path: '/tecnico', icon: 'dashboard', exact: true },
-  { label: 'Pesquisar Ensaios e Amostras', path: '/tecnico/ensaios-amostras', icon: 'search', exact: false },
+  { label: 'Orçamentos', path: '/tecnico/orcamentos', icon: 'description', exact: false },
   { label: 'Manter Ensaio', path: '/tecnico/ensaios', icon: 'science', exact: false },
-  { label: 'Resultados', path: '/tecnico/resultados', icon: 'fact_check', exact: false },
   { label: 'Pesquisar Relatório', path: '/tecnico/relatorios', icon: 'description', exact: false },
   { label: 'Equipamentos', path: '/tecnico/equipamentos', icon: 'precision_manufacturing', exact: false },
 ];
@@ -66,6 +66,7 @@ const TECHNICIAN_NAV: readonly NavItem[] = [
     LogoComponent,
   ],
   templateUrl: './shell.component.html',
+  styleUrl: './shell.component.css',
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class ShellComponent {
@@ -80,6 +81,14 @@ export class ShellComponent {
   );
 
   readonly collapsed = signal(loadCollapsed());
+  private readonly currentUrl = toSignal(
+    this.router.events.pipe(
+      filter((event): event is NavigationEnd => event instanceof NavigationEnd),
+      map((event) => event.urlAfterRedirects),
+    ),
+    { initialValue: this.router.url },
+  );
+  readonly backTarget = computed<BackTarget | null>(() => backTargetFor(this.currentUrl()));
   readonly nav = computed(() =>
     this.userRole.role() === 'ADMIN' ? ADMIN_NAV : TECHNICIAN_NAV,
   );

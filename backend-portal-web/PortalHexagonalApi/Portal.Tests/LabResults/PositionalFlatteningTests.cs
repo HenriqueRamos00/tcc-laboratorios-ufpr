@@ -229,8 +229,7 @@ public sealed class PositionalFlatteningTests
 
     private static SampleAnalysis AnalysisFromTheSample(string protocoloLactec)
     {
-        return Portal.Adapters.LabResults.EmbeddedSampleLabTestRepository.ReadWholeSample()
-            .Single(analysis => analysis.ProtocoloLactec == protocoloLactec);
+        return Portal.Tests.AutoLab.SampleAnalyses.OfProtocol(protocoloLactec);
     }
 
     private static SampleAnalysis PhysicalChemicalAnalysis(string protocoloLactec, DateTime analysisEndDate)

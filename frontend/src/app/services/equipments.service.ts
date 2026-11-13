@@ -1,9 +1,11 @@
 import { HttpClient } from '@angular/common/http';
 import { inject, Injectable } from '@angular/core';
-import { Observable } from 'rxjs';
+import { map, Observable } from 'rxjs';
 
 import { API_URL } from '@/app/environment/env';
 import type { Equipment, EquipmentDetail, EquipmentReport } from '@/app/model/equipment';
+import { pageParams, toPage, type Page, type PageRequest } from '@/app/model/page';
+import { toDownloadedFile, type DownloadedFile } from '@shared/file-download';
 
 @Injectable({ providedIn: 'root' })
 export class EquipmentsService {
@@ -11,8 +13,10 @@ export class EquipmentsService {
   private readonly baseUrl = `${API_URL}/api/equipments`;
 
   /** GET /api/equipments */
-  list(): Observable<readonly Equipment[]> {
-    return this.http.get<Equipment[]>(this.baseUrl);
+  list(request: PageRequest): Observable<Page<Equipment>> {
+    return this.http
+      .get<Equipment[]>(this.baseUrl, { params: pageParams(request), observe: 'response' })
+      .pipe(map((response) => toPage(response, request)));
   }
 
   /**
@@ -27,7 +31,21 @@ export class EquipmentsService {
   }
 
   /** GET /api/equipments/{id}/reports */
-  reportHistory(id: string): Observable<readonly EquipmentReport[]> {
-    return this.http.get<EquipmentReport[]>(`${this.baseUrl}/${encodeURIComponent(id)}/reports`);
+  reportHistory(id: string, request: PageRequest): Observable<Page<EquipmentReport>> {
+    return this.http
+      .get<EquipmentReport[]>(`${this.baseUrl}/${encodeURIComponent(id)}/reports`, {
+        params: pageParams(request),
+        observe: 'response',
+      })
+      .pipe(map((response) => toPage(response, request)));
+  }
+
+  reportDocument(id: string, reportId: string): Observable<DownloadedFile> {
+    return this.http
+      .get(
+        `${this.baseUrl}/${encodeURIComponent(id)}/reports/${encodeURIComponent(reportId)}/document`,
+        { observe: 'response', responseType: 'blob' },
+      )
+      .pipe(map(toDownloadedFile));
   }
 }

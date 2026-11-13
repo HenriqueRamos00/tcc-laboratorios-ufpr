@@ -13,6 +13,7 @@ using Portal.Adapters.BackendAuth;
 using Portal.Adapters.Quotes;
 using Portal.Application.Quotes;
 using Portal.Application.Authentication;
+using Portal.Tests.AutoLab;
 using Xunit;
 
 namespace Portal.Tests.Authentication;
@@ -253,6 +254,128 @@ public sealed class LactecPortalContractTests
         Assert.Throws<OptionsValidationException>(() => portal.CreateClient());
     }
 
+    [Fact]
+    public async Task RenovacaoTrocaOTokenDoLoginPorOutroDaMesmaSessaoSemConsultarBackendAuth()
+    {
+        using var backend = new AuthHandler(HttpStatusCode.OK, Identity);
+        using var portal = new AuthPortal(backend);
+        using HttpClient client = portal.CreateClient();
+        using var login = await Login(client);
+        string first = (string)(await Body(login))["Token"]!;
+
+        using var renewed = await Refresh(client, first);
+
+        Assert.Equal(HttpStatusCode.OK, renewed.StatusCode);
+        Assert.True(renewed.Headers.CacheControl!.NoStore);
+        JsonObject response = await Body(renewed);
+        Assert.Equal(900, (int?)response["expiresIn"]);
+        Assert.Equal("CLIENTE", (string?)response["user"]!["role"]);
+        JwtSecurityToken before = new JwtSecurityTokenHandler().ReadJwtToken(first);
+        JwtSecurityToken after = new JwtSecurityTokenHandler().ReadJwtToken((string)response["Token"]!);
+        Assert.Equal(before.Payload[PortalSessionClaim], after.Payload[PortalSessionClaim]);
+        Assert.NotEqual(before.Id, after.Id);
+        Assert.Equal(2, JsonNode.Parse(after.Payload.SerializeToJson())!["companyCnpjs"]!.AsArray().Count);
+        Assert.Equal(1, backend.Count);
+
+        client.DefaultRequestHeaders.Authorization = new("Bearer", (string)response["Token"]!);
+        using var me = await client.GetAsync("/auth/me");
+        Assert.Equal(HttpStatusCode.OK, me.StatusCode);
+    }
+
+    [Fact]
+    public async Task UmTokenVencidoDentroDaJanelaDeRenovacaoAindaRenova()
+    {
+        using var portal = new AuthPortal(new AuthHandler(HttpStatusCode.OK, Identity));
+        using HttpClient client = portal.CreateClient();
+        DateTime now = DateTime.UtcNow;
+
+        using var renewed = await Refresh(client, SessionToken(expires: now.AddMinutes(-20), sessionStart: now.AddHours(-1)));
+
+        Assert.Equal(HttpStatusCode.OK, renewed.StatusCode);
+    }
+
+    [Fact]
+    public async Task ARenovacaoNaoPassaDoLimiteDeDozeHorasDesdeOLogin()
+    {
+        using var portal = new AuthPortal(new AuthHandler(HttpStatusCode.OK, Identity));
+        using HttpClient client = portal.CreateClient();
+        DateTime now = DateTime.UtcNow;
+
+        using var nearTheEnd = await Refresh(client, SessionToken(now.AddMinutes(5), now.AddHours(-12).AddMinutes(2)));
+        Assert.Equal(HttpStatusCode.OK, nearTheEnd.StatusCode);
+        Assert.InRange((int)(await Body(nearTheEnd))["expiresIn"]!, 1, 120);
+
+        using var over = await Refresh(client, SessionToken(now.AddMinutes(5), now.AddHours(-12).AddSeconds(-1)));
+        Assert.Equal(HttpStatusCode.Unauthorized, over.StatusCode);
+        Assert.Equal("session-expired", (string?)(await Body(over))["code"]);
+    }
+
+    [Theory]
+    [InlineData("expirado-demais")]
+    [InlineData("sem-inicio-de-sessao")]
+    [InlineData("inicio-no-futuro")]
+    [InlineData("assinatura")]
+    [InlineData("outro-servico")]
+    [InlineData("sem-cabecalho")]
+    [InlineData("token-de-servico")]
+    public async Task RenovacaoRecusaTokenQueNaoPodeSerRenovado(string defect)
+    {
+        using var backend = new AuthHandler(HttpStatusCode.OK, Identity);
+        using var portal = new AuthPortal(backend);
+        using HttpClient client = portal.CreateClient();
+        DateTime now = DateTime.UtcNow;
+        string? token = defect switch
+        {
+            "expirado-demais" => SessionToken(now.AddMinutes(-61), now.AddHours(-2)),
+            "sem-inicio-de-sessao" => SessionToken(now.AddMinutes(5), null),
+            "inicio-no-futuro" => SessionToken(now.AddMinutes(5), now.AddMinutes(1)),
+            "assinatura" => SessionToken(now.AddMinutes(5), now.AddHours(-1), key: new byte[64]),
+            "outro-servico" => SessionToken(now.AddMinutes(5), now.AddHours(-1), serviceCode: "outro"),
+            "token-de-servico" => AuthPortal.ServiceToken,
+            _ => null
+        };
+
+        using var response = await Refresh(client, token);
+
+        Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
+        AuthenticationHeaderValue challenge = Assert.Single(response.Headers.WwwAuthenticate);
+        Assert.Equal("Bearer", challenge.Scheme);
+        Assert.Equal(token is null ? null : "error=\"invalid_token\"", challenge.Parameter);
+        Assert.True(response.Headers.CacheControl!.NoStore);
+        Assert.Equal("session-expired", (string?)(await Body(response))["code"]);
+        Assert.Equal(0, backend.Count);
+    }
+
+    private const string PortalSessionClaim = "auth_time";
+
+    private static async Task<HttpResponseMessage> Refresh(HttpClient client, string? token)
+    {
+        using HttpRequestMessage request = new(HttpMethod.Post, "/auth/refresh");
+        if (token is not null) request.Headers.Authorization = new("Bearer", token);
+        return await client.SendAsync(request);
+    }
+
+    private static string SessionToken(DateTime expires, DateTime? sessionStart, byte[]? key = null, string serviceCode = "portal-web")
+    {
+        Dictionary<string, object> claims = new()
+        {
+            ["sub"] = "42", ["nome"] = "Marina Costa", ["email"] = "marina@empresa.com",
+            ["roles"] = "CLIENTE", ["jti"] = Guid.NewGuid().ToString(), ["authSource"] = "lactec",
+            ["serviceCode"] = serviceCode, ["companyCnpjs"] = new[] { "04252011000110" }
+        };
+        if (sessionStart is not null)
+            claims[PortalSessionClaim] = new DateTimeOffset(sessionStart.Value).ToUnixTimeSeconds();
+        DateTime issued = expires.AddMinutes(-15);
+        JwtSecurityTokenHandler handler = new();
+        return handler.WriteToken(handler.CreateToken(new SecurityTokenDescriptor
+        {
+            Claims = claims, Issuer = "portal-test", Audience = "portal-web-test",
+            IssuedAt = issued, NotBefore = issued, Expires = expires,
+            SigningCredentials = new SigningCredentials(
+                new SymmetricSecurityKey(key ?? Convert.FromBase64String(AuthPortal.SigningKey)), SecurityAlgorithms.HmacSha256)
+        }));
+    }
+
     private static Task<HttpResponseMessage> Login(HttpClient client, string email = "marina@empresa.com", string password = "original") =>
         client.PostAsJsonAsync("/auth/login", new { email, password });
     private static async Task<JsonObject> Body(HttpResponseMessage response) =>
@@ -288,9 +411,18 @@ internal sealed class AuthPortal(HttpMessageHandler handler, string? overrideKey
     public static readonly string SigningKey = Convert.ToBase64String(Enumerable.Repeat((byte)42, 64).ToArray());
     public static readonly string ServiceToken = "svc_" + new string('a', 43);
 
+    private readonly AutoLabTestDatabase _database = AutoLabTestDatabase.WithSample();
+
+    protected override void Dispose(bool disposing)
+    {
+        base.Dispose(disposing);
+
+        if (disposing) _database.Dispose();
+    }
+
     protected override void ConfigureWebHost(IWebHostBuilder builder)
     {
-        builder.UseSetting("LabResults:Source", "embedded-sample");
+        builder.UseSampleAutoLab(_database);
         builder.UseSetting("Portal:DataSource", "lactec");
         builder.UseSetting("BackendLab:BaseUrl", "");
         builder.UseSetting("BackendAuth:BaseUrl", "https://backend-auth.test/");

@@ -42,8 +42,8 @@
 
     <app-search-field
       class="mt-4"
-      placeholder="Buscar por ID do relatório"
-      label="Buscar por ID do relatório"
+      placeholder="Buscar por relatório, solicitação ou orçamento"
+      label="Buscar por relatório, solicitação ou orçamento"
       [(termo)]="reportSearch"
     />
 
@@ -58,54 +58,29 @@
     } @else if (reports() === null) {
       <p class="mt-4 text-sm text-lactec-muted" role="status">Carregando relatórios…</p>
     } @else if (visibleReports().length) {
-      <div class="mt-4 overflow-hidden rounded-2xl border border-lactec-line bg-lactec-paper">
-        <div class="overflow-x-auto">
-          <table class="w-full border-collapse text-sm">
-            <caption class="sr-only">
-              Laudos publicados, com protocolo, amostra, laboratório e data de publicação.
-            </caption>
-            <thead>
-              <tr class="bg-lactec-line-soft text-left">
-                <th scope="col" class="px-4 py-3 font-semibold text-lactec-ink">Relatório</th>
-                <th scope="col" class="px-4 py-3 font-semibold text-lactec-ink">Protocolo</th>
-                <th scope="col" class="px-4 py-3 font-semibold text-lactec-ink">Amostra</th>
-                <th scope="col" class="px-4 py-3 font-semibold text-lactec-ink">Laboratório</th>
-                <th scope="col" class="px-4 py-3 font-semibold text-lactec-ink">Publicação</th>
-                <th scope="col" class="px-4 py-3 text-right font-semibold text-lactec-ink">
-                  Download
-                </th>
-              </tr>
-            </thead>
-            <tbody>
-              @for (report of visibleReports(); track report.id) {
-                <tr class="border-t border-lactec-line-soft">
-                  <td class="px-4 py-3 text-lactec-ink">{{ report.code }}</td>
-                  <td class="px-4 py-3 text-lactec-ink">{{ report.protocol }}</td>
-                  <td class="px-4 py-3 text-lactec-ink">{{ report.sample }}</td>
-                  <td class="px-4 py-3 text-lactec-ink">{{ report.laboratory }}</td>
-                  <td class="px-4 py-3 text-lactec-ink">{{ report.publishedOn }}</td>
-                  <td class="px-4 py-3 text-right">
-                    <button
-                      type="button"
-                      class="inline-flex h-10 w-10 items-center justify-center rounded-lg
-                             bg-lactec-nav text-lactec-on-primary hover:bg-lactec-nav-dark"
-                      [attr.aria-label]="'Baixar o relatório ' + report.code"
-                    >
-                      <mat-icon aria-hidden="true">download</mat-icon>
-                    </button>
-                  </td>
-                </tr>
-              }
-            </tbody>
-          </table>
-        </div>
-      </div>
+      <app-report-table
+        class="mt-4"
+        caption="Laudos publicados, com solicitação, amostra, laboratório, situação e data de publicação."
+        [reports]="visibleReports()"
+      />
     } @else {
       <app-empty-state
         class="mt-4"
         icon="search_off"
         title="Nenhum relatório encontrado"
         descricao="Revise o ID informado na busca."
+      />
+    }
+
+    @if (!reportsFailed() && reportTotal() > 0) {
+      <app-pagination
+        class="mt-4"
+        label="Paginação dos relatórios"
+        [page]="reportPage()"
+        [pageSize]="pageSize"
+        [total]="reportTotal()"
+        [disabled]="reportsLoading()"
+        (pageChange)="goToReportPage($event)"
       />
     }
   </section>

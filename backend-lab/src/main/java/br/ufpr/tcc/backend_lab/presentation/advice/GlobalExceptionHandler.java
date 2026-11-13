@@ -1,6 +1,10 @@
 package br.ufpr.tcc.backend_lab.presentation.advice;
 
 import br.ufpr.tcc.backend_lab.domain.exception.CredenciaisInvalidasException;
+import br.ufpr.tcc.backend_lab.domain.exception.DadosEnsaioInvalidosException;
+import br.ufpr.tcc.backend_lab.domain.exception.EnsaioNaoEncontradoException;
+import br.ufpr.tcc.backend_lab.domain.exception.ConflitoEdicaoEnsaioException;
+import br.ufpr.tcc.backend_lab.domain.exception.ConflitoIdentificacaoAmostraException;
 import br.ufpr.tcc.backend_lab.domain.exception.DocumentoOrcamentoMuitoGrandeException;
 import br.ufpr.tcc.backend_lab.domain.exception.EmailJaCadastradoException;
 import br.ufpr.tcc.backend_lab.domain.exception.RegraNegocioException;
@@ -8,10 +12,13 @@ import br.ufpr.tcc.backend_lab.domain.exception.RegraNegocioException.Motivo;
 import br.ufpr.tcc.backend_lab.domain.exception.EquipamentoNaoEncontradoException;
 import br.ufpr.tcc.backend_lab.domain.exception.TecnicoNaoEncontradoException;
 import br.ufpr.tcc.backend_lab.infrastructure.persistence.ViolacaoUnicidade;
+import jakarta.persistence.OptimisticLockException;
 
 import java.util.stream.Collectors;
 
 import org.springframework.dao.DataIntegrityViolationException;
+import org.springframework.dao.DataAccessException;
+import org.springframework.orm.ObjectOptimisticLockingFailureException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.converter.HttpMessageNotReadableException;
@@ -25,6 +32,40 @@ import org.springframework.web.multipart.support.MissingServletRequestPartExcept
 
 @RestControllerAdvice
 public class GlobalExceptionHandler {
+
+    @ExceptionHandler({ObjectOptimisticLockingFailureException.class, OptimisticLockException.class})
+    public ResponseEntity<ApiErrorResponse> handleEdicaoConcorrente(RuntimeException exception) {
+        return ResponseEntity.status(HttpStatus.CONFLICT)
+                .body(new ApiErrorResponse("O ensaio foi alterado por outra sessão", "test-version-conflict"));
+    }
+
+    @ExceptionHandler(DataAccessException.class)
+    public ResponseEntity<ApiErrorResponse> handleFalhaPersistencia(DataAccessException exception) {
+        return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                .body(new ApiErrorResponse("Falha ao persistir os dados"));
+    }
+
+    @ExceptionHandler(DadosEnsaioInvalidosException.class)
+    public ResponseEntity<ApiErrorResponse> handleDadosEnsaioInvalidos(DadosEnsaioInvalidosException exception) {
+        return ResponseEntity.badRequest().body(new ApiErrorResponse(exception.getMessage()));
+    }
+
+    @ExceptionHandler(EnsaioNaoEncontradoException.class)
+    public ResponseEntity<ApiErrorResponse> handleReferenciaEnsaioInexistente(EnsaioNaoEncontradoException exception) {
+        return ResponseEntity.status(HttpStatus.NOT_FOUND).body(new ApiErrorResponse(exception.getMessage()));
+    }
+
+    @ExceptionHandler(ConflitoEdicaoEnsaioException.class)
+    public ResponseEntity<ApiErrorResponse> handleConflitoEnsaio(ConflitoEdicaoEnsaioException exception) {
+        return ResponseEntity.status(HttpStatus.CONFLICT)
+                .body(new ApiErrorResponse(exception.getMessage(), "test-version-conflict"));
+    }
+
+    @ExceptionHandler(ConflitoIdentificacaoAmostraException.class)
+    public ResponseEntity<ApiErrorResponse> handleConflitoAmostra(ConflitoIdentificacaoAmostraException exception) {
+        return ResponseEntity.status(HttpStatus.CONFLICT)
+                .body(new ApiErrorResponse(exception.getMessage(), "sample-code-conflict"));
+    }
 
     @ExceptionHandler(RegraNegocioException.class)
     public ResponseEntity<ApiErrorResponse> handleRegraNegocio(RegraNegocioException exception) {
@@ -43,7 +84,7 @@ public class GlobalExceptionHandler {
     public ResponseEntity<ApiErrorResponse> handleUploadMuitoGrande(
             MaxUploadSizeExceededException exception) {
         return ResponseEntity.status(HttpStatus.CONTENT_TOO_LARGE)
-                .body(new ApiErrorResponse("O PDF do orçamento deve ter no máximo 50 MiB"));
+                .body(new ApiErrorResponse("O arquivo enviado deve ter no máximo 50 MiB"));
     }
 
     @ExceptionHandler(MultipartException.class)
@@ -51,7 +92,7 @@ public class GlobalExceptionHandler {
         for (Throwable cause = exception; cause != null; cause = cause.getCause()) {
             if (cause instanceof MaxUploadSizeExceededException) {
                 return ResponseEntity.status(HttpStatus.CONTENT_TOO_LARGE)
-                        .body(new ApiErrorResponse("O PDF do orçamento deve ter no máximo 50 MiB"));
+                        .body(new ApiErrorResponse("O arquivo enviado deve ter no máximo 50 MiB"));
             }
         }
         return ResponseEntity.badRequest()
@@ -61,6 +102,10 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(DataIntegrityViolationException.class)
     public ResponseEntity<ApiErrorResponse> handleViolacaoIntegridade(
             DataIntegrityViolationException exception) {
+        if (ViolacaoUnicidade.codigoAmostra(exception)) {
+            return ResponseEntity.status(HttpStatus.CONFLICT)
+                    .body(new ApiErrorResponse("O código da amostra já está cadastrado", "sample-code-conflict"));
+        }
         if (ViolacaoUnicidade.email(exception)) {
             return ResponseEntity.status(HttpStatus.CONFLICT)
                     .body(new ApiErrorResponse("E-mail já cadastrado"));

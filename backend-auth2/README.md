@@ -9,7 +9,9 @@ Spring Boot 4.1.1, Java 21, Oracle 23ai, Maven.
 ## Demonstracao do portal
 
 Na raiz do repositorio, `docker compose -f compose.auth.yaml up -d --build --remove-orphans`
-sobe Oracle, migracoes, Auth2, API C# e frontend com os dados demo. O seed fica desligado
+sobe Oracle, migracoes, Auth2, SQL Server com AutoLAB, API C# e frontend com os dados demo.
+O Oracle guarda a autenticacao; o SQL Server fornece equipamentos, ensaios e relatorios.
+O seed fica desligado
 por padrao neste modulo e no seu Compose independente; so o Compose demo define
 `AUTH_DEMO_SEED_ENABLED=true` e as senhas iniciais.
 

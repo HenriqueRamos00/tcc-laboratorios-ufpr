@@ -12,11 +12,13 @@ export const DEFAULT_HEALTH_TAB: HealthTab = 'fisico-quimico';
 
 /**
  * Laudo de cromatografia abre a aba de gases, que é a que tem gráfico, totalizador e
- * diagnóstico. Laudo físico-químico abre a sua.
+ * diagnóstico. Laudo físico-químico abre a sua. Laudo de outro ensaio, como PCB, não tem
+ * indicador: só o documento.
  */
-export const TAB_BY_ANALYSIS_TYPE: Record<ReportAnalysisType, HealthTab> = {
+export const TAB_BY_ANALYSIS_TYPE: Record<ReportAnalysisType, HealthTab | null> = {
   'physical-chemical': 'fisico-quimico',
   chromatography: 'gases',
+  other: null,
 };
 
 /** A aba vem da URL, que qualquer pessoa pode digitar errado. */

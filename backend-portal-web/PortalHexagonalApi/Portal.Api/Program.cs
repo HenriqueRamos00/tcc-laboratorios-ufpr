@@ -1,30 +1,34 @@
 using System.Text.Json;
 using System.Text.Json.Serialization;
 
-using Portal.Adapters.Quotes;
 using Portal.Adapters.Salesforce;
 using Portal.Api.Configuration;
 using Portal.Api.Authentication;
 using Portal.Api.LabResults;
+using Portal.Api.Nameplate;
+using Portal.Api.Pipeline;
+using Portal.Api.ReportDocuments;
+using Portal.Api.Reports;
+using SpringReports = Portal.Application.Reports;
 using Portal.Application.Authentication;
 using Portal.Application.LabResults;
 using Portal.Application.Quotes;
+using Portal.Application.ReportDocuments;
 
 WebApplicationBuilder builder = WebApplication.CreateBuilder(args);
 
 const string PortalWebCorsPolicy = "PortalWeb";
 
+string[] portalWebOrigins = builder.Configuration.GetSection("Cors:AllowedOrigins").Get<string[]>() ?? [];
+
 builder.Services.AddCors(options =>
 {
     options.AddPolicy(PortalWebCorsPolicy, policy =>
         policy
-            .WithOrigins(
-                "http://localhost:4200",
-                "http://localhost",
-                "http://localhost:80")
+            .WithOrigins(portalWebOrigins)
             .AllowAnyHeader()
             .AllowAnyMethod()
-            .WithExposedHeaders("Retry-After"));
+            .WithExposedHeaders(["Retry-After", "Content-Disposition", .. PageQuery.ExposedHeaders]));
 });
 
 // The portal's camelCase used to be a default inherited from the host, not a declared
@@ -47,16 +51,18 @@ builder.Services
 builder.Services.AddScoped<IQuoteUseCase, QuoteService>();
 builder.Services.AddScoped<ILoginUseCase, LoginService>();
 builder.Services.AddScoped<IForConsultingLabResults, LabResultsConsultation>();
+builder.Services.AddScoped<IForDownloadingSignedReports, SignedReportDownload>();
+builder.Services.AddScoped<IForConsultingReports, ReportsConsultation>();
+
+builder.Services.AddScoped<SpringReports.IForConsultingReports, SpringReports.ReportsConsultation>();
 
 builder.Services.AddPortalDataSource(builder.Configuration);
+builder.Services.AddReportDocumentRepository(builder.Configuration);
 
-// A proposta escrita a mao continua valendo; o orcamento sem arquivo recebe a pagina
-// gerada a partir dele mesmo, para o botao de baixar nunca cair no vazio na demonstracao.
-builder.Services.AddScoped<IQuoteDocumentRepository>(services =>
-    new GeneratedQuoteDocumentRepository(
-        services.GetRequiredService<IQuoteRepository>(),
-        new LocalQuoteDocumentRepository()));
 builder.Services.AddLabTestRepository(builder.Configuration);
+builder.Services.AddEquipmentRegistrySource(builder.Configuration);
+builder.Services.AddLaboratoryProgressSource(builder.Configuration);
+builder.Services.AddReportDocumentSource(builder.Configuration);
 builder.Services.AddSingleton(
     builder.Configuration.GetSection(SalesforceOptions.SectionName).Get<SalesforceOptions>() ?? new SalesforceOptions());
 builder.Services.AddHttpClient<ISalesforceTokenClient, SalesforceTokenClient>();

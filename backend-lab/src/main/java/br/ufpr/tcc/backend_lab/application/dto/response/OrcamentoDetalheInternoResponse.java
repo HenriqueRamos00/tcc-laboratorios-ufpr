@@ -16,6 +16,7 @@ public record OrcamentoDetalheInternoResponse(
         String companyId,
         String companyName,
         String laboratoryName,
+        String protocol,
         String scope,
         String externalContactName,
         String externalContactEmail,
@@ -36,6 +37,7 @@ public record OrcamentoDetalheInternoResponse(
                 empresa.getId().toString(),
                 empresa.getLegalName(),
                 orcamento.getLaboratoryName(),
+                orcamento.getProtocol(),
                 orcamento.getScope(),
                 orcamento.getExternalContactName() == null
                         ? empresa.getContactName()

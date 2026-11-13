@@ -182,6 +182,7 @@ class AdminDashboardControllerTests {
         Orcamento orcamento = new Orcamento();
         orcamento.setEmpresa(empresa);
         orcamento.setCode("DASH-" + ++sequenciaOrcamento);
+        orcamento.setProtocol("L-DASH-2026-" + sequenciaOrcamento + "-X");
         orcamento.setName("Orçamento de teste");
         orcamento.setStatus(status);
         orcamento.setStage("Negociação");

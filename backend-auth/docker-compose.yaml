@@ -1,5 +1,8 @@
 services:
   sqlserver:
+    cap_drop:
+      - NET_RAW
+    restart: unless-stopped
     image: mcr.microsoft.com/mssql/server:2022-latest
     environment:
       ACCEPT_EULA: "Y"
@@ -22,6 +25,8 @@ services:
       start_period: 20s
 
   database-init:
+    cap_drop:
+      - NET_RAW
     image: mcr.microsoft.com/mssql/server:2022-latest
     entrypoint: ["/opt/mssql-tools18/bin/sqlcmd"]
     command: ["-S", "sqlserver", "-U", "sa", "-C", "-b", "-Q", "IF DB_ID(N'backend_auth') IS NULL CREATE DATABASE [backend_auth]"]
@@ -32,6 +37,9 @@ services:
         condition: service_healthy
 
   backend-auth:
+    cap_drop:
+      - NET_RAW
+    restart: unless-stopped
     build:
       context: .
     environment:
@@ -51,6 +59,9 @@ services:
     depends_on:
       database-init:
         condition: service_completed_successfully
+    networks:
+      - default
+      - lactec-auth
     healthcheck:
       test: ["CMD-SHELL", "wget -qO- http://localhost:8080/health | grep -q '\"status\":\"UP\"'"]
       interval: 10s
@@ -60,3 +71,8 @@ services:
 
 volumes:
   auth-sqlserver-data:
+
+networks:
+  lactec-auth:
+    name: lactec-auth
+    internal: true

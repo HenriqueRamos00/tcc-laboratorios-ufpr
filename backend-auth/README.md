@@ -36,9 +36,10 @@ somente neste módulo, configure essa variável e `BACKEND_AUTH_SERVICE_TOKEN`
 (`svc_` seguido de 43 caracteres base64url). A execução Java lê variáveis do processo;
 o Compose isolado lê seu `.env`. O portal deve usar o mesmo token.
 
-O antigo volume demo `tcc-auth-demo_auth-sqlserver-data` é preservado pela migração
-para Oracle. O Compose atual da raiz não usa nem apaga esse volume. Para executar este
-módulo com SQL Server, utilize seu Compose isolado, descrito abaixo.
+O volume `tcc-auth-demo_auth-sqlserver-data` é preservado e reutilizado pelo AutoLAB
+no Compose atual da raiz. A autenticação desse Compose usa Auth2 e Oracle; o banco
+legado `backend_auth` não é mais usado por ele. Para executar este módulo com SQL
+Server, utilize seu Compose isolado, descrito abaixo.
 
 ## Swagger UI
 

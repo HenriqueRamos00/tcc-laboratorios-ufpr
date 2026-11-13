@@ -10,10 +10,21 @@ export interface Equipment {
   readonly serialNumber: string | null;
   readonly tag: string;
   /**
-   * Nulos sempre, por enquanto. O AutoLAB não tem cadastro de equipamento: não existe
-   * coluna de tipo nem de localização em lugar nenhum da fonte. O campo continua no
-   * contrato para a tela anunciar a ausência em vez de imprimir `undefined` na coluna que
-   * a HU-05 pede.
+   * A TAG de placa que o cadastro do AutoLAB conhece, e `null` quando ele não conhece.
+   * Preenchida em 55% das linhas do cadastro, então nula com frequência mesmo quando o
+   * equipamento tem placa. É campo separado de `tag` de propósito: `tag` nunca é nula e
+   * continua sendo o que nomeia o equipamento no título e na trilha de navegação, e é a
+   * tela que decide o que imprimir na coluna "TAG".
+   */
+  readonly equipmentTag: string | null;
+  /**
+   * `type` vem de `TipoEquipamento` do cadastro, como o cadastro escreve. Nulo quando o
+   * cadastro não conhece a série, quando ele se contradiz sobre o tipo, e quando o
+   * equipamento é endereçado pelo protocolo, que não é número de série.
+   *
+   * `location` é nula sempre: o cadastro tem dez colunas e nenhuma delas é localização. O
+   * campo continua no contrato para a tela anunciar a ausência em vez de imprimir
+   * `undefined` na coluna que a HU-05 pede.
    */
   readonly type: string | null;
   readonly location: string | null;
@@ -21,13 +32,32 @@ export interface Equipment {
   readonly identification: string;
   readonly reportCount: number;
   readonly mostRecentReportDate: string;
+  /**
+   * Se o cadastro tem alguma coisa a dizer sobre este equipamento. Falso quando o
+   * equipamento não tem número de série, quando o cadastro não conhece a série, e quando as
+   * linhas que ele tem para a série não sustentam nenhum campo.
+   *
+   * Existe para a tela distinguir "o cadastro não conhece este equipamento" de "o cadastro
+   * conhece e esta coluna está em branco". Com os campos nulos sozinhos ela diria
+   * "Não informado" sete vezes sem explicar por quê.
+   */
+  readonly nameplateKnown: boolean;
 }
 
 export interface EquipmentDetail extends Equipment {
-  /** Dado de placa, que também não existe no AutoLAB. Mesma regra de `type`. */
+  /**
+   * Dado de placa, campo a campo, como o cadastro escreveu. Nenhum deles ganha unidade que
+   * o cadastro não informa: `voltage` traz o texto de `Tensao`, que em 643 linhas tem
+   * primário e secundário separados por barra, e `oilVolume` traz o texto de `VolumeOleo`,
+   * que tem `1L` e `6 KG` no meio dos números. Só `power` vem montado, de duas colunas, e
+   * sem unidade nas 100 linhas que não têm uma.
+   */
   readonly oilType: string | null;
   readonly voltage: string | null;
   readonly power: string | null;
+  readonly manufacturer: string | null;
+  readonly manufacturingYear: string | null;
+  readonly oilVolume: string | null;
 }
 
 /**
@@ -35,11 +65,12 @@ export interface EquipmentDetail extends Equipment {
  * `ANALYSIS_TYPE_LABEL`: antes o tipo era texto livre acentuado, e decidir para onde a
  * linha do histórico navega exigia casar "Análise Físico-Química" com a chave da aba.
  */
-export type ReportAnalysisType = 'physical-chemical' | 'chromatography';
+export type ReportAnalysisType = 'physical-chemical' | 'chromatography' | 'other';
 
 export const ANALYSIS_TYPE_LABEL: Record<ReportAnalysisType, string> = {
   'physical-chemical': 'Análise Físico-Química',
   chromatography: 'Cromatografia',
+  other: 'Outros ensaios',
 };
 
 /**
@@ -60,10 +91,5 @@ export interface EquipmentReport {
   readonly date: string;
   readonly analysisType: ReportAnalysisType;
   readonly status: ReportStatus;
-  /**
-   * Endereço do arquivo publicado, quando já existe um. `null` enquanto o AutoLAB desta
-   * fatia serve resultado de ensaio e não o PDF assinado, e aí a tela não oferece download
-   * em vez de oferecer um botão que só sabe falhar.
-   */
-  readonly reportUrl: string | null;
+  readonly hasSignedDocument: boolean;
 }

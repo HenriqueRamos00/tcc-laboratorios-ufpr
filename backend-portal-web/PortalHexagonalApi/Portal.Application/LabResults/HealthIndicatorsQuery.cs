@@ -1,3 +1,5 @@
+using Portal.Application.Visibility;
+
 namespace Portal.Application.LabResults;
 
 /// <summary>
@@ -5,6 +7,6 @@ namespace Portal.Application.LabResults;
 /// visao geral nao e feita de uma analise so.
 /// </summary>
 public sealed record HealthIndicatorsQuery(
-    string Tenant,
+    VisibilityScope Scope,
     string EquipmentKey,
     string? SelectedProtocoloLactec);

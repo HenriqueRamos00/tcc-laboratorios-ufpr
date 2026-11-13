@@ -3,11 +3,15 @@ package br.ufpr.tcc.backend_lab.domain.repository;
 import br.ufpr.tcc.backend_lab.domain.model.entity.Orcamento;
 import br.ufpr.tcc.backend_lab.domain.model.enums.StatusComercialOrcamento;
 
+import jakarta.persistence.LockModeType;
+
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.EntityGraph;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 
 import java.math.BigDecimal;
 import java.util.List;
@@ -26,6 +30,21 @@ public interface OrcamentoRepository extends JpaRepository<Orcamento, Long> {
     @EntityGraph(attributePaths = {"empresa", "items"})
     @Query("select orcamento from Orcamento orcamento where orcamento.id = :id")
     Optional<Orcamento> buscarDetalhePorId(Long id);
+
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("select orcamento from Orcamento orcamento where orcamento.id = :id")
+    Optional<Orcamento> buscarPorIdComBloqueio(@Param("id") Long id);
+
+    @Query(value = "select status from orcamentos where id = :id for update", nativeQuery = true)
+    Optional<String> buscarStatusComBloqueio(@Param("id") Long id);
+    /**
+     * Busca o orçamento travando a linha (SELECT ... FOR UPDATE) até o fim da transação.
+     * Assim, dois pedidos simultâneos de aceite ou recusa do mesmo orçamento são atendidos
+     * um de cada vez, e o segundo já encontra a decisão do primeiro.
+     */
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("select orcamento from Orcamento orcamento where orcamento.id = :id")
+    Optional<Orcamento> buscarParaDecisao(Long id);
 
     @EntityGraph(attributePaths = "empresa")
     @Query(
@@ -57,6 +76,27 @@ public interface OrcamentoRepository extends JpaRepository<Orcamento, Long> {
                     """)
     Page<Orcamento> pesquisarInternos(
             String busca, StatusComercialOrcamento status, Pageable pageable);
+
+    @EntityGraph(attributePaths = "empresa")
+    @Query(value = """
+            select orcamento from Orcamento orcamento
+            where orcamento.status in :statusComercialElegivel
+                and (:busca is null
+                or lower(orcamento.code) like :busca escape '!'
+                or lower(orcamento.name) like :busca escape '!'
+                or lower(orcamento.empresa.legalName) like :busca escape '!')
+            """, countQuery = """
+            select count(orcamento) from Orcamento orcamento
+            where orcamento.status in :statusComercialElegivel
+                and (:busca is null
+                or lower(orcamento.code) like :busca escape '!'
+                or lower(orcamento.name) like :busca escape '!'
+                or lower(orcamento.empresa.legalName) like :busca escape '!')
+            """)
+    Page<Orcamento> pesquisarReferenciasEnsaio(
+            @Param("busca") String busca,
+            @Param("statusComercialElegivel") List<StatusComercialOrcamento> statusComercialElegivel,
+            Pageable pageable);
 
     @Query(
             """

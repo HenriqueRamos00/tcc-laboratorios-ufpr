@@ -1,9 +1,10 @@
 import { ChangeDetectionStrategy, Component, computed, DestroyRef, inject, signal } from '@angular/core';
 import { HttpErrorResponse } from '@angular/common/http';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
-import { timer, takeWhile } from 'rxjs';
+import { finalize, timer, takeWhile } from 'rxjs';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
+import { MatCheckboxModule } from '@angular/material/checkbox';
 import { MatIconModule } from '@angular/material/icon';
 import { Router, RouterLink } from '@angular/router';
 
@@ -19,6 +20,7 @@ import { LoginService } from '@/app/services/login.service';
     ReactiveFormsModule,
     MatIconModule,
     MatButtonModule,
+    MatCheckboxModule,
     RouterLink,
     LogoComponent,
   ],
@@ -42,6 +44,7 @@ export class LoginComponent {
   readonly form = this.fb.nonNullable.group({
     email: ['', [Validators.required, Validators.email]],
     password: ['', [Validators.required, Validators.maxLength(72)]],
+    keepConnected: [true],
   });
 
   togglePassword(): void {
@@ -56,14 +59,15 @@ export class LoginComponent {
     this.errorMessage.set(null);
     this.submitting.set(true);
 
-    const { email, password } = this.form.getRawValue();
-    this.loginService.login({ email, password }).subscribe({
+    const { email, password, keepConnected } = this.form.getRawValue();
+    this.loginService.login({ email, password }, keepConnected).pipe(
+      takeUntilDestroyed(this.destroyRef),
+      finalize(() => this.submitting.set(false)),
+    ).subscribe({
       next: () => {
-        this.submitting.set(false);
         this.router.navigateByUrl(this.userRole.dashboardPath());
       },
       error: (error: HttpErrorResponse) => {
-        this.submitting.set(false);
         if (error.status === 429) {
           const seconds = Number(error.headers.get('Retry-After'));
           if (Number.isFinite(seconds) && seconds > 0) {

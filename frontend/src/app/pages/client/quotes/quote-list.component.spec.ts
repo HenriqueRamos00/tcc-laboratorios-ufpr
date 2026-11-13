@@ -44,6 +44,7 @@ function orcamentoComEtapa(index: number, nomeDaEtapa: string): Quote {
     stage: nomeDaEtapa,
     description: `Proposta ${index}`,
     companyName: 'Empresa Exemplo Alfa Ltda',
+    protocol: `L-${45000 + index}-2026-X`,
     externalContactName: 'Fulano de Tal',
     externalContactEmail: 'fulano@exemplo.com',
     totalPrice: 1000 + index,
@@ -130,6 +131,20 @@ describe('QuoteListComponent, reconhecimento da etapa', () => {
 
     const etapasDestacadas = dadosAbertos.map((data) => data.steps[data.currentIndex].label);
     expect(etapasDestacadas).toEqual(etapasDoLaboratorio.map(rotuloDaEtapa));
+    expect(dadosAbertos.map((data) => data.protocolo)).toEqual([
+      'L-45008-2026-X',
+      'L-45009-2026-X',
+      'L-45010-2026-X',
+    ]);
+  });
+
+  it('não inventa protocolo quando a fonte não o fornece', () => {
+    const quote = { ...orcamentoComEtapa(50, 'Protocolado'), protocol: undefined };
+    const { componente, dadosAbertos } = montarListagem([quote]);
+
+    componente.checkStatus(componente.quotes()[0]);
+
+    expect(dadosAbertos[0].protocolo).toBeUndefined();
   });
 
   // O processo é um só, e o stepper precisa da linha inteira para manter a
@@ -260,6 +275,24 @@ describe('QuoteListComponent, reconhecimento da etapa', () => {
 
     expect(destinos).toEqual([['/cliente/relatorios', publicado.id]]);
     expect(dadosAbertos).toEqual([]);
+  });
+});
+
+describe('QuoteListComponent, pesquisa por descrição', () => {
+  it('encontra uma proposta pelo texto da descrição sem diferenciar maiúsculas', () => {
+    const propostaComDescricao = {
+      ...orcamentoComEtapa(1, 'Negociação'),
+      description: 'Análise de óleo isolante por cromatografia',
+    };
+    const outraProposta = {
+      ...orcamentoComEtapa(2, 'Negociação'),
+      description: 'Ensaio de tração em compósito',
+    };
+    const { componente } = montarListagem([propostaComDescricao, outraProposta]);
+
+    componente.onSearchInput('CROMATOGRAFIA');
+
+    expect(componente.visibleQuotes().map((quote) => quote.id)).toEqual(['quote-1']);
   });
 });
 

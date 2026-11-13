@@ -107,6 +107,16 @@ public sealed class TestedEquipmentTests
         Assert.Equal(ReportAnalysisType.PhysicalChemical, equipment.MostRecentReport.AnalysisType);
     }
 
+    [Fact]
+    public void AReportWithoutPropertyOrGasIsAnnouncedAsOther()
+    {
+        TestedEquipment equipment = Assert.Single(TestedEquipment.Gather([
+            AnalysisBuilder.Valid(measurements: [])
+        ]));
+
+        Assert.Equal(ReportAnalysisType.Other, equipment.MostRecentReport.AnalysisType);
+    }
+
     /// <summary>
     /// Laudo que mediu as duas coisas abre a aba de gases, que e a que tem diagnostico,
     /// totalizador e grafico. A precedencia e escolha, nao acidente, e esta aqui para a

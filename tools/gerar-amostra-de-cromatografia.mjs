@@ -1,23 +1,23 @@
 // Gera a massa de teste de cromatografia do frontend a partir do dado real.
 //
-// Entrada: os dois arquivos JSON Lines do adaptador de amostra embutida do backend,
-// que sao a transcrição das views do AutoLAB. Saida:
+// Entrada: `tools/massa-autolab.mjs`, a mesma massa que gera o banco local do AutoLAB.
+// Saida:
 // `frontend/src/app/model/measured-gas-sample.spec-util.ts`.
 //
-// Como regerar, da raiz do repositorio. Nada roda no host, como manda o CLAUDE.md:
+// Execute da raiz do repositório no contêiner Node usado pelo frontend:
 //
 //   docker run --rm -v "$PWD:/w" -w /w node:22-alpine \
 //     node tools/gerar-amostra-de-cromatografia.mjs
 //
-// Era um script Python, e Python rodado na maquina do desenvolvedor contraria a regra
-// do projeto tanto quanto `node` ou `dotnet` soltos. Em Node ele roda no mesmo
-// contentor que o resto do frontend ja usa, sem exigir nada instalado.
+// Assim, a geração usa o ambiente do projeto sem exigir Node instalado no host.
 //
 // O script RECUSA escrever quando o totalizador publicado de um protocolo nao bate
 // exatamente com a soma dos gases daquele protocolo. A igualdade e exata de proposito:
 // tolerancia promoveria um gas medido a totalizador.
 
-import { readFileSync, writeFileSync } from 'node:fs';
+import { writeFileSync } from 'node:fs';
+
+import { ANALISES } from './massa-autolab.mjs';
 
 const GAS_KEY_BY_VIEW_NAME = {
   'Hidrogênio': 'h2',
@@ -39,47 +39,21 @@ const TOTALIZER_KEY_BY_VIEW_NAME = {
 const GAS_ORDER = ['h2', 'o2', 'n2', 'ch4', 'co', 'co2', 'c2h4', 'c2h6', 'c2h2'];
 const COMBUSTIBLE_GAS_KEYS = ['h2', 'ch4', 'co', 'c2h4', 'c2h6', 'c2h2'];
 
-const SOURCE_FILE_BY_PROVENANCE = {
-  medida: 'LabTestSample.jsonl',
-  demonstracao: 'DemonstrationSeries.jsonl',
-};
-
-const ADAPTER_DIRECTORY = 'backend-portal-web/PortalHexagonalApi/Portal.Adapters/LabResults';
 const OUTPUT = 'frontend/src/app/model/measured-gas-sample.spec-util.ts';
-
-function readRows() {
-  const rows = [];
-
-  for (const [provenance, fileName] of Object.entries(SOURCE_FILE_BY_PROVENANCE)) {
-    const content = readFileSync(`${ADAPTER_DIRECTORY}/${fileName}`, 'utf8');
-
-    for (const line of content.split('\n')) {
-      if (line.trim()) rows.push({ provenance, row: JSON.parse(line) });
-    }
-  }
-
-  return rows;
-}
 
 function groupByProtocol() {
   const groups = new Map();
 
-  for (const { provenance, row } of readRows()) {
-    const protocol = row.protocoloLactec;
-
-    if (!groups.has(protocol)) {
-      groups.set(protocol, {
-        protocoloLactec: protocol,
-        identificacao: row.identificacao,
-        serialNumber: row.numSerie,
-        companyName: row.empresaDoTransformador,
-        analysisDate: row.dataFinalAnalise.slice(0, 10),
-        provenance,
-        results: {},
-      });
-    }
-
-    groups.get(protocol).results[row.name] = row.resultado;
+  for (const analise of ANALISES) {
+    groups.set(analise.protocoloLactec, {
+      protocoloLactec: analise.protocoloLactec,
+      identificacao: analise.identificacao,
+      serialNumber: analise.numSerie,
+      companyName: analise.empresaTrafo,
+      analysisDate: analise.dataFinalAnalise.slice(0, 10),
+      provenance: analise.procedencia,
+      results: Object.fromEntries(analise.resultados),
+    });
   }
 
   return groups;
@@ -176,18 +150,16 @@ function asTypeScriptLiteral(value) {
 const HEADER = `// Massa de teste de cromatografia derivada do dado REAL das views do AutoLAB.
 //
 // ARQUIVO GERADO. Nao edite a mao: regere com
-// \`tools/gerar-amostra-de-cromatografia.mjs\`, que le os dois arquivos JSON
-// Lines do adaptador de amostra embutida do backend e recusa gravar quando o
+// \`tools/gerar-amostra-de-cromatografia.mjs\`, que le \`tools/massa-autolab.mjs\`
+// (a mesma massa do banco local do AutoLAB) e recusa gravar quando o
 // totalizador publicado de um protocolo não bate exatamente com a soma dos nove
 // gases daquele protocolo.
 //
-// Fonte, por procedência - a distinção é a mesma que o backend faz em
-// \`ReadMeasuredSample()\`, e existe porque teste que afirma sobre número medido
+// Fonte, por procedência - existe porque teste que afirma sobre número medido
 // não pode ler número escrito à mão:
 //
-//   'medida'        LabTestSample.jsonl, transcrição das views.
-//   'demonstracao'  DemonstrationSeries.jsonl, escrito à mão para um
-//                   equipamento ter mais de um laudo.
+//   'medida'        transcrição das views.
+//   'demonstracao'  escrito à mão para um equipamento ter mais de um laudo.
 //
 // NÃO é código de produção: nada no aplicativo importa este arquivo. Ele existe
 // para os testes afirmarem sobre número medido, e não sobre número escolhido por

@@ -127,6 +127,7 @@ export class QuoteListComponent {
       return (
         quote.code.toLowerCase().includes(term) ||
         quote.proposalName.toLowerCase().includes(term) ||
+        quote.description.toLowerCase().includes(term) ||
         quote.company.toLowerCase().includes(term) ||
         quote.externalContact.toLowerCase().includes(term)
       );
@@ -195,7 +196,7 @@ export class QuoteListComponent {
         : notice?.text,
       callToAction: notice?.callToAction,
       shipping: notice?.shipping,
-      protocolo: group.key === 'proposta' ? undefined : `L-${quote.code}-X`,
+      protocolo: group.key === 'proposta' ? undefined : quote.protocol ?? undefined,
       contato: group.key === 'proposta' ? undefined : LABORATORY_CONTACT,
     };
 

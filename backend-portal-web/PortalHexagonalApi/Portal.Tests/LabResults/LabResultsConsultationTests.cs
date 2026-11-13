@@ -1,6 +1,12 @@
 using Portal.Application.LabResults;
+using Portal.Application.Nameplate;
+using Portal.Application.Paging;
 using Portal.Domain.LabResults;
+using Portal.Tests.Nameplate;
 
+using Portal.Application.Visibility;
+
+using Portal.Adapters.ReportDocuments;
 using Xunit;
 
 namespace Portal.Tests.LabResults;
@@ -31,12 +37,13 @@ public sealed class LabResultsConsultationTests
             AnalysisOf("01352/2026-004", "111.594/1"),
             AnalysisOf("01417/2026-001", "571289"));
 
-        LabResultsConsultation service = new(source);
+        LabResultsConsultation service = Consultation(source);
 
-        IReadOnlyList<TestedEquipment> found = await service.ListEquipmentAsync(
-            Tenant, CancellationToken.None);
+        IReadOnlyList<EquipmentWithNameplate> found = await service.FirstPageOfEquipmentAsync(Tenant);
 
-        Assert.Equal(["111.594/1", "571289"], found.Select(equipment => equipment.EquipmentKey).Order());
+        Assert.Equal(
+            ["111.594/1", "571289"],
+            found.Select(item => item.Equipment.EquipmentKey).Order());
         Assert.Equal(1, source.TimesTheWholeTenantWasAsked);
     }
 
@@ -52,15 +59,34 @@ public sealed class LabResultsConsultationTests
             AnalysisOf("01351/2026-004", "111.594/1"),
             AnalysisOf("01417/2026-001", "571289"));
 
-        LabResultsConsultation service = new(source);
+        LabResultsConsultation service = Consultation(source);
 
-        TestedEquipment? found = await service.GetEquipmentAsync(
-            Tenant, "571289", CancellationToken.None);
+        EquipmentWithNameplate? found = await service.GetEquipmentAsync(
+            VisibilityScope.OfCompany(Tenant), "571289", CancellationToken.None);
 
         Assert.NotNull(found);
-        Assert.Equal("571289", found.EquipmentKey);
-        Assert.Equal(1, source.TimesOneEquipmentWasAsked);
+        Assert.Equal("571289", found.Equipment.EquipmentKey);
+        Assert.Equal(1, source.TimesAPageOfReportsWasAsked);
+        Assert.Equal(new PageRequest(1, 1), Assert.Single(source.PagesAsked));
         Assert.Equal(0, source.TimesTheWholeTenantWasAsked);
+    }
+
+    [Fact]
+    public async Task TheDetailCountsEveryReportWhileLoadingOnlyTheMostRecent()
+    {
+        InMemoryLabTestRepository source = new(
+            AnalysisOf("01351/2026-004", "571289"),
+            AnalysisOf("01417/2026-001", "571289"),
+            AnalysisOf("01439/2026-004", "571289"));
+
+        LabResultsConsultation service = Consultation(source);
+
+        EquipmentWithNameplate? found = await service.GetEquipmentAsync(
+            VisibilityScope.OfCompany(Tenant), "571289", CancellationToken.None);
+
+        Assert.NotNull(found);
+        Assert.Equal(3, found.ReportCount);
+        Assert.Single(found.Equipment.Reports);
     }
 
     [Fact]
@@ -69,10 +95,10 @@ public sealed class LabResultsConsultationTests
         InMemoryLabTestRepository source = new(
             AnalysisOf("01351/2026-004", "111.594/1", company: OtherTenant));
 
-        LabResultsConsultation service = new(source);
+        LabResultsConsultation service = Consultation(source);
 
-        Assert.Null(await service.GetEquipmentAsync(Tenant, "111.594/1", CancellationToken.None));
-        Assert.Empty(await service.ListEquipmentAsync(Tenant, CancellationToken.None));
+        Assert.Null(await service.GetEquipmentAsync(VisibilityScope.OfCompany(Tenant), "111.594/1", CancellationToken.None));
+        Assert.Empty(await service.FirstPageOfEquipmentAsync(Tenant));
     }
 
     /// <summary>
@@ -87,11 +113,14 @@ public sealed class LabResultsConsultationTests
             AnalysisOf("01351/2026-004", "111.594/1"),
             AnalysisOf("01417/2026-001", "571289"));
 
-        LabResultsConsultation service = new(source);
+        LabResultsConsultation service = Consultation(source);
 
         await service.GetHealthIndicatorsAsync(Query("111.594/1"), CancellationToken.None);
 
-        Assert.Equal(1, source.TimesOneEquipmentWasAsked);
+        Assert.Equal(1, source.TimesAPageOfReportsWasAsked);
+        Assert.Equal(
+            new PageRequest(1, LabResultsConsultation.MaxAnalysesPerEquipment),
+            Assert.Single(source.PagesAsked));
         Assert.Equal(0, source.TimesTheWholeTenantWasAsked);
     }
 
@@ -101,7 +130,7 @@ public sealed class LabResultsConsultationTests
         InMemoryLabTestRepository source = new(
             AnalysisOf("01351/2026-004", "111.594/1", company: OtherTenant));
 
-        LabResultsConsultation service = new(source);
+        LabResultsConsultation service = Consultation(source);
 
         Assert.Null(await service.GetHealthIndicatorsAsync(Query("111.594/1"), CancellationToken.None));
     }
@@ -120,7 +149,7 @@ public sealed class LabResultsConsultationTests
         InMemoryLabTestRepository source = new(inTheSeries);
         PaginatedSource paginated = new(source, apart);
 
-        LabResultsConsultation service = new(paginated);
+        LabResultsConsultation service = Consultation(paginated);
 
         SampleHealthIndicators? indicators = await service.GetHealthIndicatorsAsync(
             Query("111.594/1", selected: "01352/2026-004"),
@@ -142,7 +171,7 @@ public sealed class LabResultsConsultationTests
         SampleAnalysis inTheSeries = AnalysisOf("01351/2026-004", "111.594/1");
         SampleAnalysis ofAnother = AnalysisOf("01417/2026-001", "571289");
 
-        LabResultsConsultation service = new(
+        LabResultsConsultation service = Consultation(
             new PaginatedSource(new InMemoryLabTestRepository(inTheSeries), ofAnother));
 
         SampleHealthIndicators? indicators = await service.GetHealthIndicatorsAsync(
@@ -154,21 +183,43 @@ public sealed class LabResultsConsultationTests
     }
 
     [Fact]
-    public async Task AConsultationWithoutTenantIsRefusedBeforeTheSourceIsTouched()
+    public void ACompanyScopeWithoutCompanyIsRefused()
     {
-        InMemoryLabTestRepository source = new(AnalysisOf("01351/2026-004", "111.594/1"));
-        LabResultsConsultation service = new(source);
+        Assert.Throws<ArgumentException>(() => VisibilityScope.OfCompany("   "));
+    }
 
-        await Assert.ThrowsAsync<ArgumentException>(() => service.GetHealthIndicatorsAsync(
-            new HealthIndicatorsQuery("   ", "111.594/1", null),
-            CancellationToken.None));
+    [Fact]
+    public async Task TheAllScopeSeesTheAnalysesOfEveryCompany()
+    {
+        InMemoryLabTestRepository source = new(
+            AnalysisOf("01417/2026-001", "571289"),
+            AnalysisOf("01563/2026-018", "5233", company: OtherTenant));
 
-        Assert.Equal(0, source.TimesOneEquipmentWasAsked);
+        Page<EquipmentWithNameplate> page = await Consultation(source)
+            .ListEquipmentAsync(VisibilityScope.All, PageRequest.First, CancellationToken.None);
+
+        Assert.Equal(2, page.Items.Count);
+    }
+
+    /// <summary>
+    /// A fatia do cadastro deu a aplicacao um segundo ator conduzido, e nenhum dos casos
+    /// acima fala do cadastro. Montar o servico aqui deixa a dependencia nova num lugar so: o
+    /// duble vazio responde "o cadastro nao conhece ninguem", que e o cenario de todos eles e
+    /// nao muda nenhuma afirmacao que ja faziam.
+    /// </summary>
+    private static LabResultsConsultation Consultation(
+        ILabTestRepository labTests,
+        IEquipmentNameplateRepository? registry = null)
+    {
+        return new LabResultsConsultation(
+            labTests,
+            registry ?? new InMemoryEquipmentNameplateRepository(),
+            new NullReportIssueRepository());
     }
 
     private static HealthIndicatorsQuery Query(string equipmentKey, string? selected = null)
     {
-        return new HealthIndicatorsQuery(Tenant, equipmentKey, selected);
+        return new HealthIndicatorsQuery(VisibilityScope.OfCompany(Tenant), equipmentKey, selected);
     }
 
     private static SampleAnalysis AnalysisOf(
@@ -184,8 +235,7 @@ public sealed class LabResultsConsultationTests
 
     /// <summary>
     /// Uma fonte que so devolve na consulta por equipamento o que ja esta carregado, e guarda
-    /// o resto atras da consulta por protocolo. E o comportamento de um adaptador paginado,
-    /// e o adaptador embutido de hoje nao consegue imita-lo porque carrega tudo de uma vez.
+    /// o resto atras da consulta por protocolo. E o comportamento de um adaptador paginado.
     /// </summary>
     private sealed class PaginatedSource : ILabTestRepository
     {
@@ -198,28 +248,30 @@ public sealed class LabResultsConsultationTests
             _apart = new InMemoryLabTestRepository(apart);
         }
 
-        public Task<IReadOnlyList<SampleAnalysis>> GetAnalysesOfTenantAsync(
-            string tenant,
+        public Task<Page<SampleAnalysis>> GetAnalysesAsync(
+            VisibilityScope scope,
+            PageRequest equipmentPage,
             CancellationToken cancellationToken)
         {
-            return _loaded.GetAnalysesOfTenantAsync(tenant, cancellationToken);
+            return _loaded.GetAnalysesAsync(scope, equipmentPage, cancellationToken);
         }
 
-        public Task<IReadOnlyList<SampleAnalysis>> GetAnalysesOfEquipmentAsync(
-            string tenant,
+        public Task<Page<SampleAnalysis>> GetAnalysesOfEquipmentAsync(
+            VisibilityScope scope,
             string equipmentKey,
+            PageRequest reportPage,
             CancellationToken cancellationToken)
         {
-            return _loaded.GetAnalysesOfEquipmentAsync(tenant, equipmentKey, cancellationToken);
+            return _loaded.GetAnalysesOfEquipmentAsync(scope, equipmentKey, reportPage, cancellationToken);
         }
 
         public async Task<SampleAnalysis?> GetAnalysisByProtocolAsync(
-            string tenant,
+            VisibilityScope scope,
             string protocoloLactec,
             CancellationToken cancellationToken)
         {
-            return await _loaded.GetAnalysisByProtocolAsync(tenant, protocoloLactec, cancellationToken)
-                ?? await _apart.GetAnalysisByProtocolAsync(tenant, protocoloLactec, cancellationToken);
+            return await _loaded.GetAnalysisByProtocolAsync(scope, protocoloLactec, cancellationToken)
+                ?? await _apart.GetAnalysisByProtocolAsync(scope, protocoloLactec, cancellationToken);
         }
     }
 }

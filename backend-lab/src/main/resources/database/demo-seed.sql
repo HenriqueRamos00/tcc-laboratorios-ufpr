@@ -49,7 +49,9 @@ WHERE lower(trim(u.email)) = 'lactec@lactec.com'
   AND u.nome = 'Cliente Lactec'
   AND NOT EXISTS (SELECT 1 FROM clientes c WHERE c.usuario_id = u.id);
 
--- Senha compartilhada apenas pelas contas novas desta base: Demo@12345.
+-- Senha inicial dos técnicos e clientes de demonstração (@example.test): Demo@12345.
+-- Exemplo de login: demo.tecnico.helena@example.test / Demo@12345.
+-- As senhas de contas existentes não são alteradas.
 INSERT INTO usuarios (
     nome, email, email_normalizado, senha_hash, perfil, ativo, unidade, especialidade
 )
@@ -143,51 +145,52 @@ WHERE lower(trim(u.email)) = 'lactec@lactec.com'
 -- Os três registros antigos mantêm campos de detalhe nulos e nenhum item.
 -- Os demais percorrem os cinco status comerciais e têm laboratório/contato próprios.
 INSERT INTO orcamentos (
-    empresa_id, code, name, status, stage, description, laboratory_name, scope,
+    empresa_id, code, name, status, stage, description, laboratory_name, protocol, scope,
     external_contact_name, external_contact_email, total_price, created_date
 )
 SELECT e.id, seed.code, seed.name, seed.status, seed.stage, seed.description,
-       seed.laboratory_name, seed.scope, seed.external_contact_name,
+       seed.laboratory_name, 'L-DEMO-2026-S-' || RIGHT(seed.code, 3) || '-X',
+       seed.scope, seed.external_contact_name,
        seed.external_contact_email, seed.total_price, seed.created_date
 FROM (VALUES
     ('98765432000198', 'DEMO-SEED-2026-001', 'Análise de óleo isolante - lote 01',
-     'PendingAcceptance', 'Negociação', 'Avaliação de propriedades físico-químicas de amostras de óleo isolante.',
+     'InProgress', 'Em execução', 'Avaliação de propriedades físico-químicas de amostras de óleo isolante.',
      'Laboratório de Óleos e Combustíveis', 'Caracterização de óleo isolante em duas amostras.',
      'Demo - Camila Souza', 'demo.contato.camila@example.test', 12500.00, TIMESTAMP WITH TIME ZONE '2026-10-17 09:00:00-03:00'),
     ('54321098000108', 'DEMO-SEED-2026-002', 'Análise de polímeros - lote 01',
-     'InProgress', 'Execução', 'Caracterização mecânica de material polimérico para controle de qualidade.',
+     'InProgress', 'Completo', 'Caracterização mecânica de material polimérico para controle de qualidade.',
      'Laboratório de Materiais e Polímeros', 'Ensaios de tração e flexão em corpos de prova.',
      'Demo - Bruno Pereira', 'demo.contato.bruno@example.test', 56292.30, TIMESTAMP WITH TIME ZONE '2026-10-16 09:00:00-03:00'),
     ('65432109000143', 'DEMO-SEED-2026-003', 'Análise de água potável - lote 01',
-     'Finished', 'Relatório Publicado', 'Análise físico-química de amostras de água para demonstração.',
+     'Finished', 'Validado', 'Análise físico-química de amostras de água para demonstração.',
      'Laboratório de Química e Água', 'Medição de parâmetros físico-químicos da amostra.',
      'Demo - Juliana Pires', 'demo.contato.juliana@example.test', 8500.00, TIMESTAMP WITH TIME ZONE '2026-10-15 09:00:00-03:00'),
     ('87654321000198', 'DEMO-SEED-2026-004', 'Ensaio de materiais compósitos - lote 01',
-     'Refused', 'Fechado Perdido', 'Avaliação de propriedades mecânicas de material compósito.',
+     'InProgress', 'Finalizado', 'Avaliação de propriedades mecânicas de material compósito.',
      'Laboratório de Materiais e Polímeros', 'Ensaios mecânicos em corpos de prova fornecidos.',
      'Demo - Mariana Costa', 'demo.contato.mariana@example.test', 18200.00, TIMESTAMP WITH TIME ZONE '2026-10-14 09:00:00-03:00'),
     ('76543210000198', 'DEMO-SEED-2026-005', 'Qualidade do ar - ciclo 01',
-     'Cancelled', 'Fechado Perdido', 'Monitoramento demonstrativo de qualidade do ar em ponto fixo.',
+     'InProgress', 'Relatório publicado', 'Monitoramento demonstrativo de qualidade do ar em ponto fixo.',
      'Laboratório de Química Ambiental', 'Coleta e avaliação de amostras em dois ciclos.',
      'Demo - Rafael Mendes', 'demo.contato.rafael@example.test', 12400.00, TIMESTAMP WITH TIME ZONE '2026-10-13 09:00:00-03:00'),
     ('98765432000198', 'DEMO-SEED-2026-006', 'Análise de óleo isolante - lote 02',
-     'PendingAcceptance', 'Negociação', 'Avaliação complementar de propriedades de óleo isolante.',
+     'InProgress', 'Validado', 'Avaliação complementar de propriedades de óleo isolante.',
      'Laboratório de Óleos e Combustíveis', 'Comparação de duas amostras coletadas em períodos distintos.',
      'Demo - Camila Souza', 'demo.contato.camila@example.test', 12500.00, TIMESTAMP WITH TIME ZONE '2026-10-12 09:00:00-03:00'),
     ('54321098000108', 'DEMO-SEED-2026-007', 'Análise de polímeros - lote 02',
-     'InProgress', 'Execução', 'Caracterização de polímeros com avaliação de resistência e flexão.',
+     'InProgress', 'Em execução', 'Caracterização de polímeros com avaliação de resistência e flexão.',
      'Laboratório de Materiais e Polímeros', 'Ensaios mecânicos de controle do lote.',
      'Demo - Bruno Pereira', 'demo.contato.bruno@example.test', 56292.30, TIMESTAMP WITH TIME ZONE '2026-10-11 09:00:00-03:00'),
     ('65432109000143', 'DEMO-SEED-2026-008', 'Análise de água potável - lote 02',
-     'Finished', 'Relatório Publicado', 'Análise físico-química demonstrativa de água potável.',
+     'Finished', 'Cancelado', 'Análise físico-química demonstrativa de água potável.',
      'Laboratório de Química e Água', 'Avaliação de pH e sólidos dissolvidos.',
      'Demo - Juliana Pires', 'demo.contato.juliana@example.test', 8500.00, TIMESTAMP WITH TIME ZONE '2026-10-10 09:00:00-03:00'),
     ('87654321000198', 'DEMO-SEED-2026-009', 'Materiais compósitos - lote 02',
-     'Refused', 'Fechado Perdido', 'Ensaio de resistência em material compósito de demonstração.',
+     'InProgress', 'Relatório publicado', 'Ensaio de resistência em material compósito de demonstração.',
      'Laboratório de Materiais e Polímeros', 'Avaliação de tração e flexão em corpos de prova.',
      'Demo - Mariana Costa', 'demo.contato.mariana@example.test', 18200.00, TIMESTAMP WITH TIME ZONE '2026-10-09 09:00:00-03:00'),
     ('76543210000198', 'DEMO-SEED-2026-010', 'Qualidade do ar - ciclo 02',
-     'Cancelled', 'Fechado Perdido', 'Monitoramento demonstrativo de partículas em suspensão.',
+     'InProgress', 'Em execução', 'Monitoramento demonstrativo de partículas em suspensão.',
      'Laboratório de Química Ambiental', 'Coleta e avaliação em um ponto de monitoramento.',
      'Demo - Rafael Mendes', 'demo.contato.rafael@example.test', 12400.00, TIMESTAMP WITH TIME ZONE '2026-10-08 09:00:00-03:00'),
     ('98765432000198', 'DEMO-SEED-2026-011', 'Análise de óleo isolante - lote 03',
@@ -195,11 +198,11 @@ FROM (VALUES
      'Laboratório de Óleos e Combustíveis', 'Análises físico-químicas de amostras do lote.',
      'Demo - Camila Souza', 'demo.contato.camila@example.test', 12500.00, TIMESTAMP WITH TIME ZONE '2026-10-07 09:00:00-03:00'),
     ('54321098000108', 'DEMO-SEED-2026-012', 'Análise de polímeros - lote 03',
-     'InProgress', 'Execução', 'Ensaios de resistência em material polimérico.',
+     'InProgress', 'Recebido', 'Ensaios de resistência em material polimérico.',
      'Laboratório de Materiais e Polímeros', 'Caracterização mecânica de corpos de prova.',
      'Demo - Bruno Pereira', 'demo.contato.bruno@example.test', 56292.30, TIMESTAMP WITH TIME ZONE '2026-10-06 09:00:00-03:00'),
     ('65432109000143', 'DEMO-SEED-2026-013', 'Análise de água potável - lote 03',
-     'Finished', 'Relatório Publicado', 'Análise demonstrativa de amostras de água para consumo.',
+     'Finished', 'Recebido', 'Análise demonstrativa de amostras de água para consumo.',
      'Laboratório de Química e Água', 'Avaliação de parâmetros físico-químicos.',
      'Demo - Juliana Pires', 'demo.contato.juliana@example.test', 8500.00, TIMESTAMP WITH TIME ZONE '2026-10-05 09:00:00-03:00'),
     ('87654321000198', 'DEMO-SEED-2026-014', 'Materiais compósitos - lote 03',
@@ -215,11 +218,11 @@ FROM (VALUES
      'Laboratório de Óleos e Combustíveis', 'Análise de parâmetros do lote e amostra de referência.',
      'Demo - Camila Souza', 'demo.contato.camila@example.test', 12500.00, TIMESTAMP WITH TIME ZONE '2026-10-02 09:00:00-03:00'),
     ('54321098000108', 'DEMO-SEED-2026-017', 'Análise de polímeros - lote 04',
-     'InProgress', 'Execução', 'Caracterização de material polimérico de demonstração.',
+     'InProgress', 'Recebido', 'Caracterização de material polimérico de demonstração.',
      'Laboratório de Materiais e Polímeros', 'Ensaios de tração e flexão em amostras.',
      'Demo - Bruno Pereira', 'demo.contato.bruno@example.test', 56292.30, TIMESTAMP WITH TIME ZONE '2026-10-01 09:00:00-03:00'),
     ('65432109000143', 'DEMO-SEED-2026-018', 'Análise de água potável - lote 04',
-     'Finished', 'Relatório Publicado', 'Avaliação físico-química de amostras de água.',
+     'Finished', 'Recebido', 'Avaliação físico-química de amostras de água.',
      'Laboratório de Química e Água', 'Medição dos parâmetros definidos para o lote.',
      'Demo - Juliana Pires', 'demo.contato.juliana@example.test', 8500.00, TIMESTAMP WITH TIME ZONE '2026-09-30 09:00:00-03:00'),
     ('87654321000198', 'DEMO-SEED-2026-019', 'Materiais compósitos - lote 04',
@@ -237,14 +240,14 @@ FROM (VALUES
      'PendingAcceptance', 'Qualificação', 'Registro antigo sem laboratório, escopo, contato próprio ou itens.',
      NULL, NULL, NULL, NULL, 18200.00, TIMESTAMP WITH TIME ZONE '2026-09-26 09:00:00-03:00'),
     ('76543210000198', 'DEMO-SEED-2026-023', 'Registro anterior - qualidade do ar',
-     'InProgress', 'Laboratório', 'Orçamento anterior com campos opcionais não persistidos.',
+     'InProgress', 'Recebido', 'Orçamento anterior com campos opcionais não persistidos.',
      NULL, NULL, NULL, NULL, 12400.00, TIMESTAMP WITH TIME ZONE '2026-09-25 09:00:00-03:00'),
     ('98765432000198', 'DEMO-SEED-2026-024', 'Análise de óleo isolante - lote 05',
      'PendingAcceptance', 'Negociação', 'Avaliação de propriedades físico-químicas de óleo isolante.',
      'Laboratório de Óleos e Combustíveis', 'Análise de duas amostras de óleo.',
      'Demo - Camila Souza', 'demo.contato.camila@example.test', 12500.00, TIMESTAMP WITH TIME ZONE '2026-09-24 09:00:00-03:00'),
     ('54321098000108', 'DEMO-SEED-2026-025', 'Análise de polímeros - lote 05',
-     'InProgress', 'Execução', 'Ensaio mecânico demonstrativo de material polimérico.',
+     'InProgress', 'Recebido', 'Ensaio mecânico demonstrativo de material polimérico.',
      'Laboratório de Materiais e Polímeros', 'Ensaios de tração e flexão do material.',
      'Demo - Bruno Pereira', 'demo.contato.bruno@example.test', 56292.30, TIMESTAMP WITH TIME ZONE '2026-09-23 09:00:00-03:00')
 ) AS seed(cnpj, code, name, status, stage, description, laboratory_name, scope,
@@ -317,10 +320,11 @@ WHERE NOT EXISTS (
 
 -- Preserva a proposta de demonstração já usada no fluxo de cliente.
 INSERT INTO orcamentos (
-    empresa_id, code, name, status, stage, description, total_price, created_date
+    empresa_id, code, name, status, stage, description, protocol, total_price, created_date
 )
 SELECT e.id, 'DEMO-LACTEC-001', 'Orçamento de demonstração', 'PendingAcceptance', 'Em negociação',
-       'Orçamento de demonstração usado para validar o acesso do cliente.', 1250.00, CURRENT_TIMESTAMP
+       'Orçamento de demonstração usado para validar o acesso do cliente.',
+       'L-DEMO-2026-026-X', 1250.00, CURRENT_TIMESTAMP
 FROM empresas e
 WHERE e.cnpj = '11222333000181'
   AND NOT EXISTS (SELECT 1 FROM orcamentos WHERE code = 'DEMO-LACTEC-001');

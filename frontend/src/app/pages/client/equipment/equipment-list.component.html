@@ -7,13 +7,20 @@
   [(termo)]="searchTerm"
 />
 
-@if (failed()) {
+@if (unavailable()) {
+  <app-empty-state
+    class="mt-6"
+    icon="info"
+    title="Consulta de equipamentos indisponível"
+    descricao="A consulta de equipamentos e indicadores ainda não está disponível neste ambiente."
+  />
+} @else if (failed()) {
   <app-empty-state
     class="mt-6"
     tom="erro"
     icon="cloud_off"
     title="Não foi possível carregar os equipamentos no momento"
-    descricao="A consulta ao AutoLAB falhou. Tente novamente em instantes."
+    descricao="A consulta falhou. Tente novamente em instantes."
   />
 } @else if (loading()) {
   <p class="mt-6 text-sm text-lactec-muted" role="status">Carregando equipamentos…</p>
@@ -45,14 +52,22 @@
         <tbody>
           @for (equipment of visible(); track equipment.id) {
             <tr class="border-t border-lactec-line-soft">
-              <!-- O AutoLAB não informa número de série, tipo nem localização em todo laudo.
-                   A célula diz isso, em vez de ficar vazia como se o dado fosse em branco. -->
+              <!-- O cadastro do AutoLAB não informa todo campo de todo equipamento, e não
+                   conhece 14% das séries. A célula diz isso, em vez de ficar vazia como se o
+                   dado fosse em branco. A coluna de TAG prefere a TAG de placa e cai na
+                   identificação do laudo, que é o que `tag` sempre carrega. -->
               <td class="px-4 py-3 text-lactec-ink">
                 {{ equipment.serialNumber ?? 'Não informado' }}
               </td>
-              <td class="px-4 py-3 text-lactec-ink">{{ equipment.tag }}</td>
+              <td class="px-4 py-3 text-lactec-ink">{{ equipment.equipmentTag ?? equipment.tag }}</td>
               <td class="px-4 py-3 text-lactec-ink">{{ equipment.type ?? 'Não informado' }}</td>
-              <td class="px-4 py-3 text-lactec-ink">{{ equipment.location ?? 'Não informado' }}</td>
+              <td class="px-4 py-3 text-lactec-ink">
+                @if (equipment.location; as location) {
+                  {{ location }}
+                } @else {
+                  <app-data-unavailable />
+                }
+              </td>
               <td class="px-4 py-3 text-lactec-ink">{{ equipment.reportCount }}</td>
               <td class="px-4 py-3 text-right">
                 <a
@@ -70,4 +85,16 @@
       </table>
     </div>
   </div>
+}
+
+@if (!failed() && total() > 0) {
+  <app-pagination
+    class="mt-4"
+    label="Paginação da listagem de equipamentos"
+    [page]="page()"
+    [pageSize]="pageSize"
+    [total]="total()"
+    [disabled]="loading()"
+    (pageChange)="goToPage($event)"
+  />
 }

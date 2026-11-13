@@ -28,6 +28,7 @@ describe('Detalhes do orçamento', () => {
     hasDocument: true,
     companyId: 'company-1',
     laboratoryName: 'Laboratório de Ensaios',
+    protocol: 'L-45482-2026-X',
     scope: 'Análise conforme plano de amostragem',
     totalPrice: 37.5,
     items: [{ testType: 'Teor de água', sampleCount: 3, standard: 'ASTM D1533', unitPrice: 12.5 }],
@@ -75,6 +76,7 @@ describe('Detalhes do orçamento', () => {
     service.get.and.returnValue(of({
       ...detalhe,
       laboratoryName: null,
+      protocol: 'L-45483-2026-X',
       scope: null,
       items: [],
     }));

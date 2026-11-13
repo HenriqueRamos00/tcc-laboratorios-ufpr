@@ -6,6 +6,8 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.math.BigDecimal;
+import java.nio.charset.StandardCharsets;
+import java.util.List;
 
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -39,11 +41,108 @@ class DemoSeedRunnerTests {
         assertEquals(6, contar("empresas"));
         assertEquals(13, contar("usuarios"));
         assertEquals(7, contar("clientes"));
-        assertEquals(26, contar("orcamentos"));
-        assertEquals(44, contar("itens_orcamento"));
+        assertEquals(42, contar("orcamentos"));
+        assertEquals(60, contar("itens_orcamento"));
         assertEquals(10, contar("cliente_empresas"));
-        assertEquals(1, contar("documentos_orcamentos"));
-        assertEquals(1, contar("demo_seed_runs"));
+        assertEquals(14, contar("documentos_orcamentos"));
+        assertEquals(6, contar("demo_seed_runs"));
+        assertEquals(0, jdbc.queryForObject(
+                "SELECT COUNT(*) FROM orcamentos WHERE protocol IS NULL AND ("
+                        + "code LIKE 'DEMO-SEED-2026-%' OR code LIKE 'DEMO-PIPE-2026-%' "
+                        + "OR code = 'DEMO-LACTEC-001')",
+                Integer.class));
+        assertEquals(0, jdbc.queryForObject(
+                "SELECT COUNT(*) FROM (SELECT protocol FROM orcamentos WHERE "
+                        + "code LIKE 'DEMO-SEED-2026-%' OR code LIKE 'DEMO-PIPE-2026-%' "
+                        + "OR code = 'DEMO-LACTEC-001' GROUP BY protocol HAVING COUNT(*) > 1) duplicados",
+                Integer.class));
+        assertEquals(5, contar("relatorios_tecnicos"));
+        assertEquals(2, jdbc.queryForObject(
+                "SELECT COUNT(*) FROM relatorios_tecnicos WHERE published = TRUE "
+                        + "AND validation_status = 'VALIDATED' AND validated_by_id IS NOT NULL",
+                Integer.class));
+        assertEquals(0, jdbc.queryForObject(
+                "SELECT COUNT(*) FROM relatorios_tecnicos r "
+                        + "WHERE r.published = TRUE AND (r.validated_snapshot IS NULL "
+                        + "OR r.validated_snapshot NOT LIKE '%L-DEMO-2026-%')",
+                Integer.class));
+        assertEquals(2, contar("documentos_relatorios"));
+        assertEquals(2, jdbc.queryForObject(
+                "SELECT COUNT(*) FROM documentos_relatorios WHERE pdf_valido = TRUE",
+                Integer.class));
+        assertEquals(2, jdbc.queryForObject(
+                "SELECT COUNT(*) FROM relatorios_tecnicos r "
+                        + "JOIN execucoes_ensaios e ON e.id = r.execucao_id "
+                        + "JOIN documentos_relatorios d ON d.relatorio_id = r.id "
+                        + "WHERE e.report_reference IN ('LAUDO-DEMO-2026-005-A', 'LAUDO-DEMO-2026-009-A') "
+                        + "AND e.status = 'report-published' AND r.validation_status = 'VALIDATED' "
+                        + "AND r.published = TRUE AND r.validated_quote_id = e.orcamento_id "
+                        + "AND r.validated_company_id = (SELECT o.empresa_id FROM orcamentos o "
+                        + "WHERE o.id = e.orcamento_id) AND r.validated_sample_id = e.amostra_id "
+                        + "AND r.validated_by_id IS NOT NULL AND r.published_by_id IS NOT NULL "
+                        + "AND d.pdf_valido = TRUE",
+                Integer.class));
+        List<byte[]> documentosRelatorios = jdbc.query(
+                "SELECT d.content FROM documentos_relatorios d",
+                (resultSet, rowNum) -> resultSet.getBytes("content"));
+        assertTrue(documentosRelatorios.stream().allMatch(pdf ->
+                new String(pdf, 0, 5, StandardCharsets.US_ASCII).equals("%PDF-")));
+        assertEquals(21, contar("amostras"));
+        assertEquals(2, contar("instrumentos_laboratoriais"));
+        assertEquals(23, contar("execucoes_ensaios"));
+        assertEquals(18, contar("medicoes_ensaios"));
+        assertEquals(
+                0,
+                jdbc.queryForObject(
+                        "SELECT COUNT(*) FROM execucoes_ensaios e "
+                                + "JOIN orcamentos o ON o.id = e.orcamento_id "
+                                + "WHERE o.status NOT IN ('InProgress', 'Finished')",
+                        Integer.class));
+        assertEquals(
+                0,
+                jdbc.queryForObject(
+                        "SELECT COUNT(*) FROM orcamentos o "
+                                + "WHERE o.code LIKE 'DEMO-SEED-2026-%' "
+                                + "AND o.stage IN ('Em execução', 'Completo', 'Validado', 'Finalizado', "
+                                + "'Elaborando relatório', 'Relatório publicado') "
+                                + "AND NOT EXISTS (SELECT 1 FROM execucoes_ensaios e "
+                                + "WHERE e.orcamento_id = o.id)",
+                        Integer.class));
+        assertEquals(
+                1,
+                jdbc.queryForObject(
+                        "SELECT COUNT(*) FROM orcamentos o "
+                                + "WHERE o.code = 'DEMO-PIPE-2026-005' "
+                                + "AND o.status = 'InProgress' AND o.stage = 'Aprovado pelo cliente' "
+                                + "AND NOT EXISTS (SELECT 1 FROM execucoes_ensaios e "
+                                + "WHERE e.orcamento_id = o.id)",
+                        Integer.class));
+        assertEquals(
+                16,
+                jdbc.queryForObject(
+                        "SELECT COUNT(DISTINCT stage) FROM orcamentos WHERE code LIKE 'DEMO-PIPE-2026-%'",
+                        Integer.class));
+        assertEquals(
+                0,
+                jdbc.queryForObject(
+                        "SELECT COUNT(*) FROM orcamentos o "
+                                + "WHERE o.code LIKE 'DEMO-PIPE-2026-%' "
+                                + "AND o.total_price <> (SELECT SUM(i.sample_count * i.unit_price) "
+                                + "FROM itens_orcamento i WHERE i.orcamento_id = o.id)",
+                        Integer.class));
+        List<byte[]> documentosPipeline =
+                jdbc.query(
+                        "SELECT d.content FROM documentos_orcamentos d "
+                                + "JOIN orcamentos o ON o.id = d.orcamento_id "
+                                + "WHERE o.code LIKE 'DEMO-PIPE-2026-%'",
+                        (resultSet, rowNum) -> resultSet.getBytes("content"));
+        assertEquals(13, documentosPipeline.size());
+        assertTrue(
+                documentosPipeline.stream()
+                        .allMatch(pdf -> new String(pdf, 0, 5, StandardCharsets.US_ASCII).equals("%PDF-")));
+        assertEquals(4, jdbc.queryForObject("SELECT COUNT(DISTINCT tipo_resultado) FROM medicoes_ensaios", Integer.class));
+        assertEquals(1, jdbc.queryForObject("SELECT COUNT(*) FROM equipamentos WHERE tag='DEMO-TR-HU25-01' AND numero_serie='111.594/1'", Integer.class));
+        assertEquals(2, jdbc.queryForObject("SELECT COUNT(*) FROM execucoes_ensaios e JOIN amostras a ON a.id=e.amostra_id WHERE a.codigo='A-HU25-DEMO-001/2026'", Integer.class));
         assertTrue(
                 passwordEncoder.matches(
                         "Demo@12345",
@@ -136,8 +235,8 @@ class DemoSeedRunnerTests {
                                 + "WHERE orcamento_id = (SELECT id FROM orcamentos WHERE code = ?)",
                         byte[].class,
                         CODIGO_ORCAMENTO_LACTEC));
-        assertEquals(26, contar("orcamentos"));
-        assertEquals(44, contar("itens_orcamento"));
+        assertEquals(42, contar("orcamentos"));
+        assertEquals(60, contar("itens_orcamento"));
 
         long quoteId =
                 jdbc.queryForObject(
@@ -160,12 +259,14 @@ class DemoSeedRunnerTests {
                 clienteId,
                 empresaId);
         jdbc.update("DELETE FROM itens_orcamento WHERE orcamento_id = ?", quoteId);
+        jdbc.update("DELETE FROM execucoes_ensaios WHERE orcamento_id = ?", quoteId);
+        jdbc.update("DELETE FROM amostras WHERE orcamento_id = ?", quoteId);
         jdbc.update("DELETE FROM orcamentos WHERE id = ?", quoteId);
 
         runner.run(new DefaultApplicationArguments(new String[0]));
 
-        assertEquals(25, contar("orcamentos"));
-        assertEquals(42, contar("itens_orcamento"));
+        assertEquals(41, contar("orcamentos"));
+        assertEquals(58, contar("itens_orcamento"));
         assertEquals(9, contar("cliente_empresas"));
         assertEquals(
                 0,
@@ -196,10 +297,10 @@ class DemoSeedRunnerTests {
                         "SELECT COUNT(*) FROM orcamentos WHERE code = ?",
                         Integer.class,
                         CODIGO_ORCAMENTO_REMOVIDO));
-        assertEquals(25, contar("orcamentos"));
-        assertEquals(42, contar("itens_orcamento"));
+        assertEquals(41, contar("orcamentos"));
+        assertEquals(58, contar("itens_orcamento"));
         assertEquals(9, contar("cliente_empresas"));
-        assertEquals(0, contar("demo_seed_runs"));
+        assertEquals(5, contar("demo_seed_runs"));
         assertEquals(
                 0,
                 jdbc.queryForObject(
@@ -209,12 +310,28 @@ class DemoSeedRunnerTests {
                         empresaId));
 
         jdbc.execute("ALTER TABLE demo_seed_runs DROP CONSTRAINT ck_demo_seed_runs_fail");
+        jdbc.update(
+                "UPDATE execucoes_ensaios SET report_reference = ? "
+                        + "WHERE orcamento_id = (SELECT id FROM orcamentos WHERE code = ?)",
+                "LAUDO-DEMO-MANTIDO",
+                "DEMO-SEED-2026-005");
+        jdbc.update(
+                "DELETE FROM demo_seed_runs WHERE seed_key = 'development-technical-executions-v1'");
         runner.run(new DefaultApplicationArguments(new String[0]));
 
-        assertEquals(26, contar("orcamentos"));
-        assertEquals(44, contar("itens_orcamento"));
+        assertEquals(42, contar("orcamentos"));
+        assertEquals(60, contar("itens_orcamento"));
         assertEquals(9, contar("cliente_empresas"));
-        assertEquals(1, contar("demo_seed_runs"));
+        assertEquals(6, contar("demo_seed_runs"));
+        assertEquals(23, contar("execucoes_ensaios"));
+        assertEquals(
+                "LAUDO-DEMO-MANTIDO",
+                jdbc.queryForObject(
+                        "SELECT report_reference FROM execucoes_ensaios "
+                                + "WHERE orcamento_id = (SELECT id FROM orcamentos WHERE code = ?) "
+                                + "AND status = 'report-published'",
+                        String.class,
+                        "DEMO-SEED-2026-005"));
         assertEquals(
                 0,
                 jdbc.queryForObject(

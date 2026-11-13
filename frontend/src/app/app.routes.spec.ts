@@ -8,9 +8,11 @@ import { of } from 'rxjs';
 import { UserRole } from '@core/store/user-role.store';
 
 import { CLIENT_ROLE } from '@/app/model/roles';
+import { clientToken } from '@/app/model/client-session.spec-util';
 import { HEALTH_INDICATORS } from '@/app/services/fixtures/health-indicators.fixture';
 import { LS_TOKEN } from '@/app/services/login.service';
 import { HealthService } from '@/app/services/health.service';
+import { QuotesService } from '@/app/services/quotes.service';
 import { ReportsService } from '@/app/services/reports.service';
 
 import { routes } from './app.routes';
@@ -32,23 +34,35 @@ describe('Rotas da área do cliente, ligação dos parâmetros', () => {
     // a navegação nunca chega ao componente que está sendo medido. O papel entra
     // por substituição e não por localStorage, porque o estado inicial do store é
     // lido quando o módulo carrega, antes de qualquer preparo de teste.
-    localStorage.setItem(LS_TOKEN, 'token-de-teste');
+    localStorage.clear();
+    sessionStorage.clear();
+    localStorage.setItem(LS_TOKEN, clientToken('backend-lab'));
     TestBed.configureTestingModule({
       providers: [
         provideHttpClient(),
         provideRouter(routes, withComponentInputBinding()),
-        { provide: JwtHelperService, useValue: { isTokenExpired: () => false, decodeToken: () => ({ role: 'Client', exp: Date.now() / 1000 + 900 }) } },
+        { provide: JwtHelperService, useFactory: () => new JwtHelperService() },
         {
           provide: UserRole,
           useValue: { role: () => CLIENT_ROLE, dashboardPath: () => '/cliente', clear: () => {}, setRoleFromTokenClaim: () => {} },
         },
         {
+          provide: QuotesService,
+          useValue: {
+            getQuoteById: (quoteId: string) => {
+              orcamentosPedidos.push(quoteId);
+              return of({
+                id: quoteId, code: quoteId, name: '', status: '', stage: 'Relatório publicado',
+                description: '', companyName: '', externalContactName: '',
+                externalContactEmail: '', totalPrice: 0, createdDate: null,
+              });
+            },
+          },
+        },
+        {
           provide: ReportsService,
           useValue: {
-            analysisConclusion: (quoteId: string) => {
-              orcamentosPedidos.push(quoteId);
-              return of(null);
-            },
+            list: () => of({ items: [], total: 0, page: 1, pageSize: 50 }),
           },
         },
         {
@@ -64,7 +78,10 @@ describe('Rotas da área do cliente, ligação dos parâmetros', () => {
     });
   });
 
-  afterEach(() => localStorage.removeItem(LS_TOKEN));
+  afterEach(() => {
+    localStorage.clear();
+    sessionStorage.clear();
+  });
 
   it('entrega ao componente o laudo que o endereço nomeia', async () => {
     const harness = await RouterTestingHarness.create();

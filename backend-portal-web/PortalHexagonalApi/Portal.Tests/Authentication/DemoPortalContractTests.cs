@@ -4,10 +4,9 @@ using System.Text;
 using System.Text.Json;
 using System.Text.Json.Nodes;
 using Microsoft.Extensions.DependencyInjection;
-using Portal.Adapters.Demo;
 using Portal.Adapters.Quotes;
-using Portal.Api.LabResults;
 using Portal.Application.Quotes;
+using Portal.Tests.Quotes;
 using Xunit;
 
 namespace Portal.Tests.Authentication;
@@ -15,9 +14,9 @@ namespace Portal.Tests.Authentication;
 public sealed class DemoPortalContractTests
 {
     [Theory]
-    [InlineData(DemoCompanies.EnergyCnpj, DemoCompanies.EnergyName, 4, 9)]
-    [InlineData(DemoCompanies.DistributorCnpj, DemoCompanies.DistributorName, 2, 2)]
-    public async Task EachClientSeesOnlyItsQuotesEquipmentAndReports(string cnpj, string company, int equipmentCount, int reportCount)
+    [InlineData(FakeSalesforceQuoteRepository.EnergyCnpj, FakeSalesforceQuoteRepository.EnergyName)]
+    [InlineData(FakeSalesforceQuoteRepository.DistributorCnpj, FakeSalesforceQuoteRepository.DistributorName)]
+    public async Task EachClientSeesOnlyItsQuotesAndTheWholeAutoLabSample(string cnpj, string company)
     {
         using var backend = new AuthHandler(HttpStatusCode.OK, Identity(cnpj));
         using var portal = new AuthPortal(backend, "Portal:UseDemoData", "true");
@@ -27,22 +26,24 @@ public sealed class DemoPortalContractTests
         await Login(client);
 
         JsonArray quotes = (await client.GetFromJsonAsync<JsonArray>("/api/quotes"))!;
-        string[] expected = cnpj == DemoCompanies.EnergyCnpj
+        string[] expected = cnpj == FakeSalesforceQuoteRepository.EnergyCnpj
             ? ["quote-1", "quote-3", "quote-6", "quote-8", "quote-10", "quote-12", "quote-14", "quote-16", "quote-18"]
             : ["quote-4", "quote-5", "quote-7", "quote-9", "quote-11", "quote-13", "quote-15", "quote-17", "quote-19"];
         Assert.Equal(expected.Order(StringComparer.Ordinal), quotes.Select(q => (string)q!["id"]!).Order(StringComparer.Ordinal));
         Assert.All(quotes, quote => Assert.Equal(company, (string?)quote!["companyName"]));
-        string ownQuote = cnpj == DemoCompanies.EnergyCnpj ? "quote-3" : "quote-4";
+        string ownQuote = cnpj == FakeSalesforceQuoteRepository.EnergyCnpj ? "quote-3" : "quote-15";
         using var pdf = await client.GetAsync($"/api/quotes/{ownQuote}/document");
         Assert.Equal(HttpStatusCode.OK, pdf.StatusCode);
         Assert.Equal("application/pdf", pdf.Content.Headers.ContentType!.MediaType);
-        string document = Encoding.Latin1.GetString(await pdf.Content.ReadAsByteArrayAsync());
-        Assert.StartsWith("%PDF-", document);
-        Assert.Contains(company, document);
+        byte[] documentBytes = await pdf.Content.ReadAsByteArrayAsync();
+        Assert.StartsWith("%PDF-", Encoding.Latin1.GetString(documentBytes, 0, 5));
+        Assert.Contains(company, PdfText.OfWholeDocument(documentBytes));
 
         JsonArray equipment = (await client.GetFromJsonAsync<JsonArray>("/api/equipments"))!;
-        Assert.Equal(equipmentCount, equipment.Count);
-        Assert.All(equipment, item => Assert.Equal(company, (string?)item!["company"]));
+        Assert.Equal(6, equipment.Count);
+        Assert.Equal(
+            [FakeSalesforceQuoteRepository.DistributorName, FakeSalesforceQuoteRepository.EnergyName],
+            equipment.Select(item => (string)item!["company"]!).Distinct().Order(StringComparer.Ordinal));
         int totalReports = 0;
         foreach (JsonNode? item in equipment)
         {
@@ -56,20 +57,31 @@ public sealed class DemoPortalContractTests
             using var report = await client.GetAsync($"/api/equipments/{id}/health/reports/{(string)reports[0]!["id"]!}");
             Assert.Equal(HttpStatusCode.OK, report.StatusCode);
         }
-        Assert.Equal(reportCount, totalReports);
-
-        string foreignQuote = cnpj == DemoCompanies.EnergyCnpj ? "quote-4" : "quote-3";
-        string foreignEquipment = OpaqueIdentifier.Encode(cnpj == DemoCompanies.EnergyCnpj ? "36170301" : "571289");
-        string foreignReport = OpaqueIdentifier.Encode(cnpj == DemoCompanies.EnergyCnpj ? "01718/2026-005" : "01417/2026-001");
-        string ownEquipment = (string)equipment[0]!["id"]!;
-        foreach (string path in new[]
+        Assert.Equal(11, totalReports);
+        JsonArray allReports = (await client.GetFromJsonAsync<JsonArray>("/api/reports"))!;
+        Assert.Equal(11, allReports.Count);
+        foreach (JsonNode? quote in quotes)
         {
-            $"/api/quotes/{foreignQuote}", $"/api/quotes/{foreignQuote}/document",
-            $"/api/equipments/{foreignEquipment}", $"/api/equipments/{foreignEquipment}/reports",
-            $"/api/equipments/{foreignEquipment}/health",
-            $"/api/equipments/{foreignEquipment}/health/reports/{foreignReport}",
-            $"/api/equipments/{ownEquipment}/health/reports/{foreignReport}"
-        })
+            string code = (string)quote!["code"]!;
+            int count = allReports.Count(report => (string?)report!["quoteCode"] == code);
+            using var response = await client.GetAsync($"/api/quotes/{(string)quote["id"]!}/reports");
+            Assert.Equal(count == 0 ? HttpStatusCode.NoContent : HttpStatusCode.OK, response.StatusCode);
+            if (count == 0) continue;
+            JsonObject conclusion = (await response.Content.ReadFromJsonAsync<JsonObject>())!;
+            JsonArray reports = conclusion["reports"]!.AsArray();
+            Assert.Equal(count, reports.Count);
+            Assert.All(reports, report => Assert.Equal(code, (string?)report!["quoteCode"]));
+        }
+        JsonNode downloadable = allReports.First(report => (bool)report!["pdfAvailable"]!)!;
+        string reportId = (string)downloadable["id"]!;
+        using var signedDocument = await client.GetAsync($"/api/reports/{reportId}/document");
+        using var compatibleFile = await client.GetAsync($"/api/reports/{reportId}/file");
+        Assert.Equal(HttpStatusCode.OK, signedDocument.StatusCode);
+        Assert.Equal(HttpStatusCode.OK, compatibleFile.StatusCode);
+        Assert.Equal(await signedDocument.Content.ReadAsByteArrayAsync(), await compatibleFile.Content.ReadAsByteArrayAsync());
+
+        string foreignQuote = cnpj == FakeSalesforceQuoteRepository.EnergyCnpj ? "quote-4" : "quote-3";
+        foreach (string path in new[] { $"/api/quotes/{foreignQuote}", $"/api/quotes/{foreignQuote}/document", $"/api/quotes/{foreignQuote}/reports" })
         {
             using var response = await client.GetAsync(path);
             Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
@@ -80,37 +92,24 @@ public sealed class DemoPortalContractTests
     [Theory]
     [InlineData("none")]
     [InlineData("unknown")]
-    [InlineData("multiple")]
-    public async Task UnsupportedDemoScopeNeverFallsBackToTheDevelopmentTenant(string scope)
+    public async Task AClientWithoutAKnownCompanySeesNoQuote(string scope)
     {
-        string[] cnpjs = scope switch
-        {
-            "none" => [],
-            "unknown" => ["12ABC34501DE35"],
-            _ => [DemoCompanies.EnergyCnpj, DemoCompanies.DistributorCnpj]
-        };
+        string[] cnpjs = scope == "none" ? [] : ["12ABC34501DE35"];
         using var backend = new AuthHandler(HttpStatusCode.OK, Identity(cnpjs));
-        using var basePortal = new AuthPortal(backend, "Portal:UseDemoData", "true");
-        using var portal = basePortal.WithWebHostBuilder(builder =>
-            builder.UseSetting("LabResults:DevelopmentTenant", DemoCompanies.EnergyName));
+        using var portal = new AuthPortal(backend, "Portal:UseDemoData", "true");
         using HttpClient client = portal.CreateClient();
         await Login(client);
-        foreach (string path in new[] { "/api/equipments", $"/api/equipments/{OpaqueIdentifier.Encode("571289")}/health" })
-        {
-            using var response = await client.GetAsync(path);
-            Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
-        }
-        if (scope != "multiple")
-            Assert.Empty((await client.GetFromJsonAsync<JsonArray>("/api/quotes"))!);
+
+        Assert.Empty((await client.GetFromJsonAsync<JsonArray>("/api/quotes"))!);
     }
 
     [Fact]
     public async Task DemoEndpointsRequireAJwt()
     {
-        using var backend = new AuthHandler(HttpStatusCode.OK, Identity(DemoCompanies.EnergyCnpj));
+        using var backend = new AuthHandler(HttpStatusCode.OK, Identity(FakeSalesforceQuoteRepository.EnergyCnpj));
         using var portal = new AuthPortal(backend, "Portal:UseDemoData", "true");
         using HttpClient client = portal.CreateClient();
-        foreach (string path in new[] { "/api/quotes", "/api/quotes/quote-3/document", "/api/equipments" })
+        foreach (string path in new[] { "/api/quotes", "/api/quotes/quote-3/document", "/api/equipments", "/api/reports" })
         {
             using var response = await client.GetAsync(path);
             Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
@@ -121,7 +120,7 @@ public sealed class DemoPortalContractTests
     [Fact]
     public void DemoDataIsOptInAndNormalLactecKeepsSalesforce()
     {
-        using var backend = new AuthHandler(HttpStatusCode.OK, Identity(DemoCompanies.EnergyCnpj));
+        using var backend = new AuthHandler(HttpStatusCode.OK, Identity(FakeSalesforceQuoteRepository.EnergyCnpj));
         using var portal = new AuthPortal(backend);
         using var scope = portal.Services.CreateScope();
         Assert.IsType<SalesforceQuoteRepository>(scope.ServiceProvider.GetRequiredService<IQuoteRepository>());

@@ -1,11 +1,18 @@
+using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Mvc.Filters;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Options;
 
 using Portal.Adapters.BackendAuth;
 using Portal.Adapters.BackendLab;
+using Portal.Adapters.Quotes;
 using Portal.Api.Configuration;
+using Portal.Api.Reports;
+using Portal.Adapters.Reports;
 using Portal.Application.Authentication;
+using Portal.Application.Quotes;
+using Portal.Application.Reports;
 
 using Xunit;
 
@@ -19,6 +26,76 @@ public sealed class PortalSourceRegistrationTests
         using ServiceProvider provider = Register("backend-lab").BuildServiceProvider();
 
         Assert.IsType<BackendLabAdapter>(provider.GetRequiredService<IClientAuthenticator>());
+    }
+
+    [Fact]
+    public void BackendLabRegistraAdaptersDeOrcamentosDoSpring()
+    {
+        using ServiceProvider provider = Register("backend-lab").BuildServiceProvider();
+        using IServiceScope scope = provider.CreateScope();
+
+        Assert.IsType<SpringQuoteRepository>(scope.ServiceProvider.GetRequiredService<IQuoteRepository>());
+        Assert.IsType<SpringQuoteDocumentRepository>(scope.ServiceProvider.GetRequiredService<IQuoteDocumentRepository>());
+    }
+
+    [Fact]
+    public void BackendLabSelecionaAConsultaDocumentalSpring()
+    {
+        IConfiguration configuration = Configuration("backend-lab", useDemoData: true);
+        using ServiceProvider provider = Register("backend-lab", useDemoData: true)
+            .AddReportDocumentRepository(configuration)
+            .BuildServiceProvider();
+        using IServiceScope scope = provider.CreateScope();
+
+        Assert.IsType<SpringReportDocumentRepository>(
+            scope.ServiceProvider.GetRequiredService<IReportDocumentRepository>());
+    }
+
+    [Theory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public void LactecPreservaOsRelatoriosDeExemploLegadosIndependentementeDaDemoComercial(bool useDemoData)
+    {
+        IConfiguration configuration = Configuration("lactec", useDemoData: useDemoData);
+        IServiceCollection services = Register("lactec", useDemoData: useDemoData)
+            .AddReportDocumentRepository(configuration);
+        ServiceDescriptor registration = services.Last(item =>
+            item.ServiceType == typeof(IReportDocumentRepository));
+
+        Assert.Equal(typeof(LactecDemoReportDocumentRepository), registration.ImplementationType);
+    }
+
+    [Fact]
+    public void BackendLabNaoSelecionaFixturesDeOrcamentoComDemoHabilitada()
+    {
+        using ServiceProvider provider = Register("backend-lab", useDemoData: true).BuildServiceProvider();
+        using IServiceScope scope = provider.CreateScope();
+
+        Assert.IsType<SpringQuoteRepository>(scope.ServiceProvider.GetRequiredService<IQuoteRepository>());
+        Assert.IsType<SpringQuoteDocumentRepository>(scope.ServiceProvider.GetRequiredService<IQuoteDocumentRepository>());
+    }
+
+    [Fact]
+    public void FiltroDeBearerEhRegistradoSomenteParaFonteBackendLab()
+    {
+        using ServiceProvider backendLab = Register("backend-lab").BuildServiceProvider();
+        using ServiceProvider lactec = Register("lactec").BuildServiceProvider();
+
+        Assert.Contains(backendLab.GetRequiredService<IOptions<MvcOptions>>().Value.Filters
+            .OfType<ServiceFilterAttribute>(), filter => filter.ServiceType == typeof(SpringQuoteAuthenticationFilter));
+        Assert.DoesNotContain(lactec.GetRequiredService<IOptions<MvcOptions>>().Value.Filters
+            .OfType<ServiceFilterAttribute>(), filter => filter.ServiceType == typeof(SpringQuoteAuthenticationFilter));
+    }
+
+    [Fact]
+    public void LactecPreservaRepositorioEGeracaoDeDocumentoExistentes()
+    {
+        IServiceCollection services = Register("lactec");
+        services.AddScoped<IQuoteRepository, FakeSalesforceQuoteRepository>();
+        using ServiceProvider provider = services.BuildServiceProvider();
+        using IServiceScope scope = provider.CreateScope();
+
+        Assert.IsType<GeneratedQuoteDocumentRepository>(scope.ServiceProvider.GetRequiredService<IQuoteDocumentRepository>());
     }
 
     [Fact]
@@ -60,10 +137,21 @@ public sealed class PortalSourceRegistrationTests
     }
 
     private static IServiceCollection Register(
-        string? source, string? baseUrl = "https://backend-lab.test/")
+        string? source, string? baseUrl = "https://backend-lab.test/", bool useDemoData = false)
+    {
+        IConfiguration configuration = Configuration(source, baseUrl, useDemoData);
+        return new ServiceCollection()
+            .AddControllers()
+            .Services
+            .AddPortalDataSource(configuration);
+    }
+
+    private static IConfiguration Configuration(
+        string? source, string? baseUrl = "https://backend-lab.test/", bool useDemoData = false)
     {
         Dictionary<string, string?> values = [];
         if (source is not null) values["Portal:DataSource"] = source;
+        values["Portal:UseDemoData"] = useDemoData.ToString();
         if (baseUrl is not null) values["BackendLab:BaseUrl"] = baseUrl;
 
         if (source == "lactec")
@@ -73,10 +161,8 @@ public sealed class PortalSourceRegistrationTests
             values["BackendAuth:ServiceCode"] = "portal-web";
         }
 
-        IConfiguration configuration = new ConfigurationBuilder()
+        return new ConfigurationBuilder()
             .AddInMemoryCollection(values)
             .Build();
-
-        return new ServiceCollection().AddPortalDataSource(configuration);
     }
 }

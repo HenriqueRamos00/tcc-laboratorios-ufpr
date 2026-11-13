@@ -1,3 +1,4 @@
+import { HttpErrorResponse } from '@angular/common/http';
 import {
   ChangeDetectionStrategy,
   Component,
@@ -8,7 +9,7 @@ import {
   signal,
 } from '@angular/core';
 import { takeUntilDestroyed, toObservable } from '@angular/core/rxjs-interop';
-import { catchError, EMPTY, finalize, of, switchMap, tap } from 'rxjs';
+import { catchError, combineLatest, EMPTY, finalize, of, switchMap, tap } from 'rxjs';
 import { MatIconModule } from '@angular/material/icon';
 import { RouterLink } from '@angular/router';
 
@@ -16,6 +17,8 @@ import { readableDate } from '@shared/brazilian-date';
 import { handFileToTheBrowser } from '@shared/file-download';
 import { EmptyStateComponent } from '@shared/components/empty-state/empty-state.component';
 import { PageHeaderComponent } from '@shared/components/page-header/page-header.component';
+import { DataUnavailableComponent } from '@shared/components/data-unavailable/data-unavailable.component';
+import { PaginationComponent } from '@shared/components/pagination/pagination.component';
 
 import {
   ANALYSIS_TYPE_LABEL,
@@ -24,13 +27,13 @@ import {
   type EquipmentReport,
 } from '@/app/model/equipment';
 import { TAB_BY_ANALYSIS_TYPE, type HealthTab } from '@/app/model/health-navigation';
+import type { Page } from '@/app/model/page';
 import { EquipmentsService } from '@/app/services/equipments.service';
-import { ReportsService } from '@/app/services/reports.service';
 
 interface InformationCard {
   readonly icon: string;
   readonly label: string;
-  readonly value: string;
+  readonly value: string | null;
 }
 
 /**
@@ -43,18 +46,29 @@ interface HistoryRow {
   readonly date: string;
   readonly analysisType: string;
   readonly status: string;
-  readonly tab: HealthTab;
+  readonly tab: HealthTab | null;
   readonly hasFile: boolean;
   readonly fileName: string;
 }
 
-const PER_PAGE = 4;
+const PER_PAGE = 10;
 
 const DOWNLOAD_FAILURE =
   'Não foi possível baixar o relatório agora. Tente novamente em instantes.';
 
-/** O AutoLAB não tem cadastro de equipamento, então não tem placa nem localização. */
+/**
+ * O cadastro do AutoLAB preenche campo a campo, e nenhuma coluna dele é obrigatória. A
+ * célula diz que não foi informado, em vez de ficar vazia como se o dado fosse em branco.
+ */
 const NOT_REPORTED = 'Não informado';
+
+/**
+ * Dito uma vez, e só quando o cadastro não conhece a série. Sem esta frase a tela repetiria
+ * "Não informado" em sete cartões sem dizer por quê, e o cliente não teria como distinguir
+ * um equipamento que o cadastro não tem de um cujas colunas estão em branco.
+ */
+const NAMEPLATE_UNKNOWN =
+  'O cadastro de equipamentos do laboratório não tem este número de série, então os dados de placa não aparecem aqui.';
 
 function historyRow(report: EquipmentReport): HistoryRow {
   return {
@@ -63,7 +77,7 @@ function historyRow(report: EquipmentReport): HistoryRow {
     analysisType: ANALYSIS_TYPE_LABEL[report.analysisType],
     status: REPORT_STATUS_LABEL[report.status],
     tab: TAB_BY_ANALYSIS_TYPE[report.analysisType],
-    hasFile: !!report.reportUrl,
+    hasFile: report.hasSignedDocument,
     fileName: `relatorio-${report.analysisType}-${report.date}.pdf`,
   };
 }
@@ -71,7 +85,14 @@ function historyRow(report: EquipmentReport): HistoryRow {
 @Component({
   selector: 'app-equipamento-detalhe',
   standalone: true,
-  imports: [RouterLink, MatIconModule, PageHeaderComponent, EmptyStateComponent],
+  imports: [
+    RouterLink,
+    MatIconModule,
+    PageHeaderComponent,
+    EmptyStateComponent,
+    DataUnavailableComponent,
+    PaginationComponent,
+  ],
   templateUrl: './equipment-detail.component.html',
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
@@ -80,13 +101,15 @@ export class EquipmentDetailComponent {
   readonly id = input.required<string>();
 
   private readonly equipments = inject(EquipmentsService);
-  private readonly reports = inject(ReportsService);
   private readonly destroyRef = inject(DestroyRef);
 
   protected readonly equipment = signal<EquipmentDetail | null>(null);
-  protected readonly history = signal<readonly EquipmentReport[]>([]);
+  protected readonly history = signal<Page<EquipmentReport> | null>(null);
+  protected readonly historyLoading = signal(false);
   protected readonly failed = signal(false);
-  protected readonly page = signal(0);
+  protected readonly unavailable = signal(false);
+  protected readonly page = signal(1);
+  protected readonly perPage = PER_PAGE;
 
   /** Identificador do relatório cujo arquivo está sendo buscado agora. */
   protected readonly downloading = signal<string | null>(null);
@@ -96,33 +119,33 @@ export class EquipmentDetailComponent {
     const equipment = this.equipment();
     if (!equipment) return [];
     return [
-      { icon: 'tag', label: 'Numero de Série', value: equipment.serialNumber ?? NOT_REPORTED },
-      { icon: 'sell', label: 'TAG', value: equipment.tag },
-      { icon: 'water_drop', label: 'Tipo do Oleo', value: equipment.oilType ?? NOT_REPORTED },
-      { icon: 'location_on', label: 'Local', value: equipment.location ?? NOT_REPORTED },
+      { icon: 'tag', label: 'Número de Série', value: equipment.serialNumber ?? NOT_REPORTED },
+      { icon: 'sell', label: 'TAG', value: equipment.equipmentTag ?? equipment.tag },
+      { icon: 'category', label: 'Tipo de Equipamento', value: equipment.type ?? NOT_REPORTED },
+      { icon: 'water_drop', label: 'Tipo do Óleo', value: equipment.oilType ?? NOT_REPORTED },
+      { icon: 'location_on', label: 'Local', value: equipment.location },
       { icon: 'business_center', label: 'Empresa', value: equipment.company },
       { icon: 'bolt', label: 'Tensão', value: equipment.voltage ?? NOT_REPORTED },
       { icon: 'electric_meter', label: 'Potência', value: equipment.power ?? NOT_REPORTED },
+      { icon: 'factory', label: 'Fabricante', value: equipment.manufacturer ?? NOT_REPORTED },
+      {
+        icon: 'calendar_month',
+        label: 'Ano de Fabricação',
+        value: equipment.manufacturingYear ?? NOT_REPORTED,
+      },
+      { icon: 'opacity', label: 'Volume de Óleo', value: equipment.oilVolume ?? NOT_REPORTED },
     ];
   });
 
-  protected readonly totalPages = computed(() =>
-    Math.max(1, Math.ceil(this.history().length / PER_PAGE)),
+  protected readonly nameplateNotice = computed(() =>
+    this.equipment()?.nameplateKnown === false ? NAMEPLATE_UNKNOWN : '',
   );
 
   protected readonly visible = computed<readonly HistoryRow[]>(() =>
-    this.history()
-      .slice(this.page() * PER_PAGE, (this.page() + 1) * PER_PAGE)
-      .map(historyRow),
+    (this.history()?.items ?? []).map(historyRow),
   );
 
-  protected readonly range = computed(() => {
-    const total = this.history().length;
-    if (!total) return '0 de 0';
-    const from = this.page() * PER_PAGE + 1;
-    const to = Math.min(from + PER_PAGE - 1, total);
-    return `${from}-${to} de ${total}`;
-  });
+  protected readonly historyTotal = computed(() => this.history()?.total ?? 0);
 
   constructor() {
     // O router reaproveita a instância quando só o id muda, e ngOnInit não roda
@@ -133,12 +156,15 @@ export class EquipmentDetailComponent {
       tap(() => {
         this.equipment.set(null);
         this.failed.set(false);
-        this.page.set(0);
+        this.unavailable.set(false);
+        this.history.set(null);
+        this.page.set(1);
         this.downloadFailure.set('');
       }),
       switchMap((value) =>
         this.equipments.findById(value).pipe(
-          catchError(() => {
+          catchError((error: unknown) => {
+            this.unavailable.set(error instanceof HttpErrorResponse && error.status === 501);
             this.failed.set(true);
             return EMPTY;
           }),
@@ -147,33 +173,43 @@ export class EquipmentDetailComponent {
       takeUntilDestroyed(),
     ).subscribe((detail) => this.equipment.set(detail));
 
-    id.pipe(
-      switchMap((value) => this.equipments.reportHistory(value).pipe(catchError(() => of([])))),
-      takeUntilDestroyed(),
-    ).subscribe((list) => this.history.set(list));
+    combineLatest([id, toObservable(this.page)])
+      .pipe(
+        tap(() => this.historyLoading.set(true)),
+        switchMap(([value, page]) =>
+          this.equipments.reportHistory(value, { page, pageSize: PER_PAGE }).pipe(
+            catchError(() =>
+              of<Page<EquipmentReport>>({ items: [], total: 0, page, pageSize: PER_PAGE }),
+            ),
+          ),
+        ),
+        takeUntilDestroyed(),
+      )
+      .subscribe((result) => {
+        this.history.set(result);
+        this.historyLoading.set(false);
+      });
   }
 
-  protected previous(): void {
-    this.page.update((current) => Math.max(0, current - 1));
-  }
-
-  protected next(): void {
-    this.page.update((current) => Math.min(this.totalPages() - 1, current + 1));
+  protected goToPage(page: number): void {
+    this.downloadFailure.set('');
+    this.page.set(page);
   }
 
   protected download(row: HistoryRow): void {
+    const equipment = this.equipment();
+    if (!equipment) return;
     this.downloading.set(row.id);
     this.downloadFailure.set('');
-    this.reports
-      .downloadReport(row.id)
+    this.equipments
+      .reportDocument(equipment.id, row.id)
       .pipe(
         finalize(() => this.downloading.set(null)),
         takeUntilDestroyed(this.destroyRef),
       )
       .subscribe({
-        next: (file) => handFileToTheBrowser(file, row.fileName),
+        next: (file) => handFileToTheBrowser(file.content, file.name ?? row.fileName),
         error: () => this.downloadFailure.set(DOWNLOAD_FAILURE),
       });
   }
-
 }

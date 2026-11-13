@@ -22,7 +22,7 @@ function isRole(value: unknown): value is Role {
 
 function loadRole(): Role | null {
   if (typeof localStorage === 'undefined') return null;
-  const raw = localStorage.getItem(ROLE_STORAGE_KEY);
+  const raw = localStorage.getItem(ROLE_STORAGE_KEY) ?? sessionStorage.getItem(ROLE_STORAGE_KEY);
   if (!raw) return null;
   try {
     const parsed: unknown = JSON.parse(raw);
@@ -32,12 +32,15 @@ function loadRole(): Role | null {
   }
 }
 
-function saveRole(role: Role): void {
-  localStorage.setItem(ROLE_STORAGE_KEY, JSON.stringify(role));
+function saveRole(role: Role, keepConnected: boolean): void {
+  removeRole();
+  const storage = keepConnected ? localStorage : sessionStorage;
+  storage.setItem(ROLE_STORAGE_KEY, JSON.stringify(role));
 }
 
 function removeRole(): void {
   localStorage.removeItem(ROLE_STORAGE_KEY);
+  sessionStorage.removeItem(ROLE_STORAGE_KEY);
 }
 
 const initialState: RoleState = { role: loadRole() };
@@ -54,15 +57,15 @@ export const UserRole = signalStore(
     }),
   })),
   withMethods((store) => ({
-    setRole(role: Role): void {
+    setRole(role: Role, keepConnected = true): void {
       patchState(store, { role });
-      saveRole(role);
+      saveRole(role, keepConnected);
     },
-    setRoleFromTokenClaim(claim: string): void {
+    setRoleFromTokenClaim(claim: string, keepConnected = true): void {
       const role = mapClaimToRole(claim);
       if (role) {
         patchState(store, { role });
-        saveRole(role);
+        saveRole(role, keepConnected);
       }
     },
     clear(): void {

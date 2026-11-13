@@ -3,6 +3,7 @@ name: tcc-auth-demo
 
 # Valores públicos exclusivos do demo; substituíveis pelo .env da raiz.
 x-demo-service-token: &demo-service-token ${BACKEND_AUTH_SERVICE_TOKEN:-svc_abcdefghijklmnopqrstuvwxyz0123456789ABCDEFG}
+x-demo-sql-password: &demo-sql-password ${SQLSERVER_SA_PASSWORD:-LactecDemo2026!}
 x-demo-schema-password: &demo-schema-password ${AUTH_SCHEMA_OWNER_PASSWORD:-AuthOwner!9mR4tL7wQ2nK}
 x-demo-app-password: &demo-app-password ${AUTH_DATASOURCE_PASSWORD:-AuthApp!3pV8sN6xH5rT}
 x-auth-context: &auth-context
@@ -11,6 +12,7 @@ x-auth-context: &auth-context
 
 services:
   oracle:
+    restart: unless-stopped
     image: gvenzl/oracle-free:slim-faststart
     environment:
       ORACLE_PASSWORD: ${AUTH_ORACLE_PASSWORD:-OracleDemo!7qN2vK9mR4sT}
@@ -31,6 +33,43 @@ services:
       start_period: 180s
     mem_limit: 4g
 
+  sqlserver:
+    restart: unless-stopped
+    image: mcr.microsoft.com/mssql/server:2022-latest
+    environment:
+      ACCEPT_EULA: "Y"
+      MSSQL_PID: Developer
+      MSSQL_SA_PASSWORD: *demo-sql-password
+    volumes:
+      - auth-sqlserver-data:/var/opt/mssql
+    healthcheck:
+      test:
+        - CMD-SHELL
+        - >-
+          SQLCMDPASSWORD="$$MSSQL_SA_PASSWORD" /opt/mssql-tools18/bin/sqlcmd -S localhost -U sa -C -b
+          -Q "SELECT COUNT(*) FROM tempdb.sys.tables; IF DB_ID(N'autolab') IS NOT NULL EXEC(N'USE [autolab]; SELECT 1');"
+          -o /dev/null
+      interval: 5s
+      timeout: 5s
+      retries: 30
+      start_period: 20s
+
+  autolab-init:
+    image: mcr.microsoft.com/mssql/server:2022-latest
+    entrypoint: ["/bin/bash", "-c"]
+    command:
+      - >-
+        for arquivo in /sql/01-create-database.sql /sql/02-create-objects.sql /sql/03-load-sample.sql; do
+          /opt/mssql-tools18/bin/sqlcmd -S sqlserver -U sa -C -b -f 65001 -i "$$arquivo" || exit 1;
+        done
+    environment:
+      SQLCMDPASSWORD: *demo-sql-password
+    volumes:
+      - ./backend-portal-web/docker/autolab:/sql:ro
+    depends_on:
+      sqlserver:
+        condition: service_healthy
+
   auth-migrate:
     build:
       context: ./backend-auth2
@@ -46,6 +85,7 @@ services:
     mem_limit: 768m
 
   backend-auth2:
+    restart: unless-stopped
     build:
       context: ./backend-auth2
     image: tcc-auth-demo-backend-auth2
@@ -75,15 +115,25 @@ services:
     mem_limit: 768m
 
   portal-api:
+    restart: unless-stopped
     build:
       context: ./backend-portal-web
+    env_file:
+      # Local defaults first; the user's AutoLAB connection takes precedence.
+      - path: ./backend-portal-web/docker/autolab/demo.env
+      - path: ./backend-portal-web/.env
+        required: false
     environment:
       ASPNETCORE_ENVIRONMENT: Development
       ASPNETCORE_URLS: http://+:8080
       Portal__DataSource: lactec
       Portal__UseDemoData: "true"
-      LabResults__Source: embedded-sample
+      LabResults__Source: sql-server
+      LabResults__Scope: all
       LabResults__DevelopmentTenant: ""
+      EquipmentRegistry__Source: sql-server
+      LaboratoryProgress__Source: sql-server
+      ReportDocuments__Source: sql-server
       BackendAuth__BaseUrl: http://backend-auth2:8081
       BackendAuth__ServiceToken: *demo-service-token
       BackendAuth__ServiceCode: portal-web
@@ -96,8 +146,11 @@ services:
     depends_on:
       backend-auth2:
         condition: service_healthy
+      autolab-init:
+        condition: service_completed_successfully
 
   frontend:
+    restart: unless-stopped
     build:
       context: ./frontend
       target: dev
@@ -115,3 +168,4 @@ services:
 
 volumes:
   auth-oracle-data:
+  auth-sqlserver-data:

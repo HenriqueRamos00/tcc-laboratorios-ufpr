@@ -56,6 +56,7 @@ describe('Formulário de orçamento', () => {
     hasDocument: true,
     companyId: 'company-1',
     laboratoryName: 'Laboratório de Ensaios',
+    protocol: 'L-45482-2026-X',
     scope: 'Análise conforme plano de amostragem',
     items: [{ testType: 'Teor de água', sampleCount: 3, standard: 'ASTM D1533', unitPrice: 12.5 }],
   };
@@ -66,6 +67,7 @@ describe('Formulário de orçamento', () => {
       companyId: 'company-1',
       name: 'Análise de óleo isolante',
       laboratoryName: 'Laboratório de Ensaios',
+      protocol: 'L-45482-2026-X',
       description: 'Análise físico-química de óleo isolante',
       scope: 'Análise conforme plano de amostragem',
       externalContactName: 'Ana Lima',
@@ -82,6 +84,7 @@ describe('Formulário de orçamento', () => {
       companyId: 'company-1',
       name: 'Análise de óleo isolante',
       laboratoryName: 'Laboratório de Ensaios',
+      protocol: 'L-45482-2026-X',
       description: 'Análise físico-química de óleo isolante',
       scope: 'Análise conforme plano de amostragem',
       externalContactName: 'Ana Lima',
@@ -123,6 +126,17 @@ describe('Formulário de orçamento', () => {
         { provide: MAT_DIALOG_DATA, useValue: dadosDialogo },
       ],
     });
+  });
+
+  it('exige o protocolo do laboratório antes de enviar o orçamento', () => {
+    const fixture = criarFormulario();
+    preencherFormulario(fixture.componentInstance);
+    fixture.componentInstance.form.controls.protocol.setValue('   ');
+
+    expect(fixture.componentInstance.form.controls.protocol.invalid).toBeTrue();
+    fixture.componentInstance.save();
+    expect(orcamentosService.create).not.toHaveBeenCalled();
+    fixture.destroy();
   });
 
   it('preenche o contato da empresa e preserva o campo que foi editado ao trocar empresa', fakeAsync(() => {
@@ -243,6 +257,28 @@ describe('Formulário de orçamento', () => {
     expect(dialogRef.close).toHaveBeenCalledOnceWith({ created: true, quote: detalhe });
     expect(dialogRef.disableClose).toBeFalse();
     fixture.destroy();
+  }));
+
+  it('apresenta o mesmo rótulo de aceite pendente na criação, edição e listagem', fakeAsync(() => {
+    const criacao = criarFormulario();
+    const textosStatus = Array.from(criacao.nativeElement.querySelectorAll(
+      '[aria-live="polite"] p',
+    ) as NodeListOf<HTMLParagraphElement>)
+      .map((element) => element.textContent?.trim());
+    expect(textosStatus).toContain('Aguardando aceite');
+    expect(criacao.nativeElement.textContent).not.toContain('Pendente de Aceite');
+    criacao.destroy();
+
+    const edicao = criarFormulario({ quoteId: 'quote-1', quoteCode: detalhe.code });
+    const status = edicao.nativeElement.querySelector(
+      '#orcamento-status',
+    ) as HTMLSelectElement;
+    const rotuloPendente = Array.from(status.options)
+      .find((option) => option.value === 'PendingAcceptance')?.textContent?.trim() ?? '';
+    expect(rotuloPendente).toBe('Aguardando aceite');
+    expect(edicao.componentInstance.rotuloStatusOrcamento('PendingAcceptance'))
+      .toBe(rotuloPendente);
+    edicao.destroy();
   }));
 
   it('carrega detalhe antes de editar e preserva o PDF atual sem nova parte de arquivo', fakeAsync(() => {

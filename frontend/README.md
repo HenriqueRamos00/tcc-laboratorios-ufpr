@@ -17,13 +17,22 @@ O login usa `POST /auth/login` da API C#, configurada em `src/app/environment/en
 Não há conta ou token de desenvolvimento no frontend. Cadastre o cliente na fonte
 selecionada pelo C# (`backend-lab` ou `lactec`, que usa Backend Auth).
 
-No modo `lactec`, o C# emite JWT de 15 minutos. Angular guarda a sessão em
-`localStorage` (`lactec.token`, `lactec.username`, `lactec.user`), envia Bearer
+No modo `lactec`, o C# emite JWT de 15 minutos. A opção **Me mantenha conectado**
+fica marcada inicialmente: quando marcada, a sessão usa `localStorage`; desmarcada,
+usa `sessionStorage`, restrito à sessão da aba. Essa escolha também se aplica ao
+modo `backend-lab` e não altera a validade do token. Token, nome, identidade e papel
+ficam no armazenamento escolhido; logout limpa os dois. Angular envia Bearer
 somente a `/api/**` e `/auth/me` da API e restaura o perfil com `/auth/me` após
 recarregar. Nome e papel vêm da resposta de login; CNPJs ficam em
 `currentIdentity().authorizations.companyCnpjs`. Expiração e 401 de operações
 protegidas encerram a sessão; 403 é exibido sem logout. O login mostra a espera
 indicada por `Retry-After` em 429, sem repetir a chamada automaticamente.
+
+Antes de gravar uma nova sessão, o frontend confere o contrato da resposta, a
+expiração e o perfil de cliente. No modo `lactec`, confere também o serviço e a
+estrutura das autorizações, aceitando uma lista de empresas vazia. Uma tentativa
+recusada ou resposta inválida preserva a sessão válida anterior. A verificação de
+assinatura e a autorização dos recursos continuam no backend.
 
 Para subir o portal com Backend Auth e sem Backend Lab, siga a
 [configuração da API C#](../backend-portal-web/README.md#configuração-e-execução-em-lactec).

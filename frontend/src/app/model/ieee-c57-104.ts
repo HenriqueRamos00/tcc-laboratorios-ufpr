@@ -10,11 +10,10 @@
 //
 // OS LIMIARES DE ATENÇÃO E ALARME NÃO ESTÃO AQUI. Na C57.104-2019 eles vêm de
 // tabelas de percentil que dependem do tipo do transformador, da idade e de a
-// unidade ter ou não respiro, e o AutoLAB não tem cadastro de equipamento para
-// responder nada disso (ver CLAUDE.md: não existem TAG de placa, tipo,
-// localização, tensão nem potência). Escrever um par de números de memória
-// pintaria faixa de severidade que ninguém atribuiu, então a série sai medida e
-// os dois limiares saem nulos com o motivo escrito.
+// unidade ter ou não respiro. O AutoLAB não fornece TAG, tipo, localização,
+// tensão ou potência do transformador para selecionar a tabela aplicável.
+// Informar limiares sem esses dados atribuiria uma faixa de severidade sem base;
+// por isso a série contém as medições e retorna os limiares nulos com o motivo.
 
 export interface CombustibleGases {
   readonly h2: number | null;

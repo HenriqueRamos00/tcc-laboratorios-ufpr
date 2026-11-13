@@ -213,6 +213,9 @@ public sealed class HealthIndicatorsContractTests : IClassFixture<RunningPortal>
         Assert.Equal(analysis, (string?)selected["id"]);
         Assert.Equal("2026-06-23", (string?)selected["date"]);
         Assert.Equal("LACTEC-02272/2026", (string?)selected["label"]);
+        bool hasPhysicalChemical = selected["hasPhysicalChemical"]!.GetValue<bool>();
+        bool hasDissolvedGases = selected["hasDissolvedGases"]!.GetValue<bool>();
+        Assert.True(hasPhysicalChemical || hasDissolvedGases);
 
         // O identificador da analise selecionada tem que ser o mesmo que o historico de
         // laudos publica para aquele laudo. Voltava o protocolo cru, com barra, enquanto o
@@ -275,6 +278,46 @@ public sealed class HealthIndicatorsContractTests : IClassFixture<RunningPortal>
         Assert.Equal("matches", (string?)combustibles["result"]);
         Assert.Equal(12, (decimal?)combustibles["measuredSum"]);
         Assert.Equal(0, (int?)combustibles["gasesWithoutTest"]);
+    }
+
+    [Fact]
+    public async Task TheNominalVoltageComesFromTheNameplateOrIsNull()
+    {
+        JsonObject known = await GetBodyAsync("571289");
+        JsonObject unknown = await GetBodyAsync("884120");
+
+        Assert.Equal("220", (string?)known["physicalChemical"]!["nominalVoltage"]);
+        Assert.True(unknown["physicalChemical"]!.AsObject().ContainsKey("nominalVoltage"));
+        Assert.Null(unknown["physicalChemical"]!["nominalVoltage"]);
+    }
+
+    [Fact]
+    public async Task TheReportTextComesFromTheCurrentIssueOfTheSelectedAnalysis()
+    {
+        string equipment = OpaqueIdentifier.Encode("571289");
+        string analysis = OpaqueIdentifier.Encode("01417/2026-001");
+
+        HttpResponseMessage response = await _portal.CreateClient()
+            .GetAsync($"/api/equipments/{equipment}/health/reports/{analysis}");
+        JsonObject report = JsonNode.Parse(await response.Content.ReadAsStringAsync())!["dissolvedGases"]!["report"]!.AsObject();
+
+        Assert.StartsWith("Relatório de ensaio", (string?)report["title"], StringComparison.Ordinal);
+        Assert.Equal(3, report["paragraphs"]!.AsArray().Count);
+    }
+
+    [Fact]
+    public async Task WithoutReportTextTheTitleIsNullAndThereAreNoParagraphs()
+    {
+        string equipment = OpaqueIdentifier.Encode("111.594/1");
+        string analysis = OpaqueIdentifier.Encode("00894/2026-004");
+
+        HttpResponseMessage response = await _portal.CreateClient()
+            .GetAsync($"/api/equipments/{equipment}/health/reports/{analysis}");
+        JsonObject report = JsonNode.Parse(await response.Content.ReadAsStringAsync())!["physicalChemical"]!["report"]!.AsObject();
+
+        Assert.True(report.ContainsKey("title"));
+        Assert.Null(report["title"]);
+        Assert.Empty(report["paragraphs"]!.AsArray());
     }
 
     private async Task<JsonObject> GetBodyAsync(string equipmentKey)

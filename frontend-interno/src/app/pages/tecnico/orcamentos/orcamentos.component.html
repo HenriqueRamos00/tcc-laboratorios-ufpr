@@ -1,0 +1,158 @@
+<section class="mx-auto flex w-full min-w-0 max-w-7xl flex-col">
+  <app-page-header
+    [breadcrumbs]="breadcrumbs"
+    title="Pesquisar Orçamentos"
+    subtitle="Localize uma proposta e consulte os dados técnicos disponíveis."
+  />
+
+  <section class="mt-6 grid min-w-0 grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-[minmax(0,1fr)_minmax(10rem,auto)_minmax(10rem,auto)_minmax(12rem,auto)] xl:items-end" aria-label="Filtros de orçamentos técnicos">
+    <app-search-field
+      class="min-w-0 sm:col-span-2 xl:col-span-1"
+      [value]="searchControl.value"
+      placeholder="Buscar por proposta, nome ou empresa..."
+      label="Buscar orçamentos técnicos por proposta, nome ou empresa"
+      (valueChange)="searchControl.setValue($event)"
+    />
+
+    <div class="min-w-0">
+      <label for="orcamentos-tecnicos-from" class="mb-1 block text-xs font-medium text-lactec-ink-soft">Data inicial</label>
+      <input
+        id="orcamentos-tecnicos-from"
+        type="date"
+        [formControl]="fromControl"
+        [attr.max]="toControl.value || null"
+        [attr.aria-invalid]="intervaloDatasInvalido() ? 'true' : null"
+        [attr.aria-describedby]="intervaloDatasInvalido() ? 'orcamentos-tecnicos-date-error' : null"
+        class="h-11 w-full min-w-0 rounded-lg border border-lactec-line bg-lactec-paper px-3 text-sm text-lactec-ink focus:border-lactec-primary focus:outline-none focus:ring-2 focus:ring-lactec-primary/20"
+      />
+    </div>
+
+    <div class="min-w-0">
+      <label for="orcamentos-tecnicos-to" class="mb-1 block text-xs font-medium text-lactec-ink-soft">Data final</label>
+      <input
+        id="orcamentos-tecnicos-to"
+        type="date"
+        [formControl]="toControl"
+        [attr.min]="fromControl.value || null"
+        [attr.aria-invalid]="intervaloDatasInvalido() ? 'true' : null"
+        [attr.aria-describedby]="intervaloDatasInvalido() ? 'orcamentos-tecnicos-date-error' : null"
+        class="h-11 w-full min-w-0 rounded-lg border border-lactec-line bg-lactec-paper px-3 text-sm text-lactec-ink focus:border-lactec-primary focus:outline-none focus:ring-2 focus:ring-lactec-primary/20"
+      />
+    </div>
+
+    <div class="min-w-0">
+      <label for="orcamentos-tecnicos-status" class="mb-1 block text-xs font-medium text-lactec-ink-soft">Status técnico</label>
+      <select
+        id="orcamentos-tecnicos-status"
+        [formControl]="statusControl"
+        class="h-11 w-full min-w-0 rounded-lg border border-lactec-line bg-lactec-paper px-3 text-sm text-lactec-ink focus:border-lactec-primary focus:outline-none focus:ring-2 focus:ring-lactec-primary/20"
+      >
+        <option value="ALL">Todos os status</option>
+        @for (option of statusOptions; track option.value) {
+          <option [value]="option.value">{{ option.label }}</option>
+        }
+      </select>
+    </div>
+  </section>
+
+  @if (intervaloDatasInvalido()) {
+    <p id="orcamentos-tecnicos-date-error" class="mt-2 mb-0 text-sm text-lactec-danger" role="alert">
+      @if (erroDatas() === 'ordem') {
+        A data inicial deve ser anterior ou igual à data final.
+      } @else {
+        Informe uma data válida entre 01/01/0001 e 31/12/9999.
+      }
+    </p>
+  }
+
+  @if (carregando()) {
+    <div class="mt-6 flex min-h-52 items-center justify-center gap-3 rounded-2xl border border-lactec-line bg-lactec-paper" role="status">
+      <mat-spinner diameter="24" aria-label="Carregando orçamentos técnicos"></mat-spinner>
+      <span class="text-sm text-lactec-muted">Carregando orçamentos...</span>
+    </div>
+  } @else if (!intervaloDatasInvalido() && erro()) {
+    <app-empty-state
+      class="mt-6"
+      icon="cloud_off"
+      tom="erro"
+      [title]="erroPermissao() ? 'Acesso não autorizado' : 'Não foi possível carregar os orçamentos'"
+      [descricao]="erroPermissao() ? 'Sua conta não tem permissão para consultar orçamentos técnicos.' : 'Confira sua conexão e tente novamente.'"
+    >
+      <button mat-stroked-button type="button" class="mt-2" (click)="tentarNovamente()">
+        Tentar novamente
+      </button>
+    </app-empty-state>
+  } @else if (!intervaloDatasInvalido() && !orcamentos().length) {
+    <app-empty-state
+      class="mt-6"
+      icon="search_off"
+      title="Nenhum orçamento encontrado"
+      descricao="Altere a busca ou os filtros e tente novamente."
+    />
+  } @else if (!intervaloDatasInvalido()) {
+    <section class="mt-6 min-w-0 overflow-hidden rounded-2xl border border-lactec-line bg-lactec-paper" aria-label="Resultados da pesquisa de orçamentos técnicos">
+      <div class="overflow-x-auto focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-lactec-primary" tabindex="0" role="region" aria-label="Tabela de orçamentos técnicos; role horizontalmente para ver todas as colunas">
+        <table class="w-full min-w-[820px] table-auto border-collapse text-sm">
+          <caption class="sr-only">Orçamentos técnicos com proposta, nome, empresa, data de criação, status técnico e ação para abrir detalhes.</caption>
+          <colgroup>
+            <col class="w-[22%]" />
+            <col class="w-[22%]" />
+            <col />
+            <col class="w-[120px]" />
+            <col class="w-[150px]" />
+            <col class="w-[104px]" />
+          </colgroup>
+          <thead>
+            <tr class="bg-lactec-line-soft text-left">
+              <th scope="col" class="px-3 py-3 font-semibold text-lactec-ink">Orçamento</th>
+              <th scope="col" class="px-3 py-3 font-semibold text-lactec-ink">Nome</th>
+              <th scope="col" class="px-3 py-3 font-semibold text-lactec-ink">Empresa</th>
+              <th scope="col" class="whitespace-nowrap px-3 py-3 font-semibold text-lactec-ink">Data de criação</th>
+              <th scope="col" class="px-3 py-3 font-semibold text-lactec-ink">Status</th>
+              <th scope="col" class="px-3 py-3 text-right font-semibold text-lactec-ink">Ação</th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (orcamento of linhas(); track orcamento.id) {
+              <tr class="border-t border-lactec-line-soft hover:bg-lactec-line-soft">
+                <td class="whitespace-nowrap px-3 py-3 font-mono text-xs font-medium text-lactec-ink">{{ orcamento.code }}</td>
+                <td class="min-w-0 break-words px-3 py-3 font-medium text-lactec-ink [overflow-wrap:anywhere]">{{ orcamento.name || '-' }}</td>
+                <td class="min-w-0 break-words px-3 py-3 text-lactec-ink-soft [overflow-wrap:anywhere]">{{ orcamento.companyName || '-' }}</td>
+                <td class="whitespace-nowrap px-3 py-3 text-lactec-ink-soft">{{ orcamento.createdDateLabel }}</td>
+                <td class="px-3 py-3">
+                  <span class="inline-block max-w-full break-words rounded-full px-2.5 py-1 text-center text-xs font-semibold [overflow-wrap:anywhere]" [ngClass]="orcamento.technicalStatusClass">
+                    {{ orcamento.technicalStatusLabel }}
+                  </span>
+                </td>
+                <td class="whitespace-nowrap px-3 py-2 text-right">
+                  <button
+                    type="button"
+                    class="rounded-lg px-3 py-2 text-sm font-semibold text-lactec-primary-dark hover:bg-lactec-line-soft focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-lactec-primary"
+                    (click)="abrirDetalhes(orcamento)"
+                    [attr.aria-label]="'Abrir orçamento ' + orcamento.code"
+                  >
+                    Abrir
+                  </button>
+                </td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+    </section>
+  }
+
+  @if (totalItems() > 0 && !intervaloDatasInvalido()) {
+    <div class="mt-3 min-w-0 overflow-hidden rounded-xl border border-lactec-line bg-lactec-paper">
+      <mat-paginator
+        [length]="totalItems()"
+        [pageIndex]="pageIndex()"
+        [pageSize]="pageSize()"
+        [pageSizeOptions]="tamanhosPagina"
+        [disabled]="carregando()"
+        showFirstLastButtons
+        (page)="onPageChange($event)"
+        aria-label="Paginação dos orçamentos técnicos"
+      />
+    </div>
+  }

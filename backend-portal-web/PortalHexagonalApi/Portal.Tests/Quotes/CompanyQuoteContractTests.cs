@@ -17,9 +17,12 @@ namespace Portal.Tests.Quotes;
 
 public sealed class CompanyQuoteContractTests
 {
+    // A etapa entrou na massa porque a rota do documento passou a depender dela: antes da
+    // negociacao nao ha proposta escrita e o download responde 404. Sem a etapa, o registro
+    // cai em qualificacao e estes testes de escopo por empresa mediriam a regra errada.
     private const string QuoteResponse = """
         {"records":[{"Id":"quote-3","Name":"Proposta autorizada","Status":"Draft","OpportunityId":"opp-1",
-        "Opportunity":{"Account":{"Name":"Empresa autorizada","CNPJ__c":"76436849000174"}}}]}
+        "Opportunity":{"StageName":"Negociação","Account":{"Name":"Empresa autorizada","CNPJ__c":"76436849000174"}}}]}
         """;
 
     [Theory]

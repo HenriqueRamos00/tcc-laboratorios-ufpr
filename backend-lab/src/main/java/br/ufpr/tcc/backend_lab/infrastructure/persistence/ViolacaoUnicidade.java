@@ -16,6 +16,7 @@ public final class ViolacaoUnicidade {
                     "usuarios_email_key",
                     CONSTRAINT_EMAIL_GERADA_HIBERNATE);
     private static final Set<String> CONSTRAINTS_CNPJ = Set.of("uk_empresas_cnpj");
+    private static final Set<String> CONSTRAINTS_AMOSTRA = Set.of("uk_amostras_codigo");
 
     private ViolacaoUnicidade() {}
 
@@ -25,6 +26,10 @@ public final class ViolacaoUnicidade {
 
     public static boolean cnpj(Throwable error) {
         return isViolation(error, CONSTRAINTS_CNPJ);
+    }
+
+    public static boolean codigoAmostra(Throwable error) {
+        return isViolation(error, CONSTRAINTS_AMOSTRA);
     }
 
     /**

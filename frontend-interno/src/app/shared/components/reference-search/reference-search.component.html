@@ -1,0 +1,49 @@
+<label [for]="fieldId()" class="mb-1 block text-sm font-medium text-lactec-ink-soft">{{ label() }}</label>
+<div cdkOverlayOrigin #origin="cdkOverlayOrigin" class="reference-field input-field">
+  <input #field [id]="fieldId()" [formControl]="control()" [placeholder]="placeholder()"
+    [attr.maxlength]="maxlength()" [attr.aria-invalid]="control().invalid && control().touched" class="input-field__input" [class.font-mono]="monospace()"
+    role="combobox" aria-autocomplete="list" aria-haspopup="dialog" [attr.aria-expanded]="opened()"
+    [attr.aria-controls]="opened() ? fieldId() + '-panel' : null" [attr.aria-describedby]="fieldId() + '-hint'"
+    (focus)="openOnInput() && opened.set(true)" (input)="onInput(field.value)" (keydown)="inputKeydown($event)" autocomplete="off" />
+  <span class="flex h-5 w-5 shrink-0 items-center justify-center" aria-hidden="true">
+    @if (loading()) { <mat-spinner diameter="18" /> }
+  </span>
+  <button type="button" class="input-field__suffix" [disabled]="control().disabled"
+    [attr.aria-label]="'Mostrar opções: ' + label()" [attr.aria-expanded]="opened()" (click)="opened.set(!opened())">
+    <mat-icon class="icone-20">expand_more</mat-icon>
+  </button>
+</div>
+<div class="reference-hint" [id]="fieldId() + '-hint'" role="status" aria-live="polite">
+  @if (error()) { <span class="text-lactec-danger">Falha na consulta.</span> <button type="button" [disabled]="locked()" (click)="retry.emit()">Tentar novamente</button> }
+  @else { {{ loading() ? 'Buscando correspondências…' : hint() }} }
+</div>
+<ng-template cdkConnectedOverlay [cdkConnectedOverlayOrigin]="origin"
+  [cdkConnectedOverlayOpen]="opened() && control().enabled" [cdkConnectedOverlayPositions]="positions"
+  [cdkConnectedOverlayWidth]="origin.elementRef.nativeElement.getBoundingClientRect().width"
+  [cdkConnectedOverlayViewportMargin]="12" [cdkConnectedOverlayPush]="true"
+  (overlayOutsideClick)="outside($event)" (detach)="opened.set(false)">
+  <section #panel class="reference-panel" [id]="fieldId() + '-panel'" role="dialog" [attr.aria-label]="'Opções: ' + label()"
+    (keydown)="panelKeydown($event)" (focusout)="checkFocus($event)" [attr.aria-busy]="loading()">
+    <div class="reference-options">
+      @if (loading()) { <p class="p-3 text-sm text-lactec-muted" role="status">Buscando…</p> }
+      @else if (error()) { <button mat-button type="button" [disabled]="locked()" (click)="retry.emit()">Tentar consulta novamente</button> }
+      @else if (!options().length) { <p class="p-3 text-sm text-lactec-muted">{{ emptyText() }}</p> }
+      @else {
+        @for (option of options(); track option.id) {
+          <button type="button" class="reference-option" (click)="select(option.id)">
+            <strong class="block font-mono text-sm font-medium">{{ option.label }}</strong>
+            <span class="block text-xs text-lactec-muted">{{ option.description }}</span>
+          </button>
+        }
+      }
+    </div>
+    <div class="flex flex-wrap items-center justify-between gap-1 border-t border-lactec-line px-2 py-1 text-xs">
+      @if (pages() > 1) {
+        <span>{{ page() }} de {{ pages() }}</span>
+        <button mat-button type="button" [disabled]="loading() || error() || page() <= 1" (click)="pageChanged.emit(page() - 1)">Anterior</button>
+        <button mat-button type="button" [disabled]="loading() || error() || page() >= pages()" (click)="pageChanged.emit(page() + 1)">Próxima</button>
+      }
+      <button mat-button type="button" (click)="close()">Fechar</button>
+    </div>
+  </section>
+</ng-template>

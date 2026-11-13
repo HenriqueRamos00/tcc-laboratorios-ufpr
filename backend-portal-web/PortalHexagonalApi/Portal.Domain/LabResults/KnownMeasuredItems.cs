@@ -1,13 +1,13 @@
-using Portal.Domain.LabResults.Exceptions;
-
 namespace Portal.Domain.LabResults;
 
 /// <summary>
 /// Lista de itens conhecidos, chaveada pela string exata da coluna <c>Name</c> da view. E a unica
 /// fonte de formula, unidade, papel, metodo e limite normativo, porque nenhuma dessas
-/// cinco informacoes existe no AutoLAB. Nome fora dessa lista falha em vez de virar um
-/// item medido sem unidade: Duval e a IEEE C57.104 sao definidos em ppm, e publicar numero sem
-/// unidade da lista deixaria a tela comparar ppm com miligrama por grama em silencio.
+/// cinco informacoes existe no AutoLAB. Nome fora dessa lista nao vira item medido: Duval e a
+/// IEEE C57.104 sao definidos em ppm, e publicar numero sem unidade da lista deixaria a tela
+/// comparar ppm com miligrama por grama em silencio. A lista cobre o que a tela de
+/// indicadores mostra, que e fisico-quimico e cromatografia de oleo isolante; os demais
+/// ensaios do laboratorio de oleos ficam so no laudo.
 ///
 /// A marca de gas combustivel foi conferida contra a soma publicada de
 /// "Total de Gases Combustiveis" nos dois protocolos de cromatografia da amostra real:
@@ -124,7 +124,7 @@ public static class KnownMeasuredItems
         if (BySourceName.TryGetValue(sourceName?.Trim() ?? string.Empty, out MeasuredItem? measuredItem))
             return measuredItem;
 
-        throw new ResultNameOutsideKnownListException(sourceName ?? string.Empty);
+        throw new ArgumentException($"Nome fora da lista de itens conhecidos: '{sourceName}'.", nameof(sourceName));
     }
 
     public static bool Knows(string? sourceName)
