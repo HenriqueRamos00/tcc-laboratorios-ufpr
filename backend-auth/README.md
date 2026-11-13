@@ -8,15 +8,13 @@ Cada cliente pertence a um serviço cadastrado, por exemplo `portal-web`. Integr
 
 ## Seed de demonstração
 
-Para testar o sistema completo, execute na raiz do repositório:
+O `compose.auth.yaml` da raiz passou a usar o [Backend Auth2](../backend-auth2/README.md).
+As contas e senhas atuais da demonstração estão no [README da raiz](../README.md#demonstração-com-backend-auth2).
 
-```bash
-docker compose -f compose.auth.yaml up -d --build
-```
-
-Esse Compose independente inicia SQL Server, este serviço, API C# e frontend.
-Não requer `.env`, cadastro inicial nem emissão manual de token. Abra o portal em
-http://localhost:4200 e a administração via Swagger em http://localhost:8081/swagger-ui.html.
+O seed legado deste módulo continua disponível para execução isolada, com os dados abaixo.
+Para habilitá-lo no Compose desta pasta, configure `AUTH_DEMO_SEED_ENABLED=true` e
+`BACKEND_AUTH_SERVICE_TOKEN` no `.env`, junto das credenciais SQL Server.
+A administração desta implementação continua em http://localhost:8081/swagger-ui.html.
 
 | E-mail e senha | Permissão | Empresa autorizada / CNPJ |
 | --- | --- | --- |
@@ -38,12 +36,10 @@ somente neste módulo, configure essa variável e `BACKEND_AUTH_SERVICE_TOKEN`
 (`svc_` seguido de 43 caracteres base64url). A execução Java lê variáveis do processo;
 o Compose isolado lê seu `.env`. O portal deve usar o mesmo token.
 
-O Compose demo publica padrões locais de senha SQL, token de serviço e chave JWT,
-substituíveis pelo `.env` da raiz. Seu banco fica no volume dedicado
-`tcc-auth-demo_auth-sqlserver-data`, separado do Compose deste módulo. Para parar,
-use `docker compose -f compose.auth.yaml down` na raiz. Para apagar exclusivamente
-o ambiente demo e recriar as contas, use `down -v` e depois `up -d --build` com o
-mesmo arquivo. Esses comandos não alteram o banco do Compose isolado deste módulo.
+O volume `tcc-auth-demo_auth-sqlserver-data` é preservado e reutilizado pelo AutoLAB
+no Compose atual da raiz. A autenticação desse Compose usa Auth2 e Oracle; o banco
+legado `backend_auth` não é mais usado por ele. Para executar este módulo com SQL
+Server, utilize seu Compose isolado, descrito abaixo.
 
 ## Swagger UI
 

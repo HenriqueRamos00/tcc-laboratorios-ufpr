@@ -1,11 +1,38 @@
 # Demonstração local: docker compose -f compose.auth.yaml up -d --build
 name: tcc-auth-demo
 
-# Segredos públicos apenas para este ambiente local; substituíveis pelo .env da raiz.
+# Valores públicos exclusivos do demo; substituíveis pelo .env da raiz.
 x-demo-service-token: &demo-service-token ${BACKEND_AUTH_SERVICE_TOKEN:-svc_abcdefghijklmnopqrstuvwxyz0123456789ABCDEFG}
 x-demo-sql-password: &demo-sql-password ${SQLSERVER_SA_PASSWORD:-LactecDemo2026!}
+x-demo-schema-password: &demo-schema-password ${AUTH_SCHEMA_OWNER_PASSWORD:-AuthOwner!9mR4tL7wQ2nK}
+x-demo-app-password: &demo-app-password ${AUTH_DATASOURCE_PASSWORD:-AuthApp!3pV8sN6xH5rT}
+x-auth-context: &auth-context
+  SPRING_DATASOURCE_URL: jdbc:oracle:thin:@//oracle:1521/FREEPDB1
+  AUTH_SCHEMA: AUTH_OWNER
 
 services:
+  oracle:
+    restart: unless-stopped
+    image: gvenzl/oracle-free:slim-faststart
+    environment:
+      ORACLE_PASSWORD: ${AUTH_ORACLE_PASSWORD:-OracleDemo!7qN2vK9mR4sT}
+      ORACLE_PDB: FREEPDB1
+      AUTH_SCHEMA_OWNER_USERNAME: auth_owner
+      AUTH_SCHEMA_OWNER_PASSWORD: *demo-schema-password
+      AUTH_APPLICATION_USERNAME: auth_app
+      AUTH_APPLICATION_PASSWORD: *demo-app-password
+    shm_size: 1g
+    volumes:
+      - auth-oracle-data:/opt/oracle/oradata
+      - ./backend-auth2/docker/oracle/init:/container-entrypoint-startdb.d:ro
+    healthcheck:
+      test: ["CMD-SHELL", "healthcheck.sh && test -f /tmp/auth-schema-users-ready"]
+      interval: 10s
+      timeout: 10s
+      retries: 40
+      start_period: 180s
+    mem_limit: 4g
+
   sqlserver:
     restart: unless-stopped
     image: mcr.microsoft.com/mssql/server:2022-latest
@@ -20,22 +47,12 @@ services:
         - CMD-SHELL
         - >-
           SQLCMDPASSWORD="$$MSSQL_SA_PASSWORD" /opt/mssql-tools18/bin/sqlcmd -S localhost -U sa -C -b
-          -Q "SELECT COUNT(*) FROM tempdb.sys.tables; IF DB_ID(N'backend_auth') IS NOT NULL EXEC(N'USE [backend_auth]; SELECT 1');"
+          -Q "SELECT COUNT(*) FROM tempdb.sys.tables; IF DB_ID(N'autolab') IS NOT NULL EXEC(N'USE [autolab]; SELECT 1');"
           -o /dev/null
       interval: 5s
       timeout: 5s
       retries: 30
       start_period: 20s
-
-  database-init:
-    image: mcr.microsoft.com/mssql/server:2022-latest
-    entrypoint: ["/opt/mssql-tools18/bin/sqlcmd"]
-    command: ["-S", "sqlserver", "-U", "sa", "-C", "-b", "-Q", "IF DB_ID(N'backend_auth') IS NULL CREATE DATABASE [backend_auth]"]
-    environment:
-      SQLCMDPASSWORD: *demo-sql-password
-    depends_on:
-      sqlserver:
-        condition: service_healthy
 
   autolab-init:
     image: mcr.microsoft.com/mssql/server:2022-latest
@@ -53,31 +70,49 @@ services:
       sqlserver:
         condition: service_healthy
 
-  backend-auth:
+  auth-migrate:
+    build:
+      context: ./backend-auth2
+    image: tcc-auth-demo-backend-auth2
+    environment:
+      <<: *auth-context
+      SPRING_MAIN_WEB_APPLICATION_TYPE: none
+      SPRING_DATASOURCE_USERNAME: auth_owner
+      SPRING_DATASOURCE_PASSWORD: *demo-schema-password
+    depends_on:
+      oracle:
+        condition: service_healthy
+    mem_limit: 768m
+
+  backend-auth2:
     restart: unless-stopped
     build:
-      context: ./backend-auth
+      context: ./backend-auth2
+    image: tcc-auth-demo-backend-auth2
     environment:
-      SERVER_PORT: 8080
-      DB_URL: "jdbc:sqlserver://sqlserver:1433;databaseName=backend_auth;encrypt=true;trustServerCertificate=true"
-      DB_USERNAME: sa
-      DB_PASSWORD: *demo-sql-password
-      JPA_DDL_AUTO: update
-      APP_BASE_URL: ${APP_BASE_URL:-http://localhost:${AUTH_PORT:-8081}}
+      <<: *auth-context
+      SERVER_PORT: 8081
+      SPRING_DATASOURCE_USERNAME: auth_app
+      SPRING_DATASOURCE_PASSWORD: *demo-app-password
+      SPRING_FLYWAY_ENABLED: "false"
       AUTH_DEMO_SEED_ENABLED: "true"
+      AUTH_DEMO_ADMIN_PASSWORD: ${AUTH_DEMO_ADMIN_PASSWORD:-Lactec!7uQ2mN9xR4pK}
+      AUTH_DEMO_CLIENT1_PASSWORD: ${AUTH_DEMO_CLIENT1_PASSWORD:-Cliente1!6vT9qL2nW8sD}
+      AUTH_DEMO_CLIENT2_PASSWORD: ${AUTH_DEMO_CLIENT2_PASSWORD:-Cliente2!3rK7wP5mH9zF}
       BACKEND_AUTH_SERVICE_TOKEN: *demo-service-token
       SERVICE_TOKEN_EXPIRATION_SECONDS: ${SERVICE_TOKEN_EXPIRATION_SECONDS:-2592000}
     ports:
-      - "127.0.0.1:${AUTH_PORT:-8081}:8080"
+      - "127.0.0.1:${AUTH_PORT:-8081}:8081"
     depends_on:
-      database-init:
+      auth-migrate:
         condition: service_completed_successfully
     healthcheck:
-      test: ["CMD-SHELL", "wget -qO- http://localhost:8080/health | grep -q '\"status\":\"UP\"'"]
+      test: ["CMD", "wget", "-qO-", "http://localhost:8081/health/readiness"]
       interval: 10s
       timeout: 5s
       retries: 10
-      start_period: 20s
+      start_period: 30s
+    mem_limit: 768m
 
   portal-api:
     restart: unless-stopped
@@ -99,7 +134,7 @@ services:
       EquipmentRegistry__Source: sql-server
       LaboratoryProgress__Source: sql-server
       ReportDocuments__Source: sql-server
-      BackendAuth__BaseUrl: http://backend-auth:8080
+      BackendAuth__BaseUrl: http://backend-auth2:8081
       BackendAuth__ServiceToken: *demo-service-token
       BackendAuth__ServiceCode: portal-web
       PortalJwt__Issuer: ${PORTAL_JWT_ISSUER:-portal-api}
@@ -109,7 +144,7 @@ services:
     ports:
       - "127.0.0.1:5125:8080"
     depends_on:
-      backend-auth:
+      backend-auth2:
         condition: service_healthy
       autolab-init:
         condition: service_completed_successfully
@@ -132,4 +167,5 @@ services:
     tty: true
 
 volumes:
+  auth-oracle-data:
   auth-sqlserver-data:

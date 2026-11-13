@@ -5,7 +5,7 @@ namespace Portal.Adapters.Quotes;
 
 public sealed class FakeSalesforceQuoteRepository(IQuoteCompanyScope? companyScope = null) : IQuoteRepository
 {
-    public const string EnergyCnpj = "04252011000110";
+    public const string EnergyCnpj = "30960572000183";
     public const string DistributorCnpj = "11222333000181";
     public const string EnergyName = "EMPRESA DE ENERGIA";
     public const string DistributorName = "DISTRIBUIDORA DE ENERGIA";

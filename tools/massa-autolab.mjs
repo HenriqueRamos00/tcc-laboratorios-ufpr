@@ -258,7 +258,7 @@ export const SITUA_PROCESS = [
 ];
 
 export const CLIENTES = [
-  { Sigla: 'EMPENERGIA', Nome: 'EMPRESA DE ENERGIA', RazaoSocial: 'EMPRESA DE ENERGIA S.A.', Cnpj_Cpf: '04.252.011/0001-10' },
+  { Sigla: 'EMPENERGIA', Nome: 'EMPRESA DE ENERGIA', RazaoSocial: 'EMPRESA DE ENERGIA S.A.', Cnpj_Cpf: '30.960.572/0001-83' },
   { Sigla: 'DISTENERGIA', Nome: 'DISTRIBUIDORA DE ENERGIA', RazaoSocial: 'DISTRIBUIDORA DE ENERGIA LTDA.', Cnpj_Cpf: '11.222.333/0001-81' },
 ];
 
