@@ -12,16 +12,9 @@ import lombok.AccessLevel;
 import lombok.NoArgsConstructor;
 
 /**
- * Vinculo entre uma conta de cliente e uma empresa que ela representa.
- *
- * Uma conta representa quantas empresas o administrador informar, e a mesma empresa pode
- * ser representada por contas de aplicacoes diferentes. As duas pontas viajam como
- * identificador e nao como associacao, como no resto do modulo: quem precisa do CNPJ faz a
- * juncao na consulta.
- *
- * A entidade existe para as consultas, e nunca e instanciada pelo codigo: a gravacao e um
- * comando de insercao a partir da tabela de empresa, que cria o vinculo e confere que a
- * empresa existe na mesma ida ao banco.
+ * Vinculo entre conta e empresa, identificado pelo par de IDs. Uma conta pode representar
+ * varias empresas. A insercao ocorre por consulta no repositorio, que verifica a existencia
+ * das empresas.
  */
 @Entity
 @Table(name = "CLIENT_ACCOUNT_COMPANY",

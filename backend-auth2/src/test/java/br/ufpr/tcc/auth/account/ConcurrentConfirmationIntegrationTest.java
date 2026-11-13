@@ -34,7 +34,7 @@ class ConcurrentConfirmationIntegrationTest extends OracleIntegrationTestBase {
     private static final AtomicLong NEXT_ID = new AtomicLong(500_000L);
 
     @Autowired
-    private AccountLifecycle lifecycle;
+    private ClientAccountService service;
 
     @Autowired
     private RecordedMessages recordedMessages;
@@ -53,7 +53,7 @@ class ConcurrentConfirmationIntegrationTest extends OracleIntegrationTestBase {
         String email = "pessoa" + NEXT_ID.incrementAndGet() + "@exemplo.com";
         ApplicationCaller caller = new ApplicationCaller(applicationId,
                 "corrida-" + applicationId);
-        lifecycle.register(applicationId, "Pessoa", email, "SenhaForte123", List.of());
+        service.register(applicationId, "Pessoa", email, "SenhaForte123", List.of());
         String link = recordedMessages.lastTokenFor(email);
 
         int threads = 4;
@@ -63,7 +63,7 @@ class ConcurrentConfirmationIntegrationTest extends OracleIntegrationTestBase {
             for (int worker = 0; worker < threads; worker++) {
                 results.add(pool.submit(() -> {
                     allAtOnce.await();
-                    return lifecycle.confirmEmail(caller, link);
+                    return service.confirmEmail(caller, link);
                 }));
             }
         }

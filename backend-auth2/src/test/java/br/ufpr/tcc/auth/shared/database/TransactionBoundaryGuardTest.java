@@ -2,7 +2,7 @@ package br.ufpr.tcc.auth.shared.database;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-import br.ufpr.tcc.auth.account.AccountLifecycle;
+import br.ufpr.tcc.auth.account.ClientAccountService;
 import br.ufpr.tcc.auth.administrator.AdministratorLifecycle;
 import br.ufpr.tcc.auth.application.ApplicationRegistry;
 import br.ufpr.tcc.auth.company.CompanyRegistry;
@@ -79,11 +79,11 @@ class TransactionBoundaryGuardTest {
                 CompanyRegistry.class.getMethod("update", long.class, String.class,
                         String.class),
                 CompanyRegistry.class.getMethod("delete", long.class),
-                AccountLifecycle.class.getMethod("register", long.class, String.class,
+                ClientAccountService.class.getMethod("register", long.class, String.class,
                         String.class, String.class, List.class),
-                AccountLifecycle.class.getMethod("update", java.util.Optional.class,
+                ClientAccountService.class.getMethod("update", java.util.Optional.class,
                         String.class, String.class, boolean.class, List.class),
-                AccountLifecycle.class.getMethod("requestPasswordRecovery",
+                ClientAccountService.class.getMethod("requestPasswordRecovery",
                         br.ufpr.tcc.auth.shared.security.ApplicationCaller.class, String.class),
                 AdministratorLifecycle.class.getMethod("register", String.class, String.class,
                         String.class),

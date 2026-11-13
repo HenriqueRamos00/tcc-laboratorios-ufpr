@@ -16,26 +16,8 @@ import org.hibernate.annotations.ColumnTransformer;
 import org.hibernate.type.NumericBooleanConverter;
 
 /**
- * Conta de uma pessoa dentro de uma aplicacao. A mesma pessoa em duas aplicacoes sao duas
- * contas, e e isso que permite o mesmo e-mail existir nas duas sem que uma enxergue a
- * outra.
- *
- * O e-mail e guardado duas vezes: como foi cadastrado, para exibir, e em forma minuscula,
- * que e sobre o que a unicidade e a busca acontecem. A forma normalizada e coluna e nao
- * indice de funcao porque o validate do Hibernate nao enxerga indice de funcao.
- *
- * Quem calcula a forma minuscula continua sendo o banco, agora pelo transformador de
- * coluna: a anotacao faz o Hibernate escrever LOWER(?) no INSERT e no UPDATE da coluna, do
- * mesmo jeito que o comando a mao escrevia. Isso nao e preferencia de estilo, e a diferenca
- * entre gravar e responder erro de servidor: a restricao do banco compara a coluna com
- * LOWER(EMAIL), e foi medido aqui que o I maiusculo com ponto, U+0130, desce em Java para
- * duas unidades de codigo e em Oracle para outra coisa. Calculando nos dois lugares, os dois
- * lados divergem e a restricao reprova a gravacao.
- *
- * A documentacao da anotacao avisa que, sem uma expressao de leitura que desfaca a de
- * escrita, o estado em memoria fica dessincronizado do banco depois do INSERT. Aqui isso nao
- * custa nada, porque nenhum codigo le a forma normalizada de volta: ela existe para a
- * unicidade e para o WHERE das consultas, que comparam com LOWER do parametro.
+ * Conta pertencente a uma aplicacao. O e-mail e unico por aplicacao e sua forma normalizada e
+ * calculada pelo Oracle com LOWER, evitando divergencia entre Java e banco.
  */
 @Entity
 @Table(name = "CLIENT_ACCOUNT",
@@ -69,12 +51,7 @@ class ClientAccount {
     @Getter(AccessLevel.PACKAGE)
     private String passwordHash;
 
-    /**
-     * As duas colunas de situacao sao NUMBER(1) e nao BOOLEAN, ao contrario das de
-     * APPLICATION e de ADMINISTRATOR. A divergencia e divida registrada e nao escolha: trocar
-     * o tipo exige migracao em tabela populada, e o caminho de conversao nao foi medido. O
-     * conversor numerico do proprio Hibernate e o que faz o mapeamento enquanto isso durar.
-     */
+    /** O esquema armazena estas flags como NUMBER(1); o conversor faz a ponte com boolean. */
     @Column(name = "EMAIL_CONFIRMED")
     @Convert(converter = NumericBooleanConverter.class)
     @Getter(AccessLevel.PACKAGE)
@@ -92,12 +69,8 @@ class ClientAccount {
     private OffsetDateTime updatedAt;
 
     /**
-     * Conta nova nasce ativa e com o endereco por confirmar, que e a regra 7: ela existe,
-     * mas o login recusa enquanto o link nao for usado.
-     *
-     * O identificador fica nulo de proposito, para o gerador do Hibernate atribui-lo antes do
-     * INSERT. Instancia que ja chega com identificador faz o save() do Spring Data trata-la
-     * como registro existente e cair em merge(), que emite um SELECT antes de cada INSERT.
+     * Cria conta ativa com e-mail ainda nao confirmado. O ID fica nulo para o Hibernate gera-lo no
+     * INSERT.
      */
     static ClientAccount openFor(long applicationId, String name, String email,
             String passwordHash) {
@@ -123,17 +96,7 @@ class ClientAccount {
         return applicationId;
     }
 
-    void rename(String name) {
-        this.name = name;
-        this.updatedAt = OffsetDateTime.now();
-    }
-
-    void situation(boolean active) {
-        this.active = active;
-        this.updatedAt = OffsetDateTime.now();
-    }
-
-    void passwordHash(String passwordHash) {
+    void changePasswordHash(String passwordHash) {
         this.passwordHash = passwordHash;
         this.updatedAt = OffsetDateTime.now();
     }

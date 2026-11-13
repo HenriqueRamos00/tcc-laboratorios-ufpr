@@ -106,6 +106,34 @@ class PasswordRecoveryContractIntegrationTest extends OracleIntegrationTestBase 
         return email;
     }
 
+    @Test
+    @DisplayName("redefinir senha preserva o link de confirmacao e exige confirmar para entrar")
+    void passwordResetPreservesEmailConfirmation() throws Exception {
+        String email = "nao-confirmada" + NEXT_ID.incrementAndGet() + "@exemplo.com";
+        assertThat(send("/api/users", """
+                {"name":"Pessoa","email":"%s","password":"%s","serviceId":"%s"}"""
+                .formatted(email, FIRST_PASSWORD, applicationId)).getResponse().getStatus())
+                .isEqualTo(201);
+        String confirmationToken = recordedMessages.lastTokenFor(email);
+
+        assertThat(send("/api/auth/recoveries", "{\"email\":\"" + email + "\"}")
+                .getResponse().getStatus()).isEqualTo(202);
+        String recoveryToken = recordedMessages.lastTokenFor(email);
+        String resetBody = "{\"token\":\"" + recoveryToken
+                + "\",\"password\":\"" + NEW_PASSWORD + "\"}";
+        assertThat(send("/api/auth/password-resets", resetBody).getResponse().getStatus())
+                .isEqualTo(204);
+        assertThat(send("/api/auth/password-resets", resetBody).getResponse().getStatus())
+                .isEqualTo(400);
+        assertThat(loginStatus(email, NEW_PASSWORD)).isEqualTo(401);
+
+        assertThat(send("/api/auth/confirmations",
+                "{\"token\":\"" + confirmationToken + "\"}").getResponse().getStatus())
+                .isEqualTo(204);
+        assertThat(loginStatus(email, NEW_PASSWORD)).isEqualTo(200);
+        assertThat(loginStatus(email, FIRST_PASSWORD)).isEqualTo(401);
+    }
+
     private int loginStatus(String email, String password) throws Exception {
         return send("/api/auth/login",
                 "{\"email\":\"" + email + "\",\"password\":\"" + password + "\"}")

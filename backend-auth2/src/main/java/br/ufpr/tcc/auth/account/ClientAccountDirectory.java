@@ -8,13 +8,7 @@ import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 
-/**
- * Le a credencial guardada de um cliente, sempre dentro de uma aplicacao.
- *
- * Nao existe aqui metodo que busque so por e-mail. A assinatura exige o escopo, e com isso
- * consultar conta de outra aplicacao deixa de ser descuido possivel e passa a ser codigo
- * que nao compila.
- */
+/** Fornece a credencial da conta ao modulo authentication, sempre por aplicacao e e-mail. */
 @Component
 @RequiredArgsConstructor(access = AccessLevel.PACKAGE)
 class ClientAccountDirectory implements ClientCredentialDirectory {
@@ -29,7 +23,7 @@ class ClientAccountDirectory implements ClientCredentialDirectory {
     public Optional<StoredClientCredentialView> findByApplicationAndEmail(
             long applicationId, String email) {
         List<StoredCredentialRow> rows = accounts.findCredentialWithinApplication(
-                applicationId, ClientAccountRegistry.withoutSurroundingSpace(email));
+                applicationId, ClientAccountStore.withoutSurroundingSpace(email));
         if (rows.isEmpty()) {
             return Optional.empty();
         }

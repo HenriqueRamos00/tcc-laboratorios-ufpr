@@ -44,7 +44,7 @@ class AccountWriteScopeIntegrationTest extends OracleIntegrationTestBase {
     private static final String ORIGINAL_NAME = "Nome original";
 
     @Autowired
-    private ClientAccountRegistry registry;
+    private ClientAccountStore store;
 
     @Autowired
     private DatabaseProbe database;
@@ -77,7 +77,7 @@ class AccountWriteScopeIntegrationTest extends OracleIntegrationTestBase {
     @Test
     @DisplayName("alteracao pedida por outra aplicacao nao toca na conta")
     void updateFromAnotherApplicationLeavesTheAccountAlone() {
-        transactions.executeWithoutResult(status -> registry.update(
+        transactions.executeWithoutResult(status -> store.update(
                 Optional.of(otherApplication), accountId, "Nome invadido", false));
 
         assertThat(storedName()).isEqualTo(ORIGINAL_NAME);
@@ -88,7 +88,7 @@ class AccountWriteScopeIntegrationTest extends OracleIntegrationTestBase {
     @Test
     @DisplayName("alteracao pedida pela aplicacao dona muda a conta")
     void updateFromTheOwningApplicationChangesTheAccount() {
-        transactions.executeWithoutResult(status -> registry.update(
+        transactions.executeWithoutResult(status -> store.update(
                 Optional.of(owningApplication), accountId, "Nome novo", false));
 
         assertThat(storedName()).isEqualTo("Nome novo");
@@ -99,7 +99,7 @@ class AccountWriteScopeIntegrationTest extends OracleIntegrationTestBase {
     @DisplayName("exclusao pedida por outra aplicacao nao remove a conta")
     void deleteFromAnotherApplicationLeavesTheAccountAlone() {
         transactions.executeWithoutResult(
-                status -> registry.delete(Optional.of(otherApplication), accountId));
+                status -> store.delete(Optional.of(otherApplication), accountId));
 
         assertThat(storedRows()).isEqualTo(1L);
     }
@@ -108,7 +108,7 @@ class AccountWriteScopeIntegrationTest extends OracleIntegrationTestBase {
     @DisplayName("exclusao pedida pela aplicacao dona remove a conta")
     void deleteFromTheOwningApplicationRemovesTheAccount() {
         transactions.executeWithoutResult(
-                status -> registry.delete(Optional.of(owningApplication), accountId));
+                status -> store.delete(Optional.of(owningApplication), accountId));
 
         assertThat(storedRows()).isZero();
     }
