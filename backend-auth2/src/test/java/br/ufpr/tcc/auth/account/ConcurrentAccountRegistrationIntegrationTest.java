@@ -32,7 +32,7 @@ class ConcurrentAccountRegistrationIntegrationTest extends OracleIntegrationTest
     private static final AtomicLong NEXT = new AtomicLong(996_000L);
 
     @Autowired
-    private AccountLifecycle lifecycle;
+    private ClientAccountService service;
 
     @Autowired
     private DatabaseProbe database;
@@ -50,25 +50,25 @@ class ConcurrentAccountRegistrationIntegrationTest extends OracleIntegrationTest
 
         int threads = 2;
         CyclicBarrier allAtOnce = new CyclicBarrier(threads);
-        List<Future<AccountLifecycle.Registration.Outcome>> results = new ArrayList<>();
+        List<Future<ClientAccountService.Registration.Outcome>> results = new ArrayList<>();
         try (ExecutorService pool = Executors.newFixedThreadPool(threads)) {
             for (int worker = 0; worker < threads; worker++) {
                 results.add(pool.submit(() -> {
                     allAtOnce.await();
-                    return lifecycle.register(applicationId, "Pessoa", email,
+                    return service.register(applicationId, "Pessoa", email,
                             "SenhaForte123", List.of()).outcome();
                 }));
             }
         }
 
-        List<AccountLifecycle.Registration.Outcome> outcomes = new ArrayList<>();
-        for (Future<AccountLifecycle.Registration.Outcome> result : results) {
+        List<ClientAccountService.Registration.Outcome> outcomes = new ArrayList<>();
+        for (Future<ClientAccountService.Registration.Outcome> result : results) {
             outcomes.add(result.get());
         }
 
         assertThat(outcomes).as("nenhuma das duas pode estourar, e as duas nao podem criar")
-                .containsExactlyInAnyOrder(AccountLifecycle.Registration.Outcome.CREATED,
-                        AccountLifecycle.Registration.Outcome.EMAIL_TAKEN);
+                .containsExactlyInAnyOrder(ClientAccountService.Registration.Outcome.CREATED,
+                        ClientAccountService.Registration.Outcome.EMAIL_TAKEN);
         assertThat(accountsWith(applicationId, email)).isEqualTo(1L);
     }
 

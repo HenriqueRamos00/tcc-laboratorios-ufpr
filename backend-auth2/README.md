@@ -219,3 +219,20 @@ liga em producao sem perceber que parou de mandar e-mail.
 Para exercitar o fluxo sem servidor de e-mail existe `auth.notification.record-messages`,
 desligada por padrao. Ligada com `SPRING_MAIL_HOST` definido, ela **recusa a subida**: guardar
 o token em memoria so se justifica onde nao existe envio de verdade.
+
+## Localizar regras de contas (`account`)
+
+- `web/ClientAccountController`: rotas, validacao de entrada e respostas HTTP.
+- `ClientAccountService`: cadastro (`register`/`registerInTransaction`), alteracao (`update`),
+  exclusao (`delete`), confirmacao (`confirmEmail`) e recuperacao de senha
+  (`requestPasswordRecovery`/`resetPassword`).
+- `ClientAccountStore`: leitura e gravacao de contas, vinculos e tokens pelos repositorios.
+- `ClientAccount`: estado inicial da conta e mudancas de senha e confirmacao.
+- `AccountActionToken` e seu repositorio: finalidade, validade e consumo unico dos tokens.
+- `AccountConstraintViolation`: identifica a restricao violada pelo nome informado pelo Hibernate.
+- `ClientAccountDirectory`: fornece as credenciais ao modulo `authentication`, que decide o login.
+
+O cadastro traduz apenas `UK_CLIENT_ACCOUNT_EMAIL` em e-mail repetido. A recuperacao ignora
+apenas o conflito concorrente `UX_ACCOUNT_CONFIRMATION_PENDING`; outras falhas sao propagadas.
+Redefinir senha invalida somente tokens de recuperacao, mantendo a confirmacao de e-mail.
+Os nomes das tabelas e restricoes permanecem nas migracoes `src/main/resources/db/migration`.

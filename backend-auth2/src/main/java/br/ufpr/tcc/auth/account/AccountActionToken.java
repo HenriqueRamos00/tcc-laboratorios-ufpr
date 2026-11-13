@@ -17,19 +17,8 @@ import lombok.AccessLevel;
 import lombok.NoArgsConstructor;
 
 /**
- * Credencial de uso unico que vai no e-mail, para confirmar o cadastro ou para trocar a
- * senha esquecida.
- *
- * O que viaja na mensagem e segredo e o que fica gravado e o digest dele, pela mesma regra
- * do token de aplicacao: quem perde o e-mail pede outro, e ninguem recupera o anterior.
- *
- * O proposito faz parte do que e verificado, e nao e etiqueta: um link de confirmacao de
- * cadastro chega a quem acabou de se inscrever, e ele nao pode trocar a senha de ninguem.
- *
- * O indice unico parcial UX_ACCOUNT_CONFIRMATION_PENDING, que garante no maximo um link
- * pendente por conta e por proposito, nao e declarado aqui: ele e indice de funcao, e a
- * conferencia de esquema do Hibernate so enxerga o que esta mapeado. Quem o descreve e a
- * migracao V008.
+ * Token de uso unico para confirmar e-mail ou recuperar senha. Guarda somente o digest, a
+ * finalidade e as datas. A migracao V008 garante um token pendente por conta e finalidade.
  */
 @Entity
 @Table(name = "ACCOUNT_CONFIRMATION",
@@ -37,7 +26,7 @@ import lombok.NoArgsConstructor;
                 columnNames = "TOKEN_DIGEST"),
         indexes = @Index(name = "IX_ACCOUNT_CONFIRMATION_ACCOUNT", columnList = "CLIENT_ACCOUNT_ID"))
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
-class AccountConfirmation {
+class AccountActionToken {
 
     @Id
     @Tsid
@@ -63,9 +52,9 @@ class AccountConfirmation {
     @Column(name = "USED_AT")
     private OffsetDateTime usedAt;
 
-    static AccountConfirmation issuedFor(long clientAccountId, ConfirmationToken token,
+    static AccountActionToken issuedFor(long clientAccountId, ConfirmationToken token,
             OutboundMessage.Purpose purpose, Duration lifetime) {
-        AccountConfirmation confirmation = new AccountConfirmation();
+        AccountActionToken confirmation = new AccountActionToken();
         OffsetDateTime now = OffsetDateTime.now();
         confirmation.clientAccountId = clientAccountId;
         confirmation.purpose = purpose;

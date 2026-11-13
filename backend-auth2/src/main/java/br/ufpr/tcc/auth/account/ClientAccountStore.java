@@ -17,16 +17,13 @@ import org.springframework.stereotype.Component;
 /** Leitura e gravacao de conta de cliente e das credenciais de uso unico dela. */
 @Component
 @RequiredArgsConstructor(access = AccessLevel.PACKAGE)
-class ClientAccountRegistry {
+class ClientAccountStore {
 
-    /**
-     * O perfil tem um unico valor aceito neste servico, e por isso ele e constante e nao
-     * coluna. Quando existir mais de um, ele vira coluna e esta linha sai.
-     */
+    /** Todas as contas deste servico usam o perfil CLIENTE. */
     private static final String ONLY_ROLE = "CLIENTE";
 
     private final ClientAccountRepository accounts;
-    private final AccountConfirmationRepository confirmations;
+    private final AccountActionTokenRepository tokens;
     private final ClientAccountCompanyRepository companyLinks;
 
     /** A situacao da aplicacao em que a conta vai nascer: vazio quando ela nao existe. */
@@ -40,46 +37,33 @@ class ClientAccountRegistry {
     }
 
     /**
-     * Grava a conta e devolve o identificador que o gerador atribuiu.
-     *
-     * A gravacao e descarregada na hora, e nao no fim da transacao, para que a recusa da
-     * restricao unica aconteca aqui: adiada para o commit, ela apareceria depois de a
-     * credencial de confirmacao ja ter sido emitida e da porta de envio ja ter anotado a
-     * mensagem.
+     * Insere e descarrega a gravacao para detectar a violacao de unicidade antes de emitir o
+     * token.
      */
     long insert(long applicationId, String name, String email, String passwordHash) {
         return accounts.saveAndFlush(ClientAccount.openFor(applicationId, name,
                 withoutSurroundingSpace(email), passwordHash)).id();
     }
 
-    void issueConfirmation(long accountId, ConfirmationToken token,
+    void issueToken(long accountId, ConfirmationToken token,
             OutboundMessage.Purpose purpose, Duration lifetime) {
-        confirmations.saveAndFlush(
-                AccountConfirmation.issuedFor(accountId, token, purpose, lifetime));
+        tokens.saveAndFlush(
+                AccountActionToken.issuedFor(accountId, token, purpose, lifetime));
     }
 
     /**
-     * Consome a credencial de uso unico e devolve a conta dela.
-     *
-     * A marcacao de uso e feita com a condicao de ainda nao ter sido usada dentro do
-     * proprio comando: o numero de linhas afetadas vira a decisao, e duas chamadas
-     * simultaneas com o mesmo link nao conseguem as duas achar que ganharam.
+     * Valida o token e marca seu uso por UPDATE condicional. Somente uma chamada concorrente pode
+     * consumir o mesmo token.
      */
-    Optional<Long> consume(long applicationId, ConfirmationToken token,
+    Optional<Long> consumeToken(long applicationId, ConfirmationToken token,
             OutboundMessage.Purpose purpose) {
-        return confirmations
+        return tokens
                 .findLiveAccountFor(applicationId, token.digest().asBytes(), purpose)
-                .filter(accountId -> confirmations
+                .filter(accountId -> tokens
                         .consumeByDigest(token.digest().asBytes()) == 1);
     }
 
-    /**
-     * A conta encontrada para o pedido de recuperacao, com o endereco **cadastrado**.
-     *
-     * O endereco vem daqui e nao do pedido porque a busca casa pela forma minuscula que o
-     * banco calcula: grafias diferentes encontram a mesma conta, e mandar a mensagem para a
-     * grafia submetida faria o link do titular sair para um endereco que nao e o cadastrado.
-     */
+    /** Conta e endereco cadastrado que recebera a mensagem de recuperacao. */
     record AccountToNotify(long id, String registeredEmail) {
     }
 
@@ -90,18 +74,14 @@ class ClientAccountRegistry {
     }
 
     void updatePasswordHash(long accountId, String passwordHash) {
-        accounts.findById(accountId).ifPresent(account -> account.passwordHash(passwordHash));
+        accounts.findById(accountId).ifPresent(account -> account.changePasswordHash(passwordHash));
     }
 
-    void invalidatePendingConfirmations(long accountId, OutboundMessage.Purpose purpose) {
-        confirmations.invalidatePendingOf(accountId, purpose);
+    void invalidatePendingTokens(long accountId, OutboundMessage.Purpose purpose) {
+        tokens.invalidatePendingOf(accountId, purpose);
     }
 
-    void invalidatePendingConfirmations(long accountId) {
-        confirmations.invalidateEveryPendingOf(accountId);
-    }
-
-    void markEmailConfirmed(long accountId) {
+    void confirmEmail(long accountId) {
         accounts.findById(accountId).ifPresent(ClientAccount::confirmEmail);
     }
 
@@ -114,11 +94,7 @@ class ClientAccountRegistry {
     /** As empresas que uma conta representa, como as rotas de leitura as devolvem. */
     record CompanyLinks(List<String> companyIds, List<String> companyCnpjs) {
 
-        /**
-         * As duas listas saem na mesma ordem, a do identificador da empresa, para que a
-         * posicao de um identificador case com a do CNPJ dele e a resposta nao mude entre
-         * chamadas.
-         */
+        /** Ordena ambas as listas por ID da empresa, mantendo a correspondencia entre ID e CNPJ. */
         static CompanyLinks of(List<CompanyLinkRow> links) {
             List<CompanyLinkRow> ordered = links.stream()
                     .sorted(Comparator.comparingLong(CompanyLinkRow::companyId)).toList();
@@ -140,12 +116,8 @@ class ClientAccountRegistry {
     }
 
     /**
-     * Lista contas dentro do alcance de quem chamou. Alcance vazio e administrador, que
-     * atravessa aplicacoes; qualquer outro caso leva o filtro na consulta, e nunca na
-     * memoria depois.
-     *
-     * Os vinculos com empresa vem numa segunda consulta, com o mesmo alcance, e nao numa
-     * por conta: listar cem contas custa duas idas ao banco, e nao cento e uma.
+     * Lista contas no escopo: vazio representa administrador; preenchido filtra pela aplicacao no
+     * banco. Busca os vinculos em lote para evitar uma consulta por conta.
      */
     List<AccountView> list(Optional<Long> applicationScope) {
         List<ClientAccount> found = applicationScope
@@ -169,11 +141,8 @@ class ClientAccountRegistry {
     }
 
     /**
-     * Troca a lista inteira de empresas que a conta representa, e diz se todas existiam.
-     *
-     * A lista e substituida, e nao somada: quem altera declara o estado que quer, e lista
-     * vazia desfaz todos os vinculos. Quando alguma empresa pedida nao existe, os vinculos
-     * anteriores ja foram desfeitos, entao quem chama precisa desfazer a transacao.
+     * Substitui todos os vinculos. Lista vazia remove todos. Se faltar alguma empresa, o chamador
+     * deve desfazer a transacao.
      */
     boolean replaceCompanies(long accountId, Collection<Long> companyIds) {
         companyLinks.unlinkAllOf(accountId);
@@ -182,11 +151,8 @@ class ClientAccountRegistry {
     }
 
     /**
-     * O alcance de quem chamou entra tambem na gravacao, e nao apenas na leitura anterior,
-     * e e por isso que a alteracao e um comando proprio em vez de mexer na entidade
-     * carregada: mexer na entidade faria o UPDATE sair apenas com a chave primaria, e o
-     * isolamento entre aplicacoes passaria a viver inteiro na consulta que roda antes.
-     * Alcance vazio e administrador, que atravessa aplicacoes.
+     * Aplica o escopo tambem no UPDATE para manter o isolamento entre aplicacoes. Escopo vazio
+     * permite a operacao administrativa.
      */
     void update(Optional<Long> applicationScope, long accountId, String name, boolean active) {
         OffsetDateTime now = OffsetDateTime.now();
@@ -196,40 +162,22 @@ class ClientAccountRegistry {
                 () -> accounts.updateAcrossApplications(accountId, name, active, now));
     }
 
-    /**
-     * Remove a conta e as credenciais de uso unico dela, dentro do alcance de quem chamou,
-     * pelo mesmo motivo que a alteracao.
-     */
+    /** Exclui tokens e conta dentro do escopo autorizado. */
     void delete(Optional<Long> applicationScope, long accountId) {
         applicationScope.ifPresentOrElse(
                 applicationId -> {
-                    confirmations.deleteWithinApplication(accountId, applicationId);
+                    tokens.deleteWithinApplication(accountId, applicationId);
                     accounts.deleteWithinApplication(accountId, applicationId);
                 },
                 () -> {
-                    confirmations.deleteAcrossApplications(accountId);
+                    tokens.deleteAcrossApplications(accountId);
                     accounts.deleteAcrossApplications(accountId);
                 });
     }
 
     /**
-     * Apenas o espaco das pontas. Quem passa para minuscula e o banco, pela funcao LOWER no
-     * parametro da consulta e pelo transformador de coluna da entidade, e isso nao e
-     * preferencia de estilo.
-     *
-     * A coluna normalizada e conferida por uma restricao que compara com LOWER(EMAIL), e foi
-     * medido aqui: o I maiusculo com ponto, U+0130, desce em Java para duas unidades de
-     * codigo e em Oracle para outra coisa, entao calcular a minuscula nos dois lugares fazia
-     * a restricao reprovar a gravacao e a rota responder erro de servidor onde o contrato
-     * promete cadastro ou recusa. Com a minuscula saindo so do banco, os dois lados nao tem
-     * como divergir.
-     *
-     * O corte de espaco alcanca apenas o que esta ate U+0020, e isto tambem foi medido neste
-     * repositorio: o espaco nao quebravel U+00A0 e a largura zero U+200B sobrevivem tanto a
-     * trim quanto a strip. Entao esta funcao deixa o endereco gravavel, e nao limpo.
-     *
-     * Nada disto alcanca senha. Senha nao passa por normalizacao nenhuma, porque cortar
-     * espaco trocaria a credencial em silencio.
+     * Remove espacos das pontas com trim; LOWER e calculado apenas no banco. Senhas nao passam por
+     * esta normalizacao.
      */
     static String withoutSurroundingSpace(String email) {
         return email == null ? "" : email.trim();

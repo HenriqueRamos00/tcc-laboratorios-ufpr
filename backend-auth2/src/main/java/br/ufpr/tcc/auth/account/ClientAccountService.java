@@ -19,34 +19,12 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.transaction.support.TransactionTemplate;
 
 /**
- * Cadastro de conta de cliente e confirmacao do endereco.
- *
- * A conta nasce **sem poder entrar**: o login exige endereco confirmado, e so o link
- * enviado libera. Cadastrar sem isso seria cadastrar uma conta inutil, e confirmar sem
- * cadastrar nao existe.
- *
- * Quem cadastra, altera e exclui e o administrador, pelo portal administrativo. A aplicacao
- * em que a conta nasce e as empresas que ela representa chegam no pedido, e nao na
- * credencial, porque a credencial administrativa atravessa aplicacoes. Por isso as duas sao
- * conferidas aqui: aplicacao inexistente, aplicacao desativada e empresa inexistente sao
- * desfechos proprios, e nao erro de servidor.
- *
- * O 409 de e-mail repetido e aceitavel, e isso merece justificativa: ele so e visivel para
- * quem ja pode listar todas as contas na rota ao lado. Nao existe rota de autocadastro
- * anonimo neste servico; se um dia existir, aquele 409 vira oraculo de existencia e tem de
- * virar 202.
- *
- * Os caminhos que disputam uma restricao unica, ou que precisam desfazer o que ja gravaram,
- * abrem a transacao pelo modelo e nao pela anotacao, e o motivo e de semantica e nao de
- * gosto. A recusa da restricao chega como excecao de integridade, e com a anotacao o
- * tratamento dela ficaria **dentro** da transacao: o provedor ja marcou aquela transacao
- * para desfazer, entao devolver um desfecho normal dali faria o commit falhar com erro de
- * servidor em cima de um caso que o contrato descreve como conflito. Com o modelo, a
- * transacao e desfeita antes de a excecao sair do execute, e quem decide o desfecho esta de
- * fora dela.
+ * Coordena cadastro, consulta, alteracao, exclusao, confirmacao de e-mail e recuperacao de
+ * senha. A escrita de contas e administrativa; confirmacao e recuperacao pertencem a
+ * aplicacao. Conflitos esperados sao tratados depois do rollback pelo TransactionTemplate.
  */
 @Service
-public class AccountLifecycle {
+public class ClientAccountService {
 
     /** Desfecho do cadastro, com a conta criada quando houve criacao. */
     public record Registration(Outcome outcome, AccountSummary account) {
@@ -71,7 +49,7 @@ public class AccountLifecycle {
         }
     }
 
-    private final ClientAccountRegistry registry;
+    private final ClientAccountStore store;
     private final PasswordEncoder passwordEncoder;
     private final MessageDelivery messageDelivery;
     private final AuditTrail auditTrail;
@@ -79,12 +57,12 @@ public class AccountLifecycle {
     private final Duration confirmationLifetime;
     private final Duration recoveryLifetime;
 
-    AccountLifecycle(ClientAccountRegistry registry, PasswordEncoder passwordEncoder,
+    ClientAccountService(ClientAccountStore store, PasswordEncoder passwordEncoder,
             MessageDelivery messageDelivery, AuditTrail auditTrail,
             TransactionTemplate transactions,
             @Value("${auth.confirmation.lifetime}") Duration confirmationLifetime,
             @Value("${auth.recovery.lifetime}") Duration recoveryLifetime) {
-        this.registry = registry;
+        this.store = store;
         this.passwordEncoder = passwordEncoder;
         this.messageDelivery = messageDelivery;
         this.auditTrail = auditTrail;
@@ -94,15 +72,8 @@ public class AccountLifecycle {
     }
 
     /**
-     * Cadastra a conta na aplicacao informada, ja vinculada as empresas informadas.
-     *
-     * A verificacao de senha e calculada antes de a transacao abrir. Ela custa memoria e
-     * tempo por desenho, e dentro da transacao ela reteria uma conexao do pool por todo esse
-     * tempo.
-     *
-     * A lista de empresas perde as repeticoes antes de ser gravada: o mesmo identificador
-     * duas vezes e o mesmo vinculo, e mandado ao banco assim ele faria a contagem de
-     * vinculos criados divergir do que foi pedido.
+     * Valida e calcula o hash da senha antes de abrir a transacao. Remove empresas repetidas e
+     * desfaz o cadastro se alguma referencia for invalida.
      */
     public Registration register(long applicationId, String name, String email, String password,
             List<Long> companyIds) {
@@ -115,49 +86,48 @@ public class AccountLifecycle {
         try {
             return transactions.execute(status -> {
                 Registration registration =
-                        open(applicationId, name, email, passwordHash, token, companies);
+                        registerInTransaction(applicationId, name, email, passwordHash, token, companies);
                 if (registration.outcome() != Registration.Outcome.CREATED) {
                     status.setRollbackOnly();
                 }
                 return registration;
             });
-        } catch (DataIntegrityViolationException addressAlreadyTaken) {
-            return Registration.refused(Registration.Outcome.EMAIL_TAKEN);
+        } catch (DataIntegrityViolationException failure) {
+            if (AccountConstraintViolation.matches(failure, "UK_CLIENT_ACCOUNT_EMAIL")) {
+                return Registration.refused(Registration.Outcome.EMAIL_TAKEN);
+            }
+            throw failure;
         }
     }
 
     /**
-     * A consulta de e-mail repetido nao substitui a restricao unica do banco: entre
-     * consultar e gravar existe janela, e dois cadastros simultaneos do mesmo endereco passam
-     * os dois pela consulta. Quem recusa o segundo e a restricao.
-     *
-     * Os vinculos com empresa sao gravados antes de a credencial de confirmacao ser emitida
-     * e de a mensagem ser anotada para envio: empresa inexistente desfaz o cadastro, e
-     * cadastro desfeito nao pode ter deixado mensagem a caminho.
+     * Executa o cadastro na transacao. A restricao unica garante exclusividade do e-mail mesmo com
+     * pedidos simultaneos. Os vinculos sao validados antes de emitir o token e solicitar a
+     * mensagem.
      */
-    private Registration open(long applicationId, String name, String email, String passwordHash,
+    private Registration registerInTransaction(long applicationId, String name, String email, String passwordHash,
             ConfirmationToken token, Set<Long> companyIds) {
-        Optional<Boolean> applicationActive = registry.applicationSituation(applicationId);
+        Optional<Boolean> applicationActive = store.applicationSituation(applicationId);
         if (applicationActive.isEmpty()) {
             return Registration.refused(Registration.Outcome.SERVICE_NOT_FOUND);
         }
         if (!applicationActive.get()) {
             return Registration.refused(Registration.Outcome.SERVICE_INACTIVE);
         }
-        if (registry.emailAlreadyUsedIn(applicationId, email)) {
+        if (store.emailAlreadyUsedIn(applicationId, email)) {
             return Registration.refused(Registration.Outcome.EMAIL_TAKEN);
         }
-        long accountId = registry.insert(applicationId, name, email, passwordHash);
-        if (!registry.replaceCompanies(accountId, companyIds)) {
+        long accountId = store.insert(applicationId, name, email, passwordHash);
+        if (!store.replaceCompanies(accountId, companyIds)) {
             return Registration.refused(Registration.Outcome.COMPANY_NOT_FOUND);
         }
-        registry.issueConfirmation(accountId, token,
+        store.issueToken(accountId, token,
                 OutboundMessage.Purpose.EMAIL_CONFIRMATION, confirmationLifetime);
         messageDelivery.deliver(new OutboundMessage(email,
                 OutboundMessage.Purpose.EMAIL_CONFIRMATION, token.clearValue()));
         auditTrail.clientAccountChanged("created", Long.toString(applicationId),
                 Long.toString(accountId));
-        return registry.findWithinScope(Optional.empty(), accountId)
+        return store.findWithinScope(Optional.empty(), accountId)
                 .map(created -> new Registration(Registration.Outcome.CREATED,
                         summaryOf(created)))
                 .orElseThrow(() -> new IllegalStateException(
@@ -174,32 +144,25 @@ public class AccountLifecycle {
             Authorizations authorizations) {
     }
 
-    private static AccountSummary summaryOf(ClientAccountRegistry.AccountView view) {
+    private static AccountSummary summaryOf(ClientAccountStore.AccountView view) {
         return new AccountSummary(view.id(), view.name(), view.email(), view.role(), view.active(),
                 view.serviceId(), view.emailConfirmed(), view.companyIds(),
                 new Authorizations(view.companyCnpjs()));
     }
 
     public List<AccountSummary> list(Optional<Long> applicationScope) {
-        return registry.list(applicationScope).stream().map(AccountLifecycle::summaryOf).toList();
+        return store.list(applicationScope).stream().map(ClientAccountService::summaryOf).toList();
     }
 
     public Optional<AccountSummary> find(Optional<Long> applicationScope, String accountId) {
         return identifierOf(accountId)
-                .flatMap(id -> registry.findWithinScope(applicationScope, id))
-                .map(AccountLifecycle::summaryOf);
+                .flatMap(id -> store.findWithinScope(applicationScope, id))
+                .map(ClientAccountService::summaryOf);
     }
 
     /**
-     * Altera nome, situacao e a lista inteira de empresas que a conta representa.
-     *
-     * A transacao e aberta pelo modelo porque empresa inexistente precisa desfazer o que ja
-     * foi gravado: os vinculos anteriores sao removidos antes de os novos entrarem, e
-     * devolver recusa sem desfazer deixaria a conta sem empresa nenhuma.
-     *
-     * A resposta e montada com o que foi pedido, e nao relendo a conta: a alteracao e um
-     * comando proprio, que nao passa pela entidade ja carregada nesta transacao, entao a
-     * releitura devolveria o nome e a situacao de antes.
+     * Altera nome, situacao e substitui as empresas. Empresa inexistente desfaz toda a operacao. A
+     * resposta usa os valores pedidos porque o UPDATE direto nao atualiza a entidade em memoria.
      */
     public Change update(Optional<Long> applicationScope, String accountId, String name,
             boolean active, List<Long> companyIds) {
@@ -210,21 +173,21 @@ public class AccountLifecycle {
         long id = parsed.get();
         Set<Long> companies = new LinkedHashSet<>(companyIds);
         return transactions.execute(status -> {
-            Optional<ClientAccountRegistry.AccountView> stored =
-                    registry.findWithinScope(applicationScope, id);
+            Optional<ClientAccountStore.AccountView> stored =
+                    store.findWithinScope(applicationScope, id);
             if (stored.isEmpty()) {
                 return Change.refused(Change.Outcome.NOT_FOUND);
             }
-            ClientAccountRegistry.AccountView found = stored.get();
-            registry.update(applicationScope, id, name, active);
-            if (!registry.replaceCompanies(id, companies)) {
+            ClientAccountStore.AccountView found = stored.get();
+            store.update(applicationScope, id, name, active);
+            if (!store.replaceCompanies(id, companies)) {
                 status.setRollbackOnly();
                 return Change.refused(Change.Outcome.COMPANY_NOT_FOUND);
             }
             auditTrail.clientAccountChanged("changed", found.serviceId(), found.id());
-            ClientAccountRegistry.CompanyLinks linked = registry.companiesOf(id);
+            ClientAccountStore.CompanyLinks linked = store.companiesOf(id);
             return new Change(Change.Outcome.CHANGED,
-                    summaryOf(new ClientAccountRegistry.AccountView(found.id(), name,
+                    summaryOf(new ClientAccountStore.AccountView(found.id(), name,
                             found.email(), found.role(), active, found.serviceId(),
                             found.emailConfirmed(), linked.companyIds(),
                             linked.companyCnpjs())));
@@ -234,8 +197,8 @@ public class AccountLifecycle {
     @Transactional
     public boolean delete(Optional<Long> applicationScope, String accountId) {
         return identifierOf(accountId)
-                .flatMap(id -> registry.findWithinScope(applicationScope, id).map(found -> {
-                    registry.delete(applicationScope, id);
+                .flatMap(id -> store.findWithinScope(applicationScope, id).map(found -> {
+                    store.delete(applicationScope, id);
                     auditTrail.clientAccountChanged("removed", found.serviceId(), found.id());
                     return true;
                 }))
@@ -252,46 +215,28 @@ public class AccountLifecycle {
     }
 
     /**
-     * Pedido de recuperacao de senha.
-     *
-     * Devolve sempre a mesma coisa, exista ou nao o endereco, e por isso nao devolve nada.
-     * Endereco que nao existe simplesmente nao gera link, e nenhuma mensagem sai.
-     *
-     * O pedido novo mata o link anterior, e o prazo e o da recuperacao, nao o da confirmacao
-     * de cadastro: confirmacao pode esperar o dia inteiro, porque quem nao confirma nao entra,
-     * e recuperacao e o contrario, ela abre a conta.
-     *
-     * Invalidar antes de inserir nao garante um unico link pendente, e isso foi medido: com
-     * quatro pedidos simultaneos para a mesma conta ficaram quatro links de recuperacao
-     * validos, porque duas transacoes nao se veem inserir. Quem garante o invariante e o
-     * indice unico parcial de V008, e perder essa corrida nao e falha: significa que outro
-     * pedido identico ja emitiu o link e ja vai mandar a mensagem.
-     *
-     * Quem perde desiste **inteiro**, e nao apenas sem inserir. A invalidacao dos links
-     * anteriores e desfeita junto, e isso corrige um efeito que o tratamento anterior tinha:
-     * tratada dentro da transacao, a invalidacao do perdedor era confirmada sem o link novo
-     * dele, e podia derrubar justamente o link que o vencedor acabou de emitir.
+     * Solicita recuperacao sem revelar se o e-mail existe. Substitui os tokens de recuperacao
+     * anteriores. O indice UX_ACCOUNT_CONFIRMATION_PENDING garante um pendente por conta e
+     * finalidade; somente esse conflito concorrente e ignorado apos rollback.
      */
     public void requestPasswordRecovery(ApplicationCaller caller, String email) {
         ConfirmationToken token = ConfirmationToken.generate();
         try {
             transactions.executeWithoutResult(status -> issueRecovery(caller, email, token));
-        } catch (DataIntegrityViolationException anotherRequestWonTheRace) {
-            return;
+        } catch (DataIntegrityViolationException failure) {
+            if (!AccountConstraintViolation.matches(failure, "UX_ACCOUNT_CONFIRMATION_PENDING")) {
+                throw failure;
+            }
         }
     }
 
-    /**
-     * O endereco que recebe a mensagem e o **cadastrado**, e nao o que veio no pedido: a busca
-     * casa pela forma minuscula que o banco calcula, entao grafias diferentes encontram a
-     * mesma conta e usar a grafia submetida mandaria o link para um endereco que nao e o dela.
-     */
+    /** Envia o token ao endereco cadastrado, encontrado pela comparacao de e-mail no banco. */
     private void issueRecovery(ApplicationCaller caller, String email, ConfirmationToken token) {
-        registry.findToNotifyByApplicationAndEmail(caller.applicationId(), email)
+        store.findToNotifyByApplicationAndEmail(caller.applicationId(), email)
                 .ifPresent(account -> {
-                    registry.invalidatePendingConfirmations(account.id(),
+                    store.invalidatePendingTokens(account.id(),
                             OutboundMessage.Purpose.PASSWORD_RECOVERY);
-                    registry.issueConfirmation(account.id(), token,
+                    store.issueToken(account.id(), token,
                             OutboundMessage.Purpose.PASSWORD_RECOVERY, recoveryLifetime);
                     messageDelivery.deliver(new OutboundMessage(account.registeredEmail(),
                             OutboundMessage.Purpose.PASSWORD_RECOVERY, token.clearValue()));
@@ -299,13 +244,8 @@ public class AccountLifecycle {
     }
 
     /**
-     * Troca a senha a partir do link enviado.
-     *
-     * A politica e cobrada antes de consumir o link: senha fraca nao pode queimar a unica
-     * chance de quem perdeu o acesso.
-     *
-     * O proposito faz parte do que e verificado. Um link de confirmacao de cadastro chega a
-     * quem acabou de se inscrever e nao pode trocar senha de ninguem.
+     * Redefine a senha com token de recuperacao. Valida a senha antes de consumir o token e
+     * invalida somente recuperacoes pendentes, preservando a confirmacao de e-mail.
      */
     @Transactional
     public boolean resetPassword(ApplicationCaller caller, String presentedToken,
@@ -314,11 +254,12 @@ public class AccountLifecycle {
             return false;
         }
         return ConfirmationToken.fromPresentedValue(presentedToken)
-                .flatMap(token -> registry.consume(caller.applicationId(), token,
+                .flatMap(token -> store.consumeToken(caller.applicationId(), token,
                         OutboundMessage.Purpose.PASSWORD_RECOVERY))
                 .map(accountId -> {
-                    registry.updatePasswordHash(accountId, passwordEncoder.encode(newPassword));
-                    registry.invalidatePendingConfirmations(accountId);
+                    store.updatePasswordHash(accountId, passwordEncoder.encode(newPassword));
+                    store.invalidatePendingTokens(accountId,
+                            OutboundMessage.Purpose.PASSWORD_RECOVERY);
                     auditTrail.clientCredentialChanged("password_reset",
                             Long.toString(accountId));
                     return true;
@@ -327,17 +268,16 @@ public class AccountLifecycle {
     }
 
     /**
-     * Link desconhecido, usado, vencido, de proposito errado e **de conta de outra
-     * aplicacao** respondem igual, porque distinguir contaria se o endereco existe, em que
-     * estado ele esta e em qual aplicacao.
+     * Confirma o e-mail com token valido da mesma aplicacao. Token desconhecido, usado, vencido ou
+     * de finalidade incorreta produz a mesma recusa.
      */
     @Transactional
     public boolean confirmEmail(ApplicationCaller caller, String presentedToken) {
         return ConfirmationToken.fromPresentedValue(presentedToken)
-                .flatMap(token -> registry.consume(caller.applicationId(), token,
+                .flatMap(token -> store.consumeToken(caller.applicationId(), token,
                         OutboundMessage.Purpose.EMAIL_CONFIRMATION))
                 .map(accountId -> {
-                    registry.markEmailConfirmed(accountId);
+                    store.confirmEmail(accountId);
                     auditTrail.clientCredentialChanged("email_confirmed",
                             Long.toString(accountId));
                     return true;

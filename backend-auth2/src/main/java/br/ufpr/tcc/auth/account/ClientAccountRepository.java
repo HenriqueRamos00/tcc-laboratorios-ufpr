@@ -8,17 +8,7 @@ import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
-/**
- * Leitura e gravacao da tabela de conta de cliente.
- *
- * Nao existe aqui consulta que receba apenas o e-mail. A assinatura exige a aplicacao, e
- * com isso ler conta de outra aplicacao deixa de ser descuido possivel e passa a ser codigo
- * que nao compila.
- *
- * Quem passa o endereco para minuscula e o banco, com LOWER sobre o parametro, pelo mesmo
- * motivo que o transformador de coluna da entidade: calcular a minuscula em Java faria a
- * consulta discordar da restricao que o banco cobra.
- */
+/** Consultas e comandos de contas. Buscas por e-mail exigem a aplicacao e usam LOWER do banco. */
 interface ClientAccountRepository extends JpaRepository<ClientAccount, Long> {
 
     @Query("""
@@ -38,14 +28,8 @@ interface ClientAccountRepository extends JpaRepository<ClientAccount, Long> {
             @Param("applicationId") long applicationId, @Param("email") String email);
 
     /**
-     * A credencial guardada de um cliente, sempre dentro de uma aplicacao, com uma linha
-     * por empresa que a conta representa.
-     *
-     * As juncoes sao externas porque o vinculo com empresa e opcional: conta sem empresa
-     * volta numa linha so, com o CNPJ nulo, e precisa ser encontrada do mesmo jeito.
-     *
-     * A lista de empresas vem na mesma consulta, e nao numa segunda, porque este e o
-     * caminho mais quente do servico. Quem junta as linhas numa credencial so e o diretorio.
+     * Busca a credencial e os CNPJs em uma consulta, com uma linha por empresa. LEFT JOIN preserva
+     * contas sem empresas; o diretorio agrupa as linhas.
      */
     @Query("""
             select new br.ufpr.tcc.auth.account.StoredCredentialRow(
@@ -62,13 +46,7 @@ interface ClientAccountRepository extends JpaRepository<ClientAccount, Long> {
     List<StoredCredentialRow> findCredentialWithinApplication(
             @Param("applicationId") long applicationId, @Param("email") String email);
 
-    /**
-     * A situacao da aplicacao em que uma conta vai nascer: vazio quando ela nao existe.
-     *
-     * Quem cadastra agora e o administrador, que informa a aplicacao no pedido em vez de
-     * traze-la na credencial, entao a existencia e a situacao deixam de ser garantidas pela
-     * cadeia de seguranca e passam a ser conferidas aqui.
-     */
+    /** Consulta a situacao da aplicacao informada no cadastro; vazio significa inexistente. */
     @Query("select application.active from RegisteredApplication application"
             + " where application.id = :applicationId")
     Optional<Boolean> findApplicationSituation(@Param("applicationId") long applicationId);
@@ -79,16 +57,7 @@ interface ClientAccountRepository extends JpaRepository<ClientAccount, Long> {
 
     Optional<ClientAccount> findByIdAndApplicationId(long id, long applicationId);
 
-    /**
-     * A alteracao leva a aplicacao de quem chamou no proprio comando, e nao apenas na
-     * consulta que roda antes.
-     *
-     * Sem isso o isolamento entre aplicacoes viveria inteiro naquela consulta: trocar a
-     * consulta por uma sem escopo passaria a permitir que a aplicacao A renomeasse e
-     * desativasse conta de cliente da aplicacao B, e nenhum teste cairia. Desativar conta
-     * alheia e negacao de servico contra o cliente de outra aplicacao do Lactec, entao a
-     * condicao e repetida de proposito.
-     */
+    /** Inclui a aplicacao no UPDATE para garantir o isolamento tambem na gravacao. */
     @Modifying
     @Query("""
             update ClientAccount account

@@ -39,7 +39,7 @@ class ConcurrentRecoveryRequestIntegrationTest extends OracleIntegrationTestBase
     private static final AtomicLong NEXT = new AtomicLong(993_000L);
 
     @Autowired
-    private AccountLifecycle lifecycle;
+    private ClientAccountService service;
 
     @Autowired
     private DatabaseProbe database;
@@ -55,7 +55,7 @@ class ConcurrentRecoveryRequestIntegrationTest extends OracleIntegrationTestBase
                 .with("now", OffsetDateTime.now()).run();
         ApplicationCaller caller = new ApplicationCaller(applicationId, code);
         String email = "corrida" + NEXT.incrementAndGet() + "@exemplo.com";
-        lifecycle.register(applicationId, "Pessoa", email, "SenhaForte123", List.of());
+        service.register(applicationId, "Pessoa", email, "SenhaForte123", List.of());
 
         int threads = 4;
         CyclicBarrier allAtOnce = new CyclicBarrier(threads);
@@ -64,7 +64,7 @@ class ConcurrentRecoveryRequestIntegrationTest extends OracleIntegrationTestBase
             for (int worker = 0; worker < threads; worker++) {
                 results.add(pool.submit(() -> {
                     allAtOnce.await();
-                    lifecycle.requestPasswordRecovery(caller, email);
+                    service.requestPasswordRecovery(caller, email);
                     return true;
                 }));
             }
