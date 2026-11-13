@@ -38,29 +38,40 @@ interface ClientAccountRepository extends JpaRepository<ClientAccount, Long> {
             @Param("applicationId") long applicationId, @Param("email") String email);
 
     /**
-     * A credencial guardada de um cliente, sempre dentro de uma aplicacao.
+     * A credencial guardada de um cliente, sempre dentro de uma aplicacao, com uma linha
+     * por empresa que a conta representa.
      *
-     * A juncao com a empresa carrega a aplicacao na propria condicao, e nao apenas o
-     * identificador: a chave estrangeira do banco e composta pelo mesmo motivo, porque com a
-     * empresa referida por identificador sozinho nada impediria ler empresa da aplicacao B
-     * para uma conta da aplicacao A.
+     * As juncoes sao externas porque o vinculo com empresa e opcional: conta sem empresa
+     * volta numa linha so, com o CNPJ nulo, e precisa ser encontrada do mesmo jeito.
      *
-     * A juncao e externa porque o vinculo com empresa e opcional, e conta sem empresa precisa
-     * ser encontrada do mesmo jeito.
+     * A lista de empresas vem na mesma consulta, e nao numa segunda, porque este e o
+     * caminho mais quente do servico. Quem junta as linhas numa credencial so e o diretorio.
      */
     @Query("""
             select new br.ufpr.tcc.auth.account.StoredCredentialRow(
                    account.id, account.name, account.email, account.passwordHash,
                    account.emailConfirmed, account.active, company.cnpj)
               from ClientAccount account
+              left join ClientAccountCompany link
+                on link.accountId = account.id
               left join Company company
-                on company.applicationId = account.applicationId
-               and company.id = account.companyId
+                on company.id = link.companyId
              where account.applicationId = :applicationId
                and account.emailNormalized = lower(:email)
             """)
-    Optional<StoredCredentialRow> findCredentialWithinApplication(
+    List<StoredCredentialRow> findCredentialWithinApplication(
             @Param("applicationId") long applicationId, @Param("email") String email);
+
+    /**
+     * A situacao da aplicacao em que uma conta vai nascer: vazio quando ela nao existe.
+     *
+     * Quem cadastra agora e o administrador, que informa a aplicacao no pedido em vez de
+     * traze-la na credencial, entao a existencia e a situacao deixam de ser garantidas pela
+     * cadeia de seguranca e passam a ser conferidas aqui.
+     */
+    @Query("select application.active from RegisteredApplication application"
+            + " where application.id = :applicationId")
+    Optional<Boolean> findApplicationSituation(@Param("applicationId") long applicationId);
 
     List<ClientAccount> findByApplicationIdOrderByCreatedAtDesc(long applicationId);
 

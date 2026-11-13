@@ -116,17 +116,28 @@ Tres pontos do procedimento que nao sao obvios:
 | GET POST | `/api/admins` | administrador |
 | GET PUT DELETE | `/api/admins/{id}` | administrador |
 | GET | `/api/users` | aplicacao, no proprio escopo; administrador, em todas |
-| POST | `/api/users` | aplicacao, e so ela: o escopo sai da credencial |
-| GET PUT DELETE | `/api/users/{id}` | aplicacao, no proprio escopo; administrador, em todos |
-| GET POST | `/api/companies` | aplicacao, no proprio escopo |
-| GET PUT DELETE | `/api/companies/{id}` | aplicacao, no proprio escopo |
+| POST | `/api/users` | administrador: a aplicacao da conta e as empresas vao no corpo |
+| GET | `/api/users/{id}` | aplicacao, no proprio escopo; administrador, em todos |
+| PUT DELETE | `/api/users/{id}` | administrador |
+| GET POST | `/api/companies` | administrador |
+| GET PUT DELETE | `/api/companies/{id}` | administrador |
 | POST | `/api/auth/login` | aplicacao |
 | POST | `/api/auth/confirmations` | aplicacao: o link pertence a uma conta, e a conta a uma aplicacao |
 | POST | `/api/auth/recoveries` | aplicacao |
 | POST | `/api/auth/password-resets` | aplicacao, pelo mesmo motivo da confirmacao |
 
 As rotas marcadas como "aplicacao" recusam credencial administrativa na propria cadeia, com
-403: a cadeia exige o tipo de credencial da rota, e nao apenas uma credencial valida.
+403: a cadeia exige o tipo de credencial da rota, e nao apenas uma credencial valida. O
+contrario tambem vale: as marcadas so como "administrador" recusam credencial de aplicacao.
+
+**Cadastro de cliente e de empresa e do portal administrativo.** A aplicacao consome: faz o
+login dos clientes dela, confirma endereco, recupera senha e le as proprias contas. Quem
+decide que conta existe, em qual aplicacao, e quais empresas ela representa e o
+administrador. Empresa nao pertence a aplicacao nenhuma: o CNPJ e unico no servico inteiro,
+e contas de aplicacoes diferentes podem representar a mesma empresa. O vinculo e de muitos
+para muitos, informado em `companyIds` no cadastro e na alteracao da conta, e e ele que o
+login devolve em `companyCnpjs`. Empresa que alguma conta ainda representa nao e excluida:
+responde 409 ate os vinculos serem desfeitos.
 
 Excluir aplicacao e desativacao logica: a linha fica, o acesso cai no mesmo instante, e a
 trilha de auditoria continua explicavel.

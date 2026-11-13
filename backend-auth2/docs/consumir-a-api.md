@@ -132,16 +132,13 @@ conta existe.
 
 ## Cadastro, confirmacao e recuperacao
 
-Cadastrar uma pessoa, com a credencial da sua aplicacao:
+**Quem cadastra a pessoa nao e a sua aplicacao, e o portal administrativo.** O administrador
+cria a conta, diz a qual aplicacao ela pertence e quais empresas ela representa; o
+procedimento esta em `registrar-aplicacao.md`. Com a credencial da sua aplicacao,
+`POST /api/users` responde **403**.
 
-```bash
-curl -X POST https://<host>/api/users \
-  -H "Authorization: Bearer $TOKEN_DA_APLICACAO" \
-  -H 'Content-Type: application/json' \
-  -d "{\"name\":\"Pessoa\",\"email\":\"pessoa@empresa.exemplo\",
-       \"password\":\"$SENHA_DA_PESSOA\",\"role\":\"CLIENTE\",
-       \"serviceId\":\"<id da sua aplicacao>\"}"
-```
+O que continua com a sua aplicacao e o que acontece depois: a pessoa recebe o link por
+e-mail, e e a sua aplicacao que o apresenta.
 
 **A conta nasce sem poder entrar.** O login so passa depois que o endereco for confirmado
 pelo link enviado:
@@ -178,27 +175,34 @@ oito caracteres no minimo, com maiuscula, minuscula e numero.
 **Um link de confirmacao de cadastro nao troca senha.** O proposito faz parte do que e
 verificado.
 
-## Listagem e manutencao
+## Listagem
 
-Com a credencial da sua aplicacao voce enxerga **apenas** as contas e empresas dela.
-Recurso de outra aplicacao responde **404**, igual a identificador inventado, e nao 403.
+Com a credencial da sua aplicacao voce **le** as contas dela, e so isso. Conta de outra
+aplicacao responde **404**, igual a identificador inventado, e nao 403.
 
 | Verbo | Rota | O que faz |
 | --- | --- | --- |
 | GET | `/api/users` | lista as contas da sua aplicacao |
-| GET PUT DELETE | `/api/users/{id}` | consulta, altera e remove uma conta sua |
-| GET POST | `/api/companies` | lista e cadastra empresa na sua aplicacao |
-| GET PUT DELETE | `/api/companies/{id}` | consulta, altera e remove uma empresa sua |
+| GET | `/api/users/{id}` | consulta uma conta sua |
 
-CNPJ entra **so com digito**, sem pontuacao, e e unico dentro da sua aplicacao. O mesmo
-CNPJ pode existir em outra aplicacao, e isso e proposital: unicidade global contaria que
-aquela empresa ja e cliente do Lactec em outro sistema.
+```json
+{
+  "id": "902317136557404180",
+  "name": "Pessoa de Teste",
+  "email": "pessoa@empresa.exemplo",
+  "role": "CLIENTE",
+  "active": true,
+  "serviceId": "902317136557404001",
+  "emailConfirmed": true,
+  "companyIds": ["902317136557404500"],
+  "authorizations": { "companyCnpjs": ["12345678000199"] }
+}
+```
 
-CNPJ repetido dentro da sua aplicacao responde **409**, tanto no cadastro quanto na alteracao.
-A alteracao esta dita aqui porque ela nao respondia: medido com uma requisicao sequencial,
-mover o CNPJ de uma empresa para o de outra da mesma aplicacao batia na restricao do banco e
-saia como erro de servidor, que o seu lado le como fonte indisponivel. Corrigir um CNPJ
-digitado errado aparecia ao operador como servico fora do ar.
+Alterar e excluir conta (`PUT` e `DELETE` em `/api/users/{id}`) e todas as rotas de
+`/api/companies` sao do portal administrativo, e respondem **403** para a credencial da sua
+aplicacao. Voce nao cadastra empresa: recebe, no login e na leitura da conta, os CNPJ das
+empresas que o administrador vinculou a ela.
 
 ## As duas rotas de link exigem a credencial da sua aplicacao
 

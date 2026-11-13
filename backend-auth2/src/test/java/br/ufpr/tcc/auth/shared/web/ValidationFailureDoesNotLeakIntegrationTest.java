@@ -1,5 +1,6 @@
 package br.ufpr.tcc.auth.shared.web;
 
+import br.ufpr.tcc.auth.shared.database.AdministrativeSessions;
 import br.ufpr.tcc.auth.shared.database.DatabaseProbe;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
@@ -55,6 +56,7 @@ class ValidationFailureDoesNotLeakIntegrationTest extends OracleIntegrationTestB
     private Logger rootLogger;
     private Level previousRootLevel;
     private String applicationToken;
+    private String administrativeToken;
     private String applicationId;
 
     @BeforeEach
@@ -78,6 +80,7 @@ class ValidationFailureDoesNotLeakIntegrationTest extends OracleIntegrationTestB
                 .with("digest", token.digest().asBytes())
                 .with("now", OffsetDateTime.now()).run();
         applicationToken = token.clearValue();
+        administrativeToken = AdministrativeSessions.open(database);
     }
 
     /**
@@ -107,7 +110,7 @@ class ValidationFailureDoesNotLeakIntegrationTest extends OracleIntegrationTestB
     @DisplayName("senha recusada pela validacao nao chega ao log")
     void passwordRefusedByValidationDoesNotReachTheLog() throws Exception {
         MvcResult result = mockMvc.perform(post("/api/users")
-                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + applicationToken)
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + administrativeToken)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
                                 {"name":"Pessoa","email":"pessoa.validacao@lactec.exemplo",
@@ -123,7 +126,7 @@ class ValidationFailureDoesNotLeakIntegrationTest extends OracleIntegrationTestB
     @DisplayName("endereco recusado pela validacao nao chega ao log")
     void addressRefusedByValidationDoesNotReachTheLog() throws Exception {
         MvcResult result = mockMvc.perform(post("/api/users")
-                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + applicationToken)
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + administrativeToken)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
                                 {"name":"Pessoa","email":"%s","password":"SenhaOk123",
@@ -167,7 +170,7 @@ class ValidationFailureDoesNotLeakIntegrationTest extends OracleIntegrationTestB
         String enormousName = "a".repeat(2_000_000);
 
         MvcResult result = mockMvc.perform(post("/api/companies")
-                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + applicationToken)
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + administrativeToken)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"name\":\"" + enormousName + "\",\"cnpj\":\"66666666666666\"}"))
                 .andReturn();
@@ -180,7 +183,7 @@ class ValidationFailureDoesNotLeakIntegrationTest extends OracleIntegrationTestB
     @DisplayName("campo desconhecido no corpo nao leva o valor submetido ao log")
     void unknownFieldDoesNotCarryTheSubmittedValueToTheLog() throws Exception {
         MvcResult result = mockMvc.perform(post("/api/companies")
-                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + applicationToken)
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + administrativeToken)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"name\":\"Empresa\",\"cnpj\":\"55555555555555\","
                                 + "\"apelido\":\"" + SENTINEL_ADDRESS + "\"}"))

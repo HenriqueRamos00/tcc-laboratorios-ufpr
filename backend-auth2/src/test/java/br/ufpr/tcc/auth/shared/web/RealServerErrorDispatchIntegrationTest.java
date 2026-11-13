@@ -132,16 +132,20 @@ class RealServerErrorDispatchIntegrationTest extends OracleIntegrationTestBase {
         applicationToken = token.clearValue();
     }
 
+    /**
+     * Os casos de corpo recusado usam o cadastro de empresa como veiculo, e ele e rota do
+     * administrador, entao a credencial apresentada e a administrativa.
+     */
     private HttpStatusCode postStatus(String path, String body) {
         return client.post().uri(path)
-                .header(HttpHeaders.AUTHORIZATION, "Bearer " + applicationToken)
+                .header(HttpHeaders.AUTHORIZATION, "Bearer " + administrativeToken())
                 .contentType(MediaType.APPLICATION_JSON).body(body)
                 .exchange((request, response) -> response.getStatusCode());
     }
 
     private HttpHeaders postHeaders(String path, String body) {
         return client.post().uri(path)
-                .header(HttpHeaders.AUTHORIZATION, "Bearer " + applicationToken)
+                .header(HttpHeaders.AUTHORIZATION, "Bearer " + administrativeToken())
                 .contentType(MediaType.APPLICATION_JSON).body(body)
                 .exchange((request, response) -> response.getHeaders());
     }
@@ -430,14 +434,39 @@ class RealServerErrorDispatchIntegrationTest extends OracleIntegrationTestBase {
     void administrativeCredentialIsRefusedOnApplicationScopedRoutes() throws Exception {
         String administrativeToken = administrativeToken();
 
-        for (HttpMethod method : List.of(HttpMethod.GET, HttpMethod.POST)) {
-            Observed observed = observe(method, "/api/companies", administrativeToken);
-            assertThat(observed.status()).as("%s /api/companies", method).isEqualTo(403);
-        }
-        for (String path : List.of("/api/auth/login", "/api/auth/recoveries", "/api/users")) {
+        for (String path : List.of("/api/auth/login", "/api/auth/recoveries",
+                "/api/auth/confirmations", "/api/auth/password-resets")) {
             Observed observed = observe(HttpMethod.POST, path, administrativeToken);
             assertThat(observed.status()).as("POST %s", path).isEqualTo(403);
         }
+    }
+
+    /**
+     * O lado contrario da mesma divisao: cadastro de empresa e escrita de conta de cliente
+     * sao do portal administrativo, e a credencial de aplicacao nao os alcanca.
+     *
+     * A recusa precisa sair da cadeia, antes do despacho. Por isso o corpo vai vazio: se o
+     * pedido chegasse ao tratador, a resposta seria o 400 da validacao, e nao o 403.
+     */
+    @Test
+    @DisplayName("credencial de aplicacao nao cadastra empresa nem escreve conta de cliente")
+    void applicationCredentialIsRefusedOnAdministrativeWrites() {
+        for (HttpMethod method : List.of(HttpMethod.GET, HttpMethod.POST)) {
+            Observed observed = observe(method, "/api/companies", applicationToken);
+            assertThat(observed.status()).as("%s /api/companies", method).isEqualTo(403);
+        }
+        for (HttpMethod method : List.of(HttpMethod.GET, HttpMethod.PUT, HttpMethod.DELETE)) {
+            Observed observed = observe(method, "/api/companies/900001", applicationToken);
+            assertThat(observed.status()).as("%s /api/companies/{id}", method).isEqualTo(403);
+        }
+        assertThat(observe(HttpMethod.POST, "/api/users", applicationToken).status())
+                .as("POST /api/users").isEqualTo(403);
+        for (HttpMethod method : List.of(HttpMethod.PUT, HttpMethod.DELETE)) {
+            Observed observed = observe(method, "/api/users/900001", applicationToken);
+            assertThat(observed.status()).as("%s /api/users/{id}", method).isEqualTo(403);
+        }
+        assertThat(observe(HttpMethod.GET, "/api/users", applicationToken).status())
+                .as("a leitura das proprias contas continua da aplicacao").isEqualTo(200);
     }
 
     /**

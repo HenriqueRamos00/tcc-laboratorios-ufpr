@@ -54,17 +54,23 @@ class SecurityConfiguration {
      * o par de respostas ainda contava se a instalacao ja havia sido feita. Com o verbo
      * preso, todo verbo diferente de POST cai no 401 uniforme de caminho inexistente.
      *
-     * Tres familias de rota exigem credencial de APLICACAO, e nao credencial autenticada
-     * qualquer: o login de cliente, o pedido de recuperacao, o cadastro de cliente e as rotas
-     * de empresa. O motivo nao e hierarquia, e tipo: o tratador dessas rotas le o chamador como
-     * aplicacao para derivar o escopo, e com credencial administrativa a identidade nao e do
-     * tipo esperado. Medido na aplicacao no ar antes da correcao: o resolvedor do framework
-     * entregava nulo e as cinco rotas respondiam 500, com pilha no log, status fora da matriz, e
-     * no consumidor a leitura de fonte indisponivel. Recusar na cadeia troca isso por 403.
+     * As rotas se dividem por publico, e nao por hierarquia. O portal administrativo
+     * cadastra: aplicacao, administrador, empresa, e a escrita de conta de cliente, que
+     * inclui dizer em qual aplicacao a conta nasce e quais empresas ela representa. A
+     * aplicacao consome: login de cliente, confirmacao de endereco e recuperacao de senha.
+     * A unica familia que as duas credenciais alcancam e a leitura de conta, em que a
+     * aplicacao enxerga as contas dela e o administrador atravessa aplicacoes.
      *
-     * As rotas que aceitam as duas credenciais sao as que derivam o escopo do chamador de forma
-     * explicita, pela leitura e pela alteracao de conta: aplicacao enxerga as contas dela,
-     * administrador atravessa aplicacoes.
+     * A leitura de conta e liberada POR VERBO, antes da regra que fecha o resto do caminho
+     * para o administrador: a primeira regra que casa responde, entao o GET precisa vir
+     * primeiro.
+     *
+     * As rotas de aplicacao exigem credencial de APLICACAO, e nao credencial autenticada
+     * qualquer, por tipo: o tratador le o chamador como aplicacao para derivar o escopo, e
+     * com credencial administrativa a identidade nao e do tipo esperado. Medido na aplicacao
+     * no ar antes da correcao: o resolvedor do framework entregava nulo e as rotas
+     * respondiam 500, com pilha no log, status fora da matriz, e no consumidor a leitura de
+     * fonte indisponivel. Recusar na cadeia troca isso por 403.
      *
      * A decisao sobre 405 fica escrita aqui, porque ela precisa estar escrita e nao
      * descoberta em producao. Nos caminhos fechados a cadeia recusa antes do despacho, entao
@@ -93,16 +99,16 @@ class SecurityConfiguration {
                         .requestMatchers(HttpMethod.POST, "/api/admin/auth/login",
                                 "/api/setup/admin").permitAll()
                         .requestMatchers("/api/services", "/api/services/**", "/api/admins",
-                                "/api/admins/**")
+                                "/api/admins/**", "/api/companies", "/api/companies/**")
                         .hasAuthority(ServiceTokenAuthenticationFilter.ADMINISTRATOR_AUTHORITY)
-                        .requestMatchers(HttpMethod.POST, "/api/users")
-                        .hasAuthority(ServiceTokenAuthenticationFilter.APPLICATION_AUTHORITY)
-                        .requestMatchers("/api/auth/login", "/api/auth/recoveries",
-                                "/api/auth/confirmations", "/api/auth/password-resets",
-                                "/api/companies", "/api/companies/**")
-                        .hasAuthority(ServiceTokenAuthenticationFilter.APPLICATION_AUTHORITY)
-                        .requestMatchers("/api/auth/**", "/api/users", "/api/users/**")
+                        .requestMatchers(HttpMethod.GET, "/api/users", "/api/users/**")
                         .authenticated()
+                        .requestMatchers("/api/users", "/api/users/**")
+                        .hasAuthority(ServiceTokenAuthenticationFilter.ADMINISTRATOR_AUTHORITY)
+                        .requestMatchers("/api/auth/login", "/api/auth/recoveries",
+                                "/api/auth/confirmations", "/api/auth/password-resets")
+                        .hasAuthority(ServiceTokenAuthenticationFilter.APPLICATION_AUTHORITY)
+                        .requestMatchers("/api/auth/**").authenticated()
                         .anyRequest().authenticated())
                 .exceptionHandling(handling -> handling
                         .authenticationEntryPoint(SecurityConfiguration

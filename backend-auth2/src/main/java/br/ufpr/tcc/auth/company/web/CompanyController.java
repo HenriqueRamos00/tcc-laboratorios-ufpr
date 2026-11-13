@@ -1,8 +1,8 @@
 package br.ufpr.tcc.auth.company.web;
 
 import br.ufpr.tcc.auth.company.CompanyRegistry;
-import br.ufpr.tcc.auth.shared.security.ApplicationCaller;
 import io.swagger.v3.oas.annotations.media.Schema;
+import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Pattern;
@@ -10,9 +10,7 @@ import jakarta.validation.constraints.Size;
 import java.util.List;
 import java.util.Optional;
 import org.springframework.http.HttpStatus;
-import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -22,10 +20,13 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RestController;
 
 /**
- * Cadastro de empresa. O alcance vem da credencial, e empresa de outra aplicacao responde
- * como inexistente.
+ * Cadastro de empresa. Alcance: credencial administrativa, e so ela.
+ *
+ * Quem gerencia empresa e o portal administrativo. A cadeia ja cobra a credencial, e o
+ * controlador nao repete a checagem, porque autorizacao espalhada em dois lugares diverge
+ * no dia em que alguem mexe num deles.
  */
-@SecurityRequirement(name = "credencial-de-aplicacao")
+@SecurityRequirement(name = "credencial-administrativa")
 @RestController
 class CompanyController {
 
@@ -48,17 +49,15 @@ class CompanyController {
     }
 
     @GetMapping("/api/companies")
-    ResponseEntity<List<CompanyRegistry.CompanyView>> list(
-            @AuthenticationPrincipal ApplicationCaller caller) {
-        return ResponseEntity.ok(registry.list(caller.applicationId()));
+    ResponseEntity<List<CompanyRegistry.CompanyView>> list() {
+        return ResponseEntity.ok(registry.list());
     }
 
     @PostMapping("/api/companies")
     ResponseEntity<CompanyRegistry.CompanyView> register(
-            @AuthenticationPrincipal ApplicationCaller caller,
             @Valid @RequestBody CompanyRequest request) {
         CompanyRegistry.Registration registration =
-                registry.register(caller.applicationId(), request.name(), request.cnpj());
+                registry.register(request.name(), request.cnpj());
         return switch (registration.outcome()) {
             case CREATED -> ResponseEntity.status(HttpStatus.CREATED).body(registration.company());
             case CNPJ_ALREADY_REGISTERED -> ResponseEntity.status(HttpStatus.CONFLICT).build();
@@ -66,25 +65,21 @@ class CompanyController {
     }
 
     @GetMapping("/api/companies/{id}")
-    ResponseEntity<CompanyRegistry.CompanyView> read(
-            @AuthenticationPrincipal ApplicationCaller caller, @PathVariable String id) {
-        return identifierOf(id).flatMap(companyId -> registry.find(caller.applicationId(), companyId))
+    ResponseEntity<CompanyRegistry.CompanyView> read(@PathVariable String id) {
+        return identifierOf(id).flatMap(registry::find)
                 .map(ResponseEntity::ok)
                 .orElseGet(() -> ResponseEntity.notFound().build());
     }
 
     @PutMapping("/api/companies/{id}")
-    ResponseEntity<CompanyRegistry.CompanyView> update(
-            @AuthenticationPrincipal ApplicationCaller caller, @PathVariable String id,
+    ResponseEntity<CompanyRegistry.CompanyView> update(@PathVariable String id,
             @Valid @RequestBody CompanyRequest request) {
         Optional<Long> companyId = identifierOf(id);
         if (companyId.isEmpty()) {
             return ResponseEntity.notFound().build();
         }
-        CompanyRegistry.UpdateOutcome outcome = registry.update(caller.applicationId(),
-                companyId.get(), request.name(), request.cnpj());
-        return switch (outcome) {
-            case CHANGED -> registry.find(caller.applicationId(), companyId.get())
+        return switch (registry.update(companyId.get(), request.name(), request.cnpj())) {
+            case CHANGED -> registry.find(companyId.get())
                     .map(ResponseEntity::ok)
                     .orElseGet(() -> ResponseEntity.notFound().build());
             case NOT_FOUND -> ResponseEntity.notFound().build();
@@ -92,12 +87,18 @@ class CompanyController {
         };
     }
 
+    /** Empresa que alguma conta ainda representa responde conflito, e nao e removida. */
     @DeleteMapping("/api/companies/{id}")
-    ResponseEntity<Void> delete(@AuthenticationPrincipal ApplicationCaller caller,
-            @PathVariable String id) {
-        return identifierOf(id).filter(companyId -> registry.delete(caller.applicationId(), companyId))
-                .map(removed -> ResponseEntity.noContent().<Void>build())
-                .orElseGet(() -> ResponseEntity.notFound().build());
+    ResponseEntity<Void> delete(@PathVariable String id) {
+        Optional<Long> companyId = identifierOf(id);
+        if (companyId.isEmpty()) {
+            return ResponseEntity.notFound().build();
+        }
+        return switch (registry.delete(companyId.get())) {
+            case REMOVED -> ResponseEntity.noContent().build();
+            case NOT_FOUND -> ResponseEntity.notFound().build();
+            case STILL_LINKED -> ResponseEntity.status(HttpStatus.CONFLICT).build();
+        };
     }
 
     /** Identificador que nao e numero e identificador que nao existe sao o mesmo caso. */

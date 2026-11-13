@@ -43,6 +43,9 @@
                 "security": [
                     {
                         "credencial-de-aplicacao": []
+                    },
+                    {
+                        "credencial-administrativa": []
                     }
                 ]
             },
@@ -85,7 +88,7 @@
                 },
                 "security": [
                     {
-                        "credencial-de-aplicacao": []
+                        "credencial-administrativa": []
                     }
                 ]
             },
@@ -111,7 +114,7 @@
                 },
                 "security": [
                     {
-                        "credencial-de-aplicacao": []
+                        "credencial-administrativa": []
                     }
                 ]
             }
@@ -250,7 +253,7 @@
                 },
                 "security": [
                     {
-                        "credencial-de-aplicacao": []
+                        "credencial-administrativa": []
                     }
                 ]
             },
@@ -293,7 +296,7 @@
                 },
                 "security": [
                     {
-                        "credencial-de-aplicacao": []
+                        "credencial-administrativa": []
                     }
                 ]
             },
@@ -319,7 +322,7 @@
                 },
                 "security": [
                     {
-                        "credencial-de-aplicacao": []
+                        "credencial-administrativa": []
                     }
                 ]
             }
@@ -452,6 +455,9 @@
                 "security": [
                     {
                         "credencial-de-aplicacao": []
+                    },
+                    {
+                        "credencial-administrativa": []
                     }
                 ]
             },
@@ -472,12 +478,19 @@
                 },
                 "responses": {
                     "200": {
-                        "description": "OK"
+                        "description": "OK",
+                        "content": {
+                            "*/*": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/AccountSummary"
+                                }
+                            }
+                        }
                     }
                 },
                 "security": [
                     {
-                        "credencial-de-aplicacao": []
+                        "credencial-administrativa": []
                     }
                 ]
             }
@@ -680,7 +693,7 @@
                 },
                 "security": [
                     {
-                        "credencial-de-aplicacao": []
+                        "credencial-administrativa": []
                     }
                 ]
             },
@@ -713,7 +726,7 @@
                 },
                 "security": [
                     {
-                        "credencial-de-aplicacao": []
+                        "credencial-administrativa": []
                     }
                 ]
             }
@@ -977,6 +990,16 @@
                     },
                     "active": {
                         "type": "boolean"
+                    },
+                    "companyIds": {
+                        "type": "array",
+                        "description": "Identificadores das empresas que o cliente representa. Substitui a lista inteira; omitido, null ou [] significa nenhuma empresa.",
+                        "items": {
+                            "type": "string",
+                            "pattern": "^[0-9]{1,19}$"
+                        },
+                        "maxItems": 100,
+                        "minItems": 0
                     }
                 },
                 "required": [
@@ -1007,6 +1030,26 @@
                     },
                     "emailConfirmed": {
                         "type": "boolean"
+                    },
+                    "companyIds": {
+                        "type": "array",
+                        "items": {
+                            "type": "string"
+                        }
+                    },
+                    "authorizations": {
+                        "$ref": "#/components/schemas/Authorizations"
+                    }
+                }
+            },
+            "Authorizations": {
+                "type": "object",
+                "properties": {
+                    "companyCnpjs": {
+                        "type": "array",
+                        "items": {
+                            "type": "string"
+                        }
                     }
                 }
             },
@@ -1080,9 +1123,6 @@
                         "type": "string"
                     },
                     "cnpj": {
-                        "type": "string"
-                    },
-                    "serviceId": {
                         "type": "string"
                     }
                 }
@@ -1164,13 +1204,27 @@
                         "pattern": "^CLIENTE$"
                     },
                     "serviceId": {
-                        "type": "string"
+                        "type": "string",
+                        "description": "Identificador do servico ao qual o cliente pertence.",
+                        "minLength": 1,
+                        "pattern": "^[0-9]{1,19}$"
+                    },
+                    "companyIds": {
+                        "type": "array",
+                        "description": "Identificadores das empresas que o cliente representa. Omitido, null ou [] significa nenhuma empresa.",
+                        "items": {
+                            "type": "string",
+                            "pattern": "^[0-9]{1,19}$"
+                        },
+                        "maxItems": 100,
+                        "minItems": 0
                     }
                 },
                 "required": [
                     "email",
                     "name",
-                    "password"
+                    "password",
+                    "serviceId"
                 ]
             },
             "SetupRequest": {

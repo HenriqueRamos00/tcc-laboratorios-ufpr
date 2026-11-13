@@ -1,5 +1,6 @@
 package br.ufpr.tcc.auth.notification;
 
+import br.ufpr.tcc.auth.shared.database.AdministrativeSessions;
 import br.ufpr.tcc.auth.shared.database.DatabaseProbe;
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -54,6 +55,7 @@ class MailDeliveryFailureIntegrationTest extends OracleIntegrationTestBase {
 
     private RestClient client;
     private String applicationToken;
+    private String administrativeToken;
     private String applicationId;
 
     @BeforeEach
@@ -72,6 +74,7 @@ class MailDeliveryFailureIntegrationTest extends OracleIntegrationTestBase {
                 .with("digest", token.digest().asBytes())
                 .with("now", OffsetDateTime.now()).run();
         applicationToken = token.clearValue();
+        administrativeToken = AdministrativeSessions.open(database);
     }
 
     /**
@@ -87,7 +90,7 @@ class MailDeliveryFailureIntegrationTest extends OracleIntegrationTestBase {
         String email = "cadastro." + NEXT.incrementAndGet() + "@lactec.exemplo";
 
         int registration = client.post().uri("/api/users")
-                .header(HttpHeaders.AUTHORIZATION, "Bearer " + applicationToken)
+                .header(HttpHeaders.AUTHORIZATION, "Bearer " + administrativeToken)
                 .contentType(MediaType.APPLICATION_JSON)
                 .body("""
                         {"name":"Pessoa","email":"%s","password":"SenhaForte123",

@@ -5,7 +5,6 @@ import jakarta.persistence.Column;
 import jakarta.persistence.Convert;
 import jakarta.persistence.Entity;
 import jakarta.persistence.Id;
-import jakarta.persistence.Index;
 import jakarta.persistence.Table;
 import jakarta.persistence.UniqueConstraint;
 import java.time.OffsetDateTime;
@@ -37,8 +36,7 @@ import org.hibernate.type.NumericBooleanConverter;
 @Entity
 @Table(name = "CLIENT_ACCOUNT",
         uniqueConstraints = @UniqueConstraint(name = "UK_CLIENT_ACCOUNT_EMAIL",
-                columnNames = {"APPLICATION_ID", "EMAIL_NORMALIZED"}),
-        indexes = @Index(name = "IX_CLIENT_ACCOUNT_COMPANY", columnList = "APPLICATION_ID,COMPANY_ID"))
+                columnNames = {"APPLICATION_ID", "EMAIL_NORMALIZED"}))
 class ClientAccount {
 
     @Id
@@ -48,9 +46,6 @@ class ClientAccount {
 
     @Column(name = "APPLICATION_ID")
     private Long applicationId;
-
-    @Column(name = "COMPANY_ID")
-    private Long companyId;
 
     @Column(name = "NAME", length = 150)
     private String name;

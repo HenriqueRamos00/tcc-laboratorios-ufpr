@@ -6,6 +6,7 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import br.ufpr.tcc.auth.credential.model.ConfirmationToken;
 import br.ufpr.tcc.auth.credential.model.ServiceToken;
 import br.ufpr.tcc.auth.notification.RecordedMessages;
+import br.ufpr.tcc.auth.shared.database.AdministrativeSessions;
 import br.ufpr.tcc.auth.shared.database.DatabaseProbe;
 import br.ufpr.tcc.auth.shared.database.OracleIntegrationTestBase;
 import java.time.OffsetDateTime;
@@ -65,11 +66,13 @@ class PasswordRecoveryContractIntegrationTest extends OracleIntegrationTestBase 
     private RecordedMessages recordedMessages;
 
     private String applicationToken;
+    private String administrativeToken;
     private String applicationId;
 
     @BeforeEach
     void registerApplication() {
         recordedMessages.clear();
+        administrativeToken = AdministrativeSessions.open(database);
         long id = NEXT_ID.incrementAndGet();
         String code = "recuperacao-" + id;
         database.statement("INSERT INTO APPLICATION (ID, CODE, NAME, ACTIVE, CREATED_AT, UPDATED_AT)"
@@ -84,9 +87,11 @@ class PasswordRecoveryContractIntegrationTest extends OracleIntegrationTestBase 
         applicationId = Long.toString(id);
     }
 
+    /** O cadastro de conta e do administrador; as demais rotas daqui sao da aplicacao. */
     private MvcResult send(String path, String body) throws Exception {
+        String token = "/api/users".equals(path) ? administrativeToken : applicationToken;
         return mockMvc.perform(post(path)
-                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + applicationToken)
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + token)
                         .contentType(MediaType.APPLICATION_JSON).content(body))
                 .andReturn();
     }

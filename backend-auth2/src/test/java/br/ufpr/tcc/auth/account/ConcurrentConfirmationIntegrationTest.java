@@ -53,8 +53,7 @@ class ConcurrentConfirmationIntegrationTest extends OracleIntegrationTestBase {
         String email = "pessoa" + NEXT_ID.incrementAndGet() + "@exemplo.com";
         ApplicationCaller caller = new ApplicationCaller(applicationId,
                 "corrida-" + applicationId);
-        lifecycle.register(caller, Long.toString(applicationId), "Pessoa", email,
-                "SenhaForte123");
+        lifecycle.register(applicationId, "Pessoa", email, "SenhaForte123", List.of());
         String link = recordedMessages.lastTokenFor(email);
 
         int threads = 4;

@@ -133,6 +133,74 @@ digest, entao nem voce nem ninguem consegue recupera-lo depois. Perdeu, emite ou
 Se quiser prazo de validade, envie `expiresIn` em segundos no corpo. Sem ele, o token vale
 ate ser revogado.
 
+## Cadastrar empresa e cliente
+
+As duas coisas sao feitas com a credencial administrativa, e nunca com o token da aplicacao.
+
+Empresa nao pertence a aplicacao nenhuma. O CNPJ entra **so com digito**, sem pontuacao, e
+e unico no servico inteiro:
+
+```bash
+curl -X POST http://localhost:8081/api/companies \
+  -H "Authorization: Bearer $TOKEN_ADMINISTRATIVO" \
+  -H 'Content-Type: application/json' \
+  -d '{"name":"Empresa Exemplo","cnpj":"12345678000199"}'
+```
+
+Resposta **201**, com `id`, `name` e `cnpj`. CNPJ repetido responde **409**, no cadastro e
+na alteracao.
+
+O cliente nasce dentro de uma aplicacao, que vai no corpo em `serviceId`, ja vinculado as
+empresas de `companyIds`:
+
+```bash
+curl -X POST http://localhost:8081/api/users \
+  -H "Authorization: Bearer $TOKEN_ADMINISTRATIVO" \
+  -H 'Content-Type: application/json' \
+  -d "{\"name\":\"Pessoa\",\"email\":\"pessoa@empresa.exemplo\",
+       \"password\":\"$SENHA_DA_PESSOA\",\"role\":\"CLIENTE\",
+       \"serviceId\":\"<ID_DA_APLICACAO>\",\"companyIds\":[\"<ID_DA_EMPRESA>\"]}"
+```
+
+Resposta **201**, com a conta criada:
+
+```json
+{
+  "id": "902317136557404180", "name": "Pessoa", "email": "pessoa@empresa.exemplo",
+  "role": "CLIENTE", "active": true, "serviceId": "<ID_DA_APLICACAO>",
+  "emailConfirmed": false, "companyIds": ["<ID_DA_EMPRESA>"],
+  "authorizations": { "companyCnpjs": ["12345678000199"] }
+}
+```
+
+| Desfecho | Quando |
+| --- | --- |
+| 400 | campo invalido, `serviceId` ausente ou senha fora da politica |
+| 404 | aplicacao ou empresa que nao existe; o corpo diz qual das duas |
+| 409 | e-mail ja cadastrado naquela aplicacao, ou aplicacao desativada |
+
+`companyIds` e opcional: ausente, `null` ou `[]` cadastra a conta sem empresa nenhuma. Uma
+empresa inexistente na lista recusa o cadastro inteiro, e nenhuma conta fica gravada.
+
+**A conta nasce sem poder entrar.** A pessoa recebe um link por e-mail, e o login so passa
+depois que a aplicacao dela apresentar esse link em `POST /api/auth/confirmations`.
+
+Para mudar as empresas depois, altere a conta. O corpo leva nome, situacao e a lista:
+
+```bash
+curl -X PUT http://localhost:8081/api/users/<ID_DA_CONTA> \
+  -H "Authorization: Bearer $TOKEN_ADMINISTRATIVO" \
+  -H 'Content-Type: application/json' \
+  -d '{"name":"Pessoa","active":true,"companyIds":["<ID_DA_EMPRESA>","<ID_DE_OUTRA>"]}'
+```
+
+**A lista substitui a anterior inteira.** Ela declara o estado que a conta passa a ter, e
+nao uma diferenca: enviar sem `companyIds`, ou com `[]`, desfaz todos os vinculos. Empresa
+inexistente na lista responde **404** e nada do que estava gravado muda, nem o nome.
+
+Excluir empresa que alguma conta ainda representa responde **409**. Desfaca os vinculos
+antes, pela alteracao de cada conta.
+
 ## O que acontece quando a aplicacao e desativada
 
 A situacao da aplicacao e lida **junto** com a credencial, na mesma consulta. Desativar a

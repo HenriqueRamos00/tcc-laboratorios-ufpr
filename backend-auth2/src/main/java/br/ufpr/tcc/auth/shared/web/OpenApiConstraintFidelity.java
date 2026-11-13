@@ -47,6 +47,9 @@ class OpenApiConstraintFidelity {
         }
         schema.getProperties().forEach((propertyName, property) -> {
             anchorPattern(property);
+            if (property.getItems() != null) {
+                anchorPattern(property.getItems());
+            }
             if ("password".equals(propertyName)) {
                 markAsSecret(schemaName, property);
             }
