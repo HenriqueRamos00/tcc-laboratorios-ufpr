@@ -55,8 +55,7 @@ class ConcurrentRecoveryRequestIntegrationTest extends OracleIntegrationTestBase
                 .with("now", OffsetDateTime.now()).run();
         ApplicationCaller caller = new ApplicationCaller(applicationId, code);
         String email = "corrida" + NEXT.incrementAndGet() + "@exemplo.com";
-        lifecycle.register(caller, Long.toString(applicationId), "Pessoa", email,
-                "SenhaForte123");
+        lifecycle.register(applicationId, "Pessoa", email, "SenhaForte123", List.of());
 
         int threads = 4;
         CyclicBarrier allAtOnce = new CyclicBarrier(threads);

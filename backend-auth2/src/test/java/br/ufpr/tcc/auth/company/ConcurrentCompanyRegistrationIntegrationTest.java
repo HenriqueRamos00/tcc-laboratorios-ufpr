@@ -4,7 +4,6 @@ import br.ufpr.tcc.auth.shared.database.DatabaseProbe;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import br.ufpr.tcc.auth.shared.database.OracleIntegrationTestBase;
-import java.time.OffsetDateTime;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.CyclicBarrier;
@@ -42,12 +41,6 @@ class ConcurrentCompanyRegistrationIntegrationTest extends OracleIntegrationTest
     @Test
     @DisplayName("dois cadastros simultaneos do mesmo CNPJ: um cria, o outro responde conflito")
     void twoSimultaneousRegistrationsOfTheSameCnpj() throws Exception {
-        long applicationId = NEXT.incrementAndGet();
-        String code = "corrida-empresa-" + applicationId;
-        database.statement("INSERT INTO APPLICATION (ID, CODE, NAME, ACTIVE, CREATED_AT, UPDATED_AT)"
-                        + " VALUES (:id, :code, :code, TRUE, :now, :now)")
-                .with("id", applicationId).with("code", code)
-                .with("now", OffsetDateTime.now()).run();
         String cnpj = String.format("%014d", NEXT.incrementAndGet());
 
         int threads = 2;
@@ -57,7 +50,7 @@ class ConcurrentCompanyRegistrationIntegrationTest extends OracleIntegrationTest
             for (int worker = 0; worker < threads; worker++) {
                 results.add(pool.submit(() -> {
                     allAtOnce.await();
-                    return registry.register(applicationId, "Empresa Exemplo", cnpj);
+                    return registry.register("Empresa Exemplo", cnpj);
                 }));
             }
         }
@@ -70,13 +63,11 @@ class ConcurrentCompanyRegistrationIntegrationTest extends OracleIntegrationTest
         assertThat(outcomes).as("nenhuma das duas pode estourar, e as duas nao podem criar")
                 .containsExactlyInAnyOrder(CompanyRegistry.Registration.Outcome.CREATED,
                         CompanyRegistry.Registration.Outcome.CNPJ_ALREADY_REGISTERED);
-        assertThat(companiesWith(applicationId, cnpj)).isOne();
+        assertThat(companiesWith(cnpj)).isOne();
     }
 
-    private long companiesWith(long applicationId, String cnpj) {
-        return database.statement("SELECT COUNT(*) FROM COMPANY"
-                        + " WHERE APPLICATION_ID = :applicationId AND CNPJ = :cnpj")
-                .with("applicationId", applicationId).with("cnpj", cnpj)
-                .count();
+    private long companiesWith(String cnpj) {
+        return database.statement("SELECT COUNT(*) FROM COMPANY WHERE CNPJ = :cnpj")
+                .with("cnpj", cnpj).count();
     }
 }

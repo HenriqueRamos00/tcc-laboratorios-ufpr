@@ -141,23 +141,18 @@ class ResourceScopingContractIntegrationTest extends OracleIntegrationTestBase {
                 code);
     }
 
+    /** Quem cadastra e o administrador, e a aplicacao da conta vai no corpo do pedido. */
     private String createUser(Tenant tenant) throws Exception {
         String email = "pessoa" + NEXT.incrementAndGet() + "@exemplo.com";
-        mockMvc.perform(post("/api/users")
-                .header(HttpHeaders.AUTHORIZATION, "Bearer " + tenant.token())
+        MvcResult created = mockMvc.perform(post("/api/users")
+                .header(HttpHeaders.AUTHORIZATION, "Bearer " + administrativeToken)
                 .contentType(MediaType.APPLICATION_JSON)
                 .content("""
                         {"name":"Pessoa","email":"%s","password":"%s","role":"CLIENTE",
-                         "serviceId":"%s"}""".formatted(email, PASSWORD, tenant.applicationId())));
-        JsonNode listing = JSON.readTree(mockMvc.perform(get("/api/users")
-                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + tenant.token()))
-                .andReturn().getResponse().getContentAsString());
-        for (JsonNode user : listing) {
-            if (user.get("email").asString().equals(email)) {
-                return user.get("id").asString();
-            }
-        }
-        throw new IllegalStateException("conta recem criada nao apareceu na listagem");
+                         "serviceId":"%s"}""".formatted(email, PASSWORD, tenant.applicationId())))
+                .andReturn();
+        assertThat(created.getResponse().getStatus()).isEqualTo(201);
+        return JSON.readTree(created.getResponse().getContentAsString()).get("id").asString();
     }
 
     @Test
@@ -184,28 +179,43 @@ class ResourceScopingContractIntegrationTest extends OracleIntegrationTestBase {
         int read = mockMvc.perform(get("/api/users/" + foreignAccount)
                 .header(HttpHeaders.AUTHORIZATION, "Bearer " + first.token()))
                 .andReturn().getResponse().getStatus();
-        int removed = mockMvc.perform(delete("/api/users/" + foreignAccount)
-                .header(HttpHeaders.AUTHORIZATION, "Bearer " + first.token()))
-                .andReturn().getResponse().getStatus();
-        int updated = mockMvc.perform(put("/api/users/" + foreignAccount)
-                .header(HttpHeaders.AUTHORIZATION, "Bearer " + first.token())
-                .contentType(MediaType.APPLICATION_JSON)
-                .content("""
-                        {"name":"Renomeada por quem nao e dono","active":false}"""))
-                .andReturn().getResponse().getStatus();
         int invented = mockMvc.perform(get("/api/users/999999999999")
                 .header(HttpHeaders.AUTHORIZATION, "Bearer " + first.token()))
                 .andReturn().getResponse().getStatus();
 
         assertThat(read).isEqualTo(404);
-        assertThat(removed).isEqualTo(404);
-        assertThat(updated).as("alterar conta alheia tambem responde inexistente").isEqualTo(404);
         assertThat(invented).as("identificador inventado responde igual").isEqualTo(read);
+    }
+
+    /**
+     * Alterar e excluir conta e do administrador. A recusa e 403 para conta propria e para
+     * conta alheia do mesmo jeito, porque ela sai da cadeia antes de qualquer consulta:
+     * resposta diferente para as duas contaria a aplicacao que a conta alheia existe.
+     */
+    @Test
+    @DisplayName("credencial de aplicacao nao altera nem exclui conta, propria ou alheia")
+    void applicationCredentialDoesNotWriteAccounts() throws Exception {
+        String ownAccount = createUser(first);
+        String foreignAccount = createUser(second);
+
+        for (String account : List.of(ownAccount, foreignAccount)) {
+            int removed = mockMvc.perform(delete("/api/users/" + account)
+                    .header(HttpHeaders.AUTHORIZATION, "Bearer " + first.token()))
+                    .andReturn().getResponse().getStatus();
+            int updated = mockMvc.perform(put("/api/users/" + account)
+                    .header(HttpHeaders.AUTHORIZATION, "Bearer " + first.token())
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .content("""
+                            {"name":"Renomeada por quem nao administra","active":false}"""))
+                    .andReturn().getResponse().getStatus();
+            assertThat(removed).isEqualTo(403);
+            assertThat(updated).isEqualTo(403);
+        }
         JsonNode untouched = JSON.readTree(mockMvc.perform(get("/api/users/" + foreignAccount)
                         .header(HttpHeaders.AUTHORIZATION, "Bearer " + second.token()))
                 .andReturn().getResponse().getContentAsString());
         assertThat(untouched.get("active").asBoolean())
-                .as("o 404 e recusa, e nao gravacao seguida de 404").isTrue();
+                .as("o 403 e recusa, e nao gravacao seguida de 403").isTrue();
         assertThat(untouched.get("name").asString()).isEqualTo("Pessoa");
     }
 
@@ -256,7 +266,7 @@ class ResourceScopingContractIntegrationTest extends OracleIntegrationTestBase {
                 .content("{\"token\":\"" + recordedMessages.lastTokenFor(email) + "\"}"));
 
         int updated = mockMvc.perform(put("/api/users/" + accountId)
-                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + first.token())
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + administrativeToken)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
                                 {"name":"Pessoa Desativada","active":false}"""))

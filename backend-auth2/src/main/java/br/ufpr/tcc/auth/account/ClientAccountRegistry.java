@@ -4,8 +4,12 @@ import br.ufpr.tcc.auth.credential.model.ConfirmationToken;
 import br.ufpr.tcc.auth.notification.OutboundMessage;
 import java.time.Duration;
 import java.time.OffsetDateTime;
+import java.util.Collection;
+import java.util.Comparator;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
+import java.util.stream.Collectors;
 import org.springframework.stereotype.Component;
 
 /** Leitura e gravacao de conta de cliente e das credenciais de uso unico dela. */
@@ -20,11 +24,19 @@ class ClientAccountRegistry {
 
     private final ClientAccountRepository accounts;
     private final AccountConfirmationRepository confirmations;
+    private final ClientAccountCompanyRepository companyLinks;
 
     ClientAccountRegistry(ClientAccountRepository accounts,
-            AccountConfirmationRepository confirmations) {
+            AccountConfirmationRepository confirmations,
+            ClientAccountCompanyRepository companyLinks) {
         this.accounts = accounts;
         this.confirmations = confirmations;
+        this.companyLinks = companyLinks;
+    }
+
+    /** A situacao da aplicacao em que a conta vai nascer: vazio quando ela nao existe. */
+    Optional<Boolean> applicationSituation(long applicationId) {
+        return accounts.findApplicationSituation(applicationId);
     }
 
     boolean emailAlreadyUsedIn(long applicationId, String email) {
@@ -100,32 +112,78 @@ class ClientAccountRegistry {
 
     /** Projecao de leitura de uma conta. O hash da senha nao aparece aqui. */
     record AccountView(String id, String name, String email, String role, boolean active,
-            String serviceId, boolean emailConfirmed) {
+            String serviceId, boolean emailConfirmed, List<String> companyIds,
+            List<String> companyCnpjs) {
     }
 
-    private static AccountView toView(ClientAccount account) {
+    /** As empresas que uma conta representa, como as rotas de leitura as devolvem. */
+    record CompanyLinks(List<String> companyIds, List<String> companyCnpjs) {
+
+        /**
+         * As duas listas saem na mesma ordem, a do identificador da empresa, para que a
+         * posicao de um identificador case com a do CNPJ dele e a resposta nao mude entre
+         * chamadas.
+         */
+        static CompanyLinks of(List<CompanyLinkRow> links) {
+            List<CompanyLinkRow> ordered = links.stream()
+                    .sorted(Comparator.comparingLong(CompanyLinkRow::companyId)).toList();
+            return new CompanyLinks(
+                    ordered.stream().map(link -> Long.toString(link.companyId())).toList(),
+                    ordered.stream().map(CompanyLinkRow::cnpj).toList());
+        }
+    }
+
+    CompanyLinks companiesOf(long accountId) {
+        return CompanyLinks.of(companyLinks.findOfAccount(accountId));
+    }
+
+    private static AccountView toView(ClientAccount account, List<CompanyLinkRow> links) {
+        CompanyLinks companies = CompanyLinks.of(links);
         return new AccountView(Long.toString(account.id()), account.name(), account.email(),
                 ONLY_ROLE, account.active(), Long.toString(account.applicationId()),
-                account.emailConfirmed());
+                account.emailConfirmed(), companies.companyIds(), companies.companyCnpjs());
     }
 
     /**
      * Lista contas dentro do alcance de quem chamou. Alcance vazio e administrador, que
      * atravessa aplicacoes; qualquer outro caso leva o filtro na consulta, e nunca na
      * memoria depois.
+     *
+     * Os vinculos com empresa vem numa segunda consulta, com o mesmo alcance, e nao numa
+     * por conta: listar cem contas custa duas idas ao banco, e nao cento e uma.
      */
     List<AccountView> list(Optional<Long> applicationScope) {
         List<ClientAccount> found = applicationScope
                 .map(accounts::findByApplicationIdOrderByCreatedAtDesc)
                 .orElseGet(accounts::findByOrderByCreatedAtDesc);
-        return found.stream().map(ClientAccountRegistry::toView).toList();
+        Map<Long, List<CompanyLinkRow>> linksByAccount = applicationScope
+                .map(companyLinks::findWithinApplication)
+                .orElseGet(companyLinks::findAcrossApplications)
+                .stream().collect(Collectors.groupingBy(CompanyLinkRow::accountId));
+        return found.stream()
+                .map(account -> toView(account,
+                        linksByAccount.getOrDefault(account.id(), List.of())))
+                .toList();
     }
 
     Optional<AccountView> findWithinScope(Optional<Long> applicationScope, long accountId) {
         return applicationScope
                 .map(applicationId -> accounts.findByIdAndApplicationId(accountId, applicationId))
                 .orElseGet(() -> accounts.findById(accountId))
-                .map(ClientAccountRegistry::toView);
+                .map(account -> toView(account, companyLinks.findOfAccount(account.id())));
+    }
+
+    /**
+     * Troca a lista inteira de empresas que a conta representa, e diz se todas existiam.
+     *
+     * A lista e substituida, e nao somada: quem altera declara o estado que quer, e lista
+     * vazia desfaz todos os vinculos. Quando alguma empresa pedida nao existe, os vinculos
+     * anteriores ja foram desfeitos, entao quem chama precisa desfazer a transacao.
+     */
+    boolean replaceCompanies(long accountId, Collection<Long> companyIds) {
+        companyLinks.unlinkAllOf(accountId);
+        return companyIds.isEmpty()
+                || companyLinks.link(accountId, companyIds) == companyIds.size();
     }
 
     /**

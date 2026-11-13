@@ -41,22 +41,22 @@ class SchemaConstraintsIntegrationTest extends OracleIntegrationTestBase {
                 .with("now", OffsetDateTime.now()).run();
     }
 
-    private void insertCompany(long id, long applicationId, String cnpj) {
+    private void insertCompany(long id, String cnpj) {
         database.statement("INSERT INTO " + SCHEMA_PREFIX + "COMPANY"
-                        + " (ID, APPLICATION_ID, NAME, CNPJ, CREATED_AT, UPDATED_AT)"
-                        + " VALUES (:id, :applicationId, :name, :cnpj, :now, :now)")
-                .with("id", id).with("applicationId", applicationId)
+                        + " (ID, NAME, CNPJ, CREATED_AT, UPDATED_AT)"
+                        + " VALUES (:id, :name, :cnpj, :now, :now)")
+                .with("id", id)
                 .with("name", "Empresa " + id).with("cnpj", cnpj)
                 .with("now", OffsetDateTime.now()).run();
     }
 
-    private void insertAccount(long id, long applicationId, Long companyId, String name, String email) {
+    private void insertAccount(long id, long applicationId, String name, String email) {
         database.statement("INSERT INTO " + SCHEMA_PREFIX + "CLIENT_ACCOUNT"
-                        + " (ID, APPLICATION_ID, COMPANY_ID, NAME, EMAIL, EMAIL_NORMALIZED,"
+                        + " (ID, APPLICATION_ID, NAME, EMAIL, EMAIL_NORMALIZED,"
                         + " PASSWORD_HASH, CREATED_AT, UPDATED_AT)"
-                        + " VALUES (:id, :applicationId, :companyId, :name, :email, :normalized,"
+                        + " VALUES (:id, :applicationId, :name, :email, :normalized,"
                         + " '{argon2}forma-guardada-de-teste', :now, :now)")
-                .with("id", id).with("applicationId", applicationId).with("companyId", companyId)
+                .with("id", id).with("applicationId", applicationId)
                 .with("name", name).with("email", email)
                 .with("normalized", email.toLowerCase(Locale.ROOT))
                 .with("now", OffsetDateTime.now()).run();
@@ -69,11 +69,11 @@ class SchemaConstraintsIntegrationTest extends OracleIntegrationTestBase {
     void sameEmailFitsInTwoApplicationsAndCollidesInsideOne() {
         insertApplication(1001L, "portal-web");
         insertApplication(1002L, "app-campo");
-        insertAccount(2001L, 1001L, null, "Pessoa Um", "Pessoa@Exemplo.Com");
-        insertAccount(2002L, 1002L, null, "Pessoa Um", "Pessoa@Exemplo.Com");
+        insertAccount(2001L, 1001L, "Pessoa Um", "Pessoa@Exemplo.Com");
+        insertAccount(2002L, 1002L, "Pessoa Um", "Pessoa@Exemplo.Com");
 
         assertThatExceptionOfType(DataIntegrityViolationException.class)
-                .isThrownBy(() -> insertAccount(2003L, 1001L, null, "Outra", "pessoa@exemplo.com"))
+                .isThrownBy(() -> insertAccount(2003L, 1001L, "Outra", "pessoa@exemplo.com"))
                 .withMessageContaining("UK_CLIENT_ACCOUNT_EMAIL");
     }
 
@@ -85,7 +85,7 @@ class SchemaConstraintsIntegrationTest extends OracleIntegrationTestBase {
         insertApplication(1003L, "portal-acentuado");
         String name = "ç".repeat(150);
 
-        insertAccount(2004L, 1003L, null, name, "acentuado@exemplo.com");
+        insertAccount(2004L, 1003L, name, "acentuado@exemplo.com");
 
         Long storedLength = database.statement("SELECT LENGTH(NAME) FROM " + SCHEMA_PREFIX
                         + "CLIENT_ACCOUNT WHERE ID = :id")
@@ -95,20 +95,73 @@ class SchemaConstraintsIntegrationTest extends OracleIntegrationTestBase {
 
     // Com a empresa referida so por identificador, nada no banco impediria vincular conta
     // da aplicacao A a empresa da aplicacao B.
-    @Test
-    @DisplayName("conta nao pode apontar para empresa de outra aplicacao")
-    void accountCannotReferenceCompanyFromAnotherApplication() {
-        insertApplication(1004L, "aplicacao-a");
-        insertApplication(1005L, "aplicacao-b");
-        insertCompany(3001L, 1005L, "12345678000199");
-
-        assertThatExceptionOfType(DataIntegrityViolationException.class)
-                .isThrownBy(() -> insertAccount(2005L, 1004L, 3001L, "Cruzada", "cruzada@exemplo.com"))
-                .withMessageContaining("FK_CLIENT_ACCOUNT_COMPANY");
+    private void link(long accountId, long companyId) {
+        database.statement("INSERT INTO " + SCHEMA_PREFIX + "CLIENT_ACCOUNT_COMPANY"
+                        + " (CLIENT_ACCOUNT_ID, COMPANY_ID) VALUES (:accountId, :companyId)")
+                .with("accountId", accountId).with("companyId", companyId).run();
     }
 
-    // O consumidor valida o codigo da aplicacao com a mesma expressao, e o cifrao do
-    // Oracle casa antes de uma quebra de linha final, entao o guarda extra existe.
+    private long linksOf(long accountId) {
+        return database.statement("SELECT COUNT(*) FROM " + SCHEMA_PREFIX
+                        + "CLIENT_ACCOUNT_COMPANY WHERE CLIENT_ACCOUNT_ID = :accountId")
+                .with("accountId", accountId).count();
+    }
+
+    @Test
+    @DisplayName("o mesmo CNPJ nao entra duas vezes, porque empresa nao pertence a aplicacao")
+    void sameCnpjIsUniqueAcrossTheService() {
+        insertCompany(3001L, "12345678000199");
+
+        assertThatExceptionOfType(DataIntegrityViolationException.class)
+                .isThrownBy(() -> insertCompany(3002L, "12345678000199"))
+                .withMessageContaining("UK_COMPANY_CNPJ");
+    }
+
+    @Test
+    @DisplayName("contas de aplicacoes diferentes representam a mesma empresa, uma vez cada")
+    void accountsOfDifferentApplicationsLinkToTheSameCompanyOnce() {
+        insertApplication(1004L, "aplicacao-a");
+        insertApplication(1005L, "aplicacao-b");
+        insertCompany(3003L, "22345678000199");
+        insertAccount(2005L, 1004L, "Pessoa A", "a@exemplo.com");
+        insertAccount(2007L, 1005L, "Pessoa B", "b@exemplo.com");
+        link(2005L, 3003L);
+        link(2007L, 3003L);
+
+        assertThatExceptionOfType(DataIntegrityViolationException.class)
+                .isThrownBy(() -> link(2005L, 3003L))
+                .withMessageContaining("PK_CLIENT_ACCOUNT_COMPANY");
+    }
+
+    @Test
+    @DisplayName("vinculo nao aponta para empresa que nao existe")
+    void linkCannotReferenceACompanyThatDoesNotExist() {
+        insertApplication(1011L, "aplicacao-vinculo");
+        insertAccount(2008L, 1011L, "Pessoa", "vinculo@exemplo.com");
+
+        assertThatExceptionOfType(DataIntegrityViolationException.class)
+                .isThrownBy(() -> link(2008L, 3999L))
+                .withMessageContaining("FK_ACCOUNT_COMPANY_COMPANY");
+    }
+
+    @Test
+    @DisplayName("empresa vinculada nao e apagada, e apagar a conta leva os vinculos dela")
+    void linkedCompanyIsKeptAndRemovingTheAccountRemovesItsLinks() {
+        insertApplication(1012L, "aplicacao-exclusao");
+        insertCompany(3004L, "32345678000199");
+        insertAccount(2009L, 1012L, "Pessoa", "exclusao@exemplo.com");
+        link(2009L, 3004L);
+
+        assertThatExceptionOfType(DataIntegrityViolationException.class)
+                .isThrownBy(() -> database.statement("DELETE FROM " + SCHEMA_PREFIX
+                        + "COMPANY WHERE ID = 3004").run())
+                .withMessageContaining("FK_ACCOUNT_COMPANY_COMPANY");
+
+        database.statement("DELETE FROM " + SCHEMA_PREFIX + "CLIENT_ACCOUNT WHERE ID = 2009").run();
+
+        assertThat(linksOf(2009L)).isZero();
+    }
+
     @Test
     @DisplayName("codigo de aplicacao fora do formato e recusado pelo banco")
     void applicationCodeOutsideTheContractFormatIsRejected() {

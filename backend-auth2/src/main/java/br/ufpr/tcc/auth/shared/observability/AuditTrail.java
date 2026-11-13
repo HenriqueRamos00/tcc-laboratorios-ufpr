@@ -66,12 +66,14 @@ public class AuditTrail {
      * Empresa decide quem o cliente representa na aplicacao, entao ela entra na mesma lista
      * de cadastro que a conta: a regra 4 nomeia criacao, alteracao e exclusao sem abrir
      * excecao por tipo de registro.
+     *
+     * A linha nao leva aplicacao porque a empresa nao pertence a nenhuma: quem a cadastra e
+     * o administrador, e ele ja esta na linha como ator.
      */
-    public void companyChanged(String action, String applicationId, String companyId) {
+    public void companyChanged(String action, String companyId) {
         LOGGER.atInfo()
                 .addKeyValue("event", "company_" + action)
                 .addKeyValue("actor", currentActor())
-                .addKeyValue("application_id", applicationId)
                 .addKeyValue("company_id", companyId)
                 .log("Cadastro de empresa alterado");
     }

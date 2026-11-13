@@ -1,5 +1,6 @@
 package br.ufpr.tcc.auth.account.web;
 
+import br.ufpr.tcc.auth.shared.database.AdministrativeSessions;
 import br.ufpr.tcc.auth.shared.database.DatabaseProbe;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
@@ -48,11 +49,13 @@ class AccountLifecycleContractIntegrationTest extends OracleIntegrationTestBase 
     private RecordedMessages recordedMessages;
 
     private String applicationToken;
+    private String administrativeToken;
     private String applicationId;
 
     @BeforeEach
     void registerApplication() {
         recordedMessages.clear();
+        administrativeToken = AdministrativeSessions.open(database);
         long id = NEXT_ID.incrementAndGet();
         String code = "ciclo-" + id;
         database.statement("INSERT INTO APPLICATION (ID, CODE, NAME, ACTIVE, CREATED_AT, UPDATED_AT)"
@@ -69,7 +72,7 @@ class AccountLifecycleContractIntegrationTest extends OracleIntegrationTestBase 
 
     private MvcResult createAccount(String email) throws Exception {
         return mockMvc.perform(post("/api/users")
-                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + applicationToken)
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + administrativeToken)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
                                 {"name":"Pessoa de Teste","email":"%s","password":"%s",
@@ -145,7 +148,7 @@ class AccountLifecycleContractIntegrationTest extends OracleIntegrationTestBase 
     @DisplayName("senha fora da politica recusa o cadastro")
     void passwordOutsideThePolicyRejectsTheRegistration() throws Exception {
         MvcResult result = mockMvc.perform(post("/api/users")
-                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + applicationToken)
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + administrativeToken)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
                                 {"name":"Fraca","email":"%s","password":"senhafraca",
@@ -168,7 +171,7 @@ class AccountLifecycleContractIntegrationTest extends OracleIntegrationTestBase 
     @DisplayName("endereco com I maiusculo com ponto nao vira erro de servidor no cadastro")
     void emailWithDottedCapitalLetterDoesNotBreakTheCheckConstraint() throws Exception {
         MvcResult result = mockMvc.perform(post("/api/users")
-                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + applicationToken)
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + administrativeToken)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
                                 {"name":"Pessoa","email":"pessoa@\u0130stanbul.exemplo",
@@ -193,7 +196,7 @@ class AccountLifecycleContractIntegrationTest extends OracleIntegrationTestBase 
     void fieldThatTheUpdateDoesNotHonourIsRefused() throws Exception {
         String email = uniqueEmail();
         mockMvc.perform(post("/api/users")
-                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + applicationToken)
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + administrativeToken)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
                                 {"name":"Pessoa","email":"%s","password":"SenhaForte123",
@@ -205,7 +208,7 @@ class AccountLifecycleContractIntegrationTest extends OracleIntegrationTestBase 
                 .andReturn().getResponse().getContentAsString()).get(0).get("id").asString();
 
         MvcResult withForeignField = mockMvc.perform(put("/api/users/" + accountId)
-                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + applicationToken)
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + administrativeToken)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
                                 {"name":"Nome novo","active":true,
@@ -236,7 +239,7 @@ class AccountLifecycleContractIntegrationTest extends OracleIntegrationTestBase 
     void updateWithoutTheSituationIsRefused() throws Exception {
         String email = uniqueEmail();
         mockMvc.perform(post("/api/users")
-                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + applicationToken)
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + administrativeToken)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
                                 {"name":"Pessoa","email":"%s","password":"SenhaForte123",
@@ -248,20 +251,20 @@ class AccountLifecycleContractIntegrationTest extends OracleIntegrationTestBase 
                 .andReturn().getResponse().getContentAsString()).get(0).get("id").asString();
 
         mockMvc.perform(put("/api/users/" + accountId)
-                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + applicationToken)
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + administrativeToken)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
                                 {"name":"Pessoa","active":false}"""))
                 .andReturn();
 
         MvcResult withoutSituation = mockMvc.perform(put("/api/users/" + accountId)
-                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + applicationToken)
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + administrativeToken)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
                                 {"name":"Nome novo"}"""))
                 .andReturn();
         MvcResult withTheSituation = mockMvc.perform(put("/api/users/" + accountId)
-                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + applicationToken)
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + administrativeToken)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
                                 {"name":"Nome novo","active":false}"""))
@@ -279,22 +282,76 @@ class AccountLifecycleContractIntegrationTest extends OracleIntegrationTestBase 
                 .as("a conta continua desativada").isFalse();
     }
 
-    // A aplicacao que chama so cadastra dentro dela mesma. O identificador que vem no
-    // corpo e pedido, e pedido que contradiz a credencial e recusado em vez de
-    // ignorado em silencio, porque ignorar ensina que o campo existe.
+    /**
+     * Quem cadastra conta e o portal administrativo. A aplicacao que apresentasse a propria
+     * credencial aqui estaria decidindo quem existe nela, e isso deixou de ser dela.
+     */
     @Test
-    @DisplayName("aplicacao nao cadastra conta em outra aplicacao")
-    void applicationCannotRegisterIntoAnotherApplication() throws Exception {
+    @DisplayName("credencial de aplicacao nao cadastra conta")
+    void applicationCredentialDoesNotRegisterAccounts() throws Exception {
+        String email = uniqueEmail();
+
         MvcResult result = mockMvc.perform(post("/api/users")
                         .header(HttpHeaders.AUTHORIZATION, "Bearer " + applicationToken)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
-                                {"name":"Invasora","email":"%s","password":"%s",
+                                {"name":"Pessoa","email":"%s","password":"%s",
+                                 "role":"CLIENTE","serviceId":"%s"}"""
+                                .formatted(email, GOOD_PASSWORD, applicationId)))
+                .andReturn();
+
+        assertThat(result.getResponse().getStatus()).isEqualTo(403);
+        assertThat(database.statement("SELECT COUNT(*) FROM CLIENT_ACCOUNT"
+                        + " WHERE EMAIL_NORMALIZED = LOWER(:email)").with("email", email).count())
+                .as("o 403 e recusa, e nao gravacao seguida de 403").isZero();
+    }
+
+    @Test
+    @DisplayName("cadastro sem aplicacao e recusado, e em aplicacao inexistente responde 404")
+    void registrationNeedsAnExistingApplication() throws Exception {
+        MvcResult withoutApplication = mockMvc.perform(post("/api/users")
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + administrativeToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"name":"Pessoa","email":"%s","password":"%s","role":"CLIENTE"}"""
+                                .formatted(uniqueEmail(), GOOD_PASSWORD)))
+                .andReturn();
+        MvcResult inUnknownApplication = mockMvc.perform(post("/api/users")
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + administrativeToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"name":"Pessoa","email":"%s","password":"%s",
                                  "role":"CLIENTE","serviceId":"999999999"}"""
                                 .formatted(uniqueEmail(), GOOD_PASSWORD)))
                 .andReturn();
 
-        assertThat(result.getResponse().getStatus()).isEqualTo(400);
+        assertThat(withoutApplication.getResponse().getStatus()).isEqualTo(400);
+        assertThat(inUnknownApplication.getResponse().getStatus()).isEqualTo(404);
+    }
+
+    @Test
+    @DisplayName("cadastro em aplicacao desativada responde conflito")
+    void registrationIntoADeactivatedApplicationAnswersAsConflict() throws Exception {
+        database.statement("UPDATE APPLICATION SET ACTIVE = FALSE WHERE ID = :id")
+                .with("id", Long.parseLong(applicationId)).run();
+
+        assertThat(createAccount(uniqueEmail()).getResponse().getStatus()).isEqualTo(409);
+    }
+
+    @Test
+    @DisplayName("o cadastro devolve a conta criada, com a aplicacao e sem empresa")
+    void registrationAnswersWithTheCreatedAccount() throws Exception {
+        String email = uniqueEmail();
+
+        tools.jackson.databind.JsonNode body =
+                JSON.readTree(createAccount(email).getResponse().getContentAsString());
+
+        assertThat(body.get("id").asString()).matches("[0-9]+");
+        assertThat(body.get("email").asString()).isEqualTo(email);
+        assertThat(body.get("serviceId").asString()).isEqualTo(applicationId);
+        assertThat(body.get("companyIds")).isEmpty();
+        assertThat(body.get("authorizations").get("companyCnpjs")).isEmpty();
+        assertThat(body.has("password")).isFalse();
     }
 
     @Test

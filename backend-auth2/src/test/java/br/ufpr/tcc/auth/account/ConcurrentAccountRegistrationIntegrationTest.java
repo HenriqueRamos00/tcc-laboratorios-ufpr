@@ -3,7 +3,6 @@ package br.ufpr.tcc.auth.account;
 import br.ufpr.tcc.auth.shared.database.DatabaseProbe;
 import static org.assertj.core.api.Assertions.assertThat;
 
-import br.ufpr.tcc.auth.shared.security.ApplicationCaller;
 import java.time.OffsetDateTime;
 import java.util.ArrayList;
 import java.util.List;
@@ -47,30 +46,29 @@ class ConcurrentAccountRegistrationIntegrationTest extends OracleIntegrationTest
                         + " VALUES (:id, :code, :code, TRUE, :now, :now)")
                 .with("id", applicationId).with("code", code)
                 .with("now", OffsetDateTime.now()).run();
-        ApplicationCaller caller = new ApplicationCaller(applicationId, code);
         String email = "corrida" + NEXT.incrementAndGet() + "@exemplo.com";
 
         int threads = 2;
         CyclicBarrier allAtOnce = new CyclicBarrier(threads);
-        List<Future<AccountLifecycle.RegistrationOutcome>> results = new ArrayList<>();
+        List<Future<AccountLifecycle.Registration.Outcome>> results = new ArrayList<>();
         try (ExecutorService pool = Executors.newFixedThreadPool(threads)) {
             for (int worker = 0; worker < threads; worker++) {
                 results.add(pool.submit(() -> {
                     allAtOnce.await();
-                    return lifecycle.register(caller, Long.toString(applicationId), "Pessoa",
-                            email, "SenhaForte123");
+                    return lifecycle.register(applicationId, "Pessoa", email,
+                            "SenhaForte123", List.of()).outcome();
                 }));
             }
         }
 
-        List<AccountLifecycle.RegistrationOutcome> outcomes = new ArrayList<>();
-        for (Future<AccountLifecycle.RegistrationOutcome> result : results) {
+        List<AccountLifecycle.Registration.Outcome> outcomes = new ArrayList<>();
+        for (Future<AccountLifecycle.Registration.Outcome> result : results) {
             outcomes.add(result.get());
         }
 
         assertThat(outcomes).as("nenhuma das duas pode estourar, e as duas nao podem criar")
-                .containsExactlyInAnyOrder(AccountLifecycle.RegistrationOutcome.CREATED,
-                        AccountLifecycle.RegistrationOutcome.EMAIL_TAKEN);
+                .containsExactlyInAnyOrder(AccountLifecycle.Registration.Outcome.CREATED,
+                        AccountLifecycle.Registration.Outcome.EMAIL_TAKEN);
         assertThat(accountsWith(applicationId, email)).isEqualTo(1L);
     }
 

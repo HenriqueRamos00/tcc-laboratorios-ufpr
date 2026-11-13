@@ -128,7 +128,7 @@ class AuditTrailWiringIntegrationTest extends OracleIntegrationTestBase {
     @DisplayName("cadastro de cliente gera evento com a conta e a aplicacao")
     void clientRegistrationIsRecorded() throws Exception {
         mockMvc.perform(post("/api/users")
-                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + applicationToken)
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + administrativeToken)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
                                 {"name":"Pessoa","email":"%s","password":"SenhaForte123",
@@ -145,7 +145,7 @@ class AuditTrailWiringIntegrationTest extends OracleIntegrationTestBase {
     @DisplayName("senha errada gera tentativa recusada, e a quinta gera bloqueio")
     void refusedSignInAndLockOutAreRecorded() throws Exception {
         mockMvc.perform(post("/api/users")
-                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + applicationToken)
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + administrativeToken)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
                                 {"name":"Pessoa","email":"%s","password":"SenhaForte123",
@@ -216,7 +216,7 @@ class AuditTrailWiringIntegrationTest extends OracleIntegrationTestBase {
     @DisplayName("alteracao, confirmacao e exclusao de conta geram evento")
     void clientAccountChangeConfirmationAndRemovalAreRecorded() throws Exception {
         MvcResult created = mockMvc.perform(post("/api/users")
-                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + applicationToken)
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + administrativeToken)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
                                 {"name":"Pessoa","email":"%s","password":"SenhaForte123",
@@ -227,7 +227,7 @@ class AuditTrailWiringIntegrationTest extends OracleIntegrationTestBase {
         String accountId = accountIdentifierOf(clientEmail);
 
         mockMvc.perform(put("/api/users/" + accountId)
-                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + applicationToken)
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + administrativeToken)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
                                 {"name":"Pessoa renomeada","active":true}"""))
@@ -238,7 +238,7 @@ class AuditTrailWiringIntegrationTest extends OracleIntegrationTestBase {
                         .content("{\"token\":\"" + confirmationTokenOf(accountId) + "\"}"))
                 .andReturn();
         mockMvc.perform(delete("/api/users/" + accountId)
-                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + applicationToken))
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + administrativeToken))
                 .andReturn();
 
         assertThat(recordedEvents()).contains("client_account_changed")
@@ -333,7 +333,7 @@ class AuditTrailWiringIntegrationTest extends OracleIntegrationTestBase {
     @DisplayName("cadastro, alteracao e exclusao de empresa geram evento")
     void companyEventsAreRecorded() throws Exception {
         MvcResult created = mockMvc.perform(post("/api/companies")
-                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + applicationToken)
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + administrativeToken)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
                                 {"name":"Empresa da auditoria","cnpj":"44444444444444"}"""))
@@ -343,13 +343,13 @@ class AuditTrailWiringIntegrationTest extends OracleIntegrationTestBase {
                 .get("id").asString();
 
         mockMvc.perform(put("/api/companies/" + companyId)
-                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + applicationToken)
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + administrativeToken)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
                                 {"name":"Empresa renomeada","cnpj":"44444444444444"}"""))
                 .andReturn();
         mockMvc.perform(delete("/api/companies/" + companyId)
-                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + applicationToken))
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + administrativeToken))
                 .andReturn();
 
         assertThat(recordedEvents()).contains("company_registered").contains("company_changed")
@@ -396,7 +396,7 @@ class AuditTrailWiringIntegrationTest extends OracleIntegrationTestBase {
     @DisplayName("nenhuma linha da trilha carrega endereco, senha ou token")
     void noAuditLineCarriesPersonalDataOrSecret() throws Exception {
         mockMvc.perform(post("/api/users")
-                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + applicationToken)
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + administrativeToken)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
                                 {"name":"Pessoa","email":"%s","password":"SenhaForte123",

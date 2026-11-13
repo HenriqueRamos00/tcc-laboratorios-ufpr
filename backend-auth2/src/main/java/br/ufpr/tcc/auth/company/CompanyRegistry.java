@@ -6,26 +6,26 @@ import java.util.List;
 import java.util.Optional;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
 import org.springframework.transaction.support.TransactionTemplate;
 
 /**
- * Cadastro de empresa dentro de uma aplicacao.
+ * Cadastro de empresa, feito pelo administrador.
  *
- * O escopo entra em toda assinatura e nao e opcional. Repositorio que aceite buscar empresa
- * so por identificador deixa o filtro por aplicacao virar escolha de quem chama, e e assim
- * que nasce uma consulta que enxerga cadastro alheio.
+ * A empresa nao pertence a aplicacao nenhuma, entao nao existe escopo nas assinaturas: o
+ * alcance e cobrado uma vez, na cadeia de seguranca, que so deixa chegar aqui quem
+ * apresentou credencial administrativa.
  *
- * Cadastro e alteracao abrem a transacao pelo modelo e nao pela anotacao, porque as duas
- * disputam a restricao unica do CNPJ e precisam traduzir a recusa dela para conflito. A
- * recusa chega como excecao de integridade e o provedor ja marcou a transacao para desfazer,
- * entao tratar isso dentro dela faria o commit falhar com erro de servidor onde o contrato
- * promete 409.
+ * Cadastro, alteracao e exclusao abrem a transacao pelo modelo e nao pela anotacao, porque
+ * as tres disputam uma restricao do banco e precisam traduzir a recusa dela para conflito:
+ * as duas primeiras a restricao unica do CNPJ, e a exclusao a chave estrangeira do vinculo
+ * com conta. A recusa chega como excecao de integridade e o provedor ja marcou a transacao
+ * para desfazer, entao tratar isso dentro dela faria o commit falhar com erro de servidor
+ * onde o contrato promete 409.
  */
 @Service
 public class CompanyRegistry {
 
-    public record CompanyView(String id, String name, String cnpj, String serviceId) {
+    public record CompanyView(String id, String name, String cnpj) {
     }
 
     private final CompanyRepository companies;
@@ -40,21 +40,19 @@ public class CompanyRegistry {
     }
 
     private static CompanyView toView(Company company) {
-        return new CompanyView(Long.toString(company.id()), company.name(), company.cnpj(),
-                Long.toString(company.applicationId()));
+        return new CompanyView(Long.toString(company.id()), company.name(), company.cnpj());
     }
 
-    public List<CompanyView> list(long applicationId) {
-        return companies.findByApplicationIdOrderByCreatedAtDesc(applicationId).stream()
+    public List<CompanyView> list() {
+        return companies.findByOrderByCreatedAtDesc().stream()
                 .map(CompanyRegistry::toView).toList();
     }
 
-    public Optional<CompanyView> find(long applicationId, long companyId) {
-        return companies.findByIdAndApplicationId(companyId, applicationId)
-                .map(CompanyRegistry::toView);
+    public Optional<CompanyView> find(long companyId) {
+        return companies.findById(companyId).map(CompanyRegistry::toView);
     }
 
-    /** Desfecho do cadastro, com a empresa como ela ficou quando houve cadastro. */
+    /** Desfecho do cadastro, com a empresa criada quando houve criacao. */
     public record Registration(Outcome outcome, CompanyView company) {
 
         public enum Outcome { CREATED, CNPJ_ALREADY_REGISTERED }
@@ -62,6 +60,9 @@ public class CompanyRegistry {
 
     /** Desfecho da alteracao, com o conflito de CNPJ separado de nao encontrado. */
     public enum UpdateOutcome { CHANGED, NOT_FOUND, CNPJ_ALREADY_REGISTERED }
+
+    /** Desfecho da exclusao, com a empresa ainda vinculada separada de nao encontrada. */
+    public enum Removal { REMOVED, NOT_FOUND, STILL_LINKED }
 
     /**
      * A consulta de CNPJ repetido nao substitui a restricao unica do banco: entre consultar
@@ -72,16 +73,14 @@ public class CompanyRegistry {
      * motivos. O controlador nao decide regra de negocio, e a consulta fora daquela transacao
      * abre a janela ainda mais.
      */
-    public Registration register(long applicationId, String name, String cnpj) {
+    public Registration register(String name, String cnpj) {
         try {
             return transactions.execute(status -> {
-                if (companies.countByApplicationIdAndCnpj(applicationId, cnpj) > 0L) {
+                if (companies.countByCnpj(cnpj) > 0L) {
                     return new Registration(Registration.Outcome.CNPJ_ALREADY_REGISTERED, null);
                 }
-                Company registered = companies
-                        .saveAndFlush(Company.registeredIn(applicationId, name, cnpj));
-                auditTrail.companyChanged("registered", Long.toString(applicationId),
-                        Long.toString(registered.id()));
+                Company registered = companies.saveAndFlush(Company.registered(name, cnpj));
+                auditTrail.companyChanged("registered", Long.toString(registered.id()));
                 return new Registration(Registration.Outcome.CREATED, toView(registered));
             });
         } catch (DataIntegrityViolationException cnpjAlreadyRegistered) {
@@ -90,22 +89,16 @@ public class CompanyRegistry {
     }
 
     /**
-     * Mover o CNPJ para um que ja existe na mesma aplicacao e conflito, nao erro de
-     * servidor. Aqui nao havia nem a consulta previa que o cadastro tem: a alteracao chegava
-     * ao banco, a restricao unica recusava, e ninguem traduzia a recusa. Medido antes desta
-     * traducao, com uma requisicao sequencial: ORA-00001 subia e a rota respondia erro de
-     * servidor, que no consumidor vira fonte indisponivel.
+     * Mover o CNPJ para um que ja existe e conflito, e nao erro de servidor. A alteracao
+     * disputa a mesma restricao unica que o cadastro, entao traduz a recusa do mesmo jeito.
      */
-    public UpdateOutcome update(long applicationId, long companyId, String name, String cnpj) {
+    public UpdateOutcome update(long companyId, String name, String cnpj) {
         try {
             return transactions.execute(status -> {
-                if (companies.findByIdAndApplicationId(companyId, applicationId).isEmpty()) {
+                if (companies.updateById(companyId, name, cnpj, OffsetDateTime.now()) != 1) {
                     return UpdateOutcome.NOT_FOUND;
                 }
-                companies.updateWithinApplication(companyId, applicationId, name, cnpj,
-                        OffsetDateTime.now());
-                auditTrail.companyChanged("changed", Long.toString(applicationId),
-                        Long.toString(companyId));
+                auditTrail.companyChanged("changed", Long.toString(companyId));
                 return UpdateOutcome.CHANGED;
             });
         } catch (DataIntegrityViolationException cnpjAlreadyRegistered) {
@@ -114,17 +107,24 @@ public class CompanyRegistry {
     }
 
     /**
-     * Remove a empresa dentro da aplicacao dela. Conta vinculada impede a remocao pela
-     * chave estrangeira, e isso e o comportamento desejado: apagar a empresa deixaria a
-     * conta apontando para o nada.
+     * Empresa que alguma conta ainda representa nao e removida: quem exclui precisa antes
+     * desfazer os vinculos, na alteracao de cada conta.
+     *
+     * Nao existe consulta de vinculo antes do comando, de proposito. Ela abriria janela
+     * entre consultar e apagar, e quem fecha essa janela e a chave estrangeira; entao a
+     * recusa dela e a unica fonte, e vira conflito aqui.
      */
-    @Transactional
-    public boolean delete(long applicationId, long companyId) {
-        boolean removed = companies.deleteWithinApplication(companyId, applicationId) == 1;
-        if (removed) {
-            auditTrail.companyChanged("removed", Long.toString(applicationId),
-                    Long.toString(companyId));
+    public Removal delete(long companyId) {
+        try {
+            return transactions.execute(status -> {
+                if (companies.deleteWithId(companyId) != 1) {
+                    return Removal.NOT_FOUND;
+                }
+                auditTrail.companyChanged("removed", Long.toString(companyId));
+                return Removal.REMOVED;
+            });
+        } catch (DataIntegrityViolationException stillRepresentedBySomeAccount) {
+            return Removal.STILL_LINKED;
         }
-        return removed;
     }
 }

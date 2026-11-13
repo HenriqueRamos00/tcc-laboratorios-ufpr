@@ -7,8 +7,10 @@ import br.ufpr.tcc.auth.notification.OutboundMessage;
 import br.ufpr.tcc.auth.shared.observability.AuditTrail;
 import br.ufpr.tcc.auth.shared.security.ApplicationCaller;
 import java.time.Duration;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -23,24 +25,51 @@ import org.springframework.transaction.support.TransactionTemplate;
  * enviado libera. Cadastrar sem isso seria cadastrar uma conta inutil, e confirmar sem
  * cadastrar nao existe.
  *
- * Quem pode cadastrar e quem apresenta a credencial da propria aplicacao. O 409 de e-mail
- * repetido e aceitavel aqui, e isso merece justificativa: ele so e visivel para quem ja
- * tem o token da aplicacao, que e segredo de servidor e nao credencial de usuario final.
- * Nao existe rota de autocadastro anonimo neste servico; se um dia existir, aquele 409
- * vira oraculo de existencia e tem de virar 202.
+ * Quem cadastra, altera e exclui e o administrador, pelo portal administrativo. A aplicacao
+ * em que a conta nasce e as empresas que ela representa chegam no pedido, e nao na
+ * credencial, porque a credencial administrativa atravessa aplicacoes. Por isso as duas sao
+ * conferidas aqui: aplicacao inexistente, aplicacao desativada e empresa inexistente sao
+ * desfechos proprios, e nao erro de servidor.
  *
- * Os dois caminhos que disputam uma restricao unica abrem a transacao pelo modelo e nao
- * pela anotacao, e o motivo e de semantica e nao de gosto. A recusa da restricao chega como
- * excecao de integridade, e com a anotacao o tratamento dela ficaria **dentro** da
- * transacao: o provedor ja marcou aquela transacao para desfazer, entao devolver um desfecho
- * normal dali faria o commit falhar com erro de servidor em cima de um caso que o contrato
- * descreve como conflito. Com o modelo, a transacao e desfeita antes de a excecao sair do
- * execute, e quem decide o desfecho esta de fora dela.
+ * O 409 de e-mail repetido e aceitavel, e isso merece justificativa: ele so e visivel para
+ * quem ja pode listar todas as contas na rota ao lado. Nao existe rota de autocadastro
+ * anonimo neste servico; se um dia existir, aquele 409 vira oraculo de existencia e tem de
+ * virar 202.
+ *
+ * Os caminhos que disputam uma restricao unica, ou que precisam desfazer o que ja gravaram,
+ * abrem a transacao pelo modelo e nao pela anotacao, e o motivo e de semantica e nao de
+ * gosto. A recusa da restricao chega como excecao de integridade, e com a anotacao o
+ * tratamento dela ficaria **dentro** da transacao: o provedor ja marcou aquela transacao
+ * para desfazer, entao devolver um desfecho normal dali faria o commit falhar com erro de
+ * servidor em cima de um caso que o contrato descreve como conflito. Com o modelo, a
+ * transacao e desfeita antes de a excecao sair do execute, e quem decide o desfecho esta de
+ * fora dela.
  */
 @Service
 public class AccountLifecycle {
 
-    public enum RegistrationOutcome { CREATED, PASSWORD_REJECTED, SCOPE_REJECTED, EMAIL_TAKEN }
+    /** Desfecho do cadastro, com a conta criada quando houve criacao. */
+    public record Registration(Outcome outcome, AccountSummary account) {
+
+        public enum Outcome {
+            CREATED, PASSWORD_REJECTED, EMAIL_TAKEN, SERVICE_NOT_FOUND, SERVICE_INACTIVE,
+            COMPANY_NOT_FOUND
+        }
+
+        static Registration refused(Outcome outcome) {
+            return new Registration(outcome, null);
+        }
+    }
+
+    /** Desfecho da alteracao, com a conta como ficou quando houve alteracao. */
+    public record Change(Outcome outcome, AccountSummary account) {
+
+        public enum Outcome { CHANGED, NOT_FOUND, COMPANY_NOT_FOUND }
+
+        static Change refused(Outcome outcome) {
+            return new Change(outcome, null);
+        }
+    }
 
     private final ClientAccountRegistry registry;
     private final PasswordEncoder passwordEncoder;
@@ -65,66 +94,90 @@ public class AccountLifecycle {
     }
 
     /**
-     * O identificador de aplicacao do corpo e **pedido**, nao identidade. Quando ele
-     * contradiz a credencial, a resposta e recusa e nao um campo ignorado em silencio,
-     * porque ignorar ensina ao chamador que o campo existe e e aceito.
+     * Cadastra a conta na aplicacao informada, ja vinculada as empresas informadas.
      *
      * A verificacao de senha e calculada antes de a transacao abrir. Ela custa memoria e
      * tempo por desenho, e dentro da transacao ela reteria uma conexao do pool por todo esse
-     * tempo numa rota que qualquer aplicacao registrada alcanca.
+     * tempo.
+     *
+     * A lista de empresas perde as repeticoes antes de ser gravada: o mesmo identificador
+     * duas vezes e o mesmo vinculo, e mandado ao banco assim ele faria a contagem de
+     * vinculos criados divergir do que foi pedido.
      */
-    public RegistrationOutcome register(ApplicationCaller caller, String requestedApplicationId,
-            String name, String email, String password) {
-        if (requestedApplicationId != null
-                && !requestedApplicationId.equals(Long.toString(caller.applicationId()))) {
-            return RegistrationOutcome.SCOPE_REJECTED;
-        }
+    public Registration register(long applicationId, String name, String email, String password,
+            List<Long> companyIds) {
         if (!PasswordPolicy.violationsOf(password).isEmpty()) {
-            return RegistrationOutcome.PASSWORD_REJECTED;
+            return Registration.refused(Registration.Outcome.PASSWORD_REJECTED);
         }
         String passwordHash = passwordEncoder.encode(password);
         ConfirmationToken token = ConfirmationToken.generate();
+        Set<Long> companies = new LinkedHashSet<>(companyIds);
         try {
-            return transactions.execute(
-                    status -> open(caller, name, email, passwordHash, token));
+            return transactions.execute(status -> {
+                Registration registration =
+                        open(applicationId, name, email, passwordHash, token, companies);
+                if (registration.outcome() != Registration.Outcome.CREATED) {
+                    status.setRollbackOnly();
+                }
+                return registration;
+            });
         } catch (DataIntegrityViolationException addressAlreadyTaken) {
-            return RegistrationOutcome.EMAIL_TAKEN;
+            return Registration.refused(Registration.Outcome.EMAIL_TAKEN);
         }
     }
 
     /**
-     * A consulta de endereco repetido nao substitui a restricao unica do banco: entre
-     * consultar e gravar existe janela, e dois cadastros simultaneos do mesmo endereco
-     * passam os dois pela consulta. Quem recusa o segundo e a restricao, e quem traduz a
-     * recusa para conflito e o chamador deste metodo.
+     * A consulta de e-mail repetido nao substitui a restricao unica do banco: entre
+     * consultar e gravar existe janela, e dois cadastros simultaneos do mesmo endereco passam
+     * os dois pela consulta. Quem recusa o segundo e a restricao.
      *
-     * A mensagem e pedida aqui dentro de proposito: a porta de envio anota a intencao na
-     * transacao e quem fala com o servidor roda depois do commit. Pedida de fora, ela cairia
-     * no caminho que registra o aviso e nao manda nada.
+     * Os vinculos com empresa sao gravados antes de a credencial de confirmacao ser emitida
+     * e de a mensagem ser anotada para envio: empresa inexistente desfaz o cadastro, e
+     * cadastro desfeito nao pode ter deixado mensagem a caminho.
      */
-    private RegistrationOutcome open(ApplicationCaller caller, String name, String email,
-            String passwordHash, ConfirmationToken token) {
-        if (registry.emailAlreadyUsedIn(caller.applicationId(), email)) {
-            return RegistrationOutcome.EMAIL_TAKEN;
+    private Registration open(long applicationId, String name, String email, String passwordHash,
+            ConfirmationToken token, Set<Long> companyIds) {
+        Optional<Boolean> applicationActive = registry.applicationSituation(applicationId);
+        if (applicationActive.isEmpty()) {
+            return Registration.refused(Registration.Outcome.SERVICE_NOT_FOUND);
         }
-        long accountId = registry.insert(caller.applicationId(), name, email, passwordHash);
+        if (!applicationActive.get()) {
+            return Registration.refused(Registration.Outcome.SERVICE_INACTIVE);
+        }
+        if (registry.emailAlreadyUsedIn(applicationId, email)) {
+            return Registration.refused(Registration.Outcome.EMAIL_TAKEN);
+        }
+        long accountId = registry.insert(applicationId, name, email, passwordHash);
+        if (!registry.replaceCompanies(accountId, companyIds)) {
+            return Registration.refused(Registration.Outcome.COMPANY_NOT_FOUND);
+        }
         registry.issueConfirmation(accountId, token,
                 OutboundMessage.Purpose.EMAIL_CONFIRMATION, confirmationLifetime);
         messageDelivery.deliver(new OutboundMessage(email,
                 OutboundMessage.Purpose.EMAIL_CONFIRMATION, token.clearValue()));
-        auditTrail.clientAccountChanged("created", Long.toString(caller.applicationId()),
+        auditTrail.clientAccountChanged("created", Long.toString(applicationId),
                 Long.toString(accountId));
-        return RegistrationOutcome.CREATED;
+        return registry.findWithinScope(Optional.empty(), accountId)
+                .map(created -> new Registration(Registration.Outcome.CREATED,
+                        summaryOf(created)))
+                .orElseThrow(() -> new IllegalStateException(
+                        "Conta recem gravada nao foi encontrada na mesma transacao"));
     }
 
-    /** O que as rotas de leitura devolvem sobre uma conta. */
+    /** As empresas que a conta representa, na forma que o consumidor do login ja conhece. */
+    public record Authorizations(List<String> companyCnpjs) {
+    }
+
+    /** O que as rotas de cadastro e de leitura devolvem sobre uma conta. */
     public record AccountSummary(String id, String name, String email, String role, boolean active,
-            String serviceId, boolean emailConfirmed) {
+            String serviceId, boolean emailConfirmed, List<String> companyIds,
+            Authorizations authorizations) {
     }
 
     private static AccountSummary summaryOf(ClientAccountRegistry.AccountView view) {
         return new AccountSummary(view.id(), view.name(), view.email(), view.role(), view.active(),
-                view.serviceId(), view.emailConfirmed());
+                view.serviceId(), view.emailConfirmed(), view.companyIds(),
+                new Authorizations(view.companyCnpjs()));
     }
 
     public List<AccountSummary> list(Optional<Long> applicationScope) {
@@ -137,17 +190,45 @@ public class AccountLifecycle {
                 .map(AccountLifecycle::summaryOf);
     }
 
-    @Transactional
-    public Optional<AccountSummary> update(Optional<Long> applicationScope, String accountId,
-            String name, boolean active) {
-        return identifierOf(accountId)
-                .flatMap(id -> registry.findWithinScope(applicationScope, id).map(found -> {
-                    registry.update(applicationScope, id, name, active);
-                    auditTrail.clientAccountChanged("changed", found.serviceId(), found.id());
-                    return summaryOf(new ClientAccountRegistry.AccountView(found.id(), name,
+    /**
+     * Altera nome, situacao e a lista inteira de empresas que a conta representa.
+     *
+     * A transacao e aberta pelo modelo porque empresa inexistente precisa desfazer o que ja
+     * foi gravado: os vinculos anteriores sao removidos antes de os novos entrarem, e
+     * devolver recusa sem desfazer deixaria a conta sem empresa nenhuma.
+     *
+     * A resposta e montada com o que foi pedido, e nao relendo a conta: a alteracao e um
+     * comando proprio, que nao passa pela entidade ja carregada nesta transacao, entao a
+     * releitura devolveria o nome e a situacao de antes.
+     */
+    public Change update(Optional<Long> applicationScope, String accountId, String name,
+            boolean active, List<Long> companyIds) {
+        Optional<Long> parsed = identifierOf(accountId);
+        if (parsed.isEmpty()) {
+            return Change.refused(Change.Outcome.NOT_FOUND);
+        }
+        long id = parsed.get();
+        Set<Long> companies = new LinkedHashSet<>(companyIds);
+        return transactions.execute(status -> {
+            Optional<ClientAccountRegistry.AccountView> stored =
+                    registry.findWithinScope(applicationScope, id);
+            if (stored.isEmpty()) {
+                return Change.refused(Change.Outcome.NOT_FOUND);
+            }
+            ClientAccountRegistry.AccountView found = stored.get();
+            registry.update(applicationScope, id, name, active);
+            if (!registry.replaceCompanies(id, companies)) {
+                status.setRollbackOnly();
+                return Change.refused(Change.Outcome.COMPANY_NOT_FOUND);
+            }
+            auditTrail.clientAccountChanged("changed", found.serviceId(), found.id());
+            ClientAccountRegistry.CompanyLinks linked = registry.companiesOf(id);
+            return new Change(Change.Outcome.CHANGED,
+                    summaryOf(new ClientAccountRegistry.AccountView(found.id(), name,
                             found.email(), found.role(), active, found.serviceId(),
-                            found.emailConfirmed()));
-                }));
+                            found.emailConfirmed(), linked.companyIds(),
+                            linked.companyCnpjs())));
+        });
     }
 
     @Transactional

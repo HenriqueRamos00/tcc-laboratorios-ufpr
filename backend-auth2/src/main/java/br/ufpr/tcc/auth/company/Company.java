@@ -9,25 +9,22 @@ import jakarta.persistence.UniqueConstraint;
 import java.time.OffsetDateTime;
 
 /**
- * Empresa que uma conta de cliente pode representar. Ela pertence a uma aplicacao, e e por
- * isso que o CNPJ e unico dentro da aplicacao e nao no servico inteiro.
+ * Empresa que uma conta de cliente pode representar.
  *
- * O vinculo com a aplicacao viaja como identificador e nao como associacao: a forma de
- * expressar a chave estrangeira composta pertence a fatia que precisar navegar por ela.
+ * Ela nao pertence a aplicacao nenhuma: quem a cadastra e o administrador, pelo portal
+ * administrativo, e a mesma pessoa juridica e uma empresa so para o servico inteiro. Por
+ * isso o CNPJ e unico no servico, e contas de aplicacoes diferentes podem representar a
+ * mesma empresa.
  */
 @Entity
-@Table(name = "COMPANY", uniqueConstraints = {
-        @UniqueConstraint(name = "UK_COMPANY_APPLICATION_ID", columnNames = {"APPLICATION_ID", "ID"}),
-        @UniqueConstraint(name = "UK_COMPANY_CNPJ", columnNames = {"APPLICATION_ID", "CNPJ"})})
+@Table(name = "COMPANY", uniqueConstraints =
+        @UniqueConstraint(name = "UK_COMPANY_CNPJ", columnNames = "CNPJ"))
 class Company {
 
     @Id
     @Tsid
     @Column(name = "ID")
     private Long id;
-
-    @Column(name = "APPLICATION_ID")
-    private Long applicationId;
 
     @Column(name = "NAME", length = 150)
     private String name;
@@ -50,10 +47,9 @@ class Company {
      * trata-la como registro existente e cair em merge(), que emite um SELECT antes de cada
      * INSERT.
      */
-    static Company registeredIn(long applicationId, String name, String cnpj) {
+    static Company registered(String name, String cnpj) {
         Company company = new Company();
         OffsetDateTime now = OffsetDateTime.now();
-        company.applicationId = applicationId;
         company.name = name;
         company.cnpj = cnpj;
         company.createdAt = now;
@@ -63,10 +59,6 @@ class Company {
 
     long id() {
         return id;
-    }
-
-    long applicationId() {
-        return applicationId;
     }
 
     String name() {
