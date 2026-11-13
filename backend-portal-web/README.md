@@ -324,7 +324,7 @@ As senhas são iguais aos e-mails:
 
 | Cliente | Empresa / CNPJ | Orçamentos | Equipamentos / laudos |
 | --- | --- | --- | --- |
-| `client1@lactec.com` | EMPRESA DE ENERGIA / `04252011000110` | `1, 3, 6, 8, 10, 12, 14, 16, 18` | 6 / 11 |
+| `client1@lactec.com` | EMPRESA DE ENERGIA / `30960572000183` | `1, 3, 6, 8, 10, 12, 14, 16, 18` | 6 / 11 |
 | `client2@lactec.com` | DISTRIBUIDORA DE ENERGIA / `11222333000181` | `4, 5, 7, 9, 11, 13, 15, 17, 19` | 6 / 11 |
 
 Os IDs de orçamento usam o prefixo `quote-`. Os valores, códigos, situações e descrições
