@@ -1,3 +1,4 @@
+using Portal.Application.Paging;
 using Portal.Domain.Quotes;
 
 namespace Portal.Application.Quotes;
@@ -11,7 +12,7 @@ namespace Portal.Application.Quotes;
 /// </summary>
 public interface IQuoteUseCase
 {
-    Task<IReadOnlyList<QuoteWithLaboratoryStage>> GetQuotesAsync(CancellationToken cancellationToken);
+    Task<Page<QuoteWithLaboratoryStage>> GetQuotesAsync(PageRequest page, CancellationToken cancellationToken);
     Task<QuoteWithLaboratoryStage?> GetQuoteByIdAsync(string id, CancellationToken cancellationToken);
     Task<byte[]?> GetDocumentAsync(string id, CancellationToken cancellationToken);
 }

@@ -76,10 +76,14 @@ internal static class SpringQuoteContract
         {
             string id = RequiredText(Id, "id", identifier: true);
             string stage = RequiredText(Stage, "stage", identifier: true);
+            string code = RequiredText(Code, "code");
+            // O Spring tem um codigo so por orcamento, e ele e o codigo da cotacao. Se estiver
+            // no formato do Salesforce, a chave de laboratorio sai dele; caso contrario (como
+            // ORC-52), o orcamento fica sem chave e nenhuma fonte de laboratorio e consultada.
             return new Quote(
                 id,
                 string.Empty,
-                RequiredText(Code, "code"),
+                code,
                 RequiredText(Name, "name"),
                 RequiredText(Status, "status"),
                 stage,
@@ -89,7 +93,8 @@ internal static class SpringQuoteContract
                 ExternalContactEmail ?? string.Empty,
                 TotalPrice ?? throw new JsonException("Campo totalPrice ausente ou inválido."),
                 CreatedDate,
-                RequiredText(Protocol, "protocol"));
+                protocol: RequiredText(Protocol, "protocol"),
+                quotationCode: code);
         }
     }
 

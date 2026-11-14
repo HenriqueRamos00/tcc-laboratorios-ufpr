@@ -7,13 +7,15 @@ import {
   inject,
   signal,
 } from '@angular/core';
-import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
+import { takeUntilDestroyed, toObservable } from '@angular/core/rxjs-interop';
 import { FormsModule } from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 import { MatMenuModule } from '@angular/material/menu';
 import { Router, RouterLink } from '@angular/router';
+import { catchError, EMPTY, switchMap, tap } from 'rxjs';
 
+import { PaginationComponent } from '@shared/components/pagination/pagination.component';
 import { StatusStepperStep } from '@shared/components/status-stepper/status-stepper.component';
 
 import {
@@ -33,6 +35,7 @@ import {
   toDisplayedQuote,
   withSessionDecision,
 } from '@/app/model/quote-presentation';
+import { DEFAULT_PAGE_SIZE } from '@/app/model/page';
 import { noticeFor } from '@/app/model/quote-stage-notice';
 import { AppDialogService } from '@/app/services/app-dialog.service';
 import { LoginService } from '@/app/services/login.service';
@@ -77,7 +80,15 @@ function greetingForNow(agora = new Date()): string {
 @Component({
   selector: 'app-client-quotes',
   standalone: true,
-  imports: [NgClass, FormsModule, RouterLink, MatButtonModule, MatIconModule, MatMenuModule],
+  imports: [
+    NgClass,
+    FormsModule,
+    RouterLink,
+    MatButtonModule,
+    MatIconModule,
+    MatMenuModule,
+    PaginationComponent,
+  ],
   templateUrl: './quote-list.component.html',
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
@@ -93,6 +104,13 @@ export class QuoteListComponent {
   readonly activeFilter = signal<TabKey>('todos');
   readonly searchTerm = signal('');
   readonly loadError = signal(false);
+
+  // A lista vem paginada da API, como relatórios e equipamentos: o filtro por
+  // aba e a busca valem para a página carregada, e a paginação alcança o resto.
+  readonly pageSize = DEFAULT_PAGE_SIZE;
+  readonly page = signal(1);
+  readonly total = signal(0);
+  readonly loading = signal(true);
 
   readonly firstName = computed(() => {
     const name = this.loginService.currentUser();
@@ -135,21 +153,33 @@ export class QuoteListComponent {
   });
 
   constructor() {
-    this.loadQuotes();
+    toObservable(this.page)
+      .pipe(
+        tap(() => {
+          this.loading.set(true);
+          this.loadError.set(false);
+        }),
+        switchMap((page) =>
+          this.quotesService.list({ page, pageSize: this.pageSize }).pipe(
+            catchError(() => {
+              this.loadedQuotes.set([]);
+              this.loadError.set(true);
+              this.loading.set(false);
+              return EMPTY;
+            }),
+          ),
+        ),
+        takeUntilDestroyed(),
+      )
+      .subscribe((result) => {
+        this.loadedQuotes.set(result.items.map(toDisplayedQuote));
+        this.total.set(result.total);
+        this.loading.set(false);
+      });
   }
 
-  private loadQuotes(): void {
-    this.loadError.set(false);
-    this.quotesService
-      .getQuotes()
-      .pipe(takeUntilDestroyed(this.destroyRef))
-      .subscribe({
-        next: (quotes) => this.loadedQuotes.set(quotes.map(toDisplayedQuote)),
-        error: () => {
-          this.loadedQuotes.set([]);
-          this.loadError.set(true);
-        },
-      });
+  goToPage(page: number): void {
+    this.page.set(page);
   }
 
   badgeFor(status: DisplayedQuote['status']): StatusBadge {

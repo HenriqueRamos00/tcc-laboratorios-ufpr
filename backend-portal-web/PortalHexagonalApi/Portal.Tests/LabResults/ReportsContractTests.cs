@@ -42,18 +42,24 @@ public sealed class ReportsContractTests : IClassFixture<RunningPortal>
         Assert.Matches(@"^\d{4}-\d{2}-\d{2}$", (string?)reports[0]!["scheduledDate"]);
     }
 
+    /// <summary>
+    /// O filtro e o OrcamentoCRM do AutoLAB, na forma nua que o laboratorio guarda e que o
+    /// proprio relatorio devolve em quoteCode. O codigo comercial da cotacao nao e traduzido
+    /// aqui: o vinculo orcamento -> relatorios passa por /api/quotes/{id}/reports.
+    /// </summary>
     [Fact]
     public async Task TheQuoteCodeFiltersTheListing()
     {
-        JsonArray reports = await ListAsync("/api/reports?quoteCode=EAQ_2026_45493_V_1");
+        JsonArray reports = await ListAsync("/api/reports?quoteCode=2026_45493");
 
         Assert.Equal(3, reports.Count);
         Assert.All(reports, report =>
         {
-            Assert.Equal("EAQ_2026_45493_V_1", (string?)report!["quoteCode"]);
+            Assert.Equal("2026_45493", (string?)report!["quoteCode"]);
             Assert.False((bool)report["hasSignedDocument"]!);
             Assert.Null(report["publicationDate"]);
         });
+        Assert.Empty(await ListAsync("/api/reports?quoteCode=EAQ_2026_45493_V_1"));
     }
 
     [Fact]

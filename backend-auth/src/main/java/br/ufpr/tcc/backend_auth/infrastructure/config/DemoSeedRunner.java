@@ -59,7 +59,7 @@ public class DemoSeedRunner implements ApplicationRunner {
             novo.setCodigo("portal-web");
             return servicos.save(novo);
         });
-        Empresa empresa = empresa("EMPRESA DE ENERGIA", "04252011000110");
+        Empresa empresa = empresa("EMPRESA DE ENERGIA", "30960572000183");
         Empresa distribuidora = empresa("DISTRIBUIDORA DE ENERGIA", "11222333000181");
         conta("Administrador Lactec", "lactec@lactec.com", null, null);
         conta("Cliente 1", "client1@lactec.com", portal, empresa);

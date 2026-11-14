@@ -21,7 +21,7 @@ http://localhost:4200 e a administração via Swagger em http://localhost:8081/s
 | E-mail e senha | Permissão | Empresa autorizada / CNPJ |
 | --- | --- | --- |
 | `lactec@lactec.com` | Administrador somente deste serviço | — |
-| `client1@lactec.com` | `CLIENTE` de `portal-web` | EMPRESA DE ENERGIA / `04252011000110` |
+| `client1@lactec.com` | `CLIENTE` de `portal-web` | EMPRESA DE ENERGIA / `30960572000183` |
 | `client2@lactec.com` | `CLIENTE` de `portal-web` | DISTRIBUIDORA DE ENERGIA / `11222333000181` |
 
 O seed usa BCrypt e cria empresas, serviço, contas e token em uma transação. As

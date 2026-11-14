@@ -60,6 +60,11 @@ export class ReportListComponent {
   protected readonly reportsLoading = signal(true);
   protected readonly reports = signal<readonly Report[] | null>(null);
   protected readonly quotesWithReport = signal<readonly DisplayedQuote[] | null>(null);
+  // Os orçamentos vêm paginados da API; a aba mostra os da página carregada que
+  // já têm laudo publicado, e a paginação percorre os demais.
+  protected readonly quotePage = signal(1);
+  protected readonly quoteTotal = signal(0);
+  protected readonly quotesLoading = signal(true);
   protected readonly reportsFailed = signal(false);
   protected readonly quotesFailed = signal(false);
 
@@ -110,22 +115,40 @@ export class ReportListComponent {
         this.reportsLoading.set(false);
       });
 
-    this.quotesService
-      .getQuotes()
-      .pipe(takeUntilDestroyed(this.destroyRef))
-      .subscribe({
-        next: (quotes) =>
-          this.quotesWithReport.set(
-            quotes
-              .map(toDisplayedQuote)
-              .filter((quote) => quote.status === 'relatorio-publicado'),
+    toObservable(this.quotePage)
+      .pipe(
+        tap(() => {
+          this.quotesLoading.set(true);
+          this.quotesFailed.set(false);
+        }),
+        switchMap((page) =>
+          this.quotesService.list({ page, pageSize: this.pageSize }).pipe(
+            catchError(() => {
+              this.quotesFailed.set(true);
+              this.quotesLoading.set(false);
+              return EMPTY;
+            }),
           ),
-        error: () => this.quotesFailed.set(true),
+        ),
+        takeUntilDestroyed(this.destroyRef),
+      )
+      .subscribe((result) => {
+        this.quotesWithReport.set(
+          result.items
+            .map(toDisplayedQuote)
+            .filter((quote) => quote.status === 'relatorio-publicado'),
+        );
+        this.quoteTotal.set(result.total);
+        this.quotesLoading.set(false);
       });
   }
 
   protected goToReportPage(page: number): void {
     this.reportPage.set(page);
+  }
+
+  protected goToQuotePage(page: number): void {
+    this.quotePage.set(page);
   }
 
   protected selectTab(tab: ReportsTab): void {

@@ -62,7 +62,7 @@ class DemoSeedTests {
                     .andExpect(jsonPath("$.serviceCode").value("portal-web"))
                     .andExpect(jsonPath("$.authorizations.companyCnpjs.length()").value(1))
                     .andExpect(jsonPath("$.authorizations.companyCnpjs[0]")
-                            .value(client == 1 ? "04252011000110" : "11222333000181"));
+                            .value(client == 1 ? "30960572000183" : "11222333000181"));
             mvc.perform(post("/api/admin/auth/login").contentType(MediaType.APPLICATION_JSON).content(login(email, email)))
                     .andExpect(status().isUnauthorized());
         }
