@@ -86,6 +86,28 @@ describe('LineChartComponent, legenda', () => {
     expect(dates[dates.length - 1].getAttribute('text-anchor')).toBe('end');
   });
 
+  it('alterna as datas em duas linhas só quando elas não cabem lado a lado', () => {
+    const { fixture, root } = render();
+    const rows = () =>
+      [...root.querySelectorAll('svg text')]
+        .filter((tick) => /\d{2}\/\d{2}\/\d{4}/.test(tick.textContent ?? ''))
+        .map((tick) => tick.getAttribute('y'));
+
+    expect(new Set(rows()).size).toBe(1);
+
+    const twelve = Array.from({ length: 12 }, (_, index) => `${String(index + 1).padStart(2, '0')}/10/2026`);
+    fixture.componentInstance.dates.set(twelve);
+    fixture.componentInstance.series.set([
+      { key: 'h2', name: 'H₂', palettePosition: 0, values: twelve.map((_, index) => index + 1) },
+    ]);
+    fixture.detectChanges();
+
+    const staggered = rows();
+    expect(new Set(staggered).size).toBe(2);
+    staggered.forEach((y, index) => expect(y).toBe(staggered[index % 2]));
+    expect(staggered[0]).not.toBe(staggered[1]);
+  });
+
   // A proporção larga é para o gráfico que ocupa a linha inteira; dentro de um cartão
   // de grade de três colunas ela achata o desenho, encolhe o texto e sobra branco em
   // volta. Quem escolhe é quem usa, e o padrão continua sendo a larga.
