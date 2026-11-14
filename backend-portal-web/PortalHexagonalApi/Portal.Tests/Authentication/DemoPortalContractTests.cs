@@ -4,8 +4,11 @@ using System.Text;
 using System.Text.Json;
 using System.Text.Json.Nodes;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.AspNetCore.Hosting;
 using Portal.Adapters.Quotes;
+using Portal.Adapters.Salesforce;
 using Portal.Application.Quotes;
+using Portal.Domain.Quotes;
 using Portal.Tests.Quotes;
 using Xunit;
 
@@ -25,7 +28,9 @@ public sealed class DemoPortalContractTests
             Assert.IsType<FakeSalesforceQuoteRepository>(scope.ServiceProvider.GetRequiredService<IQuoteRepository>());
         await Login(client);
 
-        JsonArray quotes = (await client.GetFromJsonAsync<JsonArray>("/api/quotes"))!;
+        using var quoteList = await client.GetAsync("/api/quotes");
+        Assert.Equal("9", Assert.Single(quoteList.Headers.GetValues("X-Total-Count")));
+        JsonArray quotes = (await quoteList.Content.ReadFromJsonAsync<JsonArray>())!;
         string[] expected = cnpj == FakeSalesforceQuoteRepository.EnergyCnpj
             ? ["quote-1", "quote-3", "quote-6", "quote-8", "quote-10", "quote-12", "quote-14", "quote-16", "quote-18"]
             : ["quote-4", "quote-5", "quote-7", "quote-9", "quote-11", "quote-13", "quote-15", "quote-17", "quote-19"];
@@ -60,18 +65,27 @@ public sealed class DemoPortalContractTests
         Assert.Equal(11, totalReports);
         JsonArray allReports = (await client.GetFromJsonAsync<JsonArray>("/api/reports"))!;
         Assert.Equal(11, allReports.Count);
+        // O AutoLAB guarda a forma nua (2026_45496); o orcamento de demonstracao publica o codigo
+        // da cotacao (EAQ_2026_45496_V_1). O vinculo e a chave de laboratorio, e nao o texto inteiro.
+        int linked = 0;
         foreach (JsonNode? quote in quotes)
         {
             string code = (string)quote!["code"]!;
-            int count = allReports.Count(report => (string?)report!["quoteCode"] == code);
+            string? key = LaboratoryQuoteKey.FromQuotationCode(code)?.Value;
+            Assert.NotNull(key);
+            Assert.DoesNotContain(allReports, report => (string?)report!["quoteCode"] == code);
+            int count = allReports.Count(report => (string?)report!["quoteCode"] == key);
+            linked += count;
             using var response = await client.GetAsync($"/api/quotes/{(string)quote["id"]!}/reports");
             Assert.Equal(count == 0 ? HttpStatusCode.NoContent : HttpStatusCode.OK, response.StatusCode);
             if (count == 0) continue;
             JsonObject conclusion = (await response.Content.ReadFromJsonAsync<JsonObject>())!;
             JsonArray reports = conclusion["reports"]!.AsArray();
             Assert.Equal(count, reports.Count);
-            Assert.All(reports, report => Assert.Equal(code, (string?)report!["quoteCode"]));
+            Assert.Equal(code, (string?)conclusion["quoteCode"]);
+            Assert.All(reports, report => Assert.Equal(key, (string?)report!["quoteCode"]));
         }
+        Assert.True(linked > 0);
         JsonNode downloadable = allReports.First(report => (bool)report!["pdfAvailable"]!)!;
         string reportId = (string)downloadable["id"]!;
         using var signedDocument = await client.GetAsync($"/api/reports/{reportId}/document");
@@ -87,6 +101,37 @@ public sealed class DemoPortalContractTests
             Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
         }
         Assert.Equal(1, backend.Count);
+    }
+
+    /// <summary>
+    /// A massa local do AutoLAB guarda o OrcamentoCRM na forma nua, como o AutoLAB real; os
+    /// orcamentos de demonstracao continuam recebendo a etapa do laboratorio pela chave do
+    /// codigo da cotacao. Os dois lados (lista e detalhe) dizem a mesma etapa.
+    /// </summary>
+    [Fact]
+    public async Task DemoQuotesKeepTheirLaboratoryStageFromTheBareAutoLabCodes()
+    {
+        Dictionary<string, string?> stages = [];
+        foreach (string cnpj in new[] { FakeSalesforceQuoteRepository.EnergyCnpj, FakeSalesforceQuoteRepository.DistributorCnpj })
+        {
+            using var backend = new AuthHandler(HttpStatusCode.OK, Identity(cnpj));
+            using var portal = new AuthPortal(backend, "Portal:UseDemoData", "true");
+            using HttpClient client = portal.CreateClient();
+            await Login(client);
+            foreach (JsonNode? quote in (await client.GetFromJsonAsync<JsonArray>("/api/quotes"))!)
+            {
+                string id = (string)quote!["id"]!;
+                stages[id] = (string?)quote["laboratoryStage"];
+                JsonObject detail = (await client.GetFromJsonAsync<JsonObject>($"/api/quotes/{id}"))!;
+                Assert.Equal(stages[id], (string?)detail["laboratoryStage"]);
+            }
+        }
+
+        Assert.Equal(18, stages.Count);
+        Assert.Equal(
+            ["quote-10=completo", "quote-11=validado", "quote-12=finalizado", "quote-13=elaborando-relatorio",
+             "quote-14=relatorio-publicado", "quote-15=relatorio-publicado", "quote-9=em-execucao"],
+            stages.Where(pair => pair.Value is not null).Select(pair => $"{pair.Key}={pair.Value}").Order(StringComparer.Ordinal));
     }
 
     [Theory]
@@ -115,6 +160,26 @@ public sealed class DemoPortalContractTests
             Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
         }
         Assert.Equal(0, backend.Count);
+    }
+
+    /// <summary>
+    /// Com a demonstracao ligada, o Salesforce nem e registrado: o compose.auth.yaml sobe sem
+    /// credenciais Salesforce.
+    /// </summary>
+    [Fact]
+    public void DemoDataStartsWithoutSalesforceCredentials()
+    {
+        using var backend = new AuthHandler(HttpStatusCode.OK, Identity(FakeSalesforceQuoteRepository.EnergyCnpj));
+        using var basePortal = new AuthPortal(backend, "Portal:UseDemoData", "true");
+        using var portal = basePortal.WithWebHostBuilder(builder => builder
+            .UseSetting("Salesforce:Url", "")
+            .UseSetting("Salesforce:ClientId", "")
+            .UseSetting("Salesforce:ClientSecret", ""));
+        using HttpClient client = portal.CreateClient();
+        using var scope = portal.Services.CreateScope();
+
+        Assert.IsType<FakeSalesforceQuoteRepository>(scope.ServiceProvider.GetRequiredService<IQuoteRepository>());
+        Assert.Null(portal.Services.GetService<ISalesforceTokenProvider>());
     }
 
     [Fact]

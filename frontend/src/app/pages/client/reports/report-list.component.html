@@ -165,5 +165,17 @@
         descricao="Quando um laudo for publicado, o orçamento dele aparece aqui."
       />
     }
+
+    @if (!quotesFailed() && quoteTotal() > pageSize) {
+      <app-pagination
+        class="mt-4"
+        label="Paginação dos orçamentos"
+        [page]="quotePage()"
+        [pageSize]="pageSize"
+        [total]="quoteTotal()"
+        [disabled]="quotesLoading()"
+        (pageChange)="goToQuotePage($event)"
+      />
+    }
   </section>
 }

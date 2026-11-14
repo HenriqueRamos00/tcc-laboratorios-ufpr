@@ -11,7 +11,7 @@ const REPORT: Report = {
   id: 'b2lkLTE',
   identification: 'LACTEC-00307/2026',
   requestNumber: 'S-00307/2026',
-  quoteCode: 'EAQ_2026_45496_V_1',
+  quoteCode: '2026_45496',
   sampleId: 'AM-1',
   sampleName: 'Transformador TR-01',
   client: 'EMPRESA DE ENERGIA',
@@ -52,11 +52,11 @@ describe('ReportsService', () => {
     expect(items).toEqual([REPORT]);
   });
 
-  it('filtra pelo código do orçamento quando ele é informado', () => {
-    service.list({ quoteCode: 'EAQ_2026_45496_V_1', page: 1, pageSize: 50 }).subscribe();
+  it('filtra pelo OrcamentoCRM do AutoLAB quando ele é informado', () => {
+    service.list({ quoteCode: '2026_45496', page: 1, pageSize: 50 }).subscribe();
 
     const request = http.expectOne((req) => req.url === `${API_URL}/api/reports`);
-    expect(request.request.params.get('quoteCode')).toBe('EAQ_2026_45496_V_1');
+    expect(request.request.params.get('quoteCode')).toBe('2026_45496');
     request.flush([]);
   });
 

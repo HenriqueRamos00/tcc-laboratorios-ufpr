@@ -4,6 +4,7 @@ import { of } from 'rxjs';
 
 import type { RequestStatus } from '@/app/model/analysis-pipeline';
 import { stageIndex, PIPELINE_STAGES } from '@/app/model/analysis-pipeline';
+import { DEFAULT_PAGE_SIZE, type PageRequest } from '@/app/model/page';
 import type { Quote } from '@/app/model/quote';
 import { AppDialogService } from '@/app/services/app-dialog.service';
 import { LoginService } from '@/app/services/login.service';
@@ -59,14 +60,24 @@ const TODAS_AS_ETAPAS: ReadonlyArray<Quote> = ETAPA_ESPERADA_POR_NOME.map(([nome
 function montarListagem(
   quotes: ReadonlyArray<Quote> = TODAS_AS_ETAPAS,
   respostaDoModal?: string,
+  total?: number,
 ) {
+  const pedidos: PageRequest[] = [];
   const dadosAbertos: ProposalStatusDialogData[] = [];
   const destinos: unknown[][] = [];
 
   TestBed.configureTestingModule({
     providers: [
       provideRouter([]),
-      { provide: QuotesService, useValue: { getQuotes: () => of(quotes) } },
+      {
+        provide: QuotesService,
+        useValue: {
+          list: (request: PageRequest) => {
+            pedidos.push(request);
+            return of({ items: quotes, total: total ?? quotes.length, page: request.page, pageSize: request.pageSize });
+          },
+        },
+      },
       { provide: LoginService, useValue: { currentUser: () => 'Cliente Lactec' } },
       {
         provide: AppDialogService,
@@ -87,7 +98,7 @@ function montarListagem(
 
   const fixture = TestBed.createComponent(QuoteListComponent);
   fixture.detectChanges();
-  return { fixture, componente: fixture.componentInstance, dadosAbertos, destinos };
+  return { fixture, componente: fixture.componentInstance, dadosAbertos, destinos, pedidos };
 }
 
 function rotuloDaEtapa(status: RequestStatus): string {
@@ -364,5 +375,31 @@ describe('QuoteListComponent, link para o orçamento', () => {
     expect(levaAoOrcamento).toEqual(
       componente.visibleQuotes().map((quote) => !semOrcamento.includes(quote.status)),
     );
+  });
+});
+
+describe('QuoteListComponent, paginação', () => {
+  it('pede a primeira página no tamanho padrão e não mostra paginação vazia', () => {
+    const { fixture, pedidos } = montarListagem([]);
+
+    expect(pedidos).toEqual([{ page: 1, pageSize: DEFAULT_PAGE_SIZE }]);
+    expect((fixture.nativeElement as HTMLElement).querySelector('app-pagination')).toBeNull();
+  });
+
+  it('alcança as páginas seguintes quando o total passa de uma página', () => {
+    const { fixture, componente, pedidos } = montarListagem(TODAS_AS_ETAPAS, undefined, 120);
+    const tela: HTMLElement = fixture.nativeElement;
+
+    expect(tela.querySelector('app-pagination')?.textContent).toContain('1-50 de 120');
+    const proximo = Array.from(tela.querySelectorAll<HTMLButtonElement>('app-pagination button'))
+      .find((botao) => botao.textContent?.trim() === 'Próximo');
+    proximo!.click();
+    fixture.detectChanges();
+
+    expect(pedidos).toEqual([
+      { page: 1, pageSize: DEFAULT_PAGE_SIZE },
+      { page: 2, pageSize: DEFAULT_PAGE_SIZE },
+    ]);
+    expect(componente.page()).toBe(2);
   });
 });

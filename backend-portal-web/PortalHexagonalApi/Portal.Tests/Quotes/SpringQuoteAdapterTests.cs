@@ -3,6 +3,7 @@ using System.Net.Http.Headers;
 using System.Text;
 
 using Portal.Adapters.Quotes;
+using Portal.Application.Paging;
 using Portal.Application.Quotes.Exceptions;
 using Xunit;
 
@@ -29,7 +30,7 @@ public sealed class SpringQuoteAdapterTests
         using var client = CreateClient(handler);
         SpringQuoteRepository repository = new(client);
 
-        var quote = Assert.Single(await repository.GetQuotesAsync(CancellationToken.None));
+        var quote = Assert.Single((await repository.GetQuotesAsync(PageRequest.First, CancellationToken.None)).Items);
 
         Assert.Equal("52", quote.Id);
         Assert.Equal(string.Empty, quote.OpportunityId);
@@ -39,6 +40,38 @@ public sealed class SpringQuoteAdapterTests
         Assert.Equal(string.Empty, quote.ExternalContactName);
         Assert.Equal(string.Empty, quote.ExternalContactEmail);
         Assert.Null(quote.CreatedDate);
+        // O codigo unico do Spring e o codigo da cotacao; ORC-52 nao tem chave de laboratorio.
+        Assert.Equal("ORC-52", quote.QuotationCode);
+        Assert.Null(quote.LaboratoryKey);
+    }
+
+    [Fact]
+    public async Task CodigoNoFormatoDoSalesforceViraChaveDeLaboratorio()
+    {
+        string json = QuoteJson.Replace("\"code\":\"ORC-52\"", "\"code\":\"EAQ_2026_45496_V_1\"", StringComparison.Ordinal);
+        using var handler = new ResponseHandler(_ => JsonResponse(HttpStatusCode.OK, $"[{json}]"));
+        using var client = CreateClient(handler);
+        SpringQuoteRepository repository = new(client);
+
+        var quote = Assert.Single((await repository.GetQuotesAsync(PageRequest.First, CancellationToken.None)).Items);
+
+        Assert.Equal("EAQ_2026_45496_V_1", quote.Code);
+        Assert.Equal("2026_45496", quote.LaboratoryKey?.Value);
+    }
+
+    [Fact]
+    public async Task PaginaERecortadaSobreAListaDoSpring()
+    {
+        string many = string.Join(",", Enumerable.Range(1, 3).Select(index =>
+            QuoteJson.Replace("\"id\":\"52\"", $"\"id\":\"{index}\"", StringComparison.Ordinal)));
+        using var handler = new ResponseHandler(_ => JsonResponse(HttpStatusCode.OK, $"[{many}]"));
+        using var client = CreateClient(handler);
+        SpringQuoteRepository repository = new(client);
+
+        var page = await repository.GetQuotesAsync(new PageRequest(2, 2), CancellationToken.None);
+
+        Assert.Equal("3", Assert.Single(page.Items).Id);
+        Assert.Equal(3, page.TotalCount);
     }
 
     [Fact]
@@ -48,7 +81,7 @@ public sealed class SpringQuoteAdapterTests
         using var client = CreateClient(handler);
         SpringQuoteRepository repository = new(client);
 
-        Assert.Empty(await repository.GetQuotesAsync(CancellationToken.None));
+        Assert.Empty((await repository.GetQuotesAsync(PageRequest.First, CancellationToken.None)).Items);
     }
 
     [Theory]
@@ -64,7 +97,7 @@ public sealed class SpringQuoteAdapterTests
         SpringQuoteRepository repository = new(client);
 
         await Assert.ThrowsAsync<QuoteSourceUnavailableException>(
-            () => repository.GetQuotesAsync(CancellationToken.None));
+            () => repository.GetQuotesAsync(PageRequest.First, CancellationToken.None));
     }
 
     [Theory]
@@ -208,7 +241,7 @@ public sealed class SpringQuoteAdapterTests
         SpringQuoteRepository repository = new(client);
 
         await Assert.ThrowsAsync<QuoteSourceUnavailableException>(
-            () => repository.GetQuotesAsync(CancellationToken.None));
+            () => repository.GetQuotesAsync(PageRequest.First, CancellationToken.None));
     }
 
     [Fact]

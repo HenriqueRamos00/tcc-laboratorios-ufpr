@@ -15,7 +15,7 @@ function laudo(identification: string, hasSignedDocument = true): Report {
     id: `id-${identification}`,
     identification,
     requestNumber: 'S-1',
-    quoteCode: 'EAQ_2026_45496_V_1',
+    quoteCode: '2026_45496',
     sampleId: null,
     sampleName: 'Transformador TR-01',
     client: 'EMPRESA DE ENERGIA',
@@ -61,7 +61,13 @@ function montarTela(total = TODOS_OS_LAUDOS.length) {
   TestBed.configureTestingModule({
     providers: [
       provideRouter([]),
-      { provide: QuotesService, useValue: { getQuotes: () => of([...ORCAMENTOS]) } },
+      {
+        provide: QuotesService,
+        useValue: {
+          list: (request: PageRequest) =>
+            of({ items: [...ORCAMENTOS], total: ORCAMENTOS.length, page: request.page, pageSize: request.pageSize }),
+        },
+      },
       {
         provide: ReportsService,
         useValue: {

@@ -1,6 +1,7 @@
 using System.Globalization;
 using System.Text;
 
+using Portal.Application.Paging;
 using Portal.Application.Quotes;
 using Portal.Application.Reports;
 using Portal.Domain.Reports;
@@ -85,13 +86,21 @@ public sealed class LactecDemoReportDocumentRepository(IQuoteRepository quotes) 
 
     public async Task<IReadOnlyList<PublishedReport>> GetPublishedAsync(CancellationToken cancellationToken)
     {
-        IReadOnlyList<Quote> authorizedQuotes = await quotes.GetQuotesAsync(cancellationToken);
-
-        return authorizedQuotes
-            .SelectMany(quote => Conclusions
+        // A fonte de orcamentos e paginada; a massa percorre as paginas do cliente para manter
+        // a ordem dos orcamentos autorizados.
+        List<PublishedReport> published = [];
+        Page<Quote> page;
+        int number = 1;
+        do
+        {
+            page = await quotes.GetQuotesAsync(new PageRequest(number++, PageRequest.MaxPageSize), cancellationToken);
+            published.AddRange(page.Items.SelectMany(quote => Conclusions
                 .FirstOrDefault(conclusion => conclusion.QuoteId == quote.Id)?.Reports
-                ?? Array.Empty<PublishedReport>())
-            .ToArray();
+                ?? Array.Empty<PublishedReport>()));
+        }
+        while (page.HasNext && page.Items.Count > 0 && number <= PageRequest.MaxPage);
+
+        return [.. published];
     }
 
     public Task<QuotePublishedReports> GetPublishedOfQuoteAsync(

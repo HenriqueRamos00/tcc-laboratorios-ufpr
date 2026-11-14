@@ -1,11 +1,18 @@
+using Portal.Application.Paging;
 using Portal.Application.Quotes;
 using Portal.Domain.Quotes;
 
 namespace Portal.Adapters.Quotes;
 
+/// <summary>
+/// Orcamentos de demonstracao no formato do Salesforce. Cada um informa o codigo da cotacao
+/// igual ao codigo publico (<c>EAQ_2026_45482_V_1</c>), que e a forma que o Salesforce usa em
+/// <c>Codigo_da_Cotacao__c</c>; a chave de laboratorio sai dele (<c>2026_45482</c>) e casa com
+/// o <c>OrcamentoCRM</c> da massa local do AutoLAB.
+/// </summary>
 public sealed class FakeSalesforceQuoteRepository(IQuoteCompanyScope? companyScope = null) : IQuoteRepository
 {
-    public const string EnergyCnpj = "04252011000110";
+    public const string EnergyCnpj = "30960572000183";
     public const string DistributorCnpj = "11222333000181";
     public const string EnergyName = "EMPRESA DE ENERGIA";
     public const string DistributorName = "DISTRIBUIDORA DE ENERGIA";
@@ -19,6 +26,7 @@ public sealed class FakeSalesforceQuoteRepository(IQuoteCompanyScope? companySco
                 id: "quote-3",
                 opportunityId: "opportunity-3",
                 code: "EAQ_2026_45484_V_1",
+                quotationCode: "EAQ_2026_45484_V_1",
                 name: "Qualidade do ar: proposta de teste",
                 status: "Pendente de Aceite",
                 stage: "Negociação",
@@ -36,6 +44,7 @@ public sealed class FakeSalesforceQuoteRepository(IQuoteCompanyScope? companySco
                 id: "quote-1",
                 opportunityId: "opportunity-1",
                 code: "EAQ_2026_45482_V_1",
+                quotationCode: "EAQ_2026_45482_V_1",
                 name: "Análise físico-química de óleo isolante",
                 status: "Pendente de Aceite",
                 stage: "Qualificação",
@@ -53,6 +62,7 @@ public sealed class FakeSalesforceQuoteRepository(IQuoteCompanyScope? companySco
                 id: "quote-4",
                 opportunityId: "opportunity-4",
                 code: "EAQ_2026_45485_V_1",
+                quotationCode: "EAQ_2026_45485_V_1",
                 name: "Ensaio de rigidez dielétrica em óleo isolante",
                 status: "Pendente de Aceite",
                 stage: "Em análise pela área",
@@ -70,6 +80,7 @@ public sealed class FakeSalesforceQuoteRepository(IQuoteCompanyScope? companySco
                 id: "quote-5",
                 opportunityId: "opportunity-5",
                 code: "EAQ_2026_45486_V_1",
+                quotationCode: "EAQ_2026_45486_V_1",
                 name: "Cromatografia de gases dissolvidos em transformador de força",
                 status: "Pendente de Aceite",
                 stage: "Elaborando proposta",
@@ -87,6 +98,7 @@ public sealed class FakeSalesforceQuoteRepository(IQuoteCompanyScope? companySco
                 id: "quote-6",
                 opportunityId: "opportunity-6",
                 code: "EAQ_2026_45487_V_1",
+                quotationCode: "EAQ_2026_45487_V_1",
                 name: "Análise de teor de água em óleo isolante",
                 status: "Em Andamento",
                 stage: "Aprovado pelo cliente",
@@ -104,6 +116,7 @@ public sealed class FakeSalesforceQuoteRepository(IQuoteCompanyScope? companySco
                 id: "quote-7",
                 opportunityId: "opportunity-7",
                 code: "EAQ_2026_45488_V_1",
+                quotationCode: "EAQ_2026_45488_V_1",
                 name: "Contagem de partículas em óleo isolante",
                 status: "Em Andamento",
                 stage: "Aguardando entrega da amostra",
@@ -121,6 +134,7 @@ public sealed class FakeSalesforceQuoteRepository(IQuoteCompanyScope? companySco
                 id: "quote-8",
                 opportunityId: "opportunity-8",
                 code: "EAQ_2026_45489_V_1",
+                quotationCode: "EAQ_2026_45489_V_1",
                 name: "Ensaio de tangente delta em buchas de transformador",
                 status: "Em Andamento",
                 stage: "Fechado ganho",
@@ -138,6 +152,7 @@ public sealed class FakeSalesforceQuoteRepository(IQuoteCompanyScope? companySco
                 id: "quote-9",
                 opportunityId: "opportunity-9",
                 code: "EAQ_2026_45490_V_1",
+                quotationCode: "EAQ_2026_45490_V_1",
                 name: "Análise de furfuraldeído em óleo isolante",
                 status: "Em Andamento",
                 stage: "Protocolado",
@@ -155,6 +170,7 @@ public sealed class FakeSalesforceQuoteRepository(IQuoteCompanyScope? companySco
                 id: "quote-10",
                 opportunityId: "opportunity-10",
                 code: "EAQ_2026_45491_V_1",
+                quotationCode: "EAQ_2026_45491_V_1",
                 name: "Ensaio de índice de neutralização em óleo isolante",
                 status: "Em Andamento",
                 stage: "Em execução",
@@ -172,6 +188,7 @@ public sealed class FakeSalesforceQuoteRepository(IQuoteCompanyScope? companySco
                 id: "quote-11",
                 opportunityId: "opportunity-11",
                 code: "EAQ_2026_45492_V_1",
+                quotationCode: "EAQ_2026_45492_V_1",
                 name: "Análise de compostos inibidores de oxidação",
                 status: "Em Andamento",
                 stage: "Completo",
@@ -189,6 +206,7 @@ public sealed class FakeSalesforceQuoteRepository(IQuoteCompanyScope? companySco
                 id: "quote-12",
                 opportunityId: "opportunity-12",
                 code: "EAQ_2026_45493_V_1",
+                quotationCode: "EAQ_2026_45493_V_1",
                 name: "Ensaio de tensão interfacial em óleo isolante",
                 status: "Em Andamento",
                 stage: "Validado",
@@ -206,6 +224,7 @@ public sealed class FakeSalesforceQuoteRepository(IQuoteCompanyScope? companySco
                 id: "quote-13",
                 opportunityId: "opportunity-13",
                 code: "EAQ_2026_45494_V_1",
+                quotationCode: "EAQ_2026_45494_V_1",
                 name: "Avaliação de papel isolante por grau de polimerização",
                 status: "Finalizado",
                 stage: "Finalizado",
@@ -223,6 +242,7 @@ public sealed class FakeSalesforceQuoteRepository(IQuoteCompanyScope? companySco
                 id: "quote-14",
                 opportunityId: "opportunity-14",
                 code: "EAQ_2026_45495_V_1",
+                quotationCode: "EAQ_2026_45495_V_1",
                 name: "Cromatografia e físico-químico de rotina anual",
                 status: "Finalizado",
                 stage: "Elaborando relatório",
@@ -240,6 +260,7 @@ public sealed class FakeSalesforceQuoteRepository(IQuoteCompanyScope? companySco
                 id: "quote-15",
                 opportunityId: "opportunity-15",
                 code: "EAQ_2026_45496_V_1",
+                quotationCode: "EAQ_2026_45496_V_1",
                 name: "Ensaios físico-químicos em óleo de transformador de distribuição",
                 status: "Finalizado",
                 stage: "Relatório publicado",
@@ -257,6 +278,7 @@ public sealed class FakeSalesforceQuoteRepository(IQuoteCompanyScope? companySco
                 id: "quote-16",
                 opportunityId: "opportunity-16",
                 code: "EAQ_2026_45497_V_1",
+                quotationCode: "EAQ_2026_45497_V_1",
                 name: "Ensaios elétricos em cabos de média tensão",
                 status: "Cancelado",
                 stage: "Fechado perdido",
@@ -274,6 +296,7 @@ public sealed class FakeSalesforceQuoteRepository(IQuoteCompanyScope? companySco
                 id: "quote-17",
                 opportunityId: "opportunity-17",
                 code: "EAQ_2026_45498_V_1",
+                quotationCode: "EAQ_2026_45498_V_1",
                 name: "Caracterização de polímeros por espectroscopia",
                 status: "Recusado",
                 stage: "Fechado recusado Lactec",
@@ -291,6 +314,7 @@ public sealed class FakeSalesforceQuoteRepository(IQuoteCompanyScope? companySco
                 id: "quote-18",
                 opportunityId: "opportunity-18",
                 code: "EAQ_2026_45499_V_1",
+                quotationCode: "EAQ_2026_45499_V_1",
                 name: "Cromatografia de gases dissolvidos em banco de transformadores",
                 status: "Finalizado",
                 stage: "Relatório publicado",
@@ -308,6 +332,7 @@ public sealed class FakeSalesforceQuoteRepository(IQuoteCompanyScope? companySco
                 id: "quote-19",
                 opportunityId: "opportunity-19",
                 code: "EAQ_2026_45500_V_1",
+                quotationCode: "EAQ_2026_45500_V_1",
                 name: "Ensaio de rigidez dielétrica em óleo mineral isolante",
                 status: "Finalizado",
                 stage: "Relatório publicado",
@@ -320,9 +345,9 @@ public sealed class FakeSalesforceQuoteRepository(IQuoteCompanyScope? companySco
         )
     ];
 
-    public Task<IReadOnlyList<Quote>> GetQuotesAsync(CancellationToken cancellationToken)
+    public Task<Page<Quote>> GetQuotesAsync(PageRequest page, CancellationToken cancellationToken)
     {
-        return Task.FromResult<IReadOnlyList<Quote>>(Quotes.Where(IsVisible).Select(q => q.Quote).ToList());
+        return Task.FromResult(Page<Quote>.Of(Quotes.Where(IsVisible).Select(q => q.Quote), page));
     }
 
     public Task<Quote?> GetQuoteByIdAsync(string id, CancellationToken cancellationToken)

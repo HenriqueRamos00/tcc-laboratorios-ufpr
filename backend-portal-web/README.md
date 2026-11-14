@@ -58,26 +58,26 @@ http://localhost:5125/openapi/v1.json
 ## Endpoints disponiveis
 
 ```http
-GET http://localhost:5125/api/quotes
+GET http://localhost:5125/api/quotes?page=1&pageSize=50
 GET http://localhost:5125/api/quotes/{id}
+GET http://localhost:5125/api/quotes/{id}/document
+GET http://localhost:5125/api/quotes/{id}/reports
 GET http://localhost:5125/api/lab-results
 GET http://localhost:5125/api/lab-results/{id}
 POST http://localhost:5125/auth/login
 GET http://localhost:5125/auth/me
-POST http://localhost:5125/api/salesforce/token
 ```
 
 Exemplos:
 
 ```bash
-curl http://localhost:5125/api/quotes
-curl http://localhost:5125/api/quotes/quote-1
+curl -i 'http://localhost:5125/api/quotes?page=2&pageSize=20' -H 'Authorization: Bearer <JWT>'
+curl http://localhost:5125/api/quotes/quote-1 -H 'Authorization: Bearer <JWT>'
 curl http://localhost:5125/api/lab-results
 curl http://localhost:5125/api/lab-results/result-1
 curl -X POST http://localhost:5125/auth/login \
   -H 'Content-Type: application/json' \
   -d '{"email":"cliente@exemplo.com","password":"senha"}'
-curl -X POST http://localhost:5125/api/salesforce/token
 ```
 
 ### Autenticação do Portal do Cliente
@@ -225,19 +225,36 @@ o escopo pela porta `IQuoteCompanyScope`, implementada no HTTP por
 `AuthenticatedQuoteCompanyScope`, que lê somente `companyCnpjs` do JWT validado.
 O cliente não pode ampliar esse escopo com parâmetros, cabeçalhos ou IDs de empresas.
 
-Uma empresa aplica `WHERE Opportunity.Account.CNPJ__c = '76436849000174'`, como em:
+Uma empresa aplica `WHERE Opportunity.Account.CNPJ__c = '76436849000174'` em todas as
+consultas. A lista é paginada no próprio Salesforce: uma contagem e uma página, como em
+`GET /api/quotes?page=3&pageSize=20`:
 
 ```sql
-SELECT Id, Name, Opportunity.Account.Name, Opportunity.Account.CNPJ__c
+SELECT COUNT() FROM Quote WHERE Opportunity.Account.CNPJ__c = '76436849000174'
+
+SELECT Id, Name, Codigo_da_Cotacao__c, Status, OpportunityId, Opportunity.Codigo_da_Oportunidade__c, ...
 FROM Quote
 WHERE Opportunity.Account.CNPJ__c = '76436849000174'
-ORDER BY CreatedDate DESC LIMIT 5
+ORDER BY CreatedDate DESC, Id DESC LIMIT 20 OFFSET 40
 ```
 
-Várias empresas usam `IN ('04252011000110', '76436849000174')`, sem duplicatas.
-A lista preserva o limite existente dos cinco orçamentos mais recentes e os campos
-usados pela tela. O formato dos CNPJs é canônico, com 14 caracteres, incluindo
+Várias empresas usam `IN ('04252011000110', '76436849000174')`, sem duplicatas, nas
+duas consultas. O formato dos CNPJs é canônico, com 14 caracteres, incluindo
 suporte a CNPJ alfanumérico. O número do exemplo não é fixado no código.
+
+`page` começa em 1 e `pageSize` vale 50 por padrão (máximo 200), como nas demais listas
+(ver [Paginacao](#paginacao)); valor inválido responde 400 sem consultar o Salesforce. O
+corpo é o array da página e o total vem em `X-Total-Count`, `X-Page` e `X-Page-Size`.
+A contagem dá o total; página além dele não faz a segunda consulta. `Id DESC` desempata
+orçamentos criados no mesmo instante. O SOQL recusa `OFFSET` acima de 2000: para páginas
+que começam depois disso, a consulta é feita com `LIMIT offset + pageSize`, sem `OFFSET`,
+e a API segue o cursor `nextRecordsUrl` do Salesforce até a página pedida (só caminhos
+relativos de `/services/data/` são seguidos). É mais caro, mas só acontece para quem tem
+mais de 2000 orçamentos. O backend-lab não pagina `GET /api/client/quotes`; o adapter
+Spring recorta a página sobre a lista recebida, e o de demonstração sobre a massa local.
+O Angular usa a mesma paginação na listagem de orçamentos e na aba "Orçamentos com
+Relatório"; filtros por situação e busca valem para a página carregada, como nas listas de
+relatórios e equipamentos.
 
 A consulta por ID combina `Id = '...' AND Opportunity.Account.CNPJ__c ...`.
 O download em `/api/quotes/{id}/document` verifica essa mesma consulta antes de
@@ -250,7 +267,11 @@ entre novamente para obter uma associação de empresa recém-alterada.
 Configure `Salesforce__Url`, `Salesforce__GrantType`, `Salesforce__ClientId` e
 `Salesforce__ClientSecret` no `backend-portal-web/.env` para o Compose (ou no
 ambiente do processo para execução direta). A seção Salesforce abaixo contém o
-exemplo completo. A conexão de leitura usa o token OAuth do Salesforce, separado
+exemplo completo. O registro do Salesforce (opções, cliente de token e
+`SalesforceQuoteRepository`) só existe em `lactec` com `Portal__UseDemoData=false`, e as
+quatro chaves são validadas na inicialização (`ValidateOnStart`): `Url` absoluta HTTP ou
+HTTPS, `GrantType`, `ClientId` e `ClientSecret` não vazios. Faltando alguma, a API não
+sobe. Em `backend-lab` e na demonstração elas não são lidas. A conexão de leitura usa o token OAuth do Salesforce, separado
 dos tokens do portal e do Backend Auth. Falhas de configuração, conexão, timeout
 ou resposta da origem retornam 502 sem expor seu corpo. Angular mostra o erro;
 nenhum dado de demonstração substitui uma consulta recusada ou indisponível.
@@ -259,6 +280,34 @@ No modo `backend-lab`, os orçamentos sempre vêm do Spring pelos adapters C#, m
 com `Portal__UseDemoData=true`; essa opção não seleciona fixtures nem documentos
 substitutos para essa fonte. A demonstração do Salesforce e seus documentos locais
 permanece restrita ao modo `lactec`.
+
+### Vínculo entre orçamento e AutoLAB (`OrcamentoCRM`)
+
+O AutoLAB conhece o orçamento pela coluna `OrcamentoCRM`, que guarda só a forma nua
+`2024_37569`. No Salesforce, o código da cotação (`Quote.Codigo_da_Cotacao__c`) vem como
+`EAQ_2024_37569_V_1`. A regra mora no domínio, em `Portal.Domain/Quotes/LaboratoryQuoteKey`,
+e `Quote.LaboratoryKey` é derivada de `Quote.QuotationCode`:
+
+| Código da cotação | Chave no AutoLAB |
+| --- | --- |
+| `EAQ_2024_37569_V_1` (qualquer versão `_V_n`) | `2024_37569` |
+| `EAQ_2024_37569` | `2024_37569` |
+| `2024_37569` | `2024_37569` |
+| ausente, vazio ou qualquer outra forma (`EAQ_2024_37569_UHAB`, `EAQ 2024_37569`, ...) | nenhuma |
+
+O valor é aparado nas pontas; não há busca por prefixo nem uso do código da oportunidade
+(`Opportunity.Codigo_da_Oportunidade__c`) como alternativa. A chave é usada na etapa do
+laboratório de `GET /api/quotes` e `GET /api/quotes/{id}` (`laboratoryStage`) e nos
+relatórios de `GET /api/quotes/{id}/reports`. Orçamento sem chave válida fica com
+`laboratoryStage: null` e sem relatórios (204), sem consultar o AutoLAB. O campo público
+`code` continua sendo o código da oportunidade no Salesforce, e é ele que aparece em
+`quoteCode` da conclusão de `/api/quotes/{id}/reports`; cada relatório traz em `quoteCode`
+o `OrcamentoCRM` do AutoLAB (forma nua).
+
+O adapter de demonstração informa o código da cotação igual ao `code`
+(`EAQ_2026_45482_V_1` → `2026_45482`). O adapter Spring usa o único código do
+backend-lab como código da cotação: no formato acima ele vira chave; em outro formato
+(`ORC-52`) o orçamento fica sem chave e o AutoLAB não é consultado.
 
 ### Demonstração com duas contas
 
@@ -275,18 +324,25 @@ As senhas são iguais aos e-mails:
 
 | Cliente | Empresa / CNPJ | Orçamentos | Equipamentos / laudos |
 | --- | --- | --- | --- |
-| `client1@lactec.com` | EMPRESA DE ENERGIA / `04252011000110` | `1, 3, 6, 8, 10, 12, 14, 16, 18` | 6 / 11 |
+| `client1@lactec.com` | EMPRESA DE ENERGIA / `30960572000183` | `1, 3, 6, 8, 10, 12, 14, 16, 18` | 6 / 11 |
 | `client2@lactec.com` | DISTRIBUIDORA DE ENERGIA / `11222333000181` | `4, 5, 7, 9, 11, 13, 15, 17, 19` | 6 / 11 |
 
 Os IDs de orçamento usam o prefixo `quote-`. Os valores, códigos, situações e descrições
 são preservados; as empresas dos orçamentos correspondem às contas. O PDF de `quote-3`
 também usa a empresa correta. Equipamentos, laudos e relatórios aparecem de forma
 generalizada para as duas contas (`LabResults__Scope=all`): são os 6 equipamentos e
-11 laudos da massa local. Os relatórios de `vwRelatoriosEnsaios` levam os códigos
-`OrcamentoCRM` dos orçamentos fictícios, e `SituaProcess` usa os mesmos códigos, então
-a etapa do laboratório aparece nos orçamentos locais.
+11 laudos da massa local. Como no AutoLAB real, `vwRelatoriosEnsaios` e `SituaProcess`
+guardam o `OrcamentoCRM` na forma nua (`2026_45496`), e os orçamentos fictícios chegam a
+ele pela chave do código da cotação (`EAQ_2026_45496_V_1`), então a etapa do laboratório e
+os relatórios aparecem nos orçamentos locais.
 
-`Portal__UseDemoData` é `false` por padrão e não altera o fluxo Backend Auth → JWT.
+Para usar o Salesforce real no lugar dos orçamentos de demonstração, defina
+`PORTAL_USE_DEMO_DATA=false` no `.env` da raiz e as credenciais `Salesforce__*` em
+`backend-portal-web/.env` (o Compose carrega esse arquivo); sem elas a API não inicia.
+O padrão é `true`. Equipamentos, laudos e relatórios continuam vindo do AutoLAB.
+
+`Portal__UseDemoData` é `false` por padrão na API (no `compose.auth.yaml`, vem de
+`PORTAL_USE_DEMO_DATA`, padrão `true`) e não altera o fluxo Backend Auth → JWT.
 Quando habilitado em `lactec`, lista, detalhe e PDF dos orçamentos usam o escopo de
 CNPJs autenticado; orçamento de outra conta retorna 404. Requisições sem JWT
 continuam retornando 401.
@@ -349,7 +405,9 @@ npm run build
 Os testes HTTP cobrem as duas fontes, claims, expiração, assinatura, escopo do
 serviço, `/auth/me`, falhas de integração, cooldown, CORS e OpenAPI. Os testes do
 Salesforce usam HTTP simulado e conferem o SOQL enviado, múltiplas empresas,
-ausência de vínculos, separação de clientes e bloqueio de detalhe/PDF fora do escopo. O frontend
+ausência de vínculos, separação de clientes, bloqueio de detalhe/PDF fora do escopo,
+paginação (contagem, `LIMIT`/`OFFSET` e cursor depois do `OFFSET` 2000) e o vínculo com o
+AutoLAB pelo código da cotação. O frontend
 cobre armazenamento/restauração, envio restrito do Bearer, logout, mensagens e
 espera do login. Para um smoke real, mantenha o Backend Lab parado, use o Backend
 Auth com SQL Server, autentique pelo C#, consulte `/auth/me` e `/api/quotes` com o
@@ -372,8 +430,9 @@ Salesforce__ClientId=your-connected-app-client-id
 Salesforce__ClientSecret=your-connected-app-client-secret
 ```
 
-O endpoint `POST /api/salesforce/token` chama o OAuth do Salesforce e retorna o
-token recebido.
+Essas chaves só são exigidas em `lactec` com `Portal__UseDemoData=false` (ver
+[Orçamentos do Salesforce por CNPJ](#orçamentos-do-salesforce-por-cnpj)). O token OAuth é
+obtido e renovado internamente pelo adapter; não há rota pública para ele.
 
 ## Conexao ao AutoLAB (SQL Server)
 
@@ -431,7 +490,8 @@ Protecoes para nao pesar no banco do laboratorio:
 
 ### Paginacao
 
-`GET /api/equipments`, `GET /api/equipments/{id}/reports` e `GET /api/reports` aceitam `page` (a partir de 1)
+`GET /api/quotes`, `GET /api/equipments`, `GET /api/equipments/{id}/reports`, `GET /api/reports` e
+`GET /api/quotes/{id}/reports` aceitam `page` (a partir de 1)
 e `pageSize` (padrao 50, maximo 200). Valor invalido responde 400 com ProblemDetails. O
 corpo continua sendo o array da pagina; os cabecalhos `X-Total-Count`, `X-Page` e
 `X-Page-Size` (expostos no CORS, junto com `Content-Disposition` dos downloads) dizem o
@@ -455,7 +515,9 @@ consulta so, com `IN` das identificacoes. O antigo `reportUrl` saiu do contrato.
 ### Relatorios (`vwRelatoriosEnsaios`)
 
 `GET /api/reports?quoteCode=` lista `vwRelatoriosEnsaios` (filtro opcional por
-`OrcamentoCRM` exato), ordenado por `DataPublicacao` desc, `DataEmissao` desc e `Oid`.
+`OrcamentoCRM` exato, na forma nua que o AutoLAB guarda, por exemplo `2026_45493`; é o
+mesmo valor que cada relatório devolve em `quoteCode`, e não o `code` do orçamento),
+ordenado por `DataPublicacao` desc, `DataEmissao` desc e `Oid`.
 Cada item: `id` (o `Oid`, opaco), `identification`, `requestNumber`, `quoteCode`,
 `sampleId`, `sampleName`, `client`, `status`, `scheduledDate`, `issueDate`,
 `publicationDate` (datas `yyyy-MM-dd` ou `null`) e `hasSignedDocument` (`PdfAssinado`
@@ -510,11 +572,26 @@ node tools/gerar-massa-autolab.mjs
 ```
 
 A massa tem 11 laudos de 6 equipamentos (EMPRESA DE ENERGIA e DISTRIBUIDORA DE ENERGIA),
-o cadastro de placas, as linhas de `SituaProcess` com os codigos dos orcamentos ficticios,
+o cadastro de placas, as linhas de `SituaProcess` com os codigos dos orcamentos ficticios
+na forma nua de `OrcamentoCRM` (`2026_45482`, nunca `EAQ_2026_45482_V_1`, como no AutoLAB
+real; algumas linhas avulsas reproduzem as variantes reais `2026_49001_UHAB Agua Boa` e
+`EAQ 2026_49002`, que nao viram chave de nenhum orcamento),
 um relatorio por laudo com PDFs assinados de uma pagina, laudos sem PDF, uma revisao
 substituida, um relatorio apagado (`GCRecord`) e um sem titulo nem conclusao. Para
 recarregar: `docker compose -f compose.auth.yaml run --rm autolab-init`. Para `dotnet run`
 fora do Docker, troque `AutoLab__Server` pelo endereco publicado da instancia.
+
+## Limitações conhecidas e trabalho futuro
+
+- **Aceite e recusa de proposta não voltam ao Salesforce.** A integração com o Salesforce é
+  somente leitura. No Portal do Cliente, aceite, recusa, ordem de compra e confirmação de
+  envio de amostra ficam em memória, durante a sessão do navegador
+  (`frontend/src/app/services/quote-decision.service.ts`): recarregar a página ou entrar
+  de outro dispositivo perde a decisão, e o comercial não a recebe. A gravação no
+  Salesforce (ou no serviço que o representar) é trabalho futuro; as assinaturas do
+  serviço Angular já seguem as rotas `POST /api/quotes/{id}/...` previstas.
+- Filtro por situação e busca da listagem de orçamentos valem para a página carregada,
+  como nas demais listas; filtrar no Salesforce é trabalho futuro.
 
 ## Como rodar com Docker
 

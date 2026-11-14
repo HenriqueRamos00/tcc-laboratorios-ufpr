@@ -1,6 +1,8 @@
 using Microsoft.AspNetCore.Mvc;
 
+using Portal.Api.LabResults;
 using Portal.Api.Quotes;
+using Portal.Application.Paging;
 using Portal.Application.Pipeline.Exceptions;
 using Portal.Application.Quotes;
 using Portal.Application.Quotes.Exceptions;
@@ -29,19 +31,29 @@ public sealed class QuotesController : ControllerBase
         _quoteUseCase = quoteUseCase;
     }
 
+    /// <summary>
+    /// A lista paginada, na mesma convencao das demais listas da API: <c>page</c> e
+    /// <c>pageSize</c> na query, o array da pagina no corpo e o total nos cabecalhos
+    /// <c>X-Total-Count</c>, <c>X-Page</c> e <c>X-Page-Size</c>.
+    /// </summary>
     [HttpGet]
     [ProducesResponseType(typeof(IReadOnlyList<QuoteResponse>), StatusCodes.Status200OK)]
+    [ProducesResponseType<ProblemDetails>(StatusCodes.Status400BadRequest)]
     [ProducesResponseType<ProblemDetails>(StatusCodes.Status401Unauthorized)]
     [ProducesResponseType<ProblemDetails>(StatusCodes.Status403Forbidden)]
     [ProducesResponseType(StatusCodes.Status502BadGateway)]
-    public Task<IActionResult> GetQuotes(CancellationToken cancellationToken)
+    public Task<IActionResult> GetQuotes([FromQuery] PageQuery paging, CancellationToken cancellationToken)
     {
+        if (!paging.TryToRequest(out PageRequest request))
+            return Task.FromResult(this.InvalidPage());
+
         return AnswerAsync(async () =>
         {
-            IReadOnlyList<QuoteWithLaboratoryStage> quotes =
-                await _quoteUseCase.GetQuotesAsync(cancellationToken);
+            Page<QuoteWithLaboratoryStage> quotes =
+                await _quoteUseCase.GetQuotesAsync(request, cancellationToken);
 
-            return Ok(quotes.Select(QuoteResponse.From));
+            PageQuery.WriteHeaders(Response, quotes);
+            return Ok(quotes.Items.Select(QuoteResponse.From));
         });
     }
 

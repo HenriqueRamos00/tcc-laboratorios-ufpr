@@ -42,9 +42,10 @@ const ORCAMENTOS = new Map<string, Quote>([
   ['quote-16', quote('quote-16', 'EAQ_2026_45497_V_1', 'Fechado perdido')],
 ]);
 
-const LAUDOS_POR_CODIGO = new Map<string, Report[]>([
-  ['EAQ_2026_45496_V_1', [laudo('LACTEC-00307/2026', 'EAQ_2026_45496_V_1')]],
-  ['EAQ_2026_45499_V_1', [laudo('LACTEC-00412/2026', 'EAQ_2026_45499_V_1')]],
+// O AutoLAB devolve o OrcamentoCRM na forma nua; a tela pede pelo ID do orçamento.
+const LAUDOS_POR_ORCAMENTO = new Map<string, Report[]>([
+  ['quote-15', [laudo('LACTEC-00307/2026', '2026_45496')]],
+  ['quote-18', [laudo('LACTEC-00412/2026', '2026_45499')]],
 ]);
 
 function montarTela(quoteId: string, conclusion?: { testType: string; summary: string }) {
@@ -67,7 +68,7 @@ function montarTela(quoteId: string, conclusion?: { testType: string; summary: s
         useValue: {
           list: (query: ReportQuery) => {
             pedidos.push(query);
-            const items = LAUDOS_POR_CODIGO.get(query.quoteCode ?? '') ?? [];
+            const items = LAUDOS_POR_ORCAMENTO.get(query.quoteId ?? '') ?? [];
             return of({ items, total: items.length, page: query.page, pageSize: query.pageSize, ...conclusion });
           },
         },
@@ -95,10 +96,10 @@ describe('QuoteReportsComponent, os laudos de um orçamento só', () => {
     expect(tela.textContent).toContain('Resumo da análise: Resultado validado e publicado');
   });
 
-  it('pede à API os laudos pelo código do orçamento que o endereço nomeia', () => {
+  it('pede à API os laudos pelo ID do orçamento que o endereço nomeia', () => {
     const { tela, pedidos } = montarTela('quote-18');
 
-    expect(pedidos).toEqual([{ quoteId: 'quote-18', quoteCode: 'EAQ_2026_45499_V_1', page: 1, pageSize: 50 }]);
+    expect(pedidos).toEqual([{ quoteId: 'quote-18', page: 1, pageSize: 50 }]);
     expect(relatoriosNaTabela(tela)).toEqual(['LACTEC-00412/2026']);
   });
 
@@ -108,10 +109,7 @@ describe('QuoteReportsComponent, os laudos de um orçamento só', () => {
     fixture.componentRef.setInput('quoteId', 'quote-15');
     fixture.detectChanges();
 
-    expect(pedidos.map((pedido) => pedido.quoteCode)).toEqual([
-      'EAQ_2026_45499_V_1',
-      'EAQ_2026_45496_V_1',
-    ]);
+    expect(pedidos.map((pedido) => pedido.quoteId)).toEqual(['quote-18', 'quote-15']);
     expect(relatoriosNaTabela(tela)).toEqual(['LACTEC-00307/2026']);
   });
 

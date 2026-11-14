@@ -4,6 +4,7 @@ using Microsoft.Extensions.Options;
 
 using Portal.Adapters.BackendAuth;
 using Portal.Adapters.Quotes;
+using Portal.Adapters.Salesforce;
 using Portal.Api.Quotes;
 using Portal.Application.Quotes;
 using Portal.Api.Authentication;
@@ -79,9 +80,7 @@ public static class PortalSourceRegistration
                     services.AddScoped<IQuoteRepository>(provider =>
                         new FakeSalesforceQuoteRepository(provider.GetRequiredService<IQuoteCompanyScope>()));
                 else
-                    services.AddHttpClient<IQuoteRepository, SalesforceQuoteRepository>(client =>
-                        client.Timeout = TimeSpan.FromSeconds(10))
-                        .ConfigurePrimaryHttpMessageHandler(() => new HttpClientHandler { AllowAutoRedirect = false });
+                    services.AddSalesforceQuotes(configuration);
                 services.AddOptions<BackendAuthOptions>()
                     .Bind(configuration.GetSection(BackendAuthOptions.SectionName))
                     .Validate(value => Uri.TryCreate(value.BaseUrl, UriKind.Absolute, out Uri? uri)
@@ -108,5 +107,32 @@ public static class PortalSourceRegistration
                 throw new InvalidOperationException(
                     $"Configuração 'Portal:DataSource' com valor desconhecido '{portal.DataSource}'.");
         }
+    }
+
+    /// <summary>
+    /// O Salesforce so existe para <c>lactec</c> sem dados de demonstracao, e por isso as
+    /// credenciais so sao exigidas nesse caso. Registradas no Program, elas eram lidas em
+    /// todas as composicoes e a falta delas so aparecia na primeira consulta, como 502.
+    /// </summary>
+    private static void AddSalesforceQuotes(this IServiceCollection services, IConfiguration configuration)
+    {
+        services.AddOptions<SalesforceOptions>()
+            .Bind(configuration.GetSection(SalesforceOptions.SectionName))
+            .Validate(value => Uri.TryCreate(value.Url, UriKind.Absolute, out Uri? uri)
+                && (uri.Scheme == Uri.UriSchemeHttp || uri.Scheme == Uri.UriSchemeHttps),
+                "Salesforce:Url é obrigatório e deve ser uma URL HTTP ou HTTPS absoluta.")
+            .Validate(value => !string.IsNullOrWhiteSpace(value.GrantType),
+                "Salesforce:GrantType é obrigatório.")
+            .Validate(value => !string.IsNullOrWhiteSpace(value.ClientId),
+                "Salesforce:ClientId é obrigatório.")
+            .Validate(value => !string.IsNullOrWhiteSpace(value.ClientSecret),
+                "Salesforce:ClientSecret é obrigatório.")
+            .ValidateOnStart();
+        services.AddSingleton(provider => provider.GetRequiredService<IOptions<SalesforceOptions>>().Value);
+        services.AddHttpClient<ISalesforceTokenClient, SalesforceTokenClient>();
+        services.AddSingleton<ISalesforceTokenProvider, SalesforceTokenProvider>();
+        services.AddHttpClient<IQuoteRepository, SalesforceQuoteRepository>(client =>
+                client.Timeout = TimeSpan.FromSeconds(10))
+            .ConfigurePrimaryHttpMessageHandler(() => new HttpClientHandler { AllowAutoRedirect = false });
     }
 }
