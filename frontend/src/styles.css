@@ -179,6 +179,20 @@ html {
   letter-spacing: -0.01em;
 }
 
+.skeleton-reveal {
+  animation: skeleton-reveal 200ms ease-out var(--skeleton-delay, 250ms) both;
+}
+@keyframes skeleton-reveal {
+  from {
+    opacity: 0;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .skeleton-reveal {
+    animation-duration: 1ms;
+  }
+}
+
 /* Um rolador só na área de conteúdo. O container do Material traz
    `overflow: auto` no próprio elemento de conteúdo, e o `main` do shell também
    rola: empilhados, o conteúdo rola primeiro e a página rola depois. Quem rola

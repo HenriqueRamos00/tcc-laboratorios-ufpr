@@ -7,6 +7,9 @@ import { Router } from '@angular/router';
 
 import { EmptyStateComponent } from '@shared/components/empty-state/empty-state.component';
 import { PageHeaderComponent } from '@shared/components/page-header/page-header.component';
+import { LoadingRegionComponent } from '@shared/components/skeleton/loading-region.component';
+import { PageHeaderSkeletonComponent } from '@shared/components/skeleton/page-header-skeleton.component';
+import { SkeletonComponent } from '@shared/components/skeleton/skeleton.component';
 import { SampleShippingNoticeComponent } from '@shared/components/sample-shipping-notice/sample-shipping-notice.component';
 import { handFileToTheBrowser } from '@shared/file-download';
 
@@ -30,6 +33,7 @@ import {
   type RejectQuoteDialogData,
 } from '../decision/reject-quote-dialog.component';
 
+import { ProposalSkeletonComponent } from './proposal-skeleton.component';
 import { ProposalViewerComponent } from './proposal-viewer.component';
 
 const BRL = new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' });
@@ -63,7 +67,11 @@ function greetingForNow(agora = new Date()): string {
     PageHeaderComponent,
     EmptyStateComponent,
     ProposalViewerComponent,
+    ProposalSkeletonComponent,
     SampleShippingNoticeComponent,
+    LoadingRegionComponent,
+    PageHeaderSkeletonComponent,
+    SkeletonComponent,
   ],
   templateUrl: './quote-detail.component.html',
   changeDetection: ChangeDetectionStrategy.OnPush,

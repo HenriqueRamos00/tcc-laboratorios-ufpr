@@ -6,7 +6,35 @@
     descricao="A consulta falhou. Tente novamente em instantes."
   />
 } @else if (loading()) {
-  <p class="text-sm text-lactec-muted" role="status">Carregando relatórios…</p>
+  <app-loading-region label="Carregando relatórios…">
+    <app-page-header-skeleton [breadcrumbs]="true" [subtitle]="true" />
+
+    <div class="mt-6 rounded-2xl border border-lactec-line bg-lactec-paper p-6">
+      <div class="status-stepper">
+        @for (step of stepPlaceholders; track step; let last = $last; let index = $index) {
+          <div class="status-stepper__step" [class.max-md:hidden]="index >= 3">
+            <app-skeleton class="h-10 w-10" shape="round" />
+            <app-skeleton class="h-3 w-16 max-w-full" />
+          </div>
+          @if (!last) {
+            <span class="status-stepper__connector" [class.max-md:hidden]="index >= 2"></span>
+          }
+        }
+      </div>
+    </div>
+
+    <div class="mt-4 flex items-start gap-3 rounded-2xl bg-lactec-line-soft px-5 py-4">
+      <app-skeleton class="h-6 w-6 shrink-0" tone="strong" />
+      <div class="min-w-0 flex-1">
+        <app-skeleton class="my-0.5 h-4 w-48 max-w-full" tone="strong" />
+        <app-skeleton class="mt-1.5 mb-0.5 h-4 w-3/4" tone="strong" />
+      </div>
+    </div>
+
+    <app-skeleton class="mt-4 h-12 w-full" shape="block" />
+
+    <app-table-skeleton class="mt-4" [columns]="reportColumnCount" [rows]="minimumRows" />
+  </app-loading-region>
 } @else {
 @if (quote(); as orcamento) {
   <app-page-header
@@ -31,7 +59,9 @@
         @else { <app-data-unavailable subject="Tipo de ensaio" /> }
       </h2>
       <p class="mt-1 mb-0 text-sm text-lactec-ink-soft">
-        @if (reportList() === null) { Carregando a conclusão da análise… }
+        @if (reportList() === null) {
+          <app-skeleton class="my-0.5 h-4 w-3/4" tone="strong" aria-hidden="true" />
+        }
         @else if (summary()) { Resumo da análise: {{ summary() }} }
         @else { <app-data-unavailable subject="Resumo da análise" /> }
       </p>
@@ -61,7 +91,7 @@
       [reports]="visibleReports()"
       [total]="total()"
       [loading]="reportsLoading()"
-      [minimumRows]="5"
+      [minimumRows]="minimumRows"
       [(query)]="query"
     />
   }

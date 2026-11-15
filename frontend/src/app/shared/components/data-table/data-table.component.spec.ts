@@ -1,6 +1,8 @@
+import { LiveAnnouncer } from '@angular/cdk/a11y';
 import { Component, signal } from '@angular/core';
-import { ComponentFixture, TestBed } from '@angular/core/testing';
+import { ComponentFixture, fakeAsync, TestBed, tick } from '@angular/core/testing';
 
+import { SKELETON_DELAY_MS } from '@shared/components/skeleton/skeleton-clock.service';
 import { RESIZE_DEBOUNCE_MS } from '@shared/viewport-rows';
 
 import { DataTableActionsDirective } from './data-table-actions.directive';
@@ -108,6 +110,10 @@ function cells(element: HTMLElement, column: number): string[] {
   return Array.from(element.querySelectorAll('tbody tr[data-row]')).map(
     (row) => row.querySelectorAll('td')[column].textContent?.trim() ?? '',
   );
+}
+
+function skeletonRows(element: HTMLElement): HTMLElement[] {
+  return Array.from(element.querySelectorAll<HTMLElement>('tbody[data-skeleton] tr'));
 }
 
 function pageSizeSelect(element: HTMLElement): HTMLSelectElement {
@@ -337,13 +343,78 @@ describe('DataTableComponent', () => {
   });
 
   describe('carregando e vazio', () => {
-    it('anuncia o carregamento enquanto não há linha nenhuma', async () => {
+    it('desenha uma linha de skeleton para cada linha pedida enquanto não há linha nenhuma', async () => {
+      const { host, element } = await mount();
+      const rows = skeletonRows(element);
+
+      expect(rows.length).toBe(host.query().pageSize);
+      expect(rows.every((row) => row.querySelectorAll('td').length === 5)).toBeTrue();
+      expect(rows.every((row) => row.querySelectorAll('app-skeleton').length === 5)).toBeTrue();
+      expect(element.textContent).not.toContain('Carregando transformadores…');
+      expect(element.textContent).not.toContain('Nenhum transformador encontrado');
+    });
+
+    it('o skeleton não entra na medição: mesma altura de linha, mesma página pedida, sem rolar a área', async () => {
+      const { host, element } = await mount();
+      const area = element.querySelector<HTMLElement>('[data-area-rolavel]')!;
+
+      expect(element.querySelector('tbody tr[data-row]')).toBeNull();
+      expect(host.query().pageSize).toBe(rowsThatFit(element, 700));
+      expect(
+        skeletonRows(element).every((row) => row.getBoundingClientRect().height === ROW_HEIGHT),
+      ).toBeTrue();
+      expect(area.scrollHeight).toBeLessThanOrEqual(area.clientHeight);
+    });
+
+    it('com tamanho de página escolhido maior que a área, o skeleton não passa do que cabe', async () => {
+      const { host, element } = await mount((component) =>
+        component.query.set({ ...unmeasuredQuery(), chosenPageSize: 100 }),
+      );
+
+      expect(host.query().pageSize).toBe(100);
+      expect(skeletonRows(element).length).toBe(rowsThatFit(element, 700));
+    });
+
+    it('esconde o skeleton do leitor de tela e marca a tabela como ocupada', async () => {
       const { element } = await mount();
 
-      expect(element.querySelector('tbody [role="status"]')?.textContent?.trim()).toBe(
-        'Carregando transformadores…',
-      );
-      expect(element.querySelector('tbody td')?.getAttribute('colspan')).toBe('5');
+      expect(element.querySelector('tbody[data-skeleton]')?.getAttribute('aria-hidden')).toBe('true');
+      expect(element.querySelector('table')?.getAttribute('aria-busy')).toBe('true');
+      expect(element.querySelector('tbody [role="status"]')).toBeNull();
+    });
+
+    it('anuncia o carregamento uma única vez, e só depois da espera', fakeAsync(() => {
+      const announce = spyOn(TestBed.inject(LiveAnnouncer), 'announce').and.resolveTo();
+      const fixture = TestBed.createComponent(TableHostComponent);
+      fixture.detectChanges();
+      tick(SKELETON_DELAY_MS - 10);
+
+      expect(announce).not.toHaveBeenCalled();
+
+      tick(10);
+      fixture.detectChanges();
+      tick(SKELETON_DELAY_MS);
+
+      expect(announce).toHaveBeenCalledOnceWith('Carregando transformadores…', 'polite');
+    }));
+
+    it('resposta que chega antes da espera não anuncia nada', fakeAsync(() => {
+      const announce = spyOn(TestBed.inject(LiveAnnouncer), 'announce').and.resolveTo();
+      const fixture = TestBed.createComponent(TableHostComponent);
+      fixture.detectChanges();
+      fixture.componentInstance.rows.set(TRANSFORMERS);
+      fixture.componentInstance.loading.set(false);
+      fixture.detectChanges();
+      tick(SKELETON_DELAY_MS * 2);
+
+      expect(announce).not.toHaveBeenCalled();
+    }));
+
+    it('troca o skeleton pelas linhas quando os dados chegam', async () => {
+      const { element } = await mountLoaded();
+
+      expect(element.querySelector('tbody[data-skeleton]')).toBeNull();
+      expect(cells(element, 0)).toEqual(['571289', '884120']);
     });
 
     it('mantém as linhas à vista enquanto busca a página seguinte', async () => {
@@ -353,7 +424,8 @@ describe('DataTableComponent', () => {
       await settle(fixture);
 
       expect(cells(element, 0)).toEqual(['571289', '884120']);
-      expect(element.textContent).not.toContain('Carregando transformadores…');
+      expect(element.querySelector('tbody[data-skeleton]')).toBeNull();
+      expect(element.querySelector('tbody')?.classList).toContain('opacity-60');
     });
 
     it('anuncia a lista vazia com o título e a descrição da tela', async () => {
@@ -366,6 +438,7 @@ describe('DataTableComponent', () => {
 
       expect(empty?.textContent).toContain('Nenhum transformador encontrado');
       expect(empty?.textContent).toContain('Revise a busca.');
+      expect(element.querySelector('tbody[data-skeleton]')).toBeNull();
       expect(element.querySelector('app-pagination')?.textContent).toContain('0 de 0');
     });
   });

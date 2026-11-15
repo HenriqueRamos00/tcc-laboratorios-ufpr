@@ -381,6 +381,8 @@
   />
 }
 @default {
-  <p class="text-sm text-lactec-muted" role="status">Carregando indicadores…</p>
+  <app-loading-region label="Carregando indicadores…">
+    <app-health-indicators-skeleton [layout]="skeletonLayout()" />
+  </app-loading-region>
 }
 }

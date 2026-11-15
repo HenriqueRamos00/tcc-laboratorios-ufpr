@@ -14,6 +14,9 @@ import { EmptyStateComponent } from '@shared/components/empty-state/empty-state.
 import { PageHeaderComponent } from '@shared/components/page-header/page-header.component';
 import { SearchFieldComponent } from '@shared/components/search-field/search-field.component';
 import { PaginationComponent } from '@shared/components/pagination/pagination.component';
+import { LoadingRegionComponent } from '@shared/components/skeleton/loading-region.component';
+import { QuoteCardSkeletonComponent } from '@shared/components/skeleton/quote-card-skeleton.component';
+import { skeletonIndexes } from '@shared/components/skeleton/table-skeleton.component';
 
 import {
   badgeFor,
@@ -33,6 +36,8 @@ import { ReportTableComponent } from './report-table/report-table.component';
 // orçamento escolhe o orçamento e entra só nos laudos dele.
 type ReportsTab = 'reports' | 'quotes';
 
+const CARD_PLACEHOLDER_COUNT = 3;
+
 @Component({
   selector: 'app-client-relatorios',
   standalone: true,
@@ -45,6 +50,8 @@ type ReportsTab = 'reports' | 'quotes';
     EmptyStateComponent,
     PaginationComponent,
     ReportTableComponent,
+    LoadingRegionComponent,
+    QuoteCardSkeletonComponent,
   ],
   templateUrl: './report-list.component.html',
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -60,6 +67,7 @@ export class ReportListComponent {
   protected readonly quoteSearch = signal('');
 
   protected readonly quotePageSize = DEFAULT_PAGE_SIZE;
+  protected readonly cardPlaceholders = skeletonIndexes(CARD_PLACEHOLDER_COUNT);
   protected readonly reportQuery = signal(unmeasuredQuery());
   protected readonly reportTotal = signal(0);
   protected readonly reportsLoading = signal(true);

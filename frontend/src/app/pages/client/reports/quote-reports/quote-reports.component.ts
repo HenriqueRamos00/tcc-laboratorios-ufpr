@@ -31,6 +31,13 @@ import {
   type Breadcrumb,
 } from '@shared/components/page-header/page-header.component';
 import { SearchFieldComponent } from '@shared/components/search-field/search-field.component';
+import { LoadingRegionComponent } from '@shared/components/skeleton/loading-region.component';
+import { PageHeaderSkeletonComponent } from '@shared/components/skeleton/page-header-skeleton.component';
+import { SkeletonComponent } from '@shared/components/skeleton/skeleton.component';
+import {
+  skeletonIndexes,
+  TableSkeletonComponent,
+} from '@shared/components/skeleton/table-skeleton.component';
 import {
   StatusStepperComponent,
   type StatusStepperStep,
@@ -43,13 +50,20 @@ import type { Report } from '@/app/model/report';
 import { QuotesService } from '@/app/services/quotes.service';
 import { ReportsService } from '@/app/services/reports.service';
 
-import { ReportTableComponent } from '../report-table/report-table.component';
+import {
+  REPORT_TABLE_COLUMN_COUNT,
+  ReportTableComponent,
+} from '../report-table/report-table.component';
 
 const ETAPAS: readonly StatusStepperStep[] = PIPELINE_STAGES.map((stage) => ({
   key: stage.key,
   label: stage.label,
   icon: stage.icon,
 }));
+
+const MINIMUM_ROWS = 5;
+
+const STEP_PLACEHOLDER_COUNT = 5;
 
 @Component({
   selector: 'app-client-relatorios-do-quote',
@@ -62,6 +76,10 @@ const ETAPAS: readonly StatusStepperStep[] = PIPELINE_STAGES.map((stage) => ({
     StatusStepperComponent,
     DataUnavailableComponent,
     ReportTableComponent,
+    LoadingRegionComponent,
+    PageHeaderSkeletonComponent,
+    SkeletonComponent,
+    TableSkeletonComponent,
   ],
   templateUrl: './quote-reports.component.html',
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -74,6 +92,9 @@ export class QuoteReportsComponent {
   private readonly reports = inject(ReportsService);
 
   protected readonly stages = ETAPAS;
+  protected readonly stepPlaceholders = skeletonIndexes(STEP_PLACEHOLDER_COUNT);
+  protected readonly reportColumnCount = REPORT_TABLE_COLUMN_COUNT;
+  protected readonly minimumRows = MINIMUM_ROWS;
   protected readonly searchTerm = signal('');
   protected readonly quote = signal<Quote | null>(null);
   protected readonly reportList = signal<readonly Report[] | null>(null);

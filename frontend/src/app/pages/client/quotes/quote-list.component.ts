@@ -16,6 +16,9 @@ import { Router, RouterLink } from '@angular/router';
 import { catchError, EMPTY, switchMap, tap } from 'rxjs';
 
 import { PaginationComponent } from '@shared/components/pagination/pagination.component';
+import { LoadingRegionComponent } from '@shared/components/skeleton/loading-region.component';
+import { QuoteCardSkeletonComponent } from '@shared/components/skeleton/quote-card-skeleton.component';
+import { skeletonIndexes } from '@shared/components/skeleton/table-skeleton.component';
 import { StatusStepperStep } from '@shared/components/status-stepper/status-stepper.component';
 
 import {
@@ -62,6 +65,8 @@ const PROPOSAL_STEPS: ReadonlyArray<StatusStepperStep> = PIPELINE_STAGES.map((st
 // protocolo, e não pode ser endereço de pessoa fixo no bundle.
 const LABORATORY_CONTACT = 'atendimento@exemplo.com.br';
 
+const CARD_PLACEHOLDER_COUNT = 3;
+
 const FILTER_TABS: ReadonlyArray<FilterTab> = [
   { value: 'todos', label: 'Todos' },
   { value: 'pendentes', label: 'Pendentes de aceite' },
@@ -88,6 +93,8 @@ function greetingForNow(agora = new Date()): string {
     MatIconModule,
     MatMenuModule,
     PaginationComponent,
+    LoadingRegionComponent,
+    QuoteCardSkeletonComponent,
   ],
   templateUrl: './quote-list.component.html',
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -128,6 +135,9 @@ export class QuoteListComponent {
   });
 
   private readonly loadedQuotes = signal<ReadonlyArray<DisplayedQuote>>([]);
+
+  readonly cardPlaceholders = skeletonIndexes(CARD_PLACEHOLDER_COUNT);
+  readonly firstLoad = computed(() => this.loading() && this.loadedQuotes().length === 0);
 
   readonly quotes = computed(() => {
     const decided = this.decisions.decisions();

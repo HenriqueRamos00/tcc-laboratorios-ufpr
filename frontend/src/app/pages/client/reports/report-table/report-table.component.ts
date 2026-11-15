@@ -67,6 +67,8 @@ const COLUMNS: readonly DataTableColumn<ReportRow>[] = [
   { key: 'publishedOn', header: 'Publicação' },
 ];
 
+export const REPORT_TABLE_COLUMN_COUNT = COLUMNS.length + 1;
+
 @Component({
   selector: 'app-report-table',
   standalone: true,

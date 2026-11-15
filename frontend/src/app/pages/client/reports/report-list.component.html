@@ -87,9 +87,19 @@
         descricao="A consulta ao Salesforce falhou. Tente novamente em instantes."
       />
     } @else if (quotesWithReport() === null) {
-      <p class="mt-4 text-sm text-lactec-muted" role="status">Carregando orçamentos…</p>
+      <app-loading-region class="mt-4" label="Carregando orçamentos…">
+        <div class="flex flex-col gap-4 md:gap-5">
+          @for (card of cardPlaceholders; track card) {
+            <app-quote-card-skeleton />
+          }
+        </div>
+      </app-loading-region>
     } @else if (visibleQuotes().length) {
-      <div class="mt-4 flex flex-col gap-4 md:gap-5">
+      <div
+        class="mt-4 flex flex-col gap-4 md:gap-5"
+        [class.opacity-60]="quotesLoading()"
+        [attr.aria-busy]="quotesLoading() ? 'true' : null"
+      >
         @for (quote of visibleQuotes(); track quote.id) {
           @let badge = badgeFor(quote.status);
 
