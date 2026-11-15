@@ -21,13 +21,8 @@ export interface Equipment {
    * `type` vem de `TipoEquipamento` do cadastro, como o cadastro escreve. Nulo quando o
    * cadastro não conhece a série, quando ele se contradiz sobre o tipo, e quando o
    * equipamento é endereçado pelo protocolo, que não é número de série.
-   *
-   * `location` é nula sempre: o cadastro tem dez colunas e nenhuma delas é localização. O
-   * campo continua no contrato para a tela anunciar a ausência em vez de imprimir
-   * `undefined` na coluna que a HU-05 pede.
    */
   readonly type: string | null;
-  readonly location: string | null;
   readonly company: string;
   readonly identification: string;
   readonly reportCount: number;

@@ -5,6 +5,7 @@ import {
   DestroyRef,
   inject,
   input,
+  model,
   signal,
 } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
@@ -12,7 +13,13 @@ import { MatIconModule } from '@angular/material/icon';
 import { finalize } from 'rxjs';
 
 import { readableDate } from '@shared/brazilian-date';
-import { DataUnavailableComponent } from '@shared/components/data-unavailable/data-unavailable.component';
+import { DataTableActionsDirective } from '@shared/components/data-table/data-table-actions.directive';
+import { DataTableComponent } from '@shared/components/data-table/data-table.component';
+import {
+  unmeasuredQuery,
+  type DataTableColumn,
+  type DataTableQuery,
+} from '@shared/components/data-table/data-table.model';
 import { handFileToTheBrowser } from '@shared/file-download';
 
 import type { Report } from '@/app/model/report';
@@ -46,71 +53,63 @@ function reportRow(report: Report): ReportRow {
     status: report.status ?? NOT_REPORTED,
     publishedOn: published ? readableDate(published) : NOT_REPORTED,
     pdfAvailable: report.pdfAvailable ?? report.hasSignedDocument,
-    laboratory: report.laboratory ?? null,
+    laboratory: report.laboratory?.trim() || null,
     fileName: `relatorio-${(report.identification ?? report.id).replace(/[^\w.-]+/g, '-')}.pdf`,
   };
 }
 
+const COLUMNS: readonly DataTableColumn<ReportRow>[] = [
+  { key: 'identification', header: 'Relatório' },
+  { key: 'requestNumber', header: 'Solicitação' },
+  { key: 'sample', header: 'Amostra' },
+  { key: 'laboratory', header: 'Laboratório' },
+  { key: 'status', header: 'Situação' },
+  { key: 'publishedOn', header: 'Publicação' },
+];
+
 @Component({
   selector: 'app-report-table',
   standalone: true,
-  imports: [MatIconModule, DataUnavailableComponent],
+  imports: [MatIconModule, DataTableComponent, DataTableActionsDirective],
   host: { class: 'block' },
   template: `
-    <div class="overflow-hidden rounded-2xl border border-lactec-line bg-lactec-paper">
-      <div class="overflow-x-auto">
-        <table class="w-full border-collapse text-sm">
-          <caption class="sr-only">{{ caption() }}</caption>
-          <thead>
-            <tr class="bg-lactec-line-soft text-left">
-              <th scope="col" class="px-4 py-3 font-semibold text-lactec-ink">Relatório</th>
-              <th scope="col" class="px-4 py-3 font-semibold text-lactec-ink">Solicitação</th>
-              <th scope="col" class="px-4 py-3 font-semibold text-lactec-ink">Amostra</th>
-              <th scope="col" class="px-4 py-3 font-semibold text-lactec-ink">Laboratório</th>
-              <th scope="col" class="px-4 py-3 font-semibold text-lactec-ink">Situação</th>
-              <th scope="col" class="px-4 py-3 font-semibold text-lactec-ink">Publicação</th>
-              <th scope="col" class="px-4 py-3 text-right font-semibold text-lactec-ink">
-                Download
-              </th>
-            </tr>
-          </thead>
-          <tbody>
-            @for (row of rows(); track row.id) {
-              <tr class="border-t border-lactec-line-soft">
-                <td class="px-4 py-3 text-lactec-ink">{{ row.identification }}</td>
-                <td class="px-4 py-3 text-lactec-ink">{{ row.requestNumber }}</td>
-                <td class="px-4 py-3 text-lactec-ink">{{ row.sample }}</td>
-                <td class="px-4 py-3 text-lactec-ink">
-                  @if (row.laboratory) { {{ row.laboratory }} } @else { <app-data-unavailable /> }
-                </td>
-                <td class="px-4 py-3 text-lactec-ink">{{ row.status }}</td>
-                <td class="px-4 py-3 text-lactec-ink">{{ row.publishedOn }}</td>
-                <td class="px-4 py-3 text-right">
-                  <button
-                    type="button"
-                    class="inline-flex h-10 w-10 items-center justify-center rounded-lg
-                           bg-lactec-nav text-lactec-on-primary hover:bg-lactec-nav-dark
-                           disabled:opacity-40"
-                    [disabled]="!row.pdfAvailable || downloading() === row.id"
-                    [attr.aria-label]="
-                      row.pdfAvailable
-                        ? 'Baixar o relatório ' + row.identification
-                        : 'O relatório ' + row.identification + ' ainda não tem PDF disponível'
-                    "
-                    [attr.aria-busy]="downloading() === row.id ? 'true' : null"
-                    (click)="download(row)"
-                  >
-                    <mat-icon aria-hidden="true">
-                      {{ downloading() === row.id ? 'hourglass_empty' : 'download' }}
-                    </mat-icon>
-                  </button>
-                </td>
-              </tr>
-            }
-          </tbody>
-        </table>
-      </div>
-    </div>
+    <app-data-table
+      actionsHeader="Download"
+      loadingMessage="Carregando relatórios…"
+      emptyIcon="search_off"
+      [caption]="caption()"
+      [paginationLabel]="paginationLabel()"
+      [emptyTitle]="emptyTitle()"
+      [emptyDescription]="emptyDescription()"
+      [columns]="columns"
+      [rows]="rows()"
+      [trackBy]="trackById"
+      [total]="total()"
+      [loading]="loading()"
+      [minimumRows]="minimumRows()"
+      [(query)]="query"
+    >
+      <ng-template appDataTableActions [appDataTableActionsOf]="rows()" let-row>
+        <button
+          type="button"
+          class="inline-flex h-10 w-10 items-center justify-center rounded-lg
+                 bg-lactec-nav text-lactec-on-primary hover:bg-lactec-nav-dark
+                 disabled:opacity-40"
+          [disabled]="!row.pdfAvailable || downloading() === row.id"
+          [attr.aria-label]="
+            row.pdfAvailable
+              ? 'Baixar o relatório ' + row.identification
+              : 'O relatório ' + row.identification + ' ainda não tem PDF disponível'
+          "
+          [attr.aria-busy]="downloading() === row.id ? 'true' : null"
+          (click)="download(row)"
+        >
+          <mat-icon aria-hidden="true">
+            {{ downloading() === row.id ? 'hourglass_empty' : 'download' }}
+          </mat-icon>
+        </button>
+      </ng-template>
+    </app-data-table>
 
     @if (downloadFailure()) {
       <p class="mt-4 text-sm text-lactec-danger" role="alert">{{ downloadFailure() }}</p>
@@ -121,14 +120,24 @@ function reportRow(report: Report): ReportRow {
 export class ReportTableComponent {
   readonly reports = input.required<readonly Report[]>();
   readonly caption = input('Relatórios publicados.');
+  readonly paginationLabel = input('Paginação dos relatórios');
+  readonly emptyTitle = input('Nenhum relatório encontrado');
+  readonly emptyDescription = input<string>();
+  readonly total = input(0);
+  readonly loading = input(false);
+  readonly minimumRows = input(1);
+  readonly query = model<DataTableQuery>(unmeasuredQuery());
 
   private readonly reportsService = inject(ReportsService);
   private readonly destroyRef = inject(DestroyRef);
 
+  protected readonly columns = COLUMNS;
   protected readonly downloading = signal<string | null>(null);
   protected readonly downloadFailure = signal('');
 
   protected readonly rows = computed<readonly ReportRow[]>(() => this.reports().map(reportRow));
+
+  protected readonly trackById = (row: ReportRow): string => row.id;
 
   protected download(row: ReportRow): void {
     this.downloading.set(row.id);

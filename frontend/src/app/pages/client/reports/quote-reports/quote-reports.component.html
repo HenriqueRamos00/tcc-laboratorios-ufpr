@@ -26,15 +26,26 @@
     <mat-icon class="shrink-0 text-lactec-nav" aria-hidden="true">description</mat-icon>
     <div class="min-w-0">
       <h2 class="m-0 text-sm font-semibold text-lactec-ink">
-        @if (testType()) { Tipo de ensaio: {{ testType() }} } @else { <app-data-unavailable subject="Tipo de ensaio" /> }
+        @if (reportList() === null) { Tipo de ensaio }
+        @else if (testType()) { Tipo de ensaio: {{ testType() }} }
+        @else { <app-data-unavailable subject="Tipo de ensaio" /> }
       </h2>
       <p class="mt-1 mb-0 text-sm text-lactec-ink-soft">
-        @if (summary()) { Resumo da análise: {{ summary() }} } @else { <app-data-unavailable subject="Resumo da análise" /> }
+        @if (reportList() === null) { Carregando a conclusão da análise… }
+        @else if (summary()) { Resumo da análise: {{ summary() }} }
+        @else { <app-data-unavailable subject="Resumo da análise" /> }
       </p>
     </div>
   </section>
 
-  @if (reportList()?.length) {
+  @if (withoutReports()) {
+    <app-empty-state
+      class="mt-6"
+      icon="pending_actions"
+      title="Este orçamento ainda não tem relatório publicado"
+      descricao="Assim que o laudo for publicado pelo laboratório, ele aparece aqui."
+    />
+  } @else {
     <app-search-field
       class="mt-4"
       placeholder="Buscar por relatório ou solicitação"
@@ -42,36 +53,16 @@
       [(termo)]="searchTerm"
     />
 
-    @if (visibleReports().length) {
-      <app-report-table
-        class="mt-4"
-        caption="Relatórios deste orçamento, com solicitação, amostra, laboratório, situação e data."
-        [reports]="visibleReports()"
-      />
-    } @else {
-      <app-empty-state
-        class="mt-4"
-        icon="search_off"
-        title="Nenhum relatório encontrado"
-        descricao="Revise o termo informado na busca."
-      />
-    }
-
-    <app-pagination
+    <app-report-table
       class="mt-4"
-      label="Paginação dos relatórios do orçamento"
-      [page]="page()"
-      [pageSize]="pageSize"
+      caption="Relatórios deste orçamento, com solicitação, amostra, laboratório, situação e data."
+      paginationLabel="Paginação dos relatórios do orçamento"
+      emptyDescription="Revise o termo informado na busca."
+      [reports]="visibleReports()"
       [total]="total()"
-      [disabled]="reportsLoading()"
-      (pageChange)="goToPage($event)"
-    />
-  } @else {
-    <app-empty-state
-      class="mt-6"
-      icon="pending_actions"
-      title="Este orçamento ainda não tem relatório publicado"
-      descricao="Assim que o laudo for publicado pelo laboratório, ele aparece aqui."
+      [loading]="reportsLoading()"
+      [minimumRows]="5"
+      [(query)]="query"
     />
   }
 }

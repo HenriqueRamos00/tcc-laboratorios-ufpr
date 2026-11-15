@@ -3,7 +3,13 @@
 // listagem de orçamentos e a tela de relatórios leem a mesma situação, então
 // etapa reconhecida de um jeito numa e de outro jeito na outra seria defeito.
 
-import { isClosed, stageIndex, type RequestStatus } from './analysis-pipeline';
+import {
+  isClosed,
+  isPipelineStage,
+  stageIndex,
+  type PipelineStage,
+  type RequestStatus,
+} from './analysis-pipeline';
 import type { Quote } from './quote';
 
 /** Um orçamento já resolvido para a tela: rótulo pronto, valor e data legíveis. */
@@ -116,6 +122,19 @@ export function recognizeStage(rawStage: string): RequestStatus {
   return 'qualificacao';
 }
 
+function recognizeLaboratoryStage(wireName: string | null | undefined): PipelineStage | null {
+  const key = wireName?.trim() ?? '';
+  return isPipelineStage(key) ? key : null;
+}
+
+export function stageOfQuote(quote: Pick<Quote, 'stage' | 'laboratoryStage'>): RequestStatus {
+  const commercial = recognizeStage(quote.stage ?? '');
+  if (isClosed(commercial)) return commercial;
+
+  const laboratory = recognizeLaboratoryStage(quote.laboratoryStage);
+  return laboratory && stageIndex(laboratory) > stageIndex(commercial) ? laboratory : commercial;
+}
+
 // O Salesforce manda ISO 8601 com offset: 2026-03-13T13:16:07.000+0000.
 function readableCreatedDate(createdDate: string | null): string {
   if (!createdDate) return FIELD_PLACEHOLDER;
@@ -132,7 +151,7 @@ function resolveExternalContact(quote: Quote): string {
 // Sem fallbacks inventados: o protocolo fica ausente quando a fonte não o envia.
 export function toDisplayedQuote(quote: Quote): DisplayedQuote {
   const hasValue = typeof quote.totalPrice === 'number' && quote.totalPrice > 0;
-  const status = recognizeStage(quote.stage ?? '');
+  const status = stageOfQuote(quote);
 
   return {
     id: quote.id?.trim() || '',
@@ -168,8 +187,16 @@ export function withSessionDecision(
   quote: DisplayedQuote,
   decided: RequestStatus | undefined,
 ): DisplayedQuote {
-  if (!decided || decided === quote.status) return quote;
-  return { ...quote, status: decided, hasProposal: hasProposal(decided) };
+  const status = statusAfterDecision(quote.status, decided);
+  return status === quote.status ? quote : { ...quote, status, hasProposal: hasProposal(status) };
+}
+
+export function statusAfterDecision(
+  loaded: RequestStatus,
+  decided: RequestStatus | undefined,
+): RequestStatus {
+  if (!decided || isClosed(decided) || isClosed(loaded)) return decided ?? loaded;
+  return stageIndex(loaded) > stageIndex(decided) ? loaded : decided;
 }
 
 export function badgeFor(status: RequestStatus): StatusBadge {

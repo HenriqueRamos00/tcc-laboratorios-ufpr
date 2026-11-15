@@ -6,7 +6,8 @@ namespace Portal.Tests.Quotes;
 
 /// <summary>
 /// A regra de correlacao entre a cotacao do Salesforce e o <c>OrcamentoCRM</c> do AutoLAB.
-/// Tres formas viram a chave nua; qualquer outra nao vira chave nenhuma.
+/// A sigla da area e a versao sao opcionais e ficam de fora da chave nua; qualquer outra
+/// forma nao vira chave nenhuma.
 /// </summary>
 public sealed class LaboratoryQuoteKeyTests
 {
@@ -17,7 +18,15 @@ public sealed class LaboratoryQuoteKeyTests
     [InlineData("2024_37569", "2024_37569")]
     [InlineData(" EAQ_2024_37569_V_1 ", "2024_37569")]
     [InlineData("EAQ_2026_45482_V_1", "2026_45482")]
-    public void AsTresFormasAceitasViramAChaveNua(string quotationCode, string expected)
+    [InlineData("SET_2026_47711_V_1", "2026_47711")]
+    [InlineData("SET_2026_47711", "2026_47711")]
+    [InlineData("PED_2025_1205_V_3", "2025_1205")]
+    [InlineData("EAQ_2026_1205_V1", "2026_1205")]
+    [InlineData("SET_2026_47711_V12", "2026_47711")]
+    [InlineData("2026_47711_V1", "2026_47711")]
+    [InlineData("2026_47711_V_1", "2026_47711")]
+    [InlineData(" SET_2026_47711_V1 ", "2026_47711")]
+    public void ASiglaDaAreaEAVersaoFicamDeForaDaChaveNua(string quotationCode, string expected)
     {
         Assert.Equal(expected, LaboratoryQuoteKey.FromQuotationCode(quotationCode)?.Value);
     }
@@ -37,6 +46,23 @@ public sealed class LaboratoryQuoteKeyTests
     [InlineData("EAQ_2024_37569' OR 1=1")]
     [InlineData("ORC-52")]
     [InlineData("EAQ_٢٠٢٤_37569_V_1")]
+    [InlineData("set_2026_47711_V_1")]
+    [InlineData("Set_2026_47711_V_1")]
+    [InlineData("SET_2026_47711_v1")]
+    [InlineData("SET_2026_47711_V")]
+    [InlineData("SET_2026_47711_V1_extra")]
+    [InlineData("SET_2026_47711_V__1")]
+    [InlineData("SET_2026_47711V1")]
+    [InlineData("SET_2026_47711_1")]
+    [InlineData("SET 2026_47711")]
+    [InlineData("SET-2026_47711")]
+    [InlineData("SET2026_47711")]
+    [InlineData("_2026_47711")]
+    [InlineData("S_2026_47711")]
+    [InlineData("S3T_2026_47711")]
+    [InlineData("SET_EAQ_2026_47711")]
+    [InlineData("ABCDEFGHIJK_2026_47711")]
+    [InlineData("ÁREA_2026_47711")]
     public void QualquerOutraFormaNaoProduzChave(string? quotationCode)
     {
         Assert.Null(LaboratoryQuoteKey.FromQuotationCode(quotationCode));

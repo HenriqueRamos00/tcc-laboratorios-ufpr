@@ -1,5 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 
+using Portal.Application.LabResults;
 using Portal.Application.Visibility;
 
 namespace Portal.Adapters.AutoLab;
@@ -12,21 +13,31 @@ public static class AutoLabQueries
 
     public static IQueryable<string> EquipmentKeys(
         AutoLabDbContext database,
-        VisibilityScope scope)
+        VisibilityScope scope,
+        EquipmentSearch? search)
     {
-        return TestRowsIn(database, scope)
-            .GroupBy(row => string.IsNullOrWhiteSpace(row.NumSerie)
-                ? EF.Functions.Collate(row.ProtocoloLactec!.Trim(), OrdinalCollation)
-                : EF.Functions.Collate(row.NumSerie!.Trim(), OrdinalCollation))
-            .Where(equipment => equipment.Key != null)
-            .Select(equipment => new
+        IQueryable<MarkedTestRow> rows = search is null
+            ? TestRowsIn(database, scope).Select(row => new MarkedTestRow { Row = row, Matches = 1 })
+            : RowsMarkedBySearch(database, TestRowsIn(database, scope), LikePattern.Containing(search.Term));
+
+        IQueryable<IGrouping<string, MarkedTestRow>> equipment = rows
+            .GroupBy(marked => string.IsNullOrWhiteSpace(marked.Row.NumSerie)
+                ? EF.Functions.Collate(marked.Row.ProtocoloLactec!.Trim(), OrdinalCollation)
+                : EF.Functions.Collate(marked.Row.NumSerie!.Trim(), OrdinalCollation))
+            .Where(found => found.Key != null);
+
+        if (search is not null)
+            equipment = equipment.Where(found => found.Max(marked => marked.Matches) == 1);
+
+        return equipment
+            .Select(found => new
             {
-                Key = equipment.Key!,
-                Latest = equipment.Max(row => row.DataFinalAnalise)
+                Key = found.Key!,
+                Latest = found.Max(marked => marked.Row.DataFinalAnalise)
             })
-            .OrderByDescending(equipment => equipment.Latest)
-            .ThenBy(equipment => equipment.Key)
-            .Select(equipment => equipment.Key);
+            .OrderByDescending(found => found.Latest)
+            .ThenBy(found => found.Key)
+            .Select(found => found.Key);
     }
 
     public static IQueryable<VwDadosEnsaiosRecord> RowsOfEquipmentKeys(
@@ -203,6 +214,50 @@ public static class AutoLabQueries
             ? database.DadosEnsaios.Where(row =>
                 EF.Functions.Collate(row.EmpresaTrafo!.Trim(), CaseInsensitiveCollation) == company)
             : database.DadosEnsaios;
+    }
+
+    private static IQueryable<MarkedTestRow> RowsMarkedBySearch(
+        AutoLabDbContext database,
+        IQueryable<VwDadosEnsaiosRecord> rows,
+        string pattern)
+    {
+        IQueryable<string> serialNumbersWithMatchingTag = database.Equipamentos
+            .Where(registered => !string.IsNullOrWhiteSpace(registered.NumSerie)
+                && EF.Functions.Like(
+                    EF.Functions.Collate(registered.Tag!, CaseInsensitiveCollation),
+                    pattern,
+                    LikePattern.EscapeCharacter))
+            .Select(registered => EF.Functions.Collate(registered.NumSerie!.Trim(), OrdinalCollation))
+            .Distinct();
+
+        return rows
+            .LeftJoin(
+                serialNumbersWithMatchingTag,
+                row => EF.Functions.Collate(row.NumSerie!.Trim(), OrdinalCollation),
+                serialNumber => serialNumber,
+                (row, serialNumber) => new { Row = row, SerialNumberWithMatchingTag = serialNumber })
+            .Select(found => new MarkedTestRow
+            {
+                Row = found.Row,
+                Matches = found.SerialNumberWithMatchingTag != null
+                    || EF.Functions.Like(
+                        EF.Functions.Collate(found.Row.NumSerie!, CaseInsensitiveCollation),
+                        pattern,
+                        LikePattern.EscapeCharacter)
+                    || EF.Functions.Like(
+                        EF.Functions.Collate(found.Row.Identificacao!, CaseInsensitiveCollation),
+                        pattern,
+                        LikePattern.EscapeCharacter)
+                        ? 1
+                        : 0
+            });
+    }
+
+    private sealed class MarkedTestRow
+    {
+        public required VwDadosEnsaiosRecord Row { get; init; }
+
+        public required int Matches { get; init; }
     }
 
     private static IQueryable<RelatorioEmissaoRecord> SignedIssues(AutoLabDbContext database)

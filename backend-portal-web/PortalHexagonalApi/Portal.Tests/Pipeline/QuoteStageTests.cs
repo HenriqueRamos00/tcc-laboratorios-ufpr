@@ -99,7 +99,7 @@ public sealed class QuoteStageTests
 
     /// <summary>
     /// O vinculo e o codigo da cotacao, e nunca o codigo publico (no Salesforce, o da
-    /// oportunidade). As tres formas aceitas chegam ao laboratorio na forma nua, e a etapa
+    /// oportunidade). As formas aceitas chegam ao laboratorio na forma nua, e a etapa
     /// que volta e devolvida ao orcamento pela mesma chave.
     /// </summary>
     [Theory]
@@ -108,6 +108,8 @@ public sealed class QuoteStageTests
     [InlineData("EAQ_2024_37569")]
     [InlineData("2024_37569")]
     [InlineData(" EAQ_2024_37569_V_1 ")]
+    [InlineData("SET_2024_37569_V_1")]
+    [InlineData("SET_2024_37569_V1")]
     public async Task TheLaboratoryIsAskedByTheKeyOfTheQuotationCode(string quotationCode)
     {
         InMemoryLaboratoryProgressRepository laboratory = new(

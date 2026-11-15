@@ -107,6 +107,61 @@ function rotuloDaEtapa(status: RequestStatus): string {
   return stage.label;
 }
 
+describe('QuoteListComponent, etapa do laboratório', () => {
+  const COM_LABORATORIO: ReadonlyArray<Quote> = [
+    { ...orcamentoComEtapa(1, 'Aprovado pelo cliente'), laboratoryStage: 'em-execucao' },
+    { ...orcamentoComEtapa(2, 'Aprovado pelo cliente'), laboratoryStage: 'relatorio-publicado' },
+    { ...orcamentoComEtapa(3, 'Fechado perdido'), laboratoryStage: 'relatorio-publicado' },
+    { ...orcamentoComEtapa(4, 'Aprovado pelo cliente'), laboratoryStage: 'in-progress' },
+    { ...orcamentoComEtapa(5, 'Aprovado pelo cliente'), laboratoryStage: null },
+    { ...orcamentoComEtapa(6, 'Em execução'), laboratoryStage: 'protocolado' },
+  ];
+
+  it('a situação do cartão é a do laboratório quando ele está à frente da etapa comercial', () => {
+    const { componente } = montarListagem(COM_LABORATORIO);
+
+    expect(componente.quotes().map((quote) => quote.status)).toEqual([
+      'em-execucao',
+      'relatorio-publicado',
+      'cancelado',
+      'aprovado-pelo-cliente',
+      'aprovado-pelo-cliente',
+      'em-execucao',
+    ]);
+  });
+
+  it('o cartão mostra o rótulo da etapa do laboratório', () => {
+    const { fixture } = montarListagem(COM_LABORATORIO.slice(0, 1));
+
+    const rotulos = Array.from(
+      (fixture.nativeElement as HTMLElement).querySelectorAll('.quote-status-pill'),
+    ).map((rotulo) => rotulo.textContent?.trim());
+
+    expect(rotulos).toEqual(['Em Execução']);
+  });
+
+  it('laudo publicado pelo laboratório põe o orçamento em finalizados e leva aos relatórios', () => {
+    const { componente, destinos } = montarListagem(COM_LABORATORIO);
+
+    componente.setFilter('finalizados');
+    const finalizados = componente.visibleQuotes();
+    componente.checkStatus(finalizados[0]);
+
+    expect(finalizados.map((quote) => quote.id)).toEqual(['quote-2']);
+    expect(destinos).toEqual([['/cliente/relatorios', 'quote-2']]);
+  });
+
+  it('o modal de status abre na etapa do laboratório', () => {
+    const { componente, dadosAbertos } = montarListagem(COM_LABORATORIO);
+
+    componente.checkStatus(componente.quotes()[0]);
+
+    expect(dadosAbertos[0].steps[dadosAbertos[0].currentIndex].label).toBe(
+      rotuloDaEtapa('em-execucao'),
+    );
+  });
+});
+
 describe('QuoteListComponent, reconhecimento da etapa', () => {
   it('cada nome de etapa do AutoLAB vira a sua própria situação', () => {
     const { componente } = montarListagem();

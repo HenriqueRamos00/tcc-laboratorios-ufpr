@@ -30,6 +30,20 @@ public sealed class ReportsContractTests : IClassFixture<RunningPortal>
     }
 
     [Fact]
+    public async Task TheSampleAndTheLaboratoryTravelEachInItsOwnField()
+    {
+        JsonArray reports = await ListAsync("/api/reports");
+
+        Assert.All(reports, report =>
+        {
+            Assert.StartsWith("AM-", (string?)report!["sampleId"], StringComparison.Ordinal);
+            Assert.Equal((string?)report["sampleId"], (string?)report["sample"]);
+            Assert.Null(report["sampleName"]);
+            Assert.Equal("Óleos", (string?)report["laboratory"]);
+        });
+    }
+
+    [Fact]
     public async Task TheCompanyScopeOnlyListsTheReportsOfTheCompanyMostRecentlyPublishedFirst()
     {
         HttpResponseMessage response = await _portal.CreateClient().GetAsync("/api/reports");

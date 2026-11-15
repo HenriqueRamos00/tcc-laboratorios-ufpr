@@ -32,7 +32,7 @@ public sealed class AutoLabEquipmentKeyAgreementTests : IDisposable
         AutoLabLabTestRepository repository = Repository();
 
         Page<SampleAnalysis> listing = await repository.GetAnalysesAsync(
-            VisibilityScope.OfCompany(Tenant), PageRequest.First, CancellationToken.None);
+            VisibilityScope.OfCompany(Tenant), null, PageRequest.First, CancellationToken.None);
 
         string listedKey = Assert.Single(listing.Items).EquipmentKey;
 
@@ -54,7 +54,7 @@ public sealed class AutoLabEquipmentKeyAgreementTests : IDisposable
         AutoLabLabTestRepository repository = Repository();
 
         Page<SampleAnalysis> listing = await repository.GetAnalysesAsync(
-            VisibilityScope.OfCompany(Tenant), PageRequest.First, CancellationToken.None);
+            VisibilityScope.OfCompany(Tenant), null, PageRequest.First, CancellationToken.None);
 
         string listedKey = Assert.Single(listing.Items).EquipmentKey;
 
