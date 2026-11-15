@@ -139,6 +139,7 @@ export class EnsaioFormComponent {
   });
 
   readonly sampleSearch = new FormControl('', { nonNullable: true });
+  readonly instrumentSearch = new FormControl('', { nonNullable: true });
   readonly selectedQuote = signal<QuoteReference | null>(null);
   readonly samples = signal<SampleReference[]>([]);
   readonly samplePage = signal(1);
@@ -245,6 +246,28 @@ export class EnsaioFormComponent {
     const known = this.detail()?.equipment ?? [];
     const present = new Set(this.instruments().map((item) => item.id));
     return [...known.filter((item) => !present.has(item.id)), ...this.instruments()];
+  }
+
+  get filteredInstrumentOptions(): InstrumentReference[] {
+    const query = this.normalizeInstrumentSearch(this.instrumentSearch.value);
+    if (!query) return this.instrumentOptions;
+
+    return this.instrumentOptions.filter((instrument) =>
+      this.normalizeInstrumentSearch([
+        instrument.inventoryNumber,
+        instrument.name,
+        instrument.calibrationCertificate,
+      ].filter(Boolean).join(' ')).includes(query),
+    );
+  }
+
+  get selectedInstruments(): InstrumentReference[] {
+    const selectedIds = new Set(this.form.controls.equipmentIds.value ?? []);
+    return this.instrumentOptions.filter((instrument) => selectedIds.has(instrument.id));
+  }
+
+  private normalizeInstrumentSearch(value: string): string {
+    return value.trim().toLocaleLowerCase('pt-BR').normalize('NFD').replace(/[\u0300-\u036f]/g, '');
   }
 
   get selectedQuoteLabel(): string {
@@ -606,7 +629,7 @@ export class EnsaioFormComponent {
     if (this.identificationMode() === 'new' && (code || description)) {
       this.confirmDiscard(
         'Trocar o orçamento?',
-        'A identificação nova e o equipamento analisado ainda não salvos serão descartados. Deseja continuar?',
+        'A nova amostra e o equipamento analisado ainda não salvos serão descartados. Deseja continuar?',
         () => this.applyQuote(quote),
       );
       return;
@@ -652,7 +675,7 @@ export class EnsaioFormComponent {
     const description = this.form.controls.newSampleDescription.value.trim();
     if (this.identificationMode() === 'new' && (code || description)) {
       this.confirmDiscard(
-        'Descartar a identificação nova?',
+        'Descartar a nova amostra?',
         'O código, a descrição e o equipamento analisado ainda não salvos serão descartados.',
         () => this.applyExistingMode(),
       );
@@ -685,7 +708,7 @@ export class EnsaioFormComponent {
       equipment: this.identificationMode() === 'new' ? this.currentAnalyzedEquipment() : null,
     };
     this.dialog.openLateral<NovaAmostraDialogComponent, NovaAmostraDialogData, NovaAmostraDialogResult>(
-      NovaAmostraDialogComponent, data, 'Nova identificação de amostra',
+      NovaAmostraDialogComponent, data, 'Cadastrar amostra',
     ).afterClosed().pipe(takeUntilDestroyed(this.destroyRef)).subscribe((result) => {
       if (!result) return;
       if ('sample' in result) {
@@ -839,7 +862,7 @@ export class EnsaioFormComponent {
         this.form.invalid || this.measurements.invalid ||
         this.techniciansLoading() || this.techniciansError() ||
         !this.form.controls.responsibleId.value || this.measurements.length > 100) {
-      this.saveError.set('Revise o orçamento, confirme a identificação e confira os campos obrigatórios.');
+      this.saveError.set('Revise o orçamento, confirme a amostra e confira os campos obrigatórios.');
       this.saveSuccess.set(false);
       this.focusFirstInvalidField();
       return;

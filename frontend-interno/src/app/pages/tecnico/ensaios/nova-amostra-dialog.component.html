@@ -1,7 +1,7 @@
-<app-dialog-shell title="Nova identificação de amostra" [subtitle]="data.quote.code + ' - ' + data.quote.companyName" [lateral]="true">
+<app-dialog-shell title="Cadastrar amostra" [subtitle]="data.quote.code + ' - ' + data.quote.companyName" [lateral]="true">
   <p class="m-0 text-sm text-lactec-muted">A amostra será cadastrada somente ao salvar o ensaio.</p>
   <form id="nova-amostra-form" [formGroup]="form" (ngSubmit)="confirm()" class="grid min-w-0 gap-4" novalidate>
-    <app-reference-search fieldId="new-sample-code" label="Código de identificação" placeholder="Ex.: A-1409/2026"
+    <app-reference-search fieldId="new-sample-code" label="Código da amostra" placeholder="Ex.: A-1409/2026"
       [control]="form.controls.code" [options]="sampleOptions" [loading]="sampleLoading()" [error]="sampleError()"
       [page]="samplePage()" [pages]="samplePages" [maxlength]="80" [monospace]="true" [openOnInput]="false"
       (pageChanged)="setSamplePage($event)" (retry)="retrySamples()" (selected)="selectSample($event)"
@@ -27,6 +27,6 @@
   </form>
   <div dialog-footer class="flex flex-wrap justify-end gap-3">
     <button mat-button type="button" (click)="dialogRef.close()">Cancelar</button>
-    <button mat-flat-button type="submit" form="nova-amostra-form" [disabled]="!canConfirm">Usar esta identificação</button>
+    <button mat-flat-button type="submit" form="nova-amostra-form" [disabled]="!canConfirm">Usar no ensaio</button>
   </div>
 </app-dialog-shell>

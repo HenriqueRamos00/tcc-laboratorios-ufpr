@@ -49,39 +49,6 @@ h1, h2, h3 {
   padding: 12px 0;
 }
 
-.identification-switch {
-  display: inline-flex;
-  max-width: 100%;
-  padding: 4px;
-  gap: 4px;
-  border: 1px solid var(--color-lactec-line);
-  border-radius: 10px;
-  background: var(--color-lactec-surface);
-}
-
-.identification-switch button {
-  padding: 8px 12px;
-  border-radius: 6px;
-  font-size: 14px;
-  color: var(--color-lactec-muted);
-}
-
-.identification-switch button[aria-pressed="true"] {
-  background: var(--color-lactec-paper);
-  color: var(--color-lactec-primary-dark);
-  box-shadow: 0 1px 3px rgb(11 34 48 / 12%);
-  font-weight: 600;
-}
-
-.identification-switch button:focus-visible {
-  outline: 2px solid var(--color-lactec-primary);
-  outline-offset: 1px;
-}
-
-.identification-switch button:disabled {
-  opacity: 0.6;
-}
-
 .field-label {
   display: block;
   min-width: 0;
@@ -155,14 +122,6 @@ td textarea {
 @media (max-width: 767px) {
   .ensaio-section {
     padding: 20px 16px;
-  }
-  .identification-switch {
-    display: flex;
-  }
-  .identification-switch button {
-    flex: 1;
-    padding: 8px;
-    font-size: 13px;
   }
 }
 

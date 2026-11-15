@@ -135,7 +135,7 @@ describe('Formulário de ensaio', () => {
     expect(service.update).not.toHaveBeenCalled();
   });
 
-  it('recebe a nova identificação do drawer sem persistir a amostra ou o ensaio', () => {
+  it('recebe a nova amostra do drawer sem persistir a amostra ou o ensaio', () => {
     prepareExistingSample();
     const newSample = { quoteId: quote.id, code: 'A-NOVA', description: 'Óleo novo', analyzedEquipmentId: analyzedEquipment.id };
     dialog.openLateral.and.returnValue({ afterClosed: () => of({ newSample, equipment: analyzedEquipment }) } as never);
@@ -171,7 +171,56 @@ describe('Formulário de ensaio', () => {
     expect(service.create).not.toHaveBeenCalled();
   });
 
-  it('confirma a troca de orçamento antes de descartar a identificação nova', () => {
+  it('filtra instrumentos por patrimônio, nome e certificado sem diferenciar acentos', () => {
+    component.instruments.set([
+      { id: '1', inventoryNumber: 'INS-001', name: 'Balança analítica', calibrationCertificate: 'CAL-2026', calibrationValidUntil: '2026-12-31' },
+      { id: '2', inventoryNumber: 'INS-002', name: 'Cromatógrafo', calibrationCertificate: null, calibrationValidUntil: null },
+    ]);
+    fixture.detectChanges();
+
+    const host = fixture.nativeElement as HTMLElement;
+    const search = host.querySelector<HTMLInputElement>('#instrument-search')!;
+    const searchFor = (value: string) => {
+      search.value = value;
+      search.dispatchEvent(new Event('input'));
+      fixture.detectChanges();
+    };
+    searchFor('balanca');
+    expect(host.querySelectorAll('.instrument-option').length).toBe(1);
+    expect(host.querySelector('#instrument-list')?.textContent).toContain('INS-001');
+    expect(host.querySelector('#instrument-list')?.textContent).not.toContain('INS-002');
+
+    searchFor('CAL-2026');
+    expect(host.querySelectorAll('.instrument-option').length).toBe(1);
+    expect(host.querySelector('#instrument-list')?.textContent).toContain('INS-001');
+
+    searchFor('inexistente');
+    expect(host.querySelectorAll('.instrument-option').length).toBe(0);
+    expect(host.textContent).toContain('Nenhum instrumento corresponde à pesquisa.');
+  });
+
+  it('mostra a seleção como chips e permite remover um instrumento', () => {
+    component.instruments.set([
+      { id: '1', inventoryNumber: 'INS-001', name: 'Balança analítica', calibrationCertificate: null, calibrationValidUntil: null },
+      { id: '2', inventoryNumber: 'INS-002', name: 'Cromatógrafo', calibrationCertificate: null, calibrationValidUntil: null },
+    ]);
+    component.form.controls.equipmentIds.setValue(['1', '2']);
+    fixture.detectChanges();
+
+    const host = fixture.nativeElement as HTMLElement;
+    expect(host.textContent).toContain('2 instrumentos selecionados');
+    const remove = host.querySelector<HTMLButtonElement>(
+      'button[aria-label="Remover INS-001 da seleção"]',
+    )!;
+    remove.click();
+    fixture.detectChanges();
+
+    expect(component.form.controls.equipmentIds.value).toEqual(['2']);
+    expect(host.textContent).toContain('1 instrumento selecionado');
+    expect(host.querySelector('button[aria-label="Remover INS-001 da seleção"]')).toBeNull();
+  });
+
+  it('confirma a troca de orçamento antes de descartar a nova amostra', () => {
     prepareNewSample();
     const otherQuote = { ...quote, id: '99' };
     dialog.openLateral.and.returnValue({ afterClosed: () => of(otherQuote) } as never);
@@ -395,13 +444,13 @@ describe('Formulário de ensaio', () => {
     }));
   });
 
-  it('exige confirmação explícita antes de enviar uma identificação nova', () => {
+  it('exige confirmação explícita antes de enviar uma amostra nova', () => {
     prepareNewSample();
     component.confirmedNewSampleCode.set(null);
     component.save();
 
     expect(service.create).not.toHaveBeenCalled();
-    expect(component.saveError()).toContain('confirme a identificação');
+    expect(component.saveError()).toContain('confirme a amostra');
   });
 
   it('bloqueia os campos durante o envio e libera após a confirmação do servidor', () => {
