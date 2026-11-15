@@ -78,8 +78,9 @@ public class EnsaioController {
 
     @GetMapping
     public EnsaioDtos.Pagina<EnsaioDtos.Resumo> listar(@RequestParam(required=false) String search,
-            @RequestParam(defaultValue="1") int page, @RequestParam(defaultValue="20") int pageSize) {
-        return listarEnsaios.executar(search, page, pageSize);
+            @RequestParam(defaultValue="1") int page, @RequestParam(defaultValue="20") int pageSize,
+            @RequestParam(required=false) Long quoteId) {
+        return listarEnsaios.executar(search, page, pageSize, quoteId);
     }
 
     @GetMapping("/{id}")

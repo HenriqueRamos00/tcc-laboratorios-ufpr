@@ -3,12 +3,14 @@ using Microsoft.AspNetCore.Mvc;
 using Portal.Api.LabResults;
 using Portal.Api.Nameplate;
 using Portal.Api.ReportDocuments;
+using Portal.Api.Configuration;
 using Portal.Application.LabResults.Exceptions;
 using Portal.Application.Nameplate.Exceptions;
 using Portal.Application.LabResults;
 using Portal.Application.Paging;
 using Portal.Application.ReportDocuments;
 using Portal.Application.ReportDocuments.Exceptions;
+using Portal.Application.Reports.Exceptions;
 using Portal.Application.Visibility;
 using Portal.Domain.LabResults;
 using Portal.Domain.Nameplate;
@@ -25,17 +27,23 @@ namespace Portal.Api.Controllers;
 public sealed class EquipmentController : ControllerBase
 {
     private readonly IForConsultingLabResults _labResults;
+    private readonly IForConsultingClientLabResults _clientResults;
     private readonly IForDownloadingSignedReports _signedReports;
     private readonly LabResultsOptions _labResultsOptions;
+    private readonly PortalOptions _portalOptions;
 
     public EquipmentController(
         IForConsultingLabResults labResults,
+        IForConsultingClientLabResults clientResults,
         IForDownloadingSignedReports signedReports,
-        LabResultsOptions labResultsOptions)
+        LabResultsOptions labResultsOptions,
+        PortalOptions portalOptions)
     {
         _labResults = labResults;
+        _clientResults = clientResults;
         _signedReports = signedReports;
         _labResultsOptions = labResultsOptions;
+        _portalOptions = portalOptions;
     }
 
     [HttpGet]
@@ -48,6 +56,15 @@ public sealed class EquipmentController : ControllerBase
     {
         if (!paging.TryToRequest(out PageRequest request))
             return Task.FromResult(this.InvalidPage());
+
+        if (UsesClientBackend)
+            return AnswerClientAsync(async () =>
+            {
+                Page<ClientEquipment> page = await _clientResults
+                    .ListEquipmentAsync(request, cancellationToken);
+                PageQuery.WriteHeaders(Response, page);
+                return Ok(page.Items.Select(ClientEquipmentResponseMapper.Listing));
+            });
 
         return AnswerAsync(async scope =>
         {
@@ -65,6 +82,19 @@ public sealed class EquipmentController : ControllerBase
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     public Task<IActionResult> Get(string id, CancellationToken cancellationToken)
     {
+        if (UsesClientBackend)
+            return AnswerClientAsync(async () =>
+            {
+                if (!OpaqueIdentifier.TryDecode(id, out string equipmentId))
+                    return this.UnreadableEquipmentIdentifier();
+
+                ClientEquipment? equipment = await _clientResults
+                    .GetEquipmentAsync(equipmentId, cancellationToken);
+                return equipment is null
+                    ? this.EquipmentWithoutAnalysis()
+                    : Ok(ClientEquipmentResponseMapper.Detail(equipment));
+            });
+
         return AnswerAboutOneAsync(id, cancellationToken, found =>
         {
             TestedEquipment equipment = found.Equipment;
@@ -105,6 +135,20 @@ public sealed class EquipmentController : ControllerBase
         if (!paging.TryToRequest(out PageRequest request))
             return Task.FromResult(this.InvalidPage());
 
+        if (UsesClientBackend)
+            return AnswerClientAsync(async () =>
+            {
+                if (!OpaqueIdentifier.TryDecode(id, out string equipmentId))
+                    return this.UnreadableEquipmentIdentifier();
+
+                Page<ClientAnalysis>? page = await _clientResults
+                    .ListAnalysesOfEquipmentAsync(equipmentId, request, cancellationToken);
+                if (page is null) return this.EquipmentWithoutAnalysis();
+
+                PageQuery.WriteHeaders(Response, page);
+                return Ok(page.Items.Select(MapClientReport));
+            });
+
         return AnswerAsync(async scope =>
         {
             if (!OpaqueIdentifier.TryDecode(id, out string equipmentKey))
@@ -132,7 +176,8 @@ public sealed class EquipmentController : ControllerBase
                 Date = WireDate.From(entry.Report.AnalysisEndDate),
                 AnalysisType = entry.Report.AnalysisType,
                 Status = entry.Report.Status,
-                HasSignedDocument = entry.HasSignedDocument
+                HasSignedDocument = entry.HasSignedDocument,
+                PdfAvailable = entry.HasSignedDocument
             }));
         });
     }
@@ -147,6 +192,23 @@ public sealed class EquipmentController : ControllerBase
         string reportId,
         CancellationToken cancellationToken)
     {
+        if (UsesClientBackend)
+            return AnswerClientAsync(async () =>
+            {
+                if (!OpaqueIdentifier.TryDecode(id, out string equipmentId))
+                    return this.UnreadableEquipmentIdentifier();
+
+                if (!OpaqueIdentifier.TryDecode(reportId, out string publishedReportId))
+                    return this.UnreadableReportIdentifier();
+
+                Stream? content = await _clientResults.GetReportFileAsync(
+                    equipmentId, publishedReportId, cancellationToken);
+                if (content is null) return this.ReportDocumentNotFound();
+
+                Response.Headers.CacheControl = "no-store";
+                return File(content, "application/pdf", "relatorio.pdf", enableRangeProcessing: true);
+            });
+
         return AnswerAsync(async scope =>
         {
             if (!OpaqueIdentifier.TryDecode(id, out string equipmentKey))
@@ -195,6 +257,51 @@ public sealed class EquipmentController : ControllerBase
         {
             return this.LabTestSourceUnavailable();
         }
+    }
+
+    private bool UsesClientBackend =>
+        _portalOptions.DataSource == PortalOptions.BackendLabSource
+        && _labResultsOptions.Source == LabResultsOptions.BackendLabSource;
+
+    private async Task<IActionResult> AnswerClientAsync(Func<Task<IActionResult>> answer)
+    {
+        try { return await answer(); }
+        catch (ClientLabAuthenticationRequiredException) { return AuthenticationRequired(); }
+        catch (ClientLabAccessForbiddenException) { return this.ReportAccessForbidden(); }
+        catch (ClientLabRequestRejectedException) { return this.ClientLabRequestRejected(); }
+        catch (ClientLabSourceUnavailableException) { return this.LabTestSourceUnavailable(); }
+        catch (ReportAuthenticationRequiredException) { return AuthenticationRequired(); }
+        catch (ReportAccessForbiddenException) { return this.ReportAccessForbidden(); }
+        catch (ReportSourceUnavailableException) { return this.ReportSourceUnavailable(); }
+    }
+
+    private IActionResult AuthenticationRequired()
+    {
+        Response.Headers.WWWAuthenticate = "Bearer";
+        return this.ReportAuthenticationRequired();
+    }
+
+    private static EquipmentReportResponse MapClientReport(ClientAnalysis analysis)
+    {
+        ReportAnalysisType type = analysis.AnalysisType switch
+        {
+            "physical-chemical" => ReportAnalysisType.PhysicalChemical,
+            "chromatography" => ReportAnalysisType.Chromatography,
+            _ => ReportAnalysisType.Other
+        };
+
+        // A linha documental representa a publicação liberada. A data continua sendo
+        // publicadaEm, não a conclusão efetiva do ensaio nem uma etapa comercial.
+        return new EquipmentReportResponse
+        {
+            Id = OpaqueIdentifier.Encode(analysis.ReportId),
+            Date = ClientEquipmentResponseMapper.AnalysisDate(analysis),
+            AnalysisType = type,
+            AnalysisTypeCode = analysis.AnalysisType,
+            Status = ReportStatus.Completed,
+            HasSignedDocument = false,
+            PdfAvailable = analysis.PdfAvailable
+        };
     }
 
     /// <summary>

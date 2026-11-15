@@ -77,7 +77,7 @@ function historyRow(report: EquipmentReport): HistoryRow {
     analysisType: ANALYSIS_TYPE_LABEL[report.analysisType],
     status: REPORT_STATUS_LABEL[report.status],
     tab: TAB_BY_ANALYSIS_TYPE[report.analysisType],
-    hasFile: report.hasSignedDocument,
+    hasFile: report.pdfAvailable ?? report.hasSignedDocument,
     fileName: `relatorio-${report.analysisType}-${report.date}.pdf`,
   };
 }

@@ -1,0 +1,32 @@
+<app-dialog-shell title="Nova identificação de amostra" [subtitle]="data.quote.code + ' - ' + data.quote.companyName" [lateral]="true">
+  <p class="m-0 text-sm text-lactec-muted">A amostra será cadastrada somente ao salvar o ensaio.</p>
+  <form id="nova-amostra-form" [formGroup]="form" (ngSubmit)="confirm()" class="grid min-w-0 gap-4" novalidate>
+    <app-reference-search fieldId="new-sample-code" label="Código de identificação" placeholder="Ex.: A-1409/2026"
+      [control]="form.controls.code" [options]="sampleOptions" [loading]="sampleLoading()" [error]="sampleError()"
+      [page]="samplePage()" [pages]="samplePages" [maxlength]="80" [monospace]="true" [openOnInput]="false"
+      (pageChanged)="setSamplePage($event)" (retry)="retrySamples()" (selected)="selectSample($event)"
+      [hint]="duplicate ? 'Código encontrado. Abra as opções para usar a amostra existente.' : 'Até 80 caracteres.'"
+      emptyText="Nenhuma correspondência neste orçamento." />
+    <label class="grid min-w-0 gap-1 text-sm font-medium" for="new-sample-description">Descrição
+      <textarea id="new-sample-description" formControlName="description" maxlength="255" rows="3"
+        class="w-full rounded-lg border border-lactec-line p-3" placeholder="Material e origem da amostra"></textarea>
+      @if (form.controls.description.touched && !form.controls.description.value.trim()) {
+        <small class="text-red-700">Informe a descrição da amostra.</small>
+      }
+    </label>
+    <app-reference-search fieldId="analyzed-equipment-search" label="Equipamento analisado (opcional)" placeholder="TAG ou número de série"
+      [control]="equipmentSearch" [options]="equipmentOptions" [loading]="equipmentLoading()" [error]="equipmentError()"
+      [page]="equipmentPage()" [pages]="equipmentPages" (pageChanged)="setEquipmentPage($event)" (retry)="retryEquipment()"
+      (selected)="selectEquipment($event)" hint="São exibidos equipamentos ativos da empresa deste orçamento." />
+    @if (equipment(); as selected) {
+      <div class="flex min-w-0 flex-wrap items-center gap-2 text-sm">
+        <span class="break-words">Selecionado: {{ selected.tag }} - Série: {{ selected.serialNumber }}</span>
+        <button mat-button type="button" (click)="equipment.set(null); equipmentSearch.setValue('')">Remover associação</button>
+      </div>
+    }
+  </form>
+  <div dialog-footer class="flex flex-wrap justify-end gap-3">
+    <button mat-button type="button" (click)="dialogRef.close()">Cancelar</button>
+    <button mat-flat-button type="submit" form="nova-amostra-form" [disabled]="!canConfirm">Usar esta identificação</button>
+  </div>
+</app-dialog-shell>

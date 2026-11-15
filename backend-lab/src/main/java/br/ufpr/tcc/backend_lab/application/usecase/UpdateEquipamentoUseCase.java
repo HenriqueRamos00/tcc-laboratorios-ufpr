@@ -27,7 +27,16 @@ public class UpdateEquipamentoUseCase {
 		equipamento.setTipo(request.type());
 		equipamento.setSubestacao(request.substation());
 		equipamento.setTensaoPrimaria(new BigDecimal(request.primaryVoltage()));
+		equipamento.setFabricante(request.manufacturer());
+		equipamento.setAnoFabricacao(request.manufactureYear());
+		equipamento.setPotenciaMva(decimalOpcional(request.powerMva()));
+		equipamento.setTipoOleo(request.oilType());
+		equipamento.setVolumeOleoLitros(decimalOpcional(request.oilVolumeLiters()));
 		equipamento.setNivelRisco(request.riskLevel());
 		return EquipamentoResponse.fromEntity(equipamentoRepository.saveAndFlush(equipamento));
+	}
+
+	private static BigDecimal decimalOpcional(String value) {
+		return value == null ? null : new BigDecimal(value);
 	}
 }

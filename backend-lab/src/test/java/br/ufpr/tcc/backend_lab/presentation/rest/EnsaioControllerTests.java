@@ -158,6 +158,74 @@ class EnsaioControllerTests {
     }
 
     @Test
+    void cadastraInstrumentoNormalizadoDisponivelParaSelecao() throws Exception {
+        mockMvc.perform(post(PATH + "/references/instruments").header("Authorization", bearer(tecnico))
+                        .contentType(MediaType.APPLICATION_JSON).content("""
+                                {"inventoryNumber":" INS-NOVO ","name":" Balança ",
+                                 "calibrationCertificate":" CERT-10 ","calibrationValidUntil":"2027-11-14"}
+                                """))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.id").isString())
+                .andExpect(jsonPath("$.inventoryNumber").value("INS-NOVO"))
+                .andExpect(jsonPath("$.name").value("Balança"))
+                .andExpect(jsonPath("$.calibrationCertificate").value("CERT-10"))
+                .andExpect(jsonPath("$.calibrationValidUntil").value("2027-11-14"));
+        mockMvc.perform(get(PATH + "/references/instruments").header("Authorization", bearer(tecnico)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$[?(@.inventoryNumber == 'INS-NOVO')].name").value(contains("Balança")));
+    }
+
+    @Test
+    void rejeitaInstrumentoDuplicadoOuSemIdentificacao() throws Exception {
+        long antes = instrumentos.count();
+        mockMvc.perform(post(PATH + "/references/instruments").header("Authorization", bearer(tecnico))
+                        .contentType(MediaType.APPLICATION_JSON).content("""
+                                {"inventoryNumber":" INS-TEST-001 ","name":"Outro"}
+                                """))
+                .andExpect(status().isConflict());
+        mockMvc.perform(post(PATH + "/references/instruments").header("Authorization", bearer(tecnico))
+                        .contentType(MediaType.APPLICATION_JSON).content("""
+                                {"inventoryNumber":" ","name":"Balança"}
+                                """))
+                .andExpect(status().isBadRequest());
+        assertEquals(antes, instrumentos.count());
+    }
+
+    @Test
+    void restringeCadastroDeInstrumentoAoTecnicoAutenticado() throws Exception {
+        String request = """
+                {"inventoryNumber":"INS-NOVO","name":"Balança"}
+                """;
+        mockMvc.perform(post(PATH + "/references/instruments").contentType(MediaType.APPLICATION_JSON)
+                        .content(request))
+                .andExpect(status().isUnauthorized());
+        tecnico.setPerfil(PerfilUsuario.ADMIN);
+        tecnico = usuarios.saveAndFlush(tecnico);
+        mockMvc.perform(post(PATH + "/references/instruments").header("Authorization", bearer(tecnico))
+                        .contentType(MediaType.APPLICATION_JSON).content(request))
+                .andExpect(status().isForbidden());
+    }
+
+    @Test
+    void filtraEnsaiosPeloOrcamentoIncluindoCancelados() throws Exception {
+        var ensaio = criarEnsaio(StatusEnsaio.CANCELLED);
+        String auth = bearer(tecnico);
+        mockMvc.perform(get(PATH).header("Authorization", auth)
+                        .param("quoteId", amostra.getOrcamento().getId().toString()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.totalItems").value(1))
+                .andExpect(jsonPath("$.items[0].id").value(ensaio.getId().toString()))
+                .andExpect(jsonPath("$.items[0].status").value("cancelled"));
+        mockMvc.perform(get(PATH).header("Authorization", auth).param("quoteId", "999999"))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.totalItems").value(0));
+        mockMvc.perform(get(PATH).header("Authorization", auth).param("quoteId", "0"))
+                .andExpect(status().isBadRequest());
+        mockMvc.perform(get(PATH).header("Authorization", auth)
+                        .param("quoteId", amostra.getOrcamento().getId().toString()).param("search", "ausente"))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.totalItems").value(0));
+    }
+
+    @Test
     void permiteAvancoSaltoRetornoRejeicaoECancelamentoComHistorico() throws Exception {
         ExecucaoEnsaio ensaio = criarEnsaio(StatusEnsaio.INCOMPLETE);
         String auth = bearer(tecnico);

@@ -9,6 +9,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 import static org.hamcrest.Matchers.containsString;
 import static org.hamcrest.Matchers.startsWith;
+import static org.hamcrest.Matchers.nullValue;
 
 import br.ufpr.tcc.backend_lab.domain.model.entity.Equipamento;
 import br.ufpr.tcc.backend_lab.domain.model.entity.Empresa;
@@ -88,7 +89,7 @@ class EquipamentoControllerTests {
 		Empresa laboratorio = empresa("Empresa Fictícia");
 		Empresa empresaDestino = empresa("EMPRESA B");
 		String cadastro = """
-				{"serialNumber":"  0000123  ","tag":"  TAG  ","type":"DISJUNTOR","substation":"SE Sul","primaryVoltage":"138.25","companyId":"%s","riskLevel":"ATENCAO"}
+				{"serialNumber":"  0000123  ","tag":"  TAG  ","type":"DISJUNTOR","substation":"SE Sul","primaryVoltage":"138.25","manufacturer":" Fabricante A ","manufactureYear":2018,"powerMva":"25.500","oilType":" Mineral ","oilVolumeLiters":"120.750","companyId":"%s","riskLevel":"ATENCAO"}
 				""".formatted(laboratorio.getId());
 		mockMvc.perform(post(PATH).header("Authorization", token).contentType(MediaType.APPLICATION_JSON).content(cadastro))
 				.andExpect(status().isCreated())
@@ -99,12 +100,17 @@ class EquipamentoControllerTests {
 				.andExpect(jsonPath("$.type").value("DISJUNTOR"))
 				.andExpect(jsonPath("$.substation").value("SE Sul"))
 				.andExpect(jsonPath("$.primaryVoltage").value("138.25"))
+				.andExpect(jsonPath("$.manufacturer").value("Fabricante A"))
+				.andExpect(jsonPath("$.manufactureYear").value(2018))
+				.andExpect(jsonPath("$.powerMva").value("25.5"))
+				.andExpect(jsonPath("$.oilType").value("Mineral"))
+				.andExpect(jsonPath("$.oilVolumeLiters").value("120.75"))
 				.andExpect(jsonPath("$.owner").value("Empresa Fictícia"))
 				.andExpect(jsonPath("$.companyId").value(laboratorio.getId().toString()))
 				.andExpect(jsonPath("$.riskLevel").value("ATENCAO"));
 		Equipamento criado = equipamentoRepository.findAll().get(0);
 		String atualizacao = """
-				{"serialNumber":" 0000123 ","tag":" TAG-NOVA ","type":"REATOR","substation":"SE Leste","primaryVoltage":"230","companyId":"%s","riskLevel":"CRITICO"}
+				{"serialNumber":" 0000123 ","tag":" TAG-NOVA ","type":"REATOR","substation":"SE Leste","primaryVoltage":"230","manufacturer":"Fabricante B","manufactureYear":2022,"powerMva":"30.25","oilType":"Éster","oilVolumeLiters":"140","companyId":"%s","riskLevel":"CRITICO"}
 				""".formatted(empresaDestino.getId());
 		mockMvc.perform(put(PATH + "/{id}", criado.getId()).header("Authorization", token)
 					.contentType(MediaType.APPLICATION_JSON).content(atualizacao))
@@ -115,9 +121,46 @@ class EquipamentoControllerTests {
 				.andExpect(jsonPath("$.type").value("REATOR"))
 				.andExpect(jsonPath("$.substation").value("SE Leste"))
 				.andExpect(jsonPath("$.primaryVoltage").value("230"))
+				.andExpect(jsonPath("$.manufacturer").value("Fabricante B"))
+				.andExpect(jsonPath("$.manufactureYear").value(2022))
+				.andExpect(jsonPath("$.powerMva").value("30.25"))
+				.andExpect(jsonPath("$.oilType").value("Éster"))
+				.andExpect(jsonPath("$.oilVolumeLiters").value("140"))
 				.andExpect(jsonPath("$.owner").value("EMPRESA B"))
 				.andExpect(jsonPath("$.companyId").value(empresaDestino.getId().toString()))
 				.andExpect(jsonPath("$.riskLevel").value("CRITICO"));
+	}
+
+	@Test
+	void mantemCamposNovosNulosParaCadastrosLegadosSemValor() throws Exception {
+		String token = bearer(usuarioRepository.saveAndFlush(usuario(PerfilUsuario.TECNICO, "tecnico@example.test")));
+		mockMvc.perform(post(PATH).header("Authorization", token).contentType(MediaType.APPLICATION_JSON).content(valid))
+				.andExpect(status().isCreated())
+				.andExpect(jsonPath("$.manufacturer").value(nullValue()))
+				.andExpect(jsonPath("$.manufactureYear").value(nullValue()))
+				.andExpect(jsonPath("$.powerMva").value(nullValue()))
+				.andExpect(jsonPath("$.oilType").value(nullValue()))
+				.andExpect(jsonPath("$.oilVolumeLiters").value(nullValue()));
+	}
+
+	@Test
+	void validaAnoPotenciaEVolumeDeOleoDoEquipamento() throws Exception {
+		String token = tokenTecnico();
+		JsonMapper mapper = JsonMapper.builder().build();
+		String[][] casos = {
+			{"manufactureYear", "0"}, {"manufactureYear", "10000"},
+			{"powerMva", "0"}, {"powerMva", "1.1234"}, {"oilVolumeLiters", "-0.001"},
+			{"oilVolumeLiters", "1.1234"}
+		};
+		for (String[] caso : casos) {
+			ObjectNode request = (ObjectNode) mapper.readTree(valid);
+			if ("manufactureYear".equals(caso[0])) request.put(caso[0], Integer.parseInt(caso[1]));
+			else request.put(caso[0], caso[1]);
+			mockMvc.perform(post(PATH).header("Authorization", token).contentType(MediaType.APPLICATION_JSON)
+					.content(mapper.writeValueAsString(request)))
+				.andExpect(status().isBadRequest());
+		}
+		org.junit.jupiter.api.Assertions.assertEquals(0, equipamentoRepository.count());
 	}
 
 	@Test

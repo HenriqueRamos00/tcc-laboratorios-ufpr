@@ -6,6 +6,7 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.hamcrest.Matchers.nullValue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyCollection;
 import static org.mockito.Mockito.clearInvocations;
@@ -42,12 +43,16 @@ import br.ufpr.tcc.backend_lab.domain.model.entity.Cliente;
 import br.ufpr.tcc.backend_lab.domain.model.entity.Amostra;
 import br.ufpr.tcc.backend_lab.domain.model.entity.DocumentoRelatorio;
 import br.ufpr.tcc.backend_lab.domain.model.entity.ExecucaoEnsaio;
+import br.ufpr.tcc.backend_lab.domain.model.entity.Equipamento;
 import br.ufpr.tcc.backend_lab.domain.model.entity.DocumentoOrcamento;
+import br.ufpr.tcc.backend_lab.domain.model.entity.MedicaoEnsaio;
 import br.ufpr.tcc.backend_lab.domain.model.entity.RelatorioTecnico;
 import br.ufpr.tcc.backend_lab.domain.model.entity.Empresa;
 import br.ufpr.tcc.backend_lab.domain.model.entity.Orcamento;
 import br.ufpr.tcc.backend_lab.domain.model.entity.PerfilUsuario;
 import br.ufpr.tcc.backend_lab.domain.model.entity.Usuario;
+import br.ufpr.tcc.backend_lab.domain.model.entity.NivelRisco;
+import br.ufpr.tcc.backend_lab.domain.model.entity.TipoEquipamento;
 import br.ufpr.tcc.backend_lab.domain.model.enums.StatusComercialOrcamento;
 import br.ufpr.tcc.backend_lab.domain.model.enums.StatusEnsaio;
 import br.ufpr.tcc.backend_lab.domain.model.enums.StatusValidacaoRelatorio;
@@ -58,6 +63,7 @@ import br.ufpr.tcc.backend_lab.domain.repository.ExecucaoEnsaioRepository;
 import br.ufpr.tcc.backend_lab.domain.repository.DocumentoOrcamentoRepository;
 import br.ufpr.tcc.backend_lab.domain.repository.DocumentoRelatorioRepository;
 import br.ufpr.tcc.backend_lab.domain.repository.EmpresaRepository;
+import br.ufpr.tcc.backend_lab.domain.repository.EquipamentoRepository;
 import br.ufpr.tcc.backend_lab.domain.repository.OrcamentoRepository;
 import br.ufpr.tcc.backend_lab.domain.repository.RelatorioTecnicoRepository;
 import br.ufpr.tcc.backend_lab.domain.repository.UsuarioRepository;
@@ -82,10 +88,12 @@ import com.lowagie.text.pdf.PdfReader;
 import com.lowagie.text.pdf.parser.PdfTextExtractor;
 
 import java.math.BigDecimal;
+import java.nio.charset.StandardCharsets;
 import java.time.OffsetDateTime;
 import java.time.LocalDate;
 import java.util.UUID;
 import java.util.List;
+import java.util.ArrayList;
 
 @SpringBootTest
 @AutoConfigureMockMvc
@@ -94,6 +102,7 @@ class FluxoClienteTests {
     @Autowired MockMvc mockMvc;
     @Autowired UsuarioRepository usuarios;
     @Autowired EmpresaRepository empresas;
+    @Autowired EquipamentoRepository equipamentos;
     @Autowired ClienteRepository clientes;
     @Autowired OrcamentoRepository orcamentos;
     @Autowired AmostraRepository amostras;
@@ -242,7 +251,7 @@ class FluxoClienteTests {
             jdbcTemplate.update("UPDATE relatorios_tecnicos SET published_at = ? WHERE id = ?", instantePublicacao, id);
         }
         DocumentoRelatorio documentoInvalido = documentosRelatorios.findByRelatorioId(pdfInvalido).orElseThrow();
-        documentoInvalido.setContent("conteúdo que não é PDF".getBytes(java.nio.charset.StandardCharsets.UTF_8));
+        documentoInvalido.setContent("conteúdo que não é PDF".getBytes(StandardCharsets.UTF_8));
         documentosRelatorios.saveAndFlush(documentoInvalido);
         entityManager.clear();
 
@@ -556,10 +565,21 @@ class FluxoClienteTests {
 
     private Long criarRelatorioPublicado(Orcamento orcamento, String codigoAmostra, String tipoEnsaio)
             throws Exception {
+        return criarRelatorioPublicado(orcamento, codigoAmostra, tipoEnsaio, null, List.of());
+    }
+
+    private Long criarRelatorioPublicado(Orcamento orcamento, String codigoAmostra,
+            String tipoEnsaio, Equipamento equipamento) throws Exception {
+        return criarRelatorioPublicado(orcamento, codigoAmostra, tipoEnsaio, equipamento, List.of());
+    }
+
+    private Long criarRelatorioPublicado(Orcamento orcamento, String codigoAmostra,
+            String tipoEnsaio, Equipamento equipamento, List<MedicaoEnsaio> medicoes) throws Exception {
         Amostra amostra = new Amostra();
         amostra.setCodigo(codigoAmostra);
         amostra.setDescricao("Amostra " + codigoAmostra);
         amostra.setOrcamento(orcamento);
+        amostra.setEquipamentoAnalisado(equipamento);
         amostra = amostras.saveAndFlush(amostra);
 
         ExecucaoEnsaio ensaio = new ExecucaoEnsaio();
@@ -573,6 +593,12 @@ class FluxoClienteTests {
         ensaio.setNorma("Norma registrada");
         ensaio.setDataAgendada(LocalDate.of(2026, 11, 7));
         ensaio.setStatus(StatusEnsaio.DRAFTING_REPORT);
+        ensaio.setClassificacaoAnalise("alerta");
+        ensaio.setTextoLaudo("Conclusão técnica do snapshot");
+        for (MedicaoEnsaio medicao : medicoes) {
+            medicao.setExecucao(ensaio);
+        }
+        ensaio.setMedicoes(new ArrayList<>(medicoes));
         ensaio = ensaios.saveAndFlush(ensaio);
 
         String tokenTecnico = "Bearer " + jwtService.generateToken(tecnico);
@@ -594,7 +620,12 @@ class FluxoClienteTests {
 
     private Long criarRelatorioValidado(Orcamento orcamento, String codigoAmostra, String tipoEnsaio)
             throws Exception {
-        Long reportId = criarRelatorioPendente(orcamento, codigoAmostra, tipoEnsaio);
+        return criarRelatorioValidado(orcamento, codigoAmostra, tipoEnsaio, null);
+    }
+
+    private Long criarRelatorioValidado(Orcamento orcamento, String codigoAmostra,
+            String tipoEnsaio, Equipamento equipamento) throws Exception {
+        Long reportId = criarRelatorioPendente(orcamento, codigoAmostra, tipoEnsaio, equipamento);
         RelatorioTecnico relatorio = relatorios.findById(reportId).orElseThrow();
         String tokenTecnico = "Bearer " + jwtService.generateToken(tecnico);
         validarRelatorio(relatorio, tokenTecnico);
@@ -607,10 +638,16 @@ class FluxoClienteTests {
 
     private Long criarRelatorioPendente(Orcamento orcamento, String codigoAmostra, String tipoEnsaio)
             throws Exception {
+        return criarRelatorioPendente(orcamento, codigoAmostra, tipoEnsaio, null);
+    }
+
+    private Long criarRelatorioPendente(Orcamento orcamento, String codigoAmostra,
+            String tipoEnsaio, Equipamento equipamento) throws Exception {
         Amostra amostra = new Amostra();
         amostra.setCodigo(codigoAmostra);
         amostra.setDescricao("Amostra " + codigoAmostra);
         amostra.setOrcamento(orcamento);
+        amostra.setEquipamentoAnalisado(equipamento);
         amostra = amostras.saveAndFlush(amostra);
 
         ExecucaoEnsaio ensaio = new ExecucaoEnsaio();
@@ -642,6 +679,29 @@ class FluxoClienteTests {
                         .content("{\"version\":" + relatorio.getVersion()
                                 + ",\"contentFingerprint\":\"" + fingerprint + "\"}"))
                 .andExpect(status().isOk());
+    }
+
+    private Long duplicarPublicacaoMaisRecente(RelatorioTecnico original) {
+        RelatorioTecnico duplicado = new RelatorioTecnico();
+        duplicado.setExecucao(original.getExecucao());
+        duplicado.setValidatedCompany(original.getValidatedCompany());
+        duplicado.setValidatedQuote(original.getValidatedQuote());
+        duplicado.setValidatedSample(original.getValidatedSample());
+        duplicado.setValidationStatus(StatusValidacaoRelatorio.VALIDATED);
+        duplicado.setCreatedAt(OffsetDateTime.now());
+        duplicado.setValidatedAt(original.getValidatedAt());
+        duplicado.setPublished(true);
+        duplicado.setPublishedAt(original.getPublishedAt().plusSeconds(10));
+        duplicado.setValidatedSnapshot(original.getValidatedSnapshot());
+        duplicado.setValidatedSearch(original.getValidatedSearch());
+        duplicado.setValidatedEquipmentId(original.getValidatedEquipmentId());
+        duplicado = relatorios.saveAndFlush(duplicado);
+
+        DocumentoRelatorio documento = new DocumentoRelatorio();
+        documento.setRelatorio(duplicado);
+        documento.setContent("%PDF-1.4 duplicate".getBytes(StandardCharsets.US_ASCII));
+        documentosRelatorios.saveAndFlush(documento);
+        return duplicado.getId();
     }
 
     private String fingerprintRelatorio(Long relatorioId, String token) throws Exception {
@@ -696,7 +756,7 @@ class FluxoClienteTests {
     void omiteDocumentoPublicoComPdfInvalido() throws Exception {
         Long reportId = criarRelatorioPublicado(orcamentoA, "AMOSTRA-PDF-INVALIDO");
         DocumentoRelatorio documento = documentosRelatorios.findByRelatorioId(reportId).orElseThrow();
-        documento.setContent("conteúdo que não é PDF".getBytes(java.nio.charset.StandardCharsets.UTF_8));
+        documento.setContent("conteúdo que não é PDF".getBytes(StandardCharsets.UTF_8));
         documentosRelatorios.saveAndFlush(documento);
 
         mockMvc.perform(get("/api/client/reports").header("Authorization", tokenClienteA))
@@ -705,6 +765,213 @@ class FluxoClienteTests {
         mockMvc.perform(get("/api/client/reports/{id}/file", reportId)
                         .header("Authorization", tokenClienteA))
                 .andExpect(status().isNotFound());
+    }
+
+    @Test
+    void listaEquipamentosAtivosComResumoAutorizadoEAplicaPaginacao() throws Exception {
+        Equipamento medidorComLaudo = equipamentos.saveAndFlush(equipamento(
+                empresaA, "SERIAL-REPETIDO", "TAG-REPETIDA"));
+        Equipamento medidorSemLaudo = equipamentos.saveAndFlush(equipamento(
+                empresaA, "SERIAL-REPETIDO", "TAG-REPETIDA"));
+        Equipamento outraEmpresa = equipamentos.saveAndFlush(equipamento(
+                empresaB, "SERIAL-REPETIDO", "TAG-REPETIDA"));
+        orcamentoB.setProtocol(orcamentoA.getProtocol());
+        orcamentos.saveAndFlush(orcamentoB);
+        criarRelatorioPublicado(orcamentoA, "AMOSTRA-EQUIPAMENTO-A", "Cromatografia", medidorComLaudo);
+        criarRelatorioPublicado(orcamentoB, "AMOSTRA-EQUIPAMENTO-B", "Cromatografia", outraEmpresa);
+        Long rascunhoValidado = criarRelatorioValidado(orcamentoA,
+                "AMOSTRA-EQUIPAMENTO-RASCUNHO", "Cromatografia", medidorComLaudo);
+        medidorSemLaudo.setFabricante(null);
+        medidorSemLaudo.setPotenciaMva(null);
+        equipamentos.saveAndFlush(medidorSemLaudo);
+        entityManager.clear();
+
+        clearInvocations(documentosRelatorios);
+        mockMvc.perform(get("/api/client/equipments").header("Authorization", tokenClienteA))
+                .andExpect(status().isOk());
+        verify(documentosRelatorios, never()).findByRelatorioId(any());
+        verify(documentosRelatorios, never()).buscarIdsComPdfValido(anyCollection());
+        mockMvc.perform(get("/api/client/analyses/{id}", rascunhoValidado)
+                        .header("Authorization", tokenClienteA))
+                .andExpect(status().isNotFound());
+
+        mockMvc.perform(get("/api/client/equipments")
+                        .param("page", "1").param("pageSize", "1")
+                        .header("Authorization", tokenClienteA))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.page").value(1))
+                .andExpect(jsonPath("$.pageSize").value(1))
+                .andExpect(jsonPath("$.totalItems").value(2))
+                .andExpect(jsonPath("$.items.length()").value(1))
+                .andExpect(jsonPath("$.items[0].id").value(medidorComLaudo.getId().toString()))
+                .andExpect(jsonPath("$.items[0].company.id").value(empresaA.getId().toString()))
+                .andExpect(jsonPath("$.items[0].publishedAnalysisCount").value(1))
+                .andExpect(jsonPath("$.items[0].latestPublishedAnalysis.reportId").isNotEmpty())
+                .andExpect(jsonPath("$.items[0].manufacturer").value("Fabricante de teste"))
+                .andExpect(jsonPath("$.items[0].manufactureYear").value(2020))
+                .andExpect(jsonPath("$.items[0].powerMva").value(25.500))
+                .andExpect(jsonPath("$.items[0].oilVolumeLiters").value(180.250));
+
+        mockMvc.perform(get("/api/client/equipments")
+                        .param("page", "2").param("pageSize", "1")
+                        .header("Authorization", tokenClienteA))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.items[0].id").value(medidorSemLaudo.getId().toString()))
+                .andExpect(jsonPath("$.items[0].publishedAnalysisCount").value(0))
+                .andExpect(jsonPath("$.items[0].latestPublishedAnalysis").value(nullValue()))
+                .andExpect(jsonPath("$.items[0].manufacturer").value(nullValue()));
+
+        mockMvc.perform(get("/api/client/equipments")
+                        .param("companyId", empresaB.getId().toString())
+                        .header("Authorization", tokenClienteA))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.totalItems").value(0));
+        mockMvc.perform(get("/api/client/equipments")
+                        .param("pageSize", "101").header("Authorization", tokenClienteA))
+                .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    void preservaSnapshotPublicaHistoricoComQuatroTiposDeMedicaoEPermiteInativo() throws Exception {
+        Equipamento equipamento = equipamentos.saveAndFlush(equipamento(
+                empresaA, "SERIAL-SNAPSHOT", "TAG-SNAPSHOT"));
+        List<MedicaoEnsaio> medicoes = List.of(
+                medicao("h2", 0, "quantity", new BigDecimal("12.340"), null),
+                medicao("o2", 1, "not-detected", null, null),
+                medicao("n2", 2, "not-performed", null, null),
+                medicao("ch4", 3, "text", null, "traços encontrados"));
+        Long reportId = criarRelatorioPublicado(orcamentoA, "AMOSTRA-SNAPSHOT-EQUIPAMENTO",
+                "Cromatografia original", equipamento, medicoes);
+
+        equipamento.setNumeroSerie("SERIAL-ATUALIZADO");
+        equipamento.setTag("TAG-ATUALIZADA");
+        equipamento.setFabricante("Fabricante atualizado");
+        equipamentos.saveAndFlush(equipamento);
+        entityManager.clear();
+
+        mockMvc.perform(get("/api/client/equipments/{id}/analyses", equipamento.getId())
+                        .param("page", "1").param("pageSize", "1")
+                        .header("Authorization", tokenClienteA))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.totalItems").value(1))
+                .andExpect(jsonPath("$.items[0].reportId").value(reportId.toString()))
+                .andExpect(jsonPath("$.items[0].testType").value("Cromatografia original"))
+                .andExpect(jsonPath("$.items[0].equipment.serialNumber").value("SERIAL-SNAPSHOT"))
+                .andExpect(jsonPath("$.items[0].measurements.length()").value(4))
+                .andExpect(jsonPath("$.items[0].measurements[0].result.kind").value("quantity"))
+                .andExpect(jsonPath("$.items[0].measurements[0].result.value").value("12.340"))
+                .andExpect(jsonPath("$.items[0].measurements[1].result.kind").value("not-detected"))
+                .andExpect(jsonPath("$.items[0].measurements[2].result.kind").value("not-performed"))
+                .andExpect(jsonPath("$.items[0].measurements[3].result.text").value("traços encontrados"));
+
+        mockMvc.perform(get("/api/client/analyses/{id}", reportId)
+                        .header("Authorization", tokenClienteA))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.publishedAt").isNotEmpty())
+                .andExpect(jsonPath("$.technicalClassification").value("alerta"))
+                .andExpect(jsonPath("$.measurements.length()").value(4));
+        mockMvc.perform(get("/api/client/reports/{id}", reportId)
+                        .header("Authorization", tokenClienteA))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.id").value(reportId.toString()))
+                .andExpect(jsonPath("$.reportId").value(reportId.toString()))
+                .andExpect(jsonPath("$.equipment.serialNumber").value("SERIAL-SNAPSHOT"));
+
+        equipamento.setAtivo(false);
+        equipamentos.saveAndFlush(equipamento);
+        mockMvc.perform(get("/api/client/equipments").header("Authorization", tokenClienteA))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.totalItems").value(0));
+        mockMvc.perform(get("/api/client/equipments/{id}", equipamento.getId())
+                        .header("Authorization", tokenClienteA))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.serialNumber").value("SERIAL-ATUALIZADO"));
+    }
+
+    @Test
+    void historicoUsaEmpresaValidadaAposTransferenciaERevogaVinculoComTokenVivo() throws Exception {
+        Equipamento equipamento = equipamentos.saveAndFlush(equipamento(
+                empresaA, "SERIAL-TRANSFERENCIA", "TAG-TRANSFERENCIA"));
+        Long reportId = criarRelatorioPublicado(orcamentoA, "AMOSTRA-TRANSFERENCIA",
+                "Cromatografia original", equipamento);
+        var clienteComDuasEmpresasDto = criarCliente.execute(new CreateClienteRequest(
+                "Cliente A e B", "cliente-ab-equipamento@example.test", "00000000000",
+                "Cargo", CadastroStatus.ACTIVE,
+                List.of(empresaA.getId().toString(), empresaB.getId().toString()), " senha "));
+        Cliente clienteComDuasEmpresas = clientes.findById(
+                Long.valueOf(clienteComDuasEmpresasDto.id())).orElseThrow();
+        String tokenClienteComDuasEmpresas = "Bearer " + loginCliente.execute(
+                new LoginRequest(clienteComDuasEmpresas.getUsuario().getEmail(), " senha ")).accessToken();
+        Cliente clienteB = cliente("cliente-b-equipamento@example.test", empresaB);
+        String tokenClienteB = "Bearer " + loginCliente.execute(
+                new LoginRequest(clienteB.getUsuario().getEmail(), " senha ")).accessToken();
+
+        equipamento.setEmpresa(empresaB);
+        equipamento.setNumeroSerie("SERIAL-NOVO-PROPRIETARIO");
+        equipamentos.saveAndFlush(equipamento);
+        entityManager.clear();
+
+        mockMvc.perform(get("/api/client/equipments").param("companyId", empresaB.getId().toString())
+                        .header("Authorization", tokenClienteComDuasEmpresas))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.totalItems").value(1))
+                .andExpect(jsonPath("$.items[0].publishedAnalysisCount").value(0))
+                .andExpect(jsonPath("$.items[0].latestPublishedAnalysis").value(nullValue()));
+
+        mockMvc.perform(get("/api/client/equipments/{id}", equipamento.getId())
+                        .header("Authorization", tokenClienteA))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.company.id").value(empresaA.getId().toString()))
+                .andExpect(jsonPath("$.serialNumber").value("SERIAL-TRANSFERENCIA"))
+                .andExpect(jsonPath("$.manufacturer").value(nullValue()));
+        mockMvc.perform(get("/api/client/equipments/{id}/analyses", equipamento.getId())
+                        .header("Authorization", tokenClienteA))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.items[0].reportId").value(reportId.toString()));
+        mockMvc.perform(get("/api/client/equipments/{id}", equipamento.getId())
+                        .header("Authorization", tokenClienteB))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.company.id").value(empresaB.getId().toString()))
+                .andExpect(jsonPath("$.serialNumber").value("SERIAL-NOVO-PROPRIETARIO"));
+        mockMvc.perform(get("/api/client/equipments/{id}/analyses", equipamento.getId())
+                        .header("Authorization", tokenClienteB))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.totalItems").value(0));
+
+        editarCliente.execute(clienteA.getId(), dadosAtualizacaoCliente(List.of(empresaSemVinculo.getId()), null));
+        entityManager.clear();
+        mockMvc.perform(get("/api/client/equipments/{id}", equipamento.getId())
+                        .header("Authorization", tokenClienteA))
+                .andExpect(status().isForbidden());
+    }
+
+    @Test
+    void deduplicaDocumentosDaMesmaExecucaoSemRemoverPublicacaoAnterior() throws Exception {
+        Equipamento equipamento = equipamentos.saveAndFlush(equipamento(
+                empresaA, "SERIAL-DUPLICADO", "TAG-DUPLICADA"));
+        Long primeiroReportId = criarRelatorioPublicado(orcamentoA, "AMOSTRA-DUPLICADA",
+                "Cromatografia", equipamento);
+        RelatorioTecnico original = relatorios.findById(primeiroReportId).orElseThrow();
+        Long segundoReportId = duplicarPublicacaoMaisRecente(original);
+        entityManager.clear();
+
+        mockMvc.perform(get("/api/client/equipments/{id}", equipamento.getId())
+                        .header("Authorization", tokenClienteA))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.publishedAnalysisCount").value(1))
+                .andExpect(jsonPath("$.latestPublishedAnalysis.reportId").value(segundoReportId.toString()));
+        mockMvc.perform(get("/api/client/equipments/{id}/analyses", equipamento.getId())
+                        .header("Authorization", tokenClienteA))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.totalItems").value(1))
+                .andExpect(jsonPath("$.items[0].reportId").value(segundoReportId.toString()));
+        mockMvc.perform(get("/api/client/analyses/{id}", primeiroReportId)
+                        .header("Authorization", tokenClienteA))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.reportId").value(primeiroReportId.toString()));
+        mockMvc.perform(get("/api/client/reports/{id}/file", primeiroReportId)
+                        .header("Authorization", tokenClienteA))
+                .andExpect(status().isOk());
     }
 
     @Test
@@ -1211,6 +1478,36 @@ class FluxoClienteTests {
                                         {"status":"INVALID"}
                                         """))
                 .andExpect(status().isBadRequest());
+    }
+
+    private Equipamento equipamento(Empresa empresa, String numeroSerie, String tag) {
+        Equipamento equipamento = new Equipamento();
+        equipamento.setNumeroSerie(numeroSerie);
+        equipamento.setTag(tag);
+        equipamento.setTipo(TipoEquipamento.TRANSFORMADOR);
+        equipamento.setSubestacao("Subestação de teste");
+        equipamento.setTensaoPrimaria(new BigDecimal("13.800"));
+        equipamento.setFabricante("Fabricante de teste");
+        equipamento.setAnoFabricacao(2020);
+        equipamento.setPotenciaMva(new BigDecimal("25.500"));
+        equipamento.setTipoOleo("Mineral");
+        equipamento.setVolumeOleoLitros(new BigDecimal("180.250"));
+        equipamento.setEmpresa(empresa);
+        equipamento.setNivelRisco(NivelRisco.SAUDAVEL);
+        return equipamento;
+    }
+
+    private MedicaoEnsaio medicao(String codigo, int posicao, String tipoResultado,
+            BigDecimal quantidade, String resultadoTextual) {
+        MedicaoEnsaio medicao = new MedicaoEnsaio();
+        medicao.setCodigo(codigo);
+        medicao.setNome("Medição " + codigo);
+        medicao.setPosicao(posicao);
+        medicao.setUnidade("ppm");
+        medicao.setTipoResultado(tipoResultado);
+        medicao.setQuantidade(quantidade);
+        medicao.setResultadoTextual(resultadoTextual);
+        return medicao;
     }
 
     private Empresa empresa(String nome, String cnpj) {

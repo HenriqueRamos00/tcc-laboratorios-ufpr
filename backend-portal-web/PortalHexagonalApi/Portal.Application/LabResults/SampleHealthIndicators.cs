@@ -17,6 +17,8 @@ public sealed record SampleHealthIndicators(
     IReadOnlyList<UnreadableResult> UnreadableResults,
     IReadOnlyList<TotalizerCheck> TotalizerChecks)
 {
+    public string? Tag { get; init; }
+
     public string? NominalVoltage { get; init; }
 
     public ReportIssue? PhysicalChemicalReport { get; init; }

@@ -1,0 +1,22 @@
+<app-dialog-shell title="Cadastrar instrumento" [lateral]="true" [closeDisabled]="saving()">
+  <p class="m-0 text-sm text-lactec-muted">O instrumento ficará disponível no catálogo do laboratório e será selecionado neste ensaio.</p>
+  <form id="instrumento-form" [formGroup]="form" (ngSubmit)="save()" class="grid min-w-0 gap-4" [attr.aria-busy]="saving()" novalidate>
+    @if (error()) { <div role="alert" class="rounded-lg border border-red-300 bg-red-50 p-3 text-sm text-red-900">{{ error() }}</div> }
+    <label class="grid min-w-0 gap-1 text-sm font-medium" for="instrument-inventory">Número de patrimônio
+      <input id="instrument-inventory" formControlName="inventoryNumber" maxlength="80" [readOnly]="saving()" class="h-11 min-w-0 rounded-lg border border-lactec-line px-3 font-mono" />
+    </label>
+    <label class="grid min-w-0 gap-1 text-sm font-medium" for="instrument-name">Nome
+      <input id="instrument-name" formControlName="name" maxlength="160" [readOnly]="saving()" class="h-11 min-w-0 rounded-lg border border-lactec-line px-3" />
+    </label>
+    <label class="grid min-w-0 gap-1 text-sm font-medium" for="instrument-certificate">Certificado de calibração (opcional)
+      <input id="instrument-certificate" formControlName="calibrationCertificate" maxlength="160" [readOnly]="saving()" class="h-11 min-w-0 rounded-lg border border-lactec-line px-3" />
+    </label>
+    <label class="grid min-w-0 gap-1 text-sm font-medium" for="instrument-calibration">Calibração válida até (opcional)
+      <input id="instrument-calibration" type="date" formControlName="calibrationValidUntil" [readOnly]="saving()" class="h-11 min-w-0 rounded-lg border border-lactec-line px-3" />
+    </label>
+  </form>
+  <div dialog-footer class="flex flex-wrap justify-end gap-3">
+    <button mat-button type="button" [disabled]="saving()" (click)="dialogRef.close()">Cancelar</button>
+    <button mat-flat-button type="submit" form="instrumento-form" [disabled]="saving()">{{ saving() ? 'Cadastrando…' : 'Cadastrar instrumento' }}</button>
+  </div>
+</app-dialog-shell>

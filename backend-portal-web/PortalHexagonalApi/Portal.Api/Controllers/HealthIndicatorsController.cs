@@ -1,11 +1,12 @@
 using Microsoft.AspNetCore.Mvc;
 
 using Portal.Api.LabResults;
+using Portal.Api.Configuration;
+using Portal.Application.LabResults;
 using Portal.Application.LabResults.Exceptions;
 using Portal.Application.Nameplate.Exceptions;
 using Portal.Application.ReportDocuments.Exceptions;
 using Portal.Application.Visibility;
-using Portal.Application.LabResults;
 using Portal.Domain.LabResults;
 
 namespace Portal.Api.Controllers;
@@ -20,14 +21,20 @@ namespace Portal.Api.Controllers;
 public sealed class HealthIndicatorsController : ControllerBase
 {
     private readonly IForConsultingLabResults _labResults;
+    private readonly IForConsultingClientLabResults _clientResults;
     private readonly LabResultsOptions _labResultsOptions;
+    private readonly PortalOptions _portalOptions;
 
     public HealthIndicatorsController(
         IForConsultingLabResults labResults,
-        LabResultsOptions labResultsOptions)
+        IForConsultingClientLabResults clientResults,
+        LabResultsOptions labResultsOptions,
+        PortalOptions portalOptions)
     {
         _labResults = labResults;
+        _clientResults = clientResults;
         _labResultsOptions = labResultsOptions;
+        _portalOptions = portalOptions;
     }
 
     [HttpGet("{id}/health")]
@@ -59,6 +66,41 @@ public sealed class HealthIndicatorsController : ControllerBase
 
         if (!OpaqueIdentifier.TryDecode(id, out string equipmentKey))
             return this.UnreadableEquipmentIdentifier();
+
+        if (_portalOptions.DataSource == PortalOptions.BackendLabSource
+            && _labResultsOptions.Source == LabResultsOptions.BackendLabSource)
+        {
+            string? selectedAnalysisId = null;
+            if (reportId is not null && !OpaqueIdentifier.TryDecode(reportId, out selectedAnalysisId))
+                return this.UnreadableReportIdentifier();
+
+            try
+            {
+                SampleHealthIndicators? clientIndicators = await _clientResults.GetHealthIndicatorsAsync(
+                    equipmentKey, selectedAnalysisId, cancellationToken);
+
+                return clientIndicators is null
+                    ? this.EquipmentWithoutAnalysis()
+                    : Ok(PositionalFlattening.Flatten(clientIndicators, id));
+            }
+            catch (ClientLabAuthenticationRequiredException)
+            {
+                Response.Headers.WWWAuthenticate = "Bearer";
+                return this.ReportAuthenticationRequired();
+            }
+            catch (ClientLabAccessForbiddenException)
+            {
+                return this.ReportAccessForbidden();
+            }
+            catch (ClientLabRequestRejectedException)
+            {
+                return this.ClientLabRequestRejected();
+            }
+            catch (ClientLabSourceUnavailableException)
+            {
+                return this.LabTestSourceUnavailable();
+            }
+        }
 
         string? selectedProtocol = null;
 

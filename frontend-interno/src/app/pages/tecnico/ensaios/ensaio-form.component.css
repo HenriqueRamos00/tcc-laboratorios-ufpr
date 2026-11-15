@@ -165,3 +165,35 @@ td textarea {
     font-size: 13px;
   }
 }
+
+.ensaio-actions {
+  position: sticky;
+  bottom: 0;
+  z-index: 10;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 16px;
+  border: 1px solid var(--color-lactec-line);
+  border-radius: 12px;
+  background: var(--color-lactec-paper);
+  box-shadow: 0 -4px 12px rgb(11 34 48 / 6%);
+}
+
+.ensaio-actions__primary {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+.ensaio-form {
+  scroll-padding-bottom: 112px;
+}
+
+@media (max-width: 479px) {
+  .ensaio-actions { padding: 12px; gap: 8px; }
+  .ensaio-actions__primary { flex: 1 1 100%; gap: 8px; }
+  .ensaio-actions__primary > button { flex: 1 1 auto; }
+}

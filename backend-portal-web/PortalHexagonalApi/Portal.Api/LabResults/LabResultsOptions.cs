@@ -12,6 +12,7 @@ public sealed class LabResultsOptions
     public const string NotConnectedSource = "not-connected";
 
     public const string SqlServerSource = "sql-server";
+    public const string BackendLabSource = "backend-lab";
 
     public const string AllScope = "all";
     public const string CompanyScope = "company";

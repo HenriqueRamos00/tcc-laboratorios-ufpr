@@ -1,7 +1,7 @@
 import { HttpErrorResponse } from '@angular/common/http';
 import { fakeAsync, TestBed, tick } from '@angular/core/testing';
-import { MAT_DIALOG_DATA } from '@angular/material/dialog';
-import { provideRouter } from '@angular/router';
+import { MAT_DIALOG_DATA, MatDialogRef } from '@angular/material/dialog';
+import { provideRouter, Router } from '@angular/router';
 import { Observable, of, Subject, throwError } from 'rxjs';
 import { finalize } from 'rxjs/operators';
 
@@ -10,6 +10,7 @@ import {
   OrcamentoTecnicoDetalhe,
   PaginaOrcamentosTecnicos,
 } from '@/app/model/orcamento-tecnico';
+import { EnsaiosService } from '@/app/services/ensaios.service';
 import { OrcamentosTecnicosService } from '@/app/services/orcamentos-tecnicos.service';
 import { AppDialogService } from '@/app/services/app-dialog.service';
 import { OrcamentoTecnicoDetalheDialogComponent } from './orcamento-tecnico-detalhe-dialog.component';
@@ -232,6 +233,8 @@ describe('Página de orçamentos técnicos', () => {
 });
 
 describe('Drawer técnico de orçamento', () => {
+  let ensaios: jasmine.SpyObj<EnsaiosService>;
+  let fechar: jasmine.Spy;
   let service: jasmine.SpyObj<OrcamentosTecnicosService>;
 
   const detalhe: OrcamentoTecnicoDetalhe = {
@@ -249,14 +252,55 @@ describe('Drawer técnico de orçamento', () => {
   };
 
   beforeEach(() => {
+    ensaios = jasmine.createSpyObj<EnsaiosService>('EnsaiosService', ['list']);
+    ensaios.list.and.returnValue(of({ items: [], totalItems: 0, page: 1, pageSize: 2 }));
+    fechar = jasmine.createSpy('close');
     service = jasmine.createSpyObj<OrcamentosTecnicosService>('OrcamentosTecnicosService', ['list', 'get']);
     TestBed.configureTestingModule({
       imports: [OrcamentoTecnicoDetalheDialogComponent],
       providers: [
+        provideRouter([]),
+        { provide: EnsaiosService, useValue: ensaios },
+        { provide: MatDialogRef, useValue: { close: fechar } },
         { provide: OrcamentosTecnicosService, useValue: service },
         { provide: MAT_DIALOG_DATA, useValue: { quoteId: 'quote-1', quoteCode: detalhe.code } },
       ],
     });
+  });
+
+  for (const quantidade of [0, 1, 3]) {
+    it(`navega para a ação correta com ${quantidade} ensaios vinculados, incluindo cancelados`, async () => {
+      service.get.and.returnValue(of(detalhe));
+      ensaios.list.and.returnValue(of({
+        items: quantidade ? [{ id: '42', status: 'cancelled' }] as never : [],
+        totalItems: quantidade, page: 1, pageSize: 2,
+      }));
+      const router = TestBed.inject(Router);
+      const navegar = spyOn(router, 'navigate').and.resolveTo(true);
+      const fixture = TestBed.createComponent(OrcamentoTecnicoDetalheDialogComponent);
+      fixture.detectChanges();
+      expect(ensaios.list).toHaveBeenCalledWith('', 1, 2, detalhe.id);
+      expect(fixture.nativeElement.textContent).toContain(
+        quantidade === 0 ? 'Criar ensaio' : quantidade === 1 ? 'Ver ensaio' : 'Ver ensaios');
+      await fixture.componentInstance.abrirEnsaios();
+      expect(navegar).toHaveBeenCalledWith(
+        quantidade === 0 ? ['/tecnico/ensaios/novo']
+          : quantidade === 1 ? ['/tecnico/ensaios', '42', 'editar'] : ['/tecnico/ensaios'],
+        quantidade === 1 ? {} : { queryParams: { quoteId: detalhe.id, quoteCode: detalhe.code } },
+      );
+      expect(fechar).toHaveBeenCalled();
+      fixture.destroy();
+    });
+  }
+
+  it('não oferece criação quando a consulta de ensaios falha', () => {
+    service.get.and.returnValue(of(detalhe));
+    ensaios.list.and.returnValue(throwError(() => new HttpErrorResponse({ status: 500 })));
+    const fixture = TestBed.createComponent(OrcamentoTecnicoDetalheDialogComponent);
+    fixture.detectChanges();
+    expect(fixture.nativeElement.textContent).toContain('Não foi possível consultar os ensaios.');
+    expect(fixture.nativeElement.textContent).not.toContain('Criar ensaio');
+    fixture.destroy();
   });
 
   it('consulta os detalhes técnicos e não apresenta campos comerciais', fakeAsync(() => {
