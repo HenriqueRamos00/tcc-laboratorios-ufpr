@@ -52,16 +52,20 @@ public sealed class EquipmentController : ControllerBase
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
     public Task<IActionResult> List(
         [FromQuery] PageQuery paging,
+        [FromQuery(Name = "search")] string? searchText,
         CancellationToken cancellationToken)
     {
         if (!paging.TryToRequest(out PageRequest request))
             return Task.FromResult(this.InvalidPage());
 
+        if (!EquipmentSearch.TryCreate(searchText, out EquipmentSearch? search))
+            return Task.FromResult(this.InvalidEquipmentSearch());
+
         if (UsesClientBackend)
             return AnswerClientAsync(async () =>
             {
                 Page<ClientEquipment> page = await _clientResults
-                    .ListEquipmentAsync(request, cancellationToken);
+                    .ListEquipmentAsync(search, request, cancellationToken);
                 PageQuery.WriteHeaders(Response, page);
                 return Ok(page.Items.Select(ClientEquipmentResponseMapper.Listing));
             });
@@ -69,7 +73,7 @@ public sealed class EquipmentController : ControllerBase
         return AnswerAsync(async scope =>
         {
             Page<EquipmentWithNameplate> equipmentPage = await _labResults
-                .ListEquipmentAsync(scope, request, cancellationToken);
+                .ListEquipmentAsync(scope, search, request, cancellationToken);
 
             PageQuery.WriteHeaders(Response, equipmentPage);
 
@@ -107,7 +111,6 @@ public sealed class EquipmentController : ControllerBase
                 Tag = equipment.DisplayLabel,
                 EquipmentTag = nameplate?.Tag,
                 Type = nameplate?.EquipmentType,
-                Location = null,
                 Company = equipment.Company,
                 Identification = equipment.MostRecentReport.Identification,
                 ReportCount = found.ReportCount,
@@ -337,7 +340,6 @@ public sealed class EquipmentController : ControllerBase
             Tag = equipment.DisplayLabel,
             EquipmentTag = found.Nameplate?.Tag,
             Type = found.Nameplate?.EquipmentType,
-            Location = null,
             Company = equipment.Company,
             Identification = equipment.MostRecentReport.Identification,
             ReportCount = found.ReportCount,

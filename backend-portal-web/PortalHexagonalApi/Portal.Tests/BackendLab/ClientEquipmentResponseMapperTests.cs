@@ -16,6 +16,8 @@ public sealed class ClientEquipmentResponseMapperTests
 
         EquipmentDetailResponse detail = ClientEquipmentResponseMapper.Detail(equipment);
 
+        Assert.Equal("Subestação A", detail.Location);
+        Assert.Equal("Subestação A", ClientEquipmentResponseMapper.Listing(equipment).Location);
         Assert.Equal("13,8 kV", detail.Voltage);
         Assert.Equal("25,5 MVA", detail.Power);
         Assert.Equal("1200 L", detail.OilVolume);

@@ -832,6 +832,81 @@ class FluxoClienteTests {
     }
 
     @Test
+    void buscaEquipamentosPorSerieOuTagAntesDaPaginacaoSemAmpliarAcesso() throws Exception {
+        equipamentos.saveAndFlush(equipamento(empresaA, "FORA-DA-BUSCA", "OUTRA-TAG"));
+        Equipamento porSerie = equipamentos.saveAndFlush(equipamento(
+                empresaA, "SERIAL-ALVO", "TAG-PRIMEIRA"));
+        Equipamento porTag = equipamentos.saveAndFlush(equipamento(
+                empresaA, "OUTRA-SERIE", "TAG-ALVO"));
+        equipamentos.saveAndFlush(equipamento(empresaB, "SERIAL-ALVO", "TAG-ALVO"));
+        Equipamento inativo = equipamento(empresaA, "SERIAL-ALVO", "TAG-ALVO");
+        inativo.setAtivo(false);
+        equipamentos.saveAndFlush(inativo);
+        entityManager.clear();
+
+        mockMvc.perform(get("/api/client/equipments")
+                        .param("search", "  aLvO  ").param("pageSize", "1")
+                        .header("Authorization", tokenClienteA))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.totalItems").value(2))
+                .andExpect(jsonPath("$.items.length()").value(1))
+                .andExpect(jsonPath("$.items[0].id").value(porSerie.getId().toString()));
+        mockMvc.perform(get("/api/client/equipments")
+                        .param("search", "alvo").param("page", "2").param("pageSize", "1")
+                        .header("Authorization", tokenClienteA))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.totalItems").value(2))
+                .andExpect(jsonPath("$.items[0].id").value(porTag.getId().toString()));
+        mockMvc.perform(get("/api/client/equipments")
+                        .param("search", "alvo").param("companyId", empresaB.getId().toString())
+                        .header("Authorization", tokenClienteA))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.totalItems").value(0))
+                .andExpect(jsonPath("$.items.length()").value(0));
+        mockMvc.perform(get("/api/client/equipments")
+                        .param("search", "inexistente").header("Authorization", tokenClienteA))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.totalItems").value(0));
+    }
+
+    @Test
+    void buscaDeEquipamentosTrataCaracteresDeLikeComoTextoLiteral() throws Exception {
+        Equipamento literal = equipamentos.saveAndFlush(equipamento(
+                empresaA, "SERIAL-%_[!]", "TAG-ESPECIAL"));
+        equipamentos.saveAndFlush(equipamento(empresaA, "SERIAL-COMUM", "TAG-COMUM"));
+        entityManager.clear();
+
+        for (String termo : List.of("%", "_", "[", "!")) {
+            mockMvc.perform(get("/api/client/equipments")
+                            .param("search", termo).header("Authorization", tokenClienteA))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.totalItems").value(1))
+                    .andExpect(jsonPath("$.items[0].id").value(literal.getId().toString()));
+        }
+    }
+
+    @Test
+    void buscaVaziaListaTudoEBuscaAcimaDeCemCaracteresERejeitada() throws Exception {
+        equipamentos.saveAndFlush(equipamento(empresaA, "SERIAL-1", "TAG-1"));
+        equipamentos.saveAndFlush(equipamento(empresaA, "SERIAL-2", "TAG-2"));
+        entityManager.clear();
+
+        for (String termo : List.of("", "   ")) {
+            mockMvc.perform(get("/api/client/equipments")
+                            .param("search", termo).header("Authorization", tokenClienteA))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.totalItems").value(2));
+        }
+        mockMvc.perform(get("/api/client/equipments")
+                        .param("search", "x".repeat(100)).header("Authorization", tokenClienteA))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.totalItems").value(0));
+        mockMvc.perform(get("/api/client/equipments")
+                        .param("search", "x".repeat(101)).header("Authorization", tokenClienteA))
+                .andExpect(status().isBadRequest());
+    }
+
+    @Test
     void preservaSnapshotPublicaHistoricoComQuatroTiposDeMedicaoEPermiteInativo() throws Exception {
         Equipamento equipamento = equipamentos.saveAndFlush(equipamento(
                 empresaA, "SERIAL-SNAPSHOT", "TAG-SNAPSHOT"));

@@ -151,7 +151,8 @@ public sealed class ClientLabResultsConsultationTests
         ClientAnalysis? selected = null,
         ClientReportDetail? reportDetail = null) : IClientLabResultsRepository
     {
-        public Task<Page<ClientEquipment>> ListEquipmentAsync(PageRequest page, CancellationToken cancellationToken) =>
+        public Task<Page<ClientEquipment>> ListEquipmentAsync(
+            EquipmentSearch? search, PageRequest page, CancellationToken cancellationToken) =>
             Task.FromResult(Page<ClientEquipment>.Of([Equipment], page));
 
         public Task<ClientEquipment?> GetEquipmentAsync(string equipmentId, CancellationToken cancellationToken) =>

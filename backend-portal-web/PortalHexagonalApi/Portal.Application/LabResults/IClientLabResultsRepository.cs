@@ -9,7 +9,8 @@ namespace Portal.Application.LabResults;
 /// </summary>
 public interface IClientLabResultsRepository
 {
-    Task<Page<ClientEquipment>> ListEquipmentAsync(PageRequest page, CancellationToken cancellationToken);
+    Task<Page<ClientEquipment>> ListEquipmentAsync(
+        EquipmentSearch? search, PageRequest page, CancellationToken cancellationToken);
 
     Task<ClientEquipment?> GetEquipmentAsync(string equipmentId, CancellationToken cancellationToken);
 

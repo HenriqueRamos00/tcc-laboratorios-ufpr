@@ -6,7 +6,7 @@ public sealed record LabReport(
     string? RequestNumber,
     string? QuoteCode,
     string? SampleId,
-    string? SampleName,
+    string? Laboratory,
     string? Client,
     string? Status,
     DateTime? ScheduledDate,

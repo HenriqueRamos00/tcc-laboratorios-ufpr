@@ -1,5 +1,7 @@
 using Microsoft.AspNetCore.Mvc;
 
+using Portal.Application.LabResults;
+
 namespace Portal.Api;
 
 /// <summary>
@@ -67,6 +69,15 @@ internal static class ProblemResponses
             "invalid-page",
             "Pagina invalida.",
             "Os parametros page e pageSize precisam ser inteiros: page de 1 a 100000 e pageSize de 1 a 200.");
+    }
+
+    public static IActionResult InvalidEquipmentSearch(this ControllerBase controller)
+    {
+        return controller.AsProblem(
+            StatusCodes.Status400BadRequest,
+            "invalid-search",
+            "Busca invalida.",
+            $"O parametro search aceita no maximo {EquipmentSearch.MaxLength} caracteres.");
     }
 
     public static IActionResult ReportDocumentSourceUnavailable(this ControllerBase controller)

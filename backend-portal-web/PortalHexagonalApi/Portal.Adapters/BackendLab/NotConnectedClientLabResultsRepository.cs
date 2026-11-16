@@ -10,7 +10,8 @@ public sealed class NotConnectedClientLabResultsRepository : IClientLabResultsRe
     private static ClientLabSourceUnavailableException Unavailable() =>
         new("A fonte de resultados de cliente não está conectada.");
 
-    public Task<Page<ClientEquipment>> ListEquipmentAsync(PageRequest page, CancellationToken cancellationToken) =>
+    public Task<Page<ClientEquipment>> ListEquipmentAsync(
+        EquipmentSearch? search, PageRequest page, CancellationToken cancellationToken) =>
         Task.FromException<Page<ClientEquipment>>(Unavailable());
 
     public Task<ClientEquipment?> GetEquipmentAsync(string equipmentId, CancellationToken cancellationToken) =>

@@ -6,12 +6,14 @@ import br.ufpr.tcc.backend_lab.application.service.AcessoClienteAtual;
 import br.ufpr.tcc.backend_lab.application.service.MontadorSnapshotRelatorio;
 import br.ufpr.tcc.backend_lab.application.service.PaginacaoCliente;
 import br.ufpr.tcc.backend_lab.application.service.ProjecaoResultadoCliente;
+import br.ufpr.tcc.backend_lab.domain.exception.RegraNegocioException;
 import br.ufpr.tcc.backend_lab.domain.model.entity.Equipamento;
 import br.ufpr.tcc.backend_lab.domain.model.enums.StatusValidacaoRelatorio;
 import br.ufpr.tcc.backend_lab.domain.repository.EquipamentoRepository;
 import br.ufpr.tcc.backend_lab.domain.repository.RelatorioTecnicoRepository;
 import java.util.HashMap;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import org.springframework.data.domain.Page;
 import org.springframework.stereotype.Service;
@@ -19,6 +21,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 @Service
 public class ListarEquipamentosClienteUseCase {
+    private static final int TAMANHO_MAXIMO_BUSCA = 100;
     private final EquipamentoRepository equipamentos;
     private final RelatorioTecnicoRepository relatorios;
     private final AcessoClienteAtual acessoCliente;
@@ -37,8 +40,13 @@ public class ListarEquipamentosClienteUseCase {
 
     @Transactional(readOnly = true)
     public ClienteResultadoDtos.Pagina<ClienteResultadoDtos.EquipamentoCliente> executar(
-            Long usuarioId, int pagina, int tamanho, Long empresaId) {
+            Long usuarioId, int pagina, int tamanho, Long empresaId, String busca) {
         PaginacaoCliente.validar(pagina, tamanho);
+        String termo = busca == null ? "" : busca.trim();
+        if (termo.length() > TAMANHO_MAXIMO_BUSCA) {
+            throw RegraNegocioException.dadosInvalidos(
+                    "A busca de equipamentos deve ter no máximo 100 caracteres");
+        }
         var cliente = acessoCliente.execute(usuarioId);
         List<Long> empresasAutorizadas = acessoCliente.idsEmpresasAtivas(cliente);
         if (empresasAutorizadas.isEmpty()
@@ -49,7 +57,7 @@ public class ListarEquipamentosClienteUseCase {
                 ? empresasAutorizadas : List.of(empresaId);
 
         Page<Equipamento> resultado = equipamentos.listarCliente(empresasAutorizadas,
-                empresaId, PaginacaoCliente.equipamentos(pagina, tamanho));
+                empresaId, termo.toLowerCase(Locale.ROOT), PaginacaoCliente.equipamentos(pagina, tamanho));
         List<Long> idsEquipamentos = resultado.getContent().stream()
                 .map(Equipamento::getId)
                 .toList();

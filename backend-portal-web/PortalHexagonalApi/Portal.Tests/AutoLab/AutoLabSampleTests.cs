@@ -59,7 +59,7 @@ public sealed class AutoLabSampleTests : IDisposable
     public async Task TheAllScopeSeesEveryCompany()
     {
         Page<SampleAnalysis> page = await LabTests().GetAnalysesAsync(
-            VisibilityScope.All, PageRequest.First, CancellationToken.None);
+            VisibilityScope.All, null, PageRequest.First, CancellationToken.None);
 
         Assert.Equal(6, page.TotalCount);
         Assert.Equal(
@@ -75,7 +75,7 @@ public sealed class AutoLabSampleTests : IDisposable
         Page<SampleAnalysis> ofAnother = await LabTests().GetAnalysesOfEquipmentAsync(
             Competitor, "571289", new PageRequest(1, 1), CancellationToken.None);
         Page<SampleAnalysis> listing = await LabTests().GetAnalysesAsync(
-            Energy, PageRequest.First, CancellationToken.None);
+            Energy, null, PageRequest.First, CancellationToken.None);
 
         Assert.Equal(4, ofTheOwner.TotalCount);
         Assert.Empty(ofAnother.Items);

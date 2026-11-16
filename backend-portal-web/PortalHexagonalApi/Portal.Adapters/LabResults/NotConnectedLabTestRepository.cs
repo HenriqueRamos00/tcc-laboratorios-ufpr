@@ -10,7 +10,10 @@ namespace Portal.Adapters.LabResults;
 public sealed class NotConnectedLabTestRepository : ILabTestRepository
 {
     public Task<Page<SampleAnalysis>> GetAnalysesAsync(
-        VisibilityScope scope, PageRequest equipmentPage, CancellationToken cancellationToken) =>
+        VisibilityScope scope,
+        EquipmentSearch? search,
+        PageRequest equipmentPage,
+        CancellationToken cancellationToken) =>
         throw Pending();
 
     public Task<Page<SampleAnalysis>> GetAnalysesOfEquipmentAsync(

@@ -18,13 +18,17 @@ public interface EquipamentoRepository extends JpaRepository<Equipamento, Long> 
 			select e from Equipamento e join fetch e.empresa empresa
 			where e.ativo = true and empresa.ativo = true and empresa.id in :empresaIds
 			  and (:empresaId is null or empresa.id = :empresaId)
+			  and (:busca = '' or locate(:busca, lower(e.numeroSerie)) > 0
+			       or locate(:busca, lower(e.tag)) > 0)
 			""", countQuery = """
 			select count(e) from Equipamento e
 			where e.ativo = true and e.empresa.ativo = true and e.empresa.id in :empresaIds
 			  and (:empresaId is null or e.empresa.id = :empresaId)
+			  and (:busca = '' or locate(:busca, lower(e.numeroSerie)) > 0
+			       or locate(:busca, lower(e.tag)) > 0)
 			""")
 	Page<Equipamento> listarCliente(@Param("empresaIds") List<Long> empresaIds,
-			@Param("empresaId") Long empresaId, Pageable pageable);
+			@Param("empresaId") Long empresaId, @Param("busca") String busca, Pageable pageable);
 
 	// Busca equipamentos ativos da empresa por TAG ou número de série para seleção no ensaio.
 	@Query(value = """

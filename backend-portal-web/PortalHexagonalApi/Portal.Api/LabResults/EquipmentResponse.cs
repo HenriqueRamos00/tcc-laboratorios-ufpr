@@ -12,13 +12,6 @@ namespace Portal.Api.LabResults;
 /// contradiz sobre o tipo, e quando o equipamento e enderecado pelo protocolo Lactec, que nao
 /// e numero de serie e portanto nao casa com cadastro nenhum.
 ///
-/// <see cref="Location"/> continua nula sempre, e nao por falta de fatia: o cadastro tem dez
-/// colunas e nenhuma delas e localizacao. <c>Tag</c> nao serve de substituta, mesmo quando
-/// parece um lugar. Ela e o identificador de placa que o cliente pintou no equipamento, e
-/// algumas trazem nome de subestacao porque foi o cliente que escreveu assim; usar <c>Tag</c>
-/// como localizacao inventaria um significado para a coluna e publicaria no campo errado um
-/// dado que em dez linhas do cadastro carrega nome de empresa.
-///
 /// <see cref="EquipmentTag"/> e campo novo e opcional, e <see cref="Tag"/> nao mudou de
 /// significado. Quem decide o que imprimir na coluna "TAG" e a tela, que tem a TAG de placa
 /// quando o cadastro a conhece e a identificacao do laudo quando nao. Repontar
@@ -42,6 +35,7 @@ public sealed record EquipmentResponse
 
     public string? Type { get; init; }
 
+    /// <summary>Subestação do cadastro Spring; nula quando a fonte não informa localização.</summary>
     public string? Location { get; init; }
 
     public required string Company { get; init; }

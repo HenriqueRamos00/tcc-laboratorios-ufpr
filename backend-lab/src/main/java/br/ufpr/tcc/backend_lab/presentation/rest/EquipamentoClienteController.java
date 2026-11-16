@@ -32,8 +32,9 @@ public class EquipamentoClienteController {
             Authentication authentication,
             @RequestParam(defaultValue = "1") int page,
             @RequestParam(defaultValue = "20") int pageSize,
-            @RequestParam(required = false) Long companyId) {
-        return listar.executar(usuarioId(authentication), page, pageSize, companyId);
+            @RequestParam(required = false) Long companyId,
+            @RequestParam(required = false) String search) {
+        return listar.executar(usuarioId(authentication), page, pageSize, companyId, search);
     }
 
     @GetMapping("/{id}")

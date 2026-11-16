@@ -58,6 +58,10 @@ export function stageIndex(stage: PipelineStage): number {
   return STAGE_INDEX_BY_KEY.get(stage) ?? 0;
 }
 
+export function isPipelineStage(value: string): value is PipelineStage {
+  return STAGE_INDEX_BY_KEY.has(value as PipelineStage);
+}
+
 export function isClosed(status: RequestStatus): status is ClosedStage {
   return status === 'cancelado' || status === 'recusado';
 }

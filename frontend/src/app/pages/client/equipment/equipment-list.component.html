@@ -4,6 +4,7 @@
   class="mt-6"
   placeholder="Buscar por Número de Série ou TAG"
   label="Buscar por número de série ou TAG"
+  [maxLength]="searchMaxLength"
   [(termo)]="searchTerm"
 />
 
@@ -22,79 +23,32 @@
     title="Não foi possível carregar os equipamentos no momento"
     descricao="A consulta falhou. Tente novamente em instantes."
   />
-} @else if (loading()) {
-  <p class="mt-6 text-sm text-lactec-muted" role="status">Carregando equipamentos…</p>
-} @else if (!visible().length) {
-  <app-empty-state
-    class="mt-6"
-    icon="search_off"
-    title="Nenhum equipamento encontrado"
-    descricao="Revise o número de série ou a TAG informada."
-  />
 } @else {
-  <div class="mt-6 overflow-hidden rounded-2xl border border-lactec-line bg-lactec-paper">
-    <div class="overflow-x-auto">
-      <table class="w-full border-collapse text-sm">
-        <caption class="sr-only">
-          Equipamentos da sua empresa, com número de série, TAG, tipo, localização e acesso aos
-          detalhes de cada um.
-        </caption>
-        <thead>
-          <tr class="bg-lactec-line-soft text-left">
-            <th scope="col" class="px-4 py-3 font-semibold text-lactec-ink">Número de Série</th>
-            <th scope="col" class="px-4 py-3 font-semibold text-lactec-ink">TAG</th>
-            <th scope="col" class="px-4 py-3 font-semibold text-lactec-ink">Tipo de Equipamento</th>
-            <th scope="col" class="px-4 py-3 font-semibold text-lactec-ink">Localização</th>
-            <th scope="col" class="px-4 py-3 font-semibold text-lactec-ink">Laudos</th>
-            <th scope="col" class="px-4 py-3 text-right font-semibold text-lactec-ink">Ação</th>
-          </tr>
-        </thead>
-        <tbody>
-          @for (equipment of visible(); track equipment.id) {
-            <tr class="border-t border-lactec-line-soft">
-              <!-- O cadastro do AutoLAB não informa todo campo de todo equipamento, e não
-                   conhece 14% das séries. A célula diz isso, em vez de ficar vazia como se o
-                   dado fosse em branco. A coluna de TAG prefere a TAG de placa e cai na
-                   identificação do laudo, que é o que `tag` sempre carrega. -->
-              <td class="px-4 py-3 text-lactec-ink">
-                {{ equipment.serialNumber ?? 'Não informado' }}
-              </td>
-              <td class="px-4 py-3 text-lactec-ink">{{ equipment.equipmentTag ?? equipment.tag }}</td>
-              <td class="px-4 py-3 text-lactec-ink">{{ equipment.type ?? 'Não informado' }}</td>
-              <td class="px-4 py-3 text-lactec-ink">
-                @if (equipment.location; as location) {
-                  {{ location }}
-                } @else {
-                  <app-data-unavailable />
-                }
-              </td>
-              <td class="px-4 py-3 text-lactec-ink">{{ equipment.reportCount }}</td>
-              <td class="px-4 py-3 text-right">
-                <a
-                  [routerLink]="['/cliente/equipamentos', equipment.id]"
-                  class="inline-flex items-center gap-2 rounded-lg bg-lactec-primary px-4 py-2
-                         text-sm font-semibold text-lactec-on-primary hover:bg-lactec-primary-dark"
-                >
-                  Ver Detalhes
-                  <mat-icon class="icone-16" aria-hidden="true">arrow_forward</mat-icon>
-                </a>
-              </td>
-            </tr>
-          }
-        </tbody>
-      </table>
-    </div>
-  </div>
-}
-
-@if (!failed() && total() > 0) {
-  <app-pagination
-    class="mt-4"
-    label="Paginação da listagem de equipamentos"
-    [page]="page()"
-    [pageSize]="pageSize"
+  <app-data-table
+    class="mt-6"
+    caption="Equipamentos da sua empresa, com número de série, TAG, tipo, número de laudos e acesso aos detalhes de cada um."
+    paginationLabel="Paginação da listagem de equipamentos"
+    actionsHeader="Ação"
+    loadingMessage="Carregando equipamentos…"
+    emptyIcon="search_off"
+    emptyTitle="Nenhum equipamento encontrado"
+    [emptyDescription]="emptyDescription()"
+    [columns]="columns"
+    [rows]="equipmentList()"
+    [trackBy]="trackById"
     [total]="total()"
-    [disabled]="loading()"
-    (pageChange)="goToPage($event)"
-  />
+    [loading]="loading()"
+    [(query)]="query"
+  >
+    <ng-template appDataTableActions [appDataTableActionsOf]="equipmentList()" let-equipment>
+      <a
+        [routerLink]="['/cliente/equipamentos', equipment.id]"
+        class="inline-flex items-center gap-2 rounded-lg bg-lactec-primary px-4 py-2
+               text-sm font-semibold text-lactec-on-primary hover:bg-lactec-primary-dark"
+      >
+        Ver Detalhes
+        <mat-icon class="icone-16" aria-hidden="true">arrow_forward</mat-icon>
+      </a>
+    </ng-template>
+  </app-data-table>
 }

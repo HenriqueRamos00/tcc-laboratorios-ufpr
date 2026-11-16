@@ -288,15 +288,19 @@ permanece restrita ao modo `lactec`.
 
 O AutoLAB conhece o orçamento pela coluna `OrcamentoCRM`, que guarda só a forma nua
 `2024_37569`. No Salesforce, o código da cotação (`Quote.Codigo_da_Cotacao__c`) vem como
-`EAQ_2024_37569_V_1`. A regra mora no domínio, em `Portal.Domain/Quotes/LaboratoryQuoteKey`,
+`EAQ_2024_37569_V_1` ou `SET_2026_47711_V_1`: sigla da área comercial (`EAQ`, `SET`,
+`PED`...), ano e número, e versão. A sigla (2 a 10 letras maiúsculas) e a versão (`_V_1`
+ou `_V1`) são opcionais e ficam fora da chave. A regra mora no domínio, em `Portal.Domain/Quotes/LaboratoryQuoteKey`,
 e `Quote.LaboratoryKey` é derivada de `Quote.QuotationCode`:
 
 | Código da cotação | Chave no AutoLAB |
 | --- | --- |
 | `EAQ_2024_37569_V_1` (qualquer versão `_V_n`) | `2024_37569` |
+| `SET_2026_47711_V_1`, `PED_2026_47711_V_1` (qualquer sigla de área) | `2026_47711` |
+| `EAQ_2026_1205_V1` (versão sem `_` depois do `V`) | `2026_1205` |
 | `EAQ_2024_37569` | `2024_37569` |
 | `2024_37569` | `2024_37569` |
-| ausente, vazio ou qualquer outra forma (`EAQ_2024_37569_UHAB`, `EAQ 2024_37569`, ...) | nenhuma |
+| ausente, vazio ou qualquer outra forma (`EAQ_2024_37569_UHAB`, `EAQ 2024_37569`, `eaq_2024_37569`, `EAQ_2024_37569_V`, ...) | nenhuma |
 
 O valor é aparado nas pontas; não há busca por prefixo nem uso do código da oportunidade
 (`Opportunity.Codigo_da_Oportunidade__c`) como alternativa. A chave é usada na etapa do
@@ -504,6 +508,23 @@ total e a pagina servida. A paginacao acontece no
 banco: primeiro as chaves (equipamentos do escopo, ou protocolos do equipamento) em
 ordem fixa, depois as linhas so das chaves da pagina.
 
+### Busca de equipamentos
+
+`GET /api/equipments?search=` funciona nas duas fontes. No modo Spring, a API encaminha
+o termo ao Backend Lab, que busca por trecho do número de série ou da TAG sem distinguir
+maiúsculas, respeitando as empresas autorizadas antes da contagem e da paginação. O termo
+é aparado, vazio significa sem filtro e o limite é de 100 caracteres; caracteres de
+`LIKE` são tratados como texto literal.
+
+No modo AutoLAB, a busca filtra no banco, dentro do escopo da empresa, por trecho do
+numero de serie (`vwDadosEnsaios.NumSerie`), da identificacao do laudo
+(`vwDadosEnsaios.Identificacao`) ou da TAG de placa (`Equipamentos.Tag`, ligada pelo numero
+de serie). A comparacao nao distingue maiusculas (`Latin1_General_CI_AS`), o termo e
+aparado, vazio quer dizer sem filtro, e mais de 100 caracteres responde 400
+(`invalid-search`). `%`, `_` e `[` digitados pelo usuario sao texto literal: o padrao do
+`LIKE` sai escapado e a consulta declara `ESCAPE '\'`. `X-Total-Count` e o total da busca.
+A busca escolhe os equipamentos; cada equipamento encontrado vem com todos os laudos dele.
+
 ### PDF assinado do laudo
 
 `GET /api/equipments/{id}/reports/{reportId}/document` devolve `application/pdf`. O laudo
@@ -524,9 +545,10 @@ consulta so, com `IN` das identificacoes. O antigo `reportUrl` saiu do contrato.
 mesmo valor que cada relatório devolve em `quoteCode`, e não o `code` do orçamento),
 ordenado por `DataPublicacao` desc, `DataEmissao` desc e `Oid`.
 Cada item: `id` (o `Oid`, opaco), `identification`, `requestNumber`, `quoteCode`,
-`sampleId`, `sampleName`, `client`, `status`, `scheduledDate`, `issueDate`,
-`publicationDate` (datas `yyyy-MM-dd` ou `null`) e `hasSignedDocument` (`PdfAssinado`
-preenchido). `GET /api/reports/{id}/document` segue `Oid` → `PdfAssinado` → `FileData`
+`sampleId` (`IDAmostra`, a amostra), `laboratory` (`Nome`, o laboratorio), `client`,
+`status`, `scheduledDate`, `issueDate`, `publicationDate` (datas `yyyy-MM-dd` ou `null`) e
+`hasSignedDocument` (`PdfAssinado` preenchido). `sampleName` so e preenchido no modo
+Spring, onde o relatorio publicado traz o nome da amostra. `GET /api/reports/{id}/document` segue `Oid` → `PdfAssinado` → `FileData`
 (`GCRecord` nulo) dentro do escopo; sem PDF responde 404. No escopo `company`, a empresa e
 comparada com `ClienteSolicitante`.
 

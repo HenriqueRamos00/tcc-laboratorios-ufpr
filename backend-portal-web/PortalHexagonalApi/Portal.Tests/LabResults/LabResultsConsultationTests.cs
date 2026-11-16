@@ -196,9 +196,27 @@ public sealed class LabResultsConsultationTests
             AnalysisOf("01563/2026-018", "5233", company: OtherTenant));
 
         Page<EquipmentWithNameplate> page = await Consultation(source)
-            .ListEquipmentAsync(VisibilityScope.All, PageRequest.First, CancellationToken.None);
+            .ListEquipmentAsync(VisibilityScope.All, null, PageRequest.First, CancellationToken.None);
 
         Assert.Equal(2, page.Items.Count);
+    }
+
+    [Fact]
+    public async Task TheSearchReachesTheSourceAndTheTotalIsTheOneOfTheSearch()
+    {
+        InMemoryLabTestRepository source = new(
+            AnalysisOf("01417/2026-001", "571289"),
+            AnalysisOf("01417/2026-002", "884120"),
+            AnalysisOf("01563/2026-018", "571200", company: OtherTenant));
+
+        Assert.True(EquipmentSearch.TryCreate(" 5712 ", out EquipmentSearch? search));
+
+        Page<EquipmentWithNameplate> page = await Consultation(source).ListEquipmentAsync(
+            VisibilityScope.OfCompany(Tenant), search, PageRequest.First, CancellationToken.None);
+
+        Assert.Equal("5712", Assert.Single(source.SearchesAsked)?.Term);
+        Assert.Equal(1, page.TotalCount);
+        Assert.Equal("571289", Assert.Single(page.Items).Equipment.SerialNumber);
     }
 
     /// <summary>
@@ -250,10 +268,11 @@ public sealed class LabResultsConsultationTests
 
         public Task<Page<SampleAnalysis>> GetAnalysesAsync(
             VisibilityScope scope,
+            EquipmentSearch? search,
             PageRequest equipmentPage,
             CancellationToken cancellationToken)
         {
-            return _loaded.GetAnalysesAsync(scope, equipmentPage, cancellationToken);
+            return _loaded.GetAnalysesAsync(scope, search, equipmentPage, cancellationToken);
         }
 
         public Task<Page<SampleAnalysis>> GetAnalysesOfEquipmentAsync(

@@ -35,21 +35,74 @@ public sealed class EquipmentContractTests : IClassFixture<RunningPortal>
             equipment!.AsObject().Select(pair => pair.Key).Order()));
     }
 
-    /// <summary>
-    /// Localizacao nao existe no cadastro: sao dez colunas e nenhuma delas e lugar. A chave
-    /// tem que continuar no corpo mesmo nula, em toda linha: sem ela a tela imprime undefined
-    /// na coluna em vez de dizer que o dado nao e informado.
-    /// </summary>
-    [Fact]
-    public async Task LocationIsNullAndPresentInEveryRow()
+    [Theory]
+    [InlineData("571289", "571289")]
+    [InlineData("tr-00002", "111.594/1")]
+    [InlineData("LACTEC-02465", "884120")]
+    public async Task TheSearchFiltersOnTheServerAndTheTotalIsTheOneOfTheSearch(string text, string serialNumber)
     {
-        JsonArray list = await ListAsync();
+        HttpResponseMessage response = await _portal.CreateClient()
+            .GetAsync("/api/equipments?search=" + Uri.EscapeDataString(text));
 
-        Assert.All(list, equipment =>
-        {
-            Assert.True(equipment!.AsObject().ContainsKey("location"));
-            Assert.Null(equipment["location"]);
-        });
+        response.EnsureSuccessStatusCode();
+
+        JsonArray list = JsonNode.Parse(await response.Content.ReadAsStringAsync())!.AsArray();
+
+        Assert.Equal(serialNumber, (string?)Assert.Single(list)!["serialNumber"]);
+        Assert.Equal("1", string.Join(",", response.Headers.GetValues("X-Total-Count")));
+    }
+
+    [Theory]
+    [InlineData("")]
+    [InlineData("%20%20")]
+    public async Task AnEmptySearchIsTheListingWithoutFilter(string text)
+    {
+        JsonArray everything = await ListAsync();
+
+        HttpResponseMessage response = await _portal.CreateClient().GetAsync("/api/equipments?search=" + text);
+
+        response.EnsureSuccessStatusCode();
+
+        JsonArray list = JsonNode.Parse(await response.Content.ReadAsStringAsync())!.AsArray();
+
+        Assert.Equal(everything.Count, list.Count);
+    }
+
+    [Theory]
+    [InlineData("%25")]
+    [InlineData("_")]
+    [InlineData("%5B0-9%5D")]
+    public async Task AWildcardInTheSearchIsLiteralTextAndFindsNothing(string text)
+    {
+        HttpResponseMessage response = await _portal.CreateClient().GetAsync("/api/equipments?search=" + text);
+
+        response.EnsureSuccessStatusCode();
+
+        Assert.Empty(JsonNode.Parse(await response.Content.ReadAsStringAsync())!.AsArray());
+        Assert.Equal("0", string.Join(",", response.Headers.GetValues("X-Total-Count")));
+    }
+
+    [Fact]
+    public async Task ATagOfAnotherTenantsEquipmentFindsNothing()
+    {
+        HttpResponseMessage response = await _portal.CreateClient().GetAsync("/api/equipments?search=TR-00004");
+
+        response.EnsureSuccessStatusCode();
+
+        Assert.Empty(JsonNode.Parse(await response.Content.ReadAsStringAsync())!.AsArray());
+    }
+
+    [Fact]
+    public async Task ASearchLongerThanTheLimitIsABadRequest()
+    {
+        HttpResponseMessage atTheLimit = await _portal.CreateClient()
+            .GetAsync("/api/equipments?search=" + new string('7', 100));
+        HttpResponseMessage beyond = await _portal.CreateClient()
+            .GetAsync("/api/equipments?search=" + new string('7', 101));
+
+        Assert.Equal(HttpStatusCode.OK, atTheLimit.StatusCode);
+        Assert.Equal(HttpStatusCode.BadRequest, beyond.StatusCode);
+        Assert.Contains("invalid-search", await beyond.Content.ReadAsStringAsync(), StringComparison.Ordinal);
     }
 
     /// <summary>

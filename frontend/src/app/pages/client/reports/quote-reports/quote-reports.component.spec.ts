@@ -1,6 +1,11 @@
-import { TestBed } from '@angular/core/testing';
+import { fakeAsync, TestBed } from '@angular/core/testing';
 import { provideRouter } from '@angular/router';
 import { of, throwError } from 'rxjs';
+
+import {
+  PAGE_SIZE_WITHOUT_SCROLL_AREA,
+  renderMeasuredTable,
+} from '@shared/components/data-table/data-table.spec-util';
 
 import type { Quote } from '@/app/model/quote';
 import type { Report } from '@/app/model/report';
@@ -10,9 +15,11 @@ import { ReportsService } from '@/app/services/reports.service';
 
 import { QuoteReportsComponent } from './quote-reports.component';
 
-function quote(id: string, code: string, stage: string): Quote {
+const PAGE_SIZE = PAGE_SIZE_WITHOUT_SCROLL_AREA;
+
+function quote(id: string, code: string, stage: string, laboratoryStage?: string): Quote {
   return {
-    id, code, name: `Proposta ${code}`, status: 'Finalizado', stage, description: '',
+    id, code, name: `Proposta ${code}`, status: 'Finalizado', stage, laboratoryStage, description: '',
     companyName: 'EMPRESA DE ENERGIA', externalContactName: '', externalContactEmail: '',
     totalPrice: 0, createdDate: null,
   };
@@ -39,7 +46,9 @@ const ORCAMENTOS = new Map<string, Quote>([
   ['quote-15', quote('quote-15', 'EAQ_2026_45496_V_1', 'Relatório publicado')],
   ['quote-18', quote('quote-18', 'EAQ_2026_45499_V_1', 'Elaborando relatório')],
   ['quote-10', quote('quote-10', 'EAQ_2026_45491_V_1', 'Em execução')],
-  ['quote-16', quote('quote-16', 'EAQ_2026_45497_V_1', 'Fechado perdido')],
+  ['quote-16', quote('quote-16', 'EAQ_2026_45497_V_1', 'Fechado perdido', 'em-execucao')],
+  ['quote-20', quote('quote-20', 'SET_2026_47711_V_1', 'Aprovado pelo cliente', 'validado')],
+  ['quote-21', quote('quote-21', 'SET_2026_47712_V_1', 'Aprovado pelo cliente', 'report-published')],
 ]);
 
 // O AutoLAB devolve o OrcamentoCRM na forma nua; a tela pede pelo ID do orçamento.
@@ -78,42 +87,43 @@ function montarTela(quoteId: string, conclusion?: { testType: string; summary: s
 
   const fixture = TestBed.createComponent(QuoteReportsComponent);
   fixture.componentRef.setInput('quoteId', quoteId);
+  renderMeasuredTable(fixture);
   fixture.detectChanges();
 
   return { fixture, tela: fixture.nativeElement as HTMLElement, pedidos };
 }
 
 function relatoriosNaTabela(tela: HTMLElement): (string | undefined)[] {
-  return Array.from(tela.querySelectorAll('tbody tr td:first-child')).map((celula) =>
+  return Array.from(tela.querySelectorAll('tbody tr[data-row] td:first-child')).map((celula) =>
     celula.textContent?.trim(),
   );
 }
 
 describe('QuoteReportsComponent, os laudos de um orçamento só', () => {
-  it('mostra o tipo e a conclusão publicados quando o Spring os fornece', () => {
+  it('mostra o tipo e a conclusão publicados quando o Spring os fornece', fakeAsync(() => {
     const { tela } = montarTela('quote-15', { testType: 'Cromatografia', summary: 'Resultado validado e publicado' });
     expect(tela.textContent).toContain('Tipo de ensaio: Cromatografia');
     expect(tela.textContent).toContain('Resumo da análise: Resultado validado e publicado');
-  });
+  }));
 
-  it('pede à API os laudos pelo ID do orçamento que o endereço nomeia', () => {
+  it('pede à API os laudos pelo ID do orçamento que o endereço nomeia', fakeAsync(() => {
     const { tela, pedidos } = montarTela('quote-18');
 
-    expect(pedidos).toEqual([{ quoteId: 'quote-18', page: 1, pageSize: 50 }]);
+    expect(pedidos).toEqual([{ quoteId: 'quote-18', page: 1, pageSize: PAGE_SIZE }]);
     expect(relatoriosNaTabela(tela)).toEqual(['LACTEC-00412/2026']);
-  });
+  }));
 
-  it('troca os laudos quando o endereço passa a nomear outro orçamento', () => {
+  it('troca os laudos quando o endereço passa a nomear outro orçamento', fakeAsync(() => {
     const { fixture, tela, pedidos } = montarTela('quote-18');
 
     fixture.componentRef.setInput('quoteId', 'quote-15');
-    fixture.detectChanges();
+    renderMeasuredTable(fixture);
 
     expect(pedidos.map((pedido) => pedido.quoteId)).toEqual(['quote-18', 'quote-15']);
     expect(relatoriosNaTabela(tela)).toEqual(['LACTEC-00307/2026']);
-  });
+  }));
 
-  it('a etapa destacada é a etapa real do orçamento', () => {
+  it('a etapa destacada é a etapa real do orçamento', fakeAsync(() => {
     const publicado = montarTela('quote-15').tela;
     expect(publicado.querySelector('.status-stepper__step[data-state="active"]')?.textContent)
       .toContain('Relatório publicado');
@@ -122,34 +132,48 @@ describe('QuoteReportsComponent, os laudos de um orçamento só', () => {
     const elaborando = montarTela('quote-18').tela;
     expect(elaborando.querySelector('.status-stepper__step[data-state="active"]')?.textContent)
       .toContain('Elaborando relatório');
-  });
+  }));
 
-  it('orçamento encerrado não mostra a linha de etapas', () => {
+  it('a etapa do laboratório é a destacada quando está à frente da comercial', fakeAsync(() => {
+    const { tela } = montarTela('quote-20');
+
+    expect(tela.querySelector('.status-stepper__step[data-state="active"]')?.textContent)
+      .toContain('Validado');
+  }));
+
+  it('etapa de laboratório desconhecida é ignorada, e vale a comercial', fakeAsync(() => {
+    const { tela } = montarTela('quote-21');
+
+    expect(tela.querySelector('.status-stepper__step[data-state="active"]')?.textContent)
+      .toContain('Aprovado pelo cliente');
+  }));
+
+  it('orçamento encerrado não mostra a linha de etapas, mesmo com etapa de laboratório', fakeAsync(() => {
     const { tela } = montarTela('quote-16');
 
     expect(tela.querySelector('app-status-stepper')).toBeNull();
-  });
+  }));
 
-  it('tipo de ensaio, resumo e laboratório, sem coluna no AutoLAB, aparecem como não disponíveis', () => {
+  it('tipo de ensaio, resumo e laboratório que a API não informa aparecem como não disponíveis', fakeAsync(() => {
     const { tela } = montarTela('quote-15');
 
     expect(tela.textContent).toContain('Tipo de ensaio: Dados não disponíveis');
     expect(tela.textContent).toContain('Resumo da análise: Dados não disponíveis');
-    expect(tela.querySelector('tbody tr td:nth-child(4)')?.textContent?.trim())
+    expect(tela.querySelector('tbody tr[data-row] td:nth-child(4)')?.textContent?.trim())
       .toBe('Dados não disponíveis');
-  });
+  }));
 
-  it('orçamento sem laudo publicado anuncia a espera, em vez de uma tabela vazia', () => {
+  it('orçamento sem laudo publicado anuncia a espera, em vez de uma tabela vazia', fakeAsync(() => {
     const { tela } = montarTela('quote-10');
 
     expect(tela.querySelector('tbody')).toBeNull();
     expect(tela.textContent).toContain('ainda não tem relatório publicado');
-  });
+  }));
 
-  it('orçamento que a API não entrega vira mensagem de falha', () => {
+  it('orçamento que a API não entrega vira mensagem de falha', fakeAsync(() => {
     const { tela, pedidos } = montarTela('quote-99');
 
     expect(pedidos).toEqual([]);
     expect(tela.textContent).toContain('Não foi possível carregar os relatórios');
-  });
+  }));
 });

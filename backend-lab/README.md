@@ -350,6 +350,11 @@ publicados aos clientes autorizados. O acesso considera os vínculos atuais com 
 antes de paginar os resultados. Equipamentos desativados deixam a listagem, mas os relatórios
 publicados continuam acessíveis aos clientes autorizados.
 
+A listagem `GET /api/client/equipments` aceita `search` para buscar trechos do número de
+série ou da TAG, sem distinguir maiúsculas. O termo é aparado, vazio não filtra e mais de
+100 caracteres retorna 400. `%`, `_` e `[` são texto literal. O filtro respeita as empresas
+autorizadas e os equipamentos ativos antes da paginação e da contagem de `totalItems`.
+
 O Compose regular usa os adapters C# para manter os contratos do Portal do Cliente.
 As datas das análises Spring correspondem à publicação do laudo. No cadastro interno,
 é possível informar fabricante, ano de fabricação, potência em MVA, tipo de óleo e volume

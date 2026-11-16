@@ -17,8 +17,9 @@ const REJECT_BUTTON = 'Recusar Orçamento';
 const CONFIRM_SHIPMENT_BUTTON = 'Confirmar envio da amostra';
 const LABEL_REMINDER = 'Identifique a caixa';
 
-function quoteAtStage(stageName: string): Quote {
+function quoteAtStage(stageName: string, laboratoryStage?: string): Quote {
   return {
+    laboratoryStage,
     id: 'quote-1',
     code: 'EAQ_2026_45487_V_1',
     name: 'Ensaio em transformador de força',
@@ -34,7 +35,7 @@ function quoteAtStage(stageName: string): Quote {
   };
 }
 
-function mountDetail(stageName: string) {
+function mountDetail(stageName: string, laboratoryStage?: string) {
   const destinations: unknown[][] = [];
 
   TestBed.configureTestingModule({
@@ -43,7 +44,7 @@ function mountDetail(stageName: string) {
       {
         provide: QuotesService,
         useValue: {
-          getQuoteById: () => of(quoteAtStage(stageName)),
+          getQuoteById: () => of(quoteAtStage(stageName, laboratoryStage)),
           quoteDocument: () => of(new Blob(['%PDF-1.4'], { type: 'application/pdf' })),
         },
       },
@@ -115,6 +116,28 @@ describe('QuoteDetailComponent, a ação que a etapa pede', () => {
     expect(buttonWith(view, ACCEPT_BUTTON)).toBeUndefined();
     expect(buttonWith(view, CONFIRM_SHIPMENT_BUTTON)).toBeUndefined();
     expect(view.textContent).toContain('Acompanhe a situação pela listagem');
+  });
+
+  it('com o laboratório já à frente do aceite, a tela não pede a confirmação do envio', () => {
+    const { view } = mountDetail('Aprovado pelo cliente', 'em-execucao');
+
+    expect(buttonWith(view, ACCEPT_BUTTON)).toBeUndefined();
+    expect(buttonWith(view, CONFIRM_SHIPMENT_BUTTON)).toBeUndefined();
+    expect(view.textContent).toContain('Acompanhe a situação pela listagem');
+  });
+
+  it('etapa de laboratório desconhecida não tira a ação que a etapa comercial pede', () => {
+    const { view } = mountDetail('Aprovado pelo cliente', 'in-progress');
+
+    expect(buttonWith(view, CONFIRM_SHIPMENT_BUTTON)).toBeDefined();
+  });
+
+  it('proposta recusada continua fechada, mesmo com etapa de laboratório', () => {
+    const { view } = mountDetail('Fechado perdido', 'em-execucao');
+
+    expect(buttonWith(view, ACCEPT_BUTTON)).toBeUndefined();
+    expect(buttonWith(view, CONFIRM_SHIPMENT_BUTTON)).toBeUndefined();
+    expect(view.textContent).toContain('Esta proposta foi encerrada');
   });
 
   // A etapa que veio na carga da tela é a do Salesforce, que ainda não soube do

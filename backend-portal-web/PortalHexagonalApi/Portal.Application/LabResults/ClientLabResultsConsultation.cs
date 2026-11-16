@@ -17,10 +17,11 @@ public sealed class ClientLabResultsConsultation(
     private static readonly TimeZoneInfo PortalTimeZone = TimeZoneInfo.FindSystemTimeZoneById(SaoPauloTimeZone);
     private static readonly PageRequest FirstHundred = new(1, SpringMaximumPageSize);
 
-    public Task<Page<ClientEquipment>> ListEquipmentAsync(PageRequest page, CancellationToken cancellationToken)
+    public Task<Page<ClientEquipment>> ListEquipmentAsync(
+        EquipmentSearch? search, PageRequest page, CancellationToken cancellationToken)
     {
         ValidatePage(page);
-        return results.ListEquipmentAsync(page, cancellationToken);
+        return results.ListEquipmentAsync(search, page, cancellationToken);
     }
 
     public Task<ClientEquipment?> GetEquipmentAsync(string equipmentId, CancellationToken cancellationToken) =>

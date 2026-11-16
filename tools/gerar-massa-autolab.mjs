@@ -151,7 +151,7 @@ function emissoes() {
           NumeroSolicitacao: relatorio.numeroSolicitacao,
           OrcamentoCRM: relatorio.orcamentoCRM,
           IDAmostra: `AM-${analise.protocoloLactec}`,
-          Nome: `Óleo isolante ${analise.numSerie}`,
+          Nome: 'Óleos',
           ClienteSolicitante: analise.empresaTrafo,
           DataFinalProgramadaCliente: dataProgramada,
           SituacaoRelatorio: emissao.situacao,

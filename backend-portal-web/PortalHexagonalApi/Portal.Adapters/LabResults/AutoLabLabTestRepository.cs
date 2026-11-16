@@ -20,6 +20,7 @@ public sealed class AutoLabLabTestRepository : ILabTestRepository
 
     public async Task<Page<SampleAnalysis>> GetAnalysesAsync(
         VisibilityScope scope,
+        EquipmentSearch? search,
         PageRequest equipmentPage,
         CancellationToken cancellationToken)
     {
@@ -27,7 +28,7 @@ public sealed class AutoLabLabTestRepository : ILabTestRepository
         ArgumentNullException.ThrowIfNull(equipmentPage);
 
         Page<string> keys = await AutoLabFetch.GuardAsync(
-            () => AutoLabQueries.EquipmentKeys(_database, scope)
+            () => AutoLabQueries.EquipmentKeys(_database, scope, search)
                 .ToPageAsync(equipmentPage, cancellationToken),
             Unavailable);
 

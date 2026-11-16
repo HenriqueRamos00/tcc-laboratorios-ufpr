@@ -8,7 +8,21 @@ import {
 } from '@angular/core';
 import { takeUntilDestroyed, toObservable } from '@angular/core/rxjs-interop';
 import { MatIconModule } from '@angular/material/icon';
-import { catchError, combineLatest, EMPTY, switchMap, tap } from 'rxjs';
+import {
+  catchError,
+  combineLatest,
+  distinctUntilChanged,
+  EMPTY,
+  filter,
+  switchMap,
+  tap,
+} from 'rxjs';
+
+import {
+  isMeasured,
+  sameQuery,
+  unmeasuredQuery,
+} from '@shared/components/data-table/data-table.model';
 
 import { DataUnavailableComponent } from '@shared/components/data-unavailable/data-unavailable.component';
 import { EmptyStateComponent } from '@shared/components/empty-state/empty-state.component';
@@ -16,7 +30,6 @@ import {
   PageHeaderComponent,
   type Breadcrumb,
 } from '@shared/components/page-header/page-header.component';
-import { PaginationComponent } from '@shared/components/pagination/pagination.component';
 import { SearchFieldComponent } from '@shared/components/search-field/search-field.component';
 import {
   StatusStepperComponent,
@@ -24,9 +37,8 @@ import {
 } from '@shared/components/status-stepper/status-stepper.component';
 
 import { isClosed, PIPELINE_STAGES, stageIndex } from '@/app/model/analysis-pipeline';
-import { DEFAULT_PAGE_SIZE } from '@/app/model/page';
 import type { Quote } from '@/app/model/quote';
-import { recognizeStage } from '@/app/model/quote-presentation';
+import { stageOfQuote } from '@/app/model/quote-presentation';
 import type { Report } from '@/app/model/report';
 import { QuotesService } from '@/app/services/quotes.service';
 import { ReportsService } from '@/app/services/reports.service';
@@ -49,7 +61,6 @@ const ETAPAS: readonly StatusStepperStep[] = PIPELINE_STAGES.map((stage) => ({
     EmptyStateComponent,
     StatusStepperComponent,
     DataUnavailableComponent,
-    PaginationComponent,
     ReportTableComponent,
   ],
   templateUrl: './quote-reports.component.html',
@@ -63,22 +74,20 @@ export class QuoteReportsComponent {
   private readonly reports = inject(ReportsService);
 
   protected readonly stages = ETAPAS;
-  protected readonly pageSize = DEFAULT_PAGE_SIZE;
-
   protected readonly searchTerm = signal('');
   protected readonly quote = signal<Quote | null>(null);
   protected readonly reportList = signal<readonly Report[] | null>(null);
-  protected readonly page = signal(1);
+  protected readonly query = signal(unmeasuredQuery());
   protected readonly total = signal(0);
   protected readonly loading = signal(true);
-  protected readonly reportsLoading = signal(false);
+  protected readonly reportsLoading = signal(true);
   protected readonly testType = signal<string | null>(null);
   protected readonly summary = signal<string | null>(null);
   protected readonly failed = signal(false);
 
   protected readonly stage = computed(() => {
     const quote = this.quote();
-    return quote ? recognizeStage(quote.stage ?? '') : null;
+    return quote ? stageOfQuote(quote) : null;
   });
 
   protected readonly currentStageIndex = computed(() => {
@@ -90,6 +99,10 @@ export class QuoteReportsComponent {
     { label: 'Relatórios', route: '/cliente/relatorios' },
     { label: this.quote()?.code ?? 'Orçamento' },
   ]);
+
+  protected readonly withoutReports = computed(
+    () => this.reportList() !== null && this.total() === 0,
+  );
 
   protected readonly visibleReports = computed(() => {
     const list = this.reportList() ?? [];
@@ -111,8 +124,10 @@ export class QuoteReportsComponent {
         this.reportList.set(null);
         this.failed.set(false);
         this.loading.set(true);
+        this.reportsLoading.set(true);
+        this.total.set(0);
         this.searchTerm.set('');
-        this.page.set(1);
+        this.query.update((current) => ({ ...current, page: 1 }));
       }),
       switchMap((id) =>
         this.quotes.getQuoteById(id).pipe(
@@ -123,19 +138,26 @@ export class QuoteReportsComponent {
           }),
         ),
       ),
-      tap((loaded) => this.quote.set(loaded)),
+      tap((loaded) => {
+        this.quote.set(loaded);
+        this.loading.set(false);
+      }),
     );
 
-    combineLatest([quote, toObservable(this.page)])
+    const measuredQuery = toObservable(this.query).pipe(
+      filter(isMeasured),
+      distinctUntilChanged(sameQuery),
+    );
+
+    combineLatest([quote, measuredQuery])
       .pipe(
         tap(() => this.reportsLoading.set(true)),
-        switchMap(([loaded, page]) =>
+        switchMap(([loaded, query]) =>
           // Só o ID: a API resolve o orçamento autorizado e o liga ao AutoLAB pelo código da
           // cotação. O `code` exibido não é a chave do laboratório.
-          this.reports.list({ quoteId: loaded.id, page, pageSize: this.pageSize }).pipe(
+          this.reports.list({ quoteId: loaded.id, ...query }).pipe(
             catchError(() => {
               this.failed.set(true);
-              this.loading.set(false);
               this.reportsLoading.set(false);
               return EMPTY;
             }),
@@ -148,12 +170,7 @@ export class QuoteReportsComponent {
         this.testType.set(result.testType ?? null);
         this.summary.set(result.summary ?? null);
         this.total.set(result.total);
-        this.loading.set(false);
         this.reportsLoading.set(false);
       });
-  }
-
-  protected goToPage(page: number): void {
-    this.page.set(page);
   }
 }

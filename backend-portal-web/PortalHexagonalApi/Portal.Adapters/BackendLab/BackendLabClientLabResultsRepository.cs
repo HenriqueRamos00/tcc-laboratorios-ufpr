@@ -20,13 +20,16 @@ public sealed class BackendLabClientLabResultsRepository(HttpClient httpClient) 
     };
 
     public async Task<Page<ClientEquipment>> ListEquipmentAsync(
+        EquipmentSearch? search,
         PageRequest page,
         CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(page);
+        string path = PagePath("api/client/equipments", page);
+        if (search is not null) path += "&search=" + Uri.EscapeDataString(search.Term);
         using CancellationTokenSource operation = CreateOperationTimeout(cancellationToken);
         using HttpResponseMessage response = await SendAsync(
-            new HttpRequestMessage(HttpMethod.Get, PagePath("api/client/equipments", page)), operation, cancellationToken);
+            new HttpRequestMessage(HttpMethod.Get, path), operation, cancellationToken);
         await EnsureSuccessAsync(response, cancellationToken);
         SpringPage<SpringEquipment?> value = await ReadResponseAsync<SpringPage<SpringEquipment?>>(response, operation, cancellationToken);
         if (value.Items is null) throw InvalidResponse("A lista de equipamentos do Spring não pode ser nula.");

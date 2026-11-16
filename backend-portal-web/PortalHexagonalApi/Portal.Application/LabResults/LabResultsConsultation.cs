@@ -41,6 +41,7 @@ public sealed class LabResultsConsultation : IForConsultingLabResults
     /// </summary>
     public async Task<Page<EquipmentWithNameplate>> ListEquipmentAsync(
         VisibilityScope scope,
+        EquipmentSearch? search,
         PageRequest page,
         CancellationToken cancellationToken)
     {
@@ -48,7 +49,7 @@ public sealed class LabResultsConsultation : IForConsultingLabResults
         ArgumentNullException.ThrowIfNull(page);
 
         Page<SampleAnalysis> analyses = await _labTestRepository
-            .GetAnalysesAsync(scope, page, cancellationToken);
+            .GetAnalysesAsync(scope, search, page, cancellationToken);
 
         IReadOnlyList<TestedEquipment> equipmentList = TestedEquipment.Gather(analyses.Items);
 

@@ -3,17 +3,54 @@ import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@a
 import { takeUntilDestroyed, toObservable } from '@angular/core/rxjs-interop';
 import { MatIconModule } from '@angular/material/icon';
 import { RouterLink } from '@angular/router';
-import { catchError, EMPTY, switchMap, tap } from 'rxjs';
+import {
+  catchError,
+  debounceTime,
+  distinctUntilChanged,
+  EMPTY,
+  filter,
+  map,
+  skip,
+  switchMap,
+  tap,
+} from 'rxjs';
 
+import { DataTableActionsDirective } from '@shared/components/data-table/data-table-actions.directive';
+import { DataTableComponent } from '@shared/components/data-table/data-table.component';
+import {
+  isMeasured,
+  sameQuery,
+  unmeasuredQuery,
+  type DataTableColumn,
+} from '@shared/components/data-table/data-table.model';
 import { EmptyStateComponent } from '@shared/components/empty-state/empty-state.component';
 import { PageHeaderComponent } from '@shared/components/page-header/page-header.component';
 import { SearchFieldComponent } from '@shared/components/search-field/search-field.component';
-import { DataUnavailableComponent } from '@shared/components/data-unavailable/data-unavailable.component';
-import { PaginationComponent } from '@shared/components/pagination/pagination.component';
 
 import type { Equipment } from '@/app/model/equipment';
-import { DEFAULT_PAGE_SIZE } from '@/app/model/page';
-import { EquipmentsService } from '@/app/services/equipments.service';
+import {
+  EQUIPMENT_SEARCH_MAX_LENGTH,
+  EquipmentsService,
+} from '@/app/services/equipments.service';
+
+export const SEARCH_DEBOUNCE_MS = 300;
+
+const NOT_REPORTED = 'Não informado';
+
+const COLUMNS: readonly DataTableColumn<Equipment>[] = [
+  {
+    key: 'serialNumber',
+    header: 'Número de Série',
+    value: (equipment) => equipment.serialNumber ?? NOT_REPORTED,
+  },
+  { key: 'tag', header: 'TAG', value: (equipment) => equipment.equipmentTag ?? equipment.tag },
+  {
+    key: 'type',
+    header: 'Tipo de Equipamento',
+    value: (equipment) => equipment.type ?? NOT_REPORTED,
+  },
+  { key: 'reportCount', header: 'Laudos', value: (equipment) => equipment.reportCount },
+];
 
 @Component({
   selector: 'app-client-equipamentos',
@@ -24,8 +61,8 @@ import { EquipmentsService } from '@/app/services/equipments.service';
     PageHeaderComponent,
     SearchFieldComponent,
     EmptyStateComponent,
-    DataUnavailableComponent,
-    PaginationComponent,
+    DataTableComponent,
+    DataTableActionsDirective,
   ],
   templateUrl: './equipment-list.component.html',
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -33,8 +70,9 @@ import { EquipmentsService } from '@/app/services/equipments.service';
 export class EquipmentListComponent {
   private readonly equipments = inject(EquipmentsService);
 
-  protected readonly pageSize = DEFAULT_PAGE_SIZE;
-  protected readonly page = signal(1);
+  protected readonly columns = COLUMNS;
+  protected readonly searchMaxLength = EQUIPMENT_SEARCH_MAX_LENGTH;
+  protected readonly query = signal(unmeasuredQuery());
   protected readonly total = signal(0);
   protected readonly searchTerm = signal('');
   protected readonly loading = signal(true);
@@ -42,34 +80,43 @@ export class EquipmentListComponent {
   protected readonly unavailable = signal(false);
   protected readonly equipmentList = signal<readonly Equipment[]>([]);
 
-  /**
-   * A busca é por número de série e por TAG, como o campo promete. São três campos porque
-   * TAG tem duas procedências: a de placa, que o cadastro informa em 55% das linhas, e a
-   * identificação do laudo, que é o que `tag` carrega quando o cadastro não informa. Buscar
-   * só em `tag` deixaria de encontrar pela TAG de placa, que é justamente a que o cliente
-   * tem pintada no equipamento e vê impressa na coluna.
-   */
-  protected readonly visible = computed(() => {
-    const term = this.searchTerm().trim().toLowerCase();
-    if (!term) return this.equipmentList();
-    return this.equipmentList().filter(
-      (equipment) =>
-        (equipment.serialNumber ?? '').toLowerCase().includes(term) ||
-        (equipment.equipmentTag ?? '').toLowerCase().includes(term) ||
-        equipment.tag.toLowerCase().includes(term),
-    );
-  });
+  private readonly appliedSearch = signal('');
+
+  private readonly request = computed(() => ({ ...this.query(), search: this.appliedSearch() }));
+
+  protected readonly emptyDescription = computed(() =>
+    this.appliedSearch() ? 'Revise o número de série ou a TAG informada.' : undefined,
+  );
+
+  protected readonly trackById = (equipment: Equipment): string => equipment.id;
 
   constructor() {
-    toObservable(this.page)
+    toObservable(this.searchTerm)
       .pipe(
+        skip(1),
+        map((term) => term.trim()),
+        debounceTime(SEARCH_DEBOUNCE_MS),
+        distinctUntilChanged(),
+        takeUntilDestroyed(),
+      )
+      .subscribe((term) => {
+        this.appliedSearch.set(term);
+        this.query.update((current) => ({ ...current, page: 1 }));
+      });
+
+    toObservable(this.request)
+      .pipe(
+        filter((request) => isMeasured(request)),
+        distinctUntilChanged(
+          (previous, current) => sameQuery(previous, current) && previous.search === current.search,
+        ),
         tap(() => {
           this.loading.set(true);
           this.failed.set(false);
           this.unavailable.set(false);
         }),
-        switchMap((page) =>
-          this.equipments.list({ page, pageSize: this.pageSize }).pipe(
+        switchMap((request) =>
+          this.equipments.list(request).pipe(
             catchError((error: unknown) => {
               this.unavailable.set(error instanceof HttpErrorResponse && error.status === 501);
               this.failed.set(true);
@@ -85,9 +132,5 @@ export class EquipmentListComponent {
         this.total.set(result.total);
         this.loading.set(false);
       });
-  }
-
-  protected goToPage(page: number): void {
-    this.page.set(page);
   }
 }

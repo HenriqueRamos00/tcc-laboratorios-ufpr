@@ -6,7 +6,8 @@ namespace Portal.Application.LabResults;
 /// <summary>Casos de consulta do catálogo e das análises publicadas para o cliente.</summary>
 public interface IForConsultingClientLabResults
 {
-    Task<Page<ClientEquipment>> ListEquipmentAsync(PageRequest page, CancellationToken cancellationToken);
+    Task<Page<ClientEquipment>> ListEquipmentAsync(
+        EquipmentSearch? search, PageRequest page, CancellationToken cancellationToken);
 
     Task<ClientEquipment?> GetEquipmentAsync(string equipmentId, CancellationToken cancellationToken);
 

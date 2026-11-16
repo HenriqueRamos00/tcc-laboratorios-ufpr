@@ -22,7 +22,7 @@ public sealed class BackendLabClientLabResultsRepositoryTests
         using HttpClient client = Client(new ResponseHandler((_, _) => Task.FromResult(JsonResponse(EquipmentPage))));
         BackendLabClientLabResultsRepository repository = new(client);
 
-        Page<ClientEquipment> page = await repository.ListEquipmentAsync(new PageRequest(1, 20), CancellationToken.None);
+        Page<ClientEquipment> page = await repository.ListEquipmentAsync(null, new PageRequest(1, 20), CancellationToken.None);
         ClientEquipment equipment = Assert.Single(page.Items);
 
         Assert.Equal("eq-opaque-81", equipment.Id);
@@ -141,7 +141,7 @@ public sealed class BackendLabClientLabResultsRepositoryTests
         {
             context.HttpContext = new DefaultHttpContext();
             context.HttpContext.Request.Headers.Authorization = $"Bearer {token}";
-            await repository.ListEquipmentAsync(new PageRequest(1, 20), CancellationToken.None);
+            await repository.ListEquipmentAsync(null, new PageRequest(1, 20), CancellationToken.None);
         }
 
         await Task.WhenAll(Task.Run(() => CallWithToken("token-one")), Task.Run(() => CallWithToken("token-two")));

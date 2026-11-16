@@ -25,6 +25,7 @@ public interface IForConsultingLabResults
     /// </summary>
     Task<Page<EquipmentWithNameplate>> ListEquipmentAsync(
         VisibilityScope scope,
+        EquipmentSearch? search,
         PageRequest page,
         CancellationToken cancellationToken);
 
