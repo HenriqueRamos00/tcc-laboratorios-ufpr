@@ -72,12 +72,15 @@ export interface TechnicianReference {
   active?: boolean;
 }
 
-export interface InstrumentReference {
-  id: string;
+export interface InstrumentRequest {
   inventoryNumber: string;
   name: string;
   calibrationCertificate: string | null;
   calibrationValidUntil: string | null;
+}
+
+export interface InstrumentReference extends InstrumentRequest {
+  id: string;
 }
 
 export interface TestSummary {

@@ -136,8 +136,8 @@ audiência, validade sem tolerância extra, identidade, fonte, serviço e papel.
 `GET /auth/me` devolve o mesmo `user` usando os claims, sem consultar o Backend Auth.
 Login, OpenAPI e preflight CORS são públicos. No modo `backend-lab`, `/auth/me`
 retorna 501 e as consultas de orçamento e relatórios encaminham o Bearer Spring à origem.
-No Compose regular, equipamentos e indicadores retornam 501 (`lab-integration-pending`)
-até a implementação dos endpoints de cliente no Spring. O OpenAPI descreve o Bearer quando `lactec`
+No Compose regular, equipamentos e indicadores consultam os endpoints de cliente Spring,
+encaminhando o Bearer de cada requisição. O OpenAPI descreve o Bearer quando `lactec`
 está ativo.
 
 No modo `backend-lab`, as rotas C# `/api/quotes`, `/api/quotes/{id}` e
@@ -167,7 +167,8 @@ O frontend utiliza o ID do orçamento nessa consulta, preservando IDs próprios 
 
 Em `compose.yaml`, o adapter Spring consulta `/api/client/reports`, os relatórios por
 orçamento e `/api/client/reports/{id}/file`. `ReportDocuments__Source=not-connected`
-desliga apenas o provider AutoLAB; os relatórios publicados Spring permanecem disponíveis.
+desliga apenas o provider AutoLAB; os documentos Spring são selecionados por
+`Portal__DataSource=backend-lab`.
 Em `compose.auth.yaml`, `ReportDocuments__Source=sql-server` seleciona os relatórios AutoLAB.
 Não há fallback entre as duas origens.
 
@@ -177,9 +178,11 @@ da fonte selecionada. IDs Spring são strings; IDs AutoLAB são GUIDs codificado
 PDF assinado do AutoLAB e não é usado para declarar assinatura digital em documentos Spring.
 O download mantém o PDF persistido, o nome do arquivo e `Cache-Control: no-store`.
 
-`LabResults__Source=not-connected` registra explicitamente a integração laboratorial
-pendente, sem validar conexão SQL. `LaboratoryProgress__Source=not-connected` mantém a
-etapa enviada pelo Spring. Os detalhes das adições futuras estão no
+`LabResults__Source=backend-lab` e `EquipmentRegistry__Source=backend-lab` usam os
+cadastros e resultados publicados pelo Spring. Históricos e séries identificam o equipamento
+pelo seu ID e consideram uma análise por execução. As datas Spring correspondem à publicação
+do laudo, no fuso America/Sao_Paulo. `LaboratoryProgress__Source=not-connected`
+mantém a etapa enviada pelo Spring. Os detalhes estão no
 [plano do Backend Lab](../backend-lab/docs/integracao-portal-cliente.md).
 
 
@@ -384,8 +387,10 @@ Não há credenciais ou segredo padrão. Configuração inválida impede o start
 Os padrões públicos existem somente no Compose de demonstração independente.
 O `.env` do C# é carregado pelo Compose, não pelo `dotnet run`.
 
-Em `backend-lab`, configure somente `Portal__DataSource=backend-lab` e
-`BackendLab__BaseUrl` (no Compose da raiz, `BACKEND_LAB_BASE_URL`). Por exemplo,
+Em `backend-lab`, configure `Portal__DataSource=backend-lab`,
+`LabResults__Source=backend-lab`, `EquipmentRegistry__Source=backend-lab`,
+`LaboratoryProgress__Source=not-connected`, `ReportDocuments__Source=not-connected`
+e `BackendLab__BaseUrl` (no Compose da raiz, `BACKEND_LAB_BASE_URL`). Por exemplo,
 `http://localhost:8080` fora do Docker ou `http://backend-lab:8080` no Compose integrado.
 
 Em implantação, use HTTPS entre navegador e C# e entre C# e Backend Auth, restrinja
@@ -505,7 +510,13 @@ ordem fixa, depois as linhas so das chaves da pagina.
 
 ### Busca de equipamentos
 
-`GET /api/equipments?search=` filtra no banco, dentro do escopo da empresa, por trecho do
+`GET /api/equipments?search=` funciona nas duas fontes. No modo Spring, a API encaminha
+o termo ao Backend Lab, que busca por trecho do número de série ou da TAG sem distinguir
+maiúsculas, respeitando as empresas autorizadas antes da contagem e da paginação. O termo
+é aparado, vazio significa sem filtro e o limite é de 100 caracteres; caracteres de
+`LIKE` são tratados como texto literal.
+
+No modo AutoLAB, a busca filtra no banco, dentro do escopo da empresa, por trecho do
 numero de serie (`vwDadosEnsaios.NumSerie`), da identificacao do laudo
 (`vwDadosEnsaios.Identificacao`) ou da TAG de placa (`Equipamentos.Tag`, ligada pelo numero
 de serie). A comparacao nao distingue maiusculas (`Latin1_General_CI_AS`), o termo e

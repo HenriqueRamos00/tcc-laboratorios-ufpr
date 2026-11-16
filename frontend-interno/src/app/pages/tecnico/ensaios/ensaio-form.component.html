@@ -51,7 +51,7 @@
         }
       </div>
     }
-    @if (saveSuccess()) {
+    @if (saveSuccess() && creationConfirmed()) {
       <div class="rounded-xl border border-emerald-300 bg-emerald-50 p-4 text-sm text-emerald-900" role="status" aria-live="polite">
         Ensaio salvo com sucesso.
       </div>
@@ -75,8 +75,16 @@
       <div class="mt-6" [attr.aria-busy]="sampleLoading()">
         <div class="mb-3 flex flex-wrap items-center justify-between gap-2">
           <h3 class="m-0 text-base font-semibold">Identificação da amostra</h3>
+          @if (selectedQuote() && (!identificationMode() || sampleChooserOpen())) {
+            <button mat-stroked-button type="button" [disabled]="formLocked" (click)="chooseNewMode()">
+              <mat-icon>add</mat-icon>Nova amostra
+            </button>
+          }
           @if (selectedQuote() && identificationMode() && !sampleChooserOpen()) {
-            <button mat-button type="button" [disabled]="formLocked" (click)="toggleSampleChooser()">Alterar identificação</button>
+            <button mat-button type="button" [disabled]="formLocked" (click)="identificationMode() === 'new' ? chooseNewMode() : toggleSampleChooser()">Alterar amostra</button>
+            @if (identificationMode() === 'new') {
+              <button mat-button type="button" [disabled]="formLocked" (click)="chooseExistingMode()"><mat-icon>search</mat-icon>Selecionar existente</button>
+            }
           }
         </div>
         @if (!selectedQuote()) {
@@ -92,47 +100,11 @@
             </div>
           </div>
         } @else {
-          <div class="identification-switch" role="group" aria-label="Forma de identificação da amostra">
-            <button type="button" [disabled]="formLocked" [attr.aria-pressed]="identificationMode() !== 'new'" (click)="chooseExistingMode()">Amostra existente</button>
-            <button type="button" [disabled]="formLocked" [attr.aria-pressed]="identificationMode() === 'new'" (click)="chooseNewMode()">Nova identificação</button>
-          </div>
-          @if (identificationMode() !== 'new') {
-            <app-reference-search class="mt-4" fieldId="sample-search" label="Pesquisar amostra" placeholder="Código ou descrição"
-              [control]="sampleSearch" [options]="sampleOptions" [locked]="formLocked" [loading]="sampleLoading()" [error]="sampleError()"
-              [page]="samplePage()" [pages]="samplePages" (pageChanged)="setSamplePage($event)" (retry)="retrySamples()"
-              (selected)="selectSampleOption($event)" hint="Selecione uma amostra deste orçamento."
-              emptyText="Nenhuma amostra encontrada. Você pode informar uma nova identificação." />
-          } @else {
-            <div class="mt-4 grid min-w-0 grid-cols-1 gap-x-4 md:grid-cols-2">
-              <app-reference-search fieldId="new-sample-code" label="Código de identificação" placeholder="Ex.: A-1409/2026"
-                [control]="form.controls.newSampleCode" [options]="sampleOptions" [locked]="formLocked" [loading]="sampleLoading()" [error]="sampleError()"
-                [page]="samplePage()" [pages]="samplePages" [maxlength]="80" [monospace]="true" [openOnInput]="false"
-                (termChanged)="onNewSampleCodeChanged($event)" (pageChanged)="setSamplePage($event)" (retry)="retrySamples()"
-                (selected)="selectSampleOption($event)" [hint]="exactSampleCodeExists ? 'Código encontrado. Abra as opções para selecionar a amostra.' : 'Até 80 caracteres.'"
-                emptyText="Nenhuma correspondência neste orçamento." />
-              <label for="new-sample-description" class="field-label">
-                Descrição
-                <input id="new-sample-description" formControlName="newSampleDescription" maxlength="255" class="ensaio-input" placeholder="Material e origem da amostra" />
-                <small class="field-hint">Até 255 caracteres.</small>
-              </label>
-              <div class="md:col-span-2">
-                <app-reference-search fieldId="analyzed-equipment-search" label="Equipamento analisado (opcional)" placeholder="TAG ou número de série"
-                  [control]="equipmentSearch" [options]="analyzedEquipmentOptions" [locked]="formLocked" [loading]="equipmentLoading()" [error]="equipmentError()"
-                  [page]="equipmentPage()" [pages]="equipmentPages" (pageChanged)="setEquipmentPage($event)" (retry)="retryAnalyzedEquipment()"
-                  (selected)="selectEquipmentOption($event)" hint="A amostra pode ficar sem equipamento associado." />
-                @if (currentAnalyzedEquipment(); as equipment) {
-                  <div class="mb-3 flex flex-wrap items-center gap-2 text-sm">
-                    <span class="break-words">Selecionado: {{ equipment.tag }}</span>
-                    <button mat-button type="button" [disabled]="formLocked || equipmentLoading() || equipmentError()" (click)="clearAnalyzedEquipment()">Remover associação</button>
-                  </div>
-                }
-              </div>
-            </div>
-            <div class="flex flex-wrap items-center gap-3">
-              <button mat-stroked-button type="button" [disabled]="formLocked || !canConfirmNewSample" (click)="confirmNewSample()">Usar esta identificação</button>
-              <span class="text-xs text-lactec-muted">Será salva junto com o ensaio.</span>
-            </div>
-          }
+          <app-reference-search fieldId="sample-search" label="Pesquisar amostra" placeholder="Código ou descrição"
+            [control]="sampleSearch" [options]="sampleOptions" [locked]="formLocked" [loading]="sampleLoading()" [error]="sampleError()"
+            [page]="samplePage()" [pages]="samplePages" (pageChanged)="setSamplePage($event)" (retry)="retrySamples()"
+            (selected)="selectSampleOption($event)" hint="Selecione uma amostra deste orçamento."
+            emptyText="Nenhuma amostra encontrada. Você pode cadastrar uma nova amostra." />
         }
       </div>
     </section>
@@ -180,7 +152,27 @@
         </label>
 
         <div class="grid min-w-0 gap-2 text-sm font-medium md:col-span-2" [attr.aria-busy]="instrumentsLoading()">
-          <span>Instrumentos laboratoriais utilizados <span class="font-normal text-lactec-muted">(opcional)</span></span>
+          <div class="flex flex-wrap items-center justify-between gap-2">
+            <span>Instrumentos laboratoriais utilizados <span class="font-normal text-lactec-muted">(opcional)</span></span>
+            <button mat-stroked-button type="button" [disabled]="formLocked || instrumentsLoading() || instrumentsError()" (click)="openInstrumentRegistration()">
+              <mat-icon>add</mat-icon>Cadastrar instrumento
+            </button>
+          </div>
+          @if (selectedInstruments.length) {
+            <div class="grid min-w-0 gap-2">
+              <span id="selected-instruments-label" class="text-xs font-medium text-lactec-muted" aria-live="polite">{{ selectedInstruments.length }} {{ selectedInstruments.length === 1 ? 'instrumento selecionado' : 'instrumentos selecionados' }}</span>
+              <ul class="m-0 flex list-none flex-wrap gap-2 p-0" aria-labelledby="selected-instruments-label">
+                @for (instrument of selectedInstruments; track instrument.id) {
+                  <li class="flex min-w-0 max-w-full items-center gap-1 rounded-full border border-lactec-primary/30 bg-lactec-primary/5 py-1 pl-3 pr-1 text-sm">
+                    <span class="min-w-0 break-words"><strong>{{ instrument.inventoryNumber }}</strong> - {{ instrument.name }}</span>
+                    <button mat-icon-button type="button" class="shrink-0" [attr.aria-label]="'Remover ' + instrument.inventoryNumber + ' da seleção'" [disabled]="formLocked || instrumentsLoading() || instrumentsError()" (click)="toggleInstrument(instrument.id, false)">
+                      <mat-icon aria-hidden="true">close</mat-icon>
+                    </button>
+                  </li>
+                }
+              </ul>
+            </div>
+          }
           @if (instrumentsLoading()) {
             <p class="m-0 flex items-center gap-2 text-sm text-lactec-muted" role="status"><mat-spinner diameter="18" />Carregando instrumentos…</p>
           } @else if (instrumentsError()) {
@@ -190,16 +182,27 @@
           } @else if (!instrumentOptions.length) {
             <p class="m-0 text-sm text-lactec-muted" role="status">Nenhum instrumento disponível. O ensaio pode ser salvo sem instrumentos.</p>
           } @else {
-            <div class="grid min-w-0 grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-3">
-              @for (instrument of instrumentOptions; track instrument.id) {
-                <label class="flex min-w-0 items-start gap-2 rounded-lg border border-lactec-line p-3 font-normal">
-                  <input type="checkbox" [checked]="form.controls.equipmentIds.value?.includes(instrument.id)" (change)="toggleInstrument(instrument.id, $any($event.target).checked)" [disabled]="formLocked || instrumentsLoading() || instrumentsError()" />
-                  <span class="min-w-0 break-words"><strong>{{ instrument.inventoryNumber }}</strong> - {{ instrument.name }}
-                    <span class="block text-xs text-lactec-muted">Certificado: {{ instrument.calibrationCertificate ?? "Não informado" }}; validade: {{ instrument.calibrationValidUntil ? formatDate(instrument.calibrationValidUntil) : "Não informado" }}</span>
-                  </span>
-                </label>
+            <fieldset class="m-0 grid min-w-0 gap-2 border-0 p-0" [disabled]="formLocked || instrumentsLoading() || instrumentsError()">
+              <legend class="sr-only">Selecione um ou mais instrumentos laboratoriais</legend>
+              <label for="instrument-search" class="grid min-w-0 gap-1 text-sm font-medium">
+                Pesquisar instrumentos
+                <input id="instrument-search" type="search" [formControl]="instrumentSearch" placeholder="Patrimônio, nome ou certificado" autocomplete="off" class="h-11 min-w-0 w-full rounded-lg border border-lactec-line px-3" />
+              </label>
+              @if (filteredInstrumentOptions.length) {
+                <div id="instrument-list" class="grid max-h-64 min-w-0 grid-cols-1 gap-2 overflow-y-auto rounded-lg border border-lactec-line p-2 sm:grid-cols-2">
+                  @for (instrument of filteredInstrumentOptions; track instrument.id) {
+                    <label class="instrument-option flex min-w-0 items-start gap-2 rounded-lg border border-lactec-line p-3 font-normal has-[:checked]:border-lactec-primary has-[:checked]:bg-lactec-primary/5">
+                      <input type="checkbox" [checked]="form.controls.equipmentIds.value?.includes(instrument.id)" (change)="toggleInstrument(instrument.id, $any($event.target).checked)" />
+                      <span class="min-w-0 break-words"><strong>{{ instrument.inventoryNumber }}</strong> - {{ instrument.name }}
+                        <span class="mt-1 block break-words text-xs font-normal text-lactec-muted">Certificado: {{ instrument.calibrationCertificate ?? "Não informado" }} · validade: {{ instrument.calibrationValidUntil ? formatDate(instrument.calibrationValidUntil) : "Não informado" }}</span>
+                      </span>
+                    </label>
+                  }
+                </div>
+              } @else {
+                <p class="m-0 rounded-lg bg-lactec-surface p-3 text-sm font-normal text-lactec-muted" role="status">Nenhum instrumento corresponde à pesquisa.</p>
               }
-            </div>
+            </fieldset>
           }
         </div>
 
@@ -214,11 +217,6 @@
             <label class="grid min-w-0 gap-1">Estado do processo
               <input readonly [value]="processStatusLabel(detail()!.status)" class="h-11 min-w-0 w-full rounded-lg border border-lactec-line bg-slate-50 px-3" />
             </label>
-            @if (editId()) {
-              <button mat-stroked-button type="button" class="justify-self-start" (click)="openStatus()" [disabled]="formLocked">
-                <mat-icon>swap_horiz</mat-icon>Alterar status
-              </button>
-            }
           </div>
         }
       </div>
@@ -292,12 +290,19 @@
       </label>
     </section>
 
-    <footer class="flex flex-wrap justify-between gap-3 pb-4">
+    <footer class="ensaio-actions" aria-label="Ações do ensaio">
       <button mat-button type="button" (click)="cancel()" [disabled]="saving()">Cancelar</button>
+      <div class="ensaio-actions__primary">
+      @if (editId()) {
+        <button mat-stroked-button type="button" (click)="openStatus()" [disabled]="formLocked">
+          <mat-icon>swap_horiz</mat-icon>Atualizar status
+        </button>
+      }
       <button mat-flat-button type="submit" [disabled]="saving() || detailLoading() || templateLoading()">
         @if (saving()) { <mat-spinner diameter="18" />Salvando… }
         @else { Salvar ensaio }
       </button>
+      </div>
     </footer>
   </form>
 }

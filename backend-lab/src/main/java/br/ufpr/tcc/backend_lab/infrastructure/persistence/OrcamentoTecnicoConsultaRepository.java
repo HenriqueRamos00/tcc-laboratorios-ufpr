@@ -22,6 +22,7 @@ import java.util.Optional;
 @Repository
 @RequiredArgsConstructor
 public class OrcamentoTecnicoConsultaRepository {
+    // Resume os estados dos ensaios de cada orçamento para derivar o status técnico agregado.
     private static final String CTE_RESUMO_TECNICO =
             """
             WITH execucoes_resumidas AS (
@@ -55,6 +56,7 @@ public class OrcamentoTecnicoConsultaRepository {
             )
             """;
 
+    // Trecho compartilhado pela listagem e pela contagem para manter os mesmos filtros.
     private static final String FROM_E_FILTROS =
             """
             FROM orcamentos orcamento
@@ -84,6 +86,7 @@ public class OrcamentoTecnicoConsultaRepository {
 
     private final NamedParameterJdbcTemplate jdbc;
 
+    // Executa a página de resultados e sua contagem com os mesmos filtros e resumo técnico.
     public Page<ProjecaoOrcamentoTecnico> pesquisar(
             String busca,
             String status,

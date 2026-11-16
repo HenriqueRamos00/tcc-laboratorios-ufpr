@@ -9,6 +9,7 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
 public interface AmostraRepository extends JpaRepository<Amostra, Long> {
+    // Pesquisa amostras por código, descrição, orçamento ou empresa, com filtro opcional de orçamento.
     @EntityGraph(attributePaths = {"orcamento", "orcamento.empresa", "equipamentoAnalisado"})
     @Query(value = """
             select a from Amostra a

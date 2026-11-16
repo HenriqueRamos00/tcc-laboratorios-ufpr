@@ -12,6 +12,7 @@ public interface EmpresaRepository extends JpaRepository<Empresa, Long> {
 
     boolean existsByCnpjAndIdNot(String cnpj, Long id);
 
+    // Aplica o filtro de situação e pesquisa por razão social, CNPJ, cidade e contato.
     @Query(
             """
             select e from Empresa e

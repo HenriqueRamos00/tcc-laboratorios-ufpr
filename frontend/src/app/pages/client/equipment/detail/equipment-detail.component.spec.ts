@@ -24,6 +24,7 @@ const DETAIL: EquipmentDetail = {
   tag: '571289',
   equipmentTag: 'TR-00001',
   type: 'TRANSFORMADOR',
+  location: null,
   company: 'EMPRESA DE ENERGIA',
   identification: 'LACTEC-02272/2026',
   reportCount: 2,
@@ -147,6 +148,26 @@ describe('EquipmentDetailComponent', () => {
 
     expect(botao.disabled).toBeTrue();
   }));
+
+  for (const pdfAvailable of [true, false]) {
+    it(`respeita disponibilidade explícita do PDF ${pdfAvailable ? 'disponível' : 'indisponível'} sem presumir assinatura`, fakeAsync(() => {
+      TestBed.configureTestingModule({
+        providers: [provideRouter([]), provideHttpClient(), provideHttpClientTesting()],
+      });
+      const fixture = TestBed.createComponent(EquipmentDetailComponent);
+      fixture.componentRef.setInput('id', EQUIPMENT_ID);
+      fixture.detectChanges();
+      const http = TestBed.inject(HttpTestingController);
+      http.expectOne(`${API_URL}/api/equipments/${EQUIPMENT_ID}`).flush(DETAIL);
+      renderMeasuredTable(fixture);
+      http.expectOne(HISTORY_URL).flush([{
+        ...HISTORY[0], hasSignedDocument: !pdfAvailable, pdfAvailable,
+      }]);
+      fixture.detectChanges();
+      const button = fixture.nativeElement.querySelector('tbody button') as HTMLButtonElement;
+      expect(button.disabled).toBe(!pdfAvailable);
+    }));
+  }
 
   /**
    * O que o cadastro informa aparece com a unidade que ele escreveu, e nenhuma frase de

@@ -134,3 +134,9 @@ Em **Orçamentos** (`/tecnico/orcamentos`), o técnico pode pesquisar pelo códi
 O botão **Abrir** mostra os dados técnicos e os serviços propostos em um painel lateral. A API usa respostas próprias para o técnico, sem valores, contatos comerciais, etapa, status comercial ou PDF. A tela permite apenas consulta.
 
 O status reflete o andamento das execuções: **Não iniciado** (`not-started`), **Em execução** (`incomplete`), **Completo**, **Validado** ou **Publicado**. Um orçamento elegível sem ensaios aparece como **Não iniciado**. Execuções canceladas ficam fora do cálculo quando há outras ativas; se todas estiverem canceladas, aparece **Cancelado**. Os dois estados sem execução ativa usam estilo neutro; **Não informado** fica reservado a uma resposta sem status técnico. O status comercial da proposta não interfere nesse cálculo.
+
+## Campos do equipamento
+
+O formulário aceita fabricante, ano de fabricação, potência em MVA, tipo de óleo e volume
+de óleo em litros. Todos são opcionais; quando não há informação, o campo pode ficar vazio.
+O Spring valida e persiste os valores. O Portal do Cliente os consulta pela API C#.

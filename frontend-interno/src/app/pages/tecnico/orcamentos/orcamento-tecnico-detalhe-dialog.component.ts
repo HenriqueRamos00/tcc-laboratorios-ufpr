@@ -1,10 +1,16 @@
 import { NgClass } from '@angular/common';
 import { HttpErrorResponse } from '@angular/common/http';
-import { ChangeDetectionStrategy, Component, DestroyRef, inject, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, DestroyRef, inject, signal, computed } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { MAT_DIALOG_DATA, MatDialogModule } from '@angular/material/dialog';
+import { MatButtonModule } from '@angular/material/button';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { EMPTY } from 'rxjs';
+import { MatDialogRef } from '@angular/material/dialog';
+import { Router } from '@angular/router';
+import { EnsaiosService } from '@/app/services/ensaios.service';
+import { TestSummary } from '@/app/model/ensaio';
+import { ActionButtonComponent } from '@shared/components/action-button/action-button.component';
 import { catchError, finalize, tap } from 'rxjs/operators';
 
 import { formatarDataCriacaoTecnica, apresentarStatusTecnico } from '@/app/model/orcamento-tecnico-presentation';
@@ -20,11 +26,20 @@ export interface OrcamentoTecnicoDetalheDialogData {
 @Component({
   selector: 'app-orcamento-tecnico-detalhe-dialog',
   standalone: true,
-  imports: [DialogShellComponent, MatDialogModule, MatProgressSpinnerModule, NgClass],
+  imports: [MatButtonModule, ActionButtonComponent, DialogShellComponent, MatDialogModule, MatProgressSpinnerModule, NgClass],
   templateUrl: './orcamento-tecnico-detalhe-dialog.component.html',
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class OrcamentoTecnicoDetalheDialogComponent {
+  private readonly ensaiosService = inject(EnsaiosService);
+  private readonly router = inject(Router);
+  private readonly dialogRef = inject(MatDialogRef);
+  readonly ensaios = signal<TestSummary[]>([]);
+  readonly totalEnsaios = signal(0);
+  readonly carregandoEnsaios = signal(true);
+  readonly erroEnsaios = signal(false);
+  readonly acaoEnsaio = computed(() => this.totalEnsaios() === 0
+    ? 'Criar ensaio' : this.totalEnsaios() === 1 ? 'Ver ensaio' : 'Ver ensaios');
   private readonly service = inject(OrcamentosTecnicosService);
   private readonly destroyRef = inject(DestroyRef);
   readonly data = inject<OrcamentoTecnicoDetalheDialogData>(MAT_DIALOG_DATA);
@@ -37,6 +52,33 @@ export class OrcamentoTecnicoDetalheDialogComponent {
 
   constructor() {
     this.carregar();
+    this.carregarEnsaios();
+  }
+
+  carregarEnsaios(): void {
+    this.carregandoEnsaios.set(true);
+    this.erroEnsaios.set(false);
+    this.ensaiosService.list('', 1, 2, this.data.quoteId).pipe(
+      tap((pagina) => {
+        this.ensaios.set(pagina.items);
+        this.totalEnsaios.set(pagina.totalItems);
+      }),
+      catchError(() => { this.erroEnsaios.set(true); return EMPTY; }),
+      finalize(() => this.carregandoEnsaios.set(false)),
+      takeUntilDestroyed(this.destroyRef),
+    ).subscribe();
+  }
+
+  async abrirEnsaios(): Promise<void> {
+    if (this.carregandoEnsaios() || this.erroEnsaios() || !this.orcamento()) return;
+    const quantidade = this.totalEnsaios();
+    const destino = quantidade === 0 ? ['/tecnico/ensaios/novo']
+      : quantidade === 1 ? ['/tecnico/ensaios', this.ensaios()[0].id, 'editar']
+      : ['/tecnico/ensaios'];
+    const navegou = await this.router.navigate(destino, quantidade === 1 ? {} : {
+      queryParams: { quoteId: this.data.quoteId, quoteCode: this.data.quoteCode },
+    });
+    if (navegou) this.dialogRef.close();
   }
 
   statusApresentacao(status: OrcamentoTecnicoDetalhe['technicalStatus']) {

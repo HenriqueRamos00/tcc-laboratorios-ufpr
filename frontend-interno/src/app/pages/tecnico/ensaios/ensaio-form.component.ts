@@ -23,6 +23,7 @@ import { ReferenceSearchComponent, ReferenceSearchOption } from '@shared/compone
 import { OrcamentoSelecaoComponent } from './orcamento-selecao.component';
 import { MatIconModule } from '@angular/material/icon';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
+import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
 import { of, Subject, timer } from 'rxjs';
 import {
   catchError,
@@ -64,6 +65,9 @@ import {
 } from '@shared/components/confirmacao-dialog/confirmacao-dialog.component';
 import { PageHeaderComponent } from '@/app/shared/components/page-header/page-header.component';
 
+import { NovaAmostraDialogComponent, NovaAmostraDialogData, NovaAmostraDialogResult } from './nova-amostra-dialog.component';
+import { InstrumentoFormDialogComponent } from './instrumento-form-dialog.component';
+
 type ConflictType = 'version' | 'sample' | 'generic' | null;
 type IdentificationMode = 'existing' | 'new' | null;
 
@@ -94,6 +98,7 @@ const quantidadeValida = (control: AbstractControl): ValidationErrors | null =>
     MatSelectModule,
     ReferenceSearchComponent,
     MatProgressSpinnerModule,
+    MatSnackBarModule,
     PageHeaderComponent,
   ],
   templateUrl: './ensaio-form.component.html',
@@ -108,8 +113,8 @@ export class EnsaioFormComponent {
   private readonly fb = inject(FormBuilder);
   private readonly destroyRef = inject(DestroyRef);
   private readonly dialog = inject(AppDialogService);
+  private readonly snackBar = inject(MatSnackBar);
   private readonly sampleRefresh$ = new Subject<void>();
-  private readonly equipmentRefresh$ = new Subject<void>();
   readonly measurements = this.fb.array(
     [] as ReturnType<typeof this.measurementGroup>[],
   );
@@ -134,7 +139,7 @@ export class EnsaioFormComponent {
   });
 
   readonly sampleSearch = new FormControl('', { nonNullable: true });
-  readonly equipmentSearch = new FormControl('', { nonNullable: true });
+  readonly instrumentSearch = new FormControl('', { nonNullable: true });
   readonly selectedQuote = signal<QuoteReference | null>(null);
   readonly samples = signal<SampleReference[]>([]);
   readonly samplePage = signal(1);
@@ -146,12 +151,7 @@ export class EnsaioFormComponent {
   readonly identificationMode = signal<IdentificationMode>(null);
   readonly currentSample = signal<SampleReference | null>(null);
   readonly confirmedNewSampleCode = signal<string | null>(null);
-  readonly analyzedEquipment = signal<AnalyzedEquipmentReference[]>([]);
   readonly currentAnalyzedEquipment = signal<AnalyzedEquipmentReference | null>(null);
-  readonly equipmentPage = signal(1);
-  readonly equipmentTotal = signal(0);
-  readonly equipmentLoading = signal(false);
-  readonly equipmentError = signal(false);
   readonly technicians = signal<TechnicianReference[]>([]);
   readonly techniciansLoading = signal(true);
   readonly techniciansError = signal(false);
@@ -166,6 +166,7 @@ export class EnsaioFormComponent {
   readonly saving = signal(false);
   readonly saveError = signal('');
   readonly saveSuccess = signal(false);
+  readonly creationConfirmed = signal(false);
   readonly conflictType = signal<ConflictType>(null);
   readonly editId = signal<string | null>(null);
   readonly analysisTypes = ANALYSIS_TYPES;
@@ -175,9 +176,10 @@ export class EnsaioFormComponent {
 
   constructor() {
     const navigationState = this.router.getCurrentNavigation()?.extras.state;
-    this.saveSuccess.set(navigationState?.['testSavedConfirmation'] === true);
+    const testSavedConfirmation = navigationState?.['testSavedConfirmation'] === true;
+    this.saveSuccess.set(testSavedConfirmation);
+    this.creationConfirmed.set(testSavedConfirmation);
     this.bindSampleSearch();
-    this.bindEquipmentSearch();
     this.loadTechnicians();
     this.loadInstruments();
 
@@ -188,7 +190,32 @@ export class EnsaioFormComponent {
     } else {
       this.detailLoading.set(false);
       this.loadTemplate('physical-chemical');
+      this.carregarOrcamentoInicial();
     }
+  }
+
+  private carregarOrcamentoInicial(): void {
+    const quoteId = this.route.snapshot.queryParamMap.get('quoteId');
+    const quoteCode = this.route.snapshot.queryParamMap.get('quoteCode');
+    if (!quoteId || !quoteCode) return;
+    this.detailLoading.set(true);
+    this.updateFormDisabledState();
+    this.service.quotes(quoteCode, 1, 100).pipe(
+      takeUntilDestroyed(this.destroyRef),
+    ).subscribe({
+      next: (pagina) => {
+        this.detailLoading.set(false);
+        const quote = pagina.items.find((item) => item.id === quoteId);
+        if (quote) this.selectQuote(quote);
+        else this.saveError.set('O orçamento não está disponível para criar ensaios. Selecione outro orçamento.');
+        this.updateFormDisabledState();
+      },
+      error: () => {
+        this.detailLoading.set(false);
+        this.updateFormDisabledState();
+        this.saveError.set('Não foi possível carregar o orçamento. Selecione-o para continuar.');
+      },
+    });
   }
 
   get rows(): FormArray {
@@ -206,20 +233,8 @@ export class EnsaioFormComponent {
       (this.currentSample()?.id === id ? this.currentSample() : null);
   }
 
-  get equipmentOptions(): AnalyzedEquipmentReference[] {
-    const current = this.currentAnalyzedEquipment();
-    if (!current || this.analyzedEquipment().some((item) => item.id === current.id)) {
-      return this.analyzedEquipment();
-    }
-    return [current, ...this.analyzedEquipment()];
-  }
-
   get sampleOptions(): ReferenceSearchOption[] {
     return this.samples().map((item) => ({ id: item.id, label: item.code, description: item.description }));
-  }
-
-  get analyzedEquipmentOptions(): ReferenceSearchOption[] {
-    return this.equipmentOptions.map((item) => ({ id: item.id, label: item.tag, description: `Série: ${item.serialNumber}` }));
   }
 
   selectSampleOption(id: string): void {
@@ -227,23 +242,32 @@ export class EnsaioFormComponent {
     if (item) this.selectSample(item);
   }
 
-  selectEquipmentOption(id: string): void {
-    const item = this.equipmentOptions.find((equipment) => equipment.id === id);
-    if (item) {
-      this.selectAnalyzedEquipment(item);
-      this.equipmentSearch.setValue(item.tag);
-    }
-  }
-
-  clearAnalyzedEquipment(): void {
-    this.selectAnalyzedEquipment(null);
-    this.equipmentSearch.setValue('');
-  }
-
   get instrumentOptions(): InstrumentReference[] {
     const known = this.detail()?.equipment ?? [];
     const present = new Set(this.instruments().map((item) => item.id));
     return [...known.filter((item) => !present.has(item.id)), ...this.instruments()];
+  }
+
+  get filteredInstrumentOptions(): InstrumentReference[] {
+    const query = this.normalizeInstrumentSearch(this.instrumentSearch.value);
+    if (!query) return this.instrumentOptions;
+
+    return this.instrumentOptions.filter((instrument) =>
+      this.normalizeInstrumentSearch([
+        instrument.inventoryNumber,
+        instrument.name,
+        instrument.calibrationCertificate,
+      ].filter(Boolean).join(' ')).includes(query),
+    );
+  }
+
+  get selectedInstruments(): InstrumentReference[] {
+    const selectedIds = new Set(this.form.controls.equipmentIds.value ?? []);
+    return this.instrumentOptions.filter((instrument) => selectedIds.has(instrument.id));
+  }
+
+  private normalizeInstrumentSearch(value: string): string {
+    return value.trim().toLocaleLowerCase('pt-BR').normalize('NFD').replace(/[\u0300-\u036f]/g, '');
   }
 
   get selectedQuoteLabel(): string {
@@ -253,26 +277,6 @@ export class EnsaioFormComponent {
 
   get samplePages(): number {
     return Math.max(1, Math.ceil(this.sampleTotal() / 20));
-  }
-
-  get equipmentPages(): number {
-    return Math.max(1, Math.ceil(this.equipmentTotal() / 20));
-  }
-
-  get exactSampleCodeExists(): boolean {
-    const code = this.form.controls.newSampleCode.value.trim();
-    return !!code && this.samples().some(
-      (sample) => sample.code === code,
-    );
-  }
-
-  get canConfirmNewSample(): boolean {
-    const code = this.form.controls.newSampleCode.value.trim();
-    const description = this.form.controls.newSampleDescription.value.trim();
-    return !!this.selectedQuote() &&
-      code.length > 0 && code.length <= 80 &&
-      description.length > 0 && description.length <= 255 &&
-      !this.sampleLoading() && !this.sampleError() && !this.exactSampleCodeExists;
   }
 
   get hasReferences(): boolean {
@@ -323,53 +327,6 @@ export class EnsaioFormComponent {
                   this.sampleError.set(true);
                   this.sampleErrorStatus.set(error.status);
                   this.sampleLoading.set(false);
-                  return of(null);
-                }),
-              );
-            }),
-          )),
-        )),
-        takeUntilDestroyed(this.destroyRef),
-      )
-      .subscribe();
-  }
-
-  private bindEquipmentSearch(): void {
-    this.equipmentSearch.valueChanges
-      .pipe(
-        startWith(this.equipmentSearch.value),
-        map((term) => term.trim()),
-        distinctUntilChanged(),
-        tap(() => {
-          this.equipmentPage.set(1);
-          this.equipmentLoading.set(!!this.selectedQuote());
-          this.equipmentError.set(false);
-        }),
-        switchMap((term) => timer(term ? 300 : 0).pipe(
-          switchMap(() => this.equipmentRefresh$.pipe(
-            startWith(undefined),
-            switchMap(() => {
-              const quote = this.selectedQuote();
-              if (!quote) {
-                this.analyzedEquipment.set([]);
-                this.equipmentTotal.set(0);
-                this.equipmentLoading.set(false);
-                return of(null);
-              }
-              this.equipmentLoading.set(true);
-              this.equipmentError.set(false);
-              return this.service.analyzedEquipment(
-                quote.id, term, this.equipmentPage(), 20,
-              ).pipe(
-                tap((page) => {
-                  this.analyzedEquipment.set(page.items);
-                  this.equipmentTotal.set(page.totalItems);
-                  this.equipmentLoading.set(false);
-                }),
-                catchError(() => {
-                  this.equipmentError.set(true);
-                  this.equipmentLoading.set(false);
-                  this.updateFormDisabledState();
                   return of(null);
                 }),
               );
@@ -442,7 +399,6 @@ export class EnsaioFormComponent {
     this.identificationMode.set('existing');
     this.sampleChooserOpen.set(false);
     this.sampleSearch.setValue('');
-    this.equipmentSearch.setValue('');
     this.form.patchValue({
       sampleId: item.sample.id,
       newSampleCode: '',
@@ -462,7 +418,6 @@ export class EnsaioFormComponent {
     this.setMeasurements(item.measurements);
     this.confirmedNewSampleCode.set(null);
     this.sampleRefresh$.next();
-    this.equipmentRefresh$.next();
     this.form.markAsPristine();
   }
 
@@ -474,10 +429,6 @@ export class EnsaioFormComponent {
       this.form.enable({ emitEvent: false });
     }
     this.setControlDisabled(this.sampleSearch, locked || !this.selectedQuote());
-    this.setControlDisabled(
-      this.equipmentSearch,
-      locked || !this.selectedQuote() || this.equipmentError(),
-    );
   }
 
   private setControlDisabled(control: FormControl, disabled: boolean): void {
@@ -678,7 +629,7 @@ export class EnsaioFormComponent {
     if (this.identificationMode() === 'new' && (code || description)) {
       this.confirmDiscard(
         'Trocar o orçamento?',
-        'A identificação nova e o equipamento analisado ainda não salvos serão descartados. Deseja continuar?',
+        'A nova amostra e o equipamento analisado ainda não salvos serão descartados. Deseja continuar?',
         () => this.applyQuote(quote),
       );
       return;
@@ -700,13 +651,9 @@ export class EnsaioFormComponent {
       analyzedEquipmentId: null,
     });
     this.sampleSearch.setValue('');
-    this.equipmentSearch.setValue('');
     this.samplePage.set(1);
-    this.equipmentPage.set(1);
     this.sampleError.set(false);
-    this.equipmentError.set(false);
     this.sampleRefresh$.next();
-    this.equipmentRefresh$.next();
     this.updateFormDisabledState();
   }
 
@@ -728,7 +675,7 @@ export class EnsaioFormComponent {
     const description = this.form.controls.newSampleDescription.value.trim();
     if (this.identificationMode() === 'new' && (code || description)) {
       this.confirmDiscard(
-        'Descartar a identificação nova?',
+        'Descartar a nova amostra?',
         'O código, a descrição e o equipamento analisado ainda não salvos serão descartados.',
         () => this.applyExistingMode(),
       );
@@ -752,45 +699,57 @@ export class EnsaioFormComponent {
   }
 
   chooseNewMode(): void {
-    if (this.formLocked || !this.selectedQuote() || this.identificationMode() === 'new') return;
-    const oldSelection = this.identificationMode() === 'existing' && this.selectedSample;
-    if (oldSelection) {
-      this.confirmDiscard(
-        'Informar outra identificação?',
-        'A seleção atual será substituída neste ensaio. A amostra existente continuará vinculada a outras análises.',
-        () => this.applyNewMode(),
-      );
-      return;
-    }
-    this.applyNewMode();
-  }
-
-  private applyNewMode(): void {
-    const code = this.sampleSearch.value.trim();
-    this.identificationMode.set('new');
-    this.currentSample.set(null);
-    this.confirmedNewSampleCode.set(null);
-    this.currentAnalyzedEquipment.set(null);
-    this.form.patchValue({
-      sampleId: null,
-      newSampleCode: code,
-      newSampleDescription: '',
-      analyzedEquipmentId: null,
+    const quote = this.selectedQuote();
+    if (this.formLocked || !quote) return;
+    const data: NovaAmostraDialogData = {
+      quote,
+      code: this.identificationMode() === 'new' ? this.form.controls.newSampleCode.value : this.sampleSearch.value.trim(),
+      description: this.identificationMode() === 'new' ? this.form.controls.newSampleDescription.value : '',
+      equipment: this.identificationMode() === 'new' ? this.currentAnalyzedEquipment() : null,
+    };
+    this.dialog.openLateral<NovaAmostraDialogComponent, NovaAmostraDialogData, NovaAmostraDialogResult>(
+      NovaAmostraDialogComponent, data, 'Cadastrar amostra',
+    ).afterClosed().pipe(takeUntilDestroyed(this.destroyRef)).subscribe((result) => {
+      if (!result) return;
+      if ('sample' in result) {
+        this.applySample(result.sample);
+        return;
+      }
+      this.currentSample.set(null);
+      this.currentAnalyzedEquipment.set(result.equipment);
+      this.identificationMode.set('new');
+      this.form.patchValue({
+        sampleId: null,
+        newSampleCode: result.newSample.code,
+        newSampleDescription: result.newSample.description,
+        analyzedEquipmentId: result.newSample.analyzedEquipmentId,
+      });
+      this.confirmedNewSampleCode.set(result.newSample.code);
+      this.sampleChooserOpen.set(false);
     });
-    this.sampleChooserOpen.set(true);
-    this.sampleSearch.setValue(code);
   }
 
-  confirmNewSample(): void {
-    if (this.formLocked || !this.canConfirmNewSample) return;
-    this.confirmedNewSampleCode.set(this.form.controls.newSampleCode.value.trim());
-    this.identificationMode.set('new');
-    this.sampleChooserOpen.set(false);
+  openInstrumentRegistration(): void {
+    if (this.formLocked || this.instrumentsLoading() || this.instrumentsError()) return;
+    this.dialog.openLateral<InstrumentoFormDialogComponent, undefined, InstrumentReference>(
+      InstrumentoFormDialogComponent, undefined, 'Cadastrar instrumento',
+    ).afterClosed().pipe(takeUntilDestroyed(this.destroyRef)).subscribe((instrument) => {
+      if (!instrument) return;
+      this.instruments.update((items) => [...items, instrument].sort((a, b) => a.inventoryNumber.localeCompare(b.inventoryNumber)));
+      const ids = this.form.controls.equipmentIds.value ?? [];
+      this.form.controls.equipmentIds.setValue([...new Set([...ids, instrument.id])]);
+      this.form.controls.equipmentIds.markAsDirty();
+      this.snackBar.open('Instrumento cadastrado e selecionado.', 'Fechar', { duration: 3500 });
+    });
   }
 
   selectSample(sample: SampleReference): void {
     if (this.formLocked || this.sampleLoading() || this.sampleError() ||
         sample.quote.id !== this.selectedQuote()?.id) return;
+    this.applySample(sample);
+  }
+
+  private applySample(sample: SampleReference): void {
     this.currentSample.set(sample);
     this.currentAnalyzedEquipment.set(sample.analyzedEquipment);
     this.identificationMode.set('existing');
@@ -804,42 +763,14 @@ export class EnsaioFormComponent {
     });
   }
 
-  onNewSampleCodeChanged(value: string): void {
-    if (this.formLocked) return;
-    this.form.controls.newSampleCode.setValue(value, { emitEvent: false });
-    this.confirmedNewSampleCode.set(null);
-    this.sampleChooserOpen.set(true);
-    this.sampleSearch.setValue(value);
-  }
-
-  selectAnalyzedEquipment(item: AnalyzedEquipmentReference | null): void {
-    if (this.formLocked || this.equipmentError() || this.equipmentLoading()) return;
-    this.currentAnalyzedEquipment.set(item);
-    this.form.controls.analyzedEquipmentId.setValue(item?.id ?? null);
-  }
-
   setSamplePage(page: number): void {
     if (this.formLocked || page < 1 || page > this.samplePages) return;
     this.samplePage.set(page);
     this.sampleRefresh$.next();
   }
 
-  setEquipmentPage(page: number): void {
-    if (this.formLocked || page < 1 || page > this.equipmentPages) return;
-    this.equipmentPage.set(page);
-    this.equipmentRefresh$.next();
-  }
-
   retrySamples(): void {
     if (!this.formLocked && this.selectedQuote()) this.sampleRefresh$.next();
-  }
-
-  retryAnalyzedEquipment(): void {
-    if (!this.formLocked && this.selectedQuote()) {
-      this.equipmentError.set(false);
-      this.updateFormDisabledState();
-      this.equipmentRefresh$.next();
-    }
   }
 
   retryTechnicians(): void {
@@ -931,7 +862,7 @@ export class EnsaioFormComponent {
         this.form.invalid || this.measurements.invalid ||
         this.techniciansLoading() || this.techniciansError() ||
         !this.form.controls.responsibleId.value || this.measurements.length > 100) {
-      this.saveError.set('Revise o orçamento, confirme a identificação e confira os campos obrigatórios.');
+      this.saveError.set('Revise o orçamento, confirme a amostra e confira os campos obrigatórios.');
       this.saveSuccess.set(false);
       this.focusFirstInvalidField();
       return;
@@ -973,6 +904,7 @@ export class EnsaioFormComponent {
     this.updateFormDisabledState();
     this.saveError.set('');
     this.saveSuccess.set(false);
+    this.creationConfirmed.set(false);
     this.conflictType.set(null);
     const id = this.editId();
     const operation = id && this.detail()
@@ -986,7 +918,9 @@ export class EnsaioFormComponent {
         this.updateFormDisabledState();
         this.saveSuccess.set(true);
         this.saveError.set('');
-        if (!id) {
+        if (id) {
+          this.snackBar.open('Ensaio atualizado.', 'Fechar', { duration: 3500 });
+        } else {
           void this.router.navigate(['/tecnico/ensaios', saved.id, 'editar'], {
             replaceUrl: true,
             state: { testSavedConfirmation: true },
