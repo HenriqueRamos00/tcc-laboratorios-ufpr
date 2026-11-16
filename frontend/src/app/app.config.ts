@@ -7,6 +7,7 @@ import {
   LOCALE_ID,
   provideZoneChangeDetection,
 } from '@angular/core';
+import { provideEnvironmentNgxMask } from 'ngx-mask';
 import { provideRouter, withComponentInputBinding, withInMemoryScrolling } from '@angular/router';
 import { JwtHelperService } from '@auth0/angular-jwt';
 
@@ -27,6 +28,7 @@ export const appConfig: ApplicationConfig = {
       withInMemoryScrolling({ scrollPositionRestoration: 'top', anchorScrolling: 'enabled' }),
     ),
     provideHttpClient(withInterceptors([authTokenInterceptor, authErrorInterceptor])),
+    provideEnvironmentNgxMask(),
     { provide: JwtHelperService, useFactory: () => new JwtHelperService() },
     { provide: LOCALE_ID, useValue: 'pt' },
     { provide: DEFAULT_CURRENCY_CODE, useValue: 'BRL' },

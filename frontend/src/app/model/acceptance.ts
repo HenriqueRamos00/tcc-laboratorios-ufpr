@@ -11,7 +11,6 @@ export interface BillingAddress {
   postalCode: string;
   contact: string;
   phone: string;
-  fax: string;
   invoiceEmails: string;
 }
 

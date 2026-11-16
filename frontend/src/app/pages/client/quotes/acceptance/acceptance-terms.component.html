@@ -23,29 +23,29 @@
     </legend>
 
     <div class="grid grid-cols-1 gap-4 md:grid-cols-3">
-      <app-text-field [controle]="billing.company" label="Empresa" />
-      <app-text-field [controle]="billing.cnpj" label="CNPJ" inputmode="numeric" />
-      <app-text-field [controle]="billing.stateRegistration" label="I.E." />
+      <app-text-field [controle]="billing.company" label="Empresa" [maxlength]="limits.companyName" />
+      <app-text-field [controle]="billing.cnpj" label="CNPJ" [mascara]="masks.cnpj" [caixaAlta]="true" />
+      <app-text-field [controle]="billing.stateRegistration" label="I.E." [maxlength]="limits.stateRegistration" />
     </div>
 
-    <app-text-field class="mt-4" [controle]="billing.street" label="Endereço" />
+    <app-text-field class="mt-4" [controle]="billing.street" label="Endereço" [maxlength]="limits.street" />
 
     <div class="mt-4 grid grid-cols-1 gap-4 md:grid-cols-4">
-      <app-text-field [controle]="billing.city" label="Cidade" />
-      <app-text-field [controle]="billing.state" label="UF" [maxlength]="2" [caixaAlta]="true" />
-      <app-text-field [controle]="billing.district" label="Bairro" />
-      <app-text-field [controle]="billing.postalCode" label="CEP" inputmode="numeric" />
+      <app-text-field [controle]="billing.city" label="Cidade" [maxlength]="limits.city" />
+      <app-text-field [controle]="billing.state" label="UF" [mascara]="masks.state" [caixaAlta]="true" />
+      <app-text-field [controle]="billing.district" label="Bairro" [maxlength]="limits.district" />
+      <app-text-field [controle]="billing.postalCode" label="CEP" inputmode="numeric" [mascara]="masks.postalCode" />
     </div>
 
-    <div class="mt-4 grid grid-cols-1 gap-4 md:grid-cols-3">
-      <app-text-field [controle]="billing.contact" label="Contato" />
-      <app-text-field [controle]="billing.phone" label="Telefone" tipo="tel" />
-      <app-text-field [controle]="billing.fax" label="Fax" tipo="tel" />
+    <div class="mt-4 grid grid-cols-1 gap-4 md:grid-cols-2">
+      <app-text-field [controle]="billing.contact" label="Contato" [maxlength]="limits.personName" />
+      <app-text-field [controle]="billing.phone" label="Telefone" tipo="tel" [mascara]="masks.phone" />
     </div>
 
     <app-text-field
       class="mt-4"
       [controle]="billing.invoiceEmails"
+      [maxlength]="limits.invoiceEmails"
       label="Endereço eletrônico para envio de NFS-e (preencher pelo menos dois endereços de e-mail):"
     />
   </fieldset>
@@ -54,13 +54,13 @@
     <legend class="display mb-4 p-0 text-base font-semibold text-lactec-nav">2. Aprovação</legend>
 
     <div class="grid grid-cols-1 gap-4 md:grid-cols-2">
-      <app-text-field [controle]="approval.requesterName" label="Nome do Solicitante" />
-      <app-text-field [controle]="approval.responsibleName" label="Nome do Responsável" />
+      <app-text-field [controle]="approval.requesterName" label="Nome do Solicitante" [maxlength]="limits.personName" />
+      <app-text-field [controle]="approval.responsibleName" label="Nome do Responsável" [maxlength]="limits.personName" />
     </div>
 
     <div class="mt-4 grid grid-cols-1 gap-4 md:grid-cols-3">
-      <app-text-field [controle]="approval.jobTitle" label="Cargo" />
-      <app-text-field [controle]="approval.department" label="Setor" />
+      <app-text-field [controle]="approval.jobTitle" label="Cargo" [maxlength]="limits.jobTitle" />
+      <app-text-field [controle]="approval.department" label="Setor" [maxlength]="limits.department" />
       <app-text-field [controle]="approval.date" label="Data" tipo="date" />
     </div>
 
@@ -90,6 +90,7 @@
       <app-text-field
         class="md:w-80"
         [controle]="approval.resultsEmail"
+        [maxlength]="limits.email"
         label="Endereço de e-mail:"
         tipo="email"
       />

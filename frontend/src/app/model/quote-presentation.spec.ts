@@ -25,6 +25,17 @@ function quote(stage: string, laboratoryStage?: string | null): Quote {
 }
 
 describe('stageOfQuote, a etapa que a tela mostra', () => {
+  it('a decisão gravada no portal vale enquanto a etapa carregada não passou dela', () => {
+    const decided = (stage: string, kind: NonNullable<Quote['clientDecision']>['kind'], lab?: string) =>
+      stageOfQuote({ ...quote(stage, lab), clientDecision: { id: 'd', kind, recordedAt: '2026-11-15T12:00:00Z' } });
+
+    expect(decided('Negociação', 'acceptance')).toBe('aprovado-pelo-cliente');
+    expect(decided('Negociação', 'purchase-order')).toBe('aprovado-pelo-cliente');
+    expect(decided('Aprovado pelo cliente', 'sample-shipment')).toBe('aguardando-amostra');
+    expect(decided('Negociação', 'rejection')).toBe('recusado');
+    expect(decided('Aprovado pelo cliente', 'sample-shipment', 'em-execucao')).toBe('em-execucao');
+  });
+
   it('sem etapa do laboratório vale a etapa comercial', () => {
     expect(stageOfQuote(quote('Aprovado pelo cliente'))).toBe('aprovado-pelo-cliente');
     expect(stageOfQuote(quote('Aprovado pelo cliente', null))).toBe('aprovado-pelo-cliente');

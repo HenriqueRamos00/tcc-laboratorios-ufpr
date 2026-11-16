@@ -64,6 +64,8 @@ public sealed record QuoteResponse
     /// </summary>
     public string? LaboratoryStage { get; init; }
 
+    public ClientDecisionResponse? ClientDecision { get; init; }
+
     public static QuoteResponse From(QuoteWithLaboratoryStage quote)
     {
         ArgumentNullException.ThrowIfNull(quote);
@@ -83,7 +85,8 @@ public sealed record QuoteResponse
             ExternalContactEmail = quote.Quote.ExternalContactEmail,
             TotalPrice = quote.Quote.TotalPrice,
             CreatedDate = quote.Quote.CreatedDate,
-            LaboratoryStage = PipelineStageWireName.Of(quote.LaboratoryStage)
+            LaboratoryStage = PipelineStageWireName.Of(quote.LaboratoryStage),
+            ClientDecision = ClientDecisionResponse.From(quote.LatestClientDecision)
         };
     }
 }

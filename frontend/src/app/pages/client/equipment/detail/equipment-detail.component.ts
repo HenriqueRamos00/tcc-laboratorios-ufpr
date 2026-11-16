@@ -23,7 +23,7 @@ import {
 import { MatIconModule } from '@angular/material/icon';
 import { RouterLink } from '@angular/router';
 
-import { readableDate } from '@shared/brazilian-date';
+import { DataPipe } from '@shared/pipes/data.pipe';
 import { handFileToTheBrowser } from '@shared/file-download';
 import { EmptyStateComponent } from '@shared/components/empty-state/empty-state.component';
 import { PageHeaderComponent } from '@shared/components/page-header/page-header.component';
@@ -105,7 +105,7 @@ const NAMEPLATE_UNKNOWN =
 function historyRow(report: EquipmentReport): HistoryRow {
   return {
     id: report.id,
-    date: readableDate(report.date),
+    date: dataPipe.transform(report.date),
     analysisType: ANALYSIS_TYPE_LABEL[report.analysisType],
     status: REPORT_STATUS_LABEL[report.status],
     tab: TAB_BY_ANALYSIS_TYPE[report.analysisType],
@@ -113,6 +113,8 @@ function historyRow(report: EquipmentReport): HistoryRow {
     fileName: `relatorio-${report.analysisType}-${report.date}.pdf`,
   };
 }
+
+const dataPipe = new DataPipe();
 
 @Component({
   selector: 'app-equipamento-detalhe',

@@ -12,7 +12,7 @@ import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { MatIconModule } from '@angular/material/icon';
 import { finalize } from 'rxjs';
 
-import { readableDate } from '@shared/brazilian-date';
+import { DataPipe } from '@shared/pipes/data.pipe';
 import { DataTableActionsDirective } from '@shared/components/data-table/data-table-actions.directive';
 import { DataTableComponent } from '@shared/components/data-table/data-table.component';
 import {
@@ -51,7 +51,7 @@ function reportRow(report: Report): ReportRow {
     requestNumber: report.requestNumber ?? NOT_REPORTED,
     sample: sample || NOT_REPORTED,
     status: report.status ?? NOT_REPORTED,
-    publishedOn: published ? readableDate(published) : NOT_REPORTED,
+    publishedOn: published ? dataPipe.transform(published) : NOT_REPORTED,
     pdfAvailable: report.pdfAvailable ?? report.hasSignedDocument,
     laboratory: report.laboratory?.trim() || null,
     fileName: `relatorio-${(report.identification ?? report.id).replace(/[^\w.-]+/g, '-')}.pdf`,
@@ -68,6 +68,8 @@ const COLUMNS: readonly DataTableColumn<ReportRow>[] = [
 ];
 
 export const REPORT_TABLE_COLUMN_COUNT = COLUMNS.length + 1;
+
+const dataPipe = new DataPipe();
 
 @Component({
   selector: 'app-report-table',

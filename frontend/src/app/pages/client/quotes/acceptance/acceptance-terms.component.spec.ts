@@ -1,3 +1,7 @@
+import { provideEnvironmentNgxMask } from 'ngx-mask';
+import type { AcceptanceTerms } from '@/app/model/acceptance';
+import { provideHttpClient } from '@angular/common/http';
+import { provideHttpClientTesting } from '@angular/common/http/testing';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { provideRouter } from '@angular/router';
@@ -21,15 +25,24 @@ class DialogSpy {
   }
 }
 
+const MASKED_VALUES: Record<string, string> = {
+  CNPJ: '12.abc.345/01de-35',
+  UF: 'pr',
+  CEP: '80000-000',
+  Telefone: '(41) 99999-9999',
+};
+
 function fillEveryField(screen: HTMLElement): void {
   for (const field of screen.querySelectorAll('input')) {
     if (field.type === 'radio' || field.type === 'checkbox') continue;
+    const label = field.closest('label')?.querySelector('span')?.textContent?.trim() ?? '';
     field.value =
-      field.type === 'date'
+      MASKED_VALUES[label] ??
+      (field.type === 'date'
         ? '2026-10-19'
         : field.type === 'email'
           ? 'cliente@exemplo.com'
-          : 'preenchido';
+          : 'preenchido');
     field.dispatchEvent(new Event('input'));
   }
 }
@@ -43,6 +56,9 @@ describe('AcceptanceTermsComponent', () => {
     TestBed.configureTestingModule({
       providers: [
         provideRouter([]),
+        provideHttpClient(),
+        provideHttpClientTesting(),
+        provideEnvironmentNgxMask(),
         { provide: MatSnackBar, useValue: { open: () => {} } },
         { provide: AppDialogService, useValue: dialogs },
       ],
@@ -107,6 +123,21 @@ describe('AcceptanceTermsComponent', () => {
     submit(fixture, screen);
 
     expect(accept).toHaveBeenCalledTimes(1);
+  });
+
+  it('envia os campos com máscara sem pontuação e a sigla da UF em caixa alta', () => {
+    const { fixture, screen } = render();
+    dialogs.answer = true;
+
+    submit(fixture, screen);
+
+    const billing = (accept.calls.mostRecent().args[0] as AcceptanceTerms).billing;
+    expect([billing.cnpj, billing.state, billing.postalCode, billing.phone]).toEqual([
+      '12ABC34501DE35',
+      'PR',
+      '80000000',
+      '41999999999',
+    ]);
   });
 
   // Confirmar um termo incompleto faria o cliente revisar na janela um

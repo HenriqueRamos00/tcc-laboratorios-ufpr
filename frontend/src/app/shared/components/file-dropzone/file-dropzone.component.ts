@@ -13,7 +13,7 @@ const MEGABYTE = 1024 * 1024;
       class="flex flex-col items-center justify-center gap-3 rounded-lg border-2 border-dashed
              px-6 py-10 text-center transition-colors"
       [class.border-lactec-primary]="arrastando()"
-      [class.border-lactec-line]="!arrastando()"
+      [class.border-lactec-field-border]="!arrastando()"
       [style.background]="arrastando() ? 'rgba(24, 165, 184, 0.06)' : 'var(--color-lactec-surface)'"
       (dragover)="aoArrastarSobre($event)"
       (dragleave)="aoSairDaArea($event)"
@@ -47,7 +47,7 @@ const MEGABYTE = 1024 * 1024;
     </p>
 
     @if (erro(); as mensagem) {
-      <p class="mt-1 text-center text-xs text-lactec-danger" role="alert">{{ mensagem }}</p>
+      <p class="mt-1 text-center text-xs text-lactec-field-error" role="alert">{{ mensagem }}</p>
     }
   `,
   changeDetection: ChangeDetectionStrategy.OnPush,

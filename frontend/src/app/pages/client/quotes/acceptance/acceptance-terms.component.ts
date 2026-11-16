@@ -1,3 +1,5 @@
+import { FIELD_LIMITS } from '@/app/model/field-limits';
+import { FIELD_MASKS } from '@/app/model/field-masks';
 import {
   ChangeDetectionStrategy,
   Component,
@@ -42,7 +44,6 @@ function billingGroup(fb: FormBuilder) {
     postalCode: ['', required],
     contact: [''],
     phone: [''],
-    fax: [''],
     invoiceEmails: [''],
   });
 }
@@ -78,6 +79,9 @@ export class AcceptanceTermsComponent {
     { label: this.id(), route: `/cliente/quotes/${this.id()}` },
     { label: 'Termo de aceite' },
   ]);
+
+  protected readonly limits = FIELD_LIMITS;
+  protected readonly masks = FIELD_MASKS;
 
   protected readonly form = this.fb.group({
     billing: billingGroup(this.fb),

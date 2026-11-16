@@ -90,6 +90,11 @@
   /* Borda de campo sob o cursor: um passo acima de `line`, que nesse estado
      some. */
   --color-lactec-line-strong: #C9D1D5;
+  --color-lactec-field-border: #758A94;
+  --color-lactec-field-border-hover: var(--color-lactec-muted);
+  --color-lactec-field-border-focus: var(--color-lactec-primary);
+  --color-lactec-field-border-invalid: var(--color-lactec-danger);
+  --color-lactec-field-error: var(--color-lactec-danger-ink);
   --color-lactec-pill-proc-border: #B9DDE4;
   --color-lactec-pill-analysis-border: #EFCF9A;
 
@@ -267,26 +272,30 @@ mat-icon.icone-36 {
   height: 44px;
   padding: 0 12px;
   background: var(--color-lactec-paper);
-  border: 1px solid var(--color-lactec-line);
+  border: 1px solid var(--color-lactec-field-border);
   border-radius: 8px;
   transition:
     border-color 120ms ease,
     box-shadow 120ms ease;
 }
 .input-field:hover {
-  border-color: var(--color-lactec-line-strong);
+  border-color: var(--color-lactec-field-border-hover);
 }
 .input-field:focus-within {
-  border-color: var(--color-lactec-primary);
-  box-shadow: 0 0 0 4px color-mix(in oklab, var(--color-lactec-primary) 12%, transparent);
+  border-color: var(--color-lactec-field-border-focus);
+  box-shadow:
+    0 0 0 1px var(--color-lactec-field-border-focus),
+    0 0 0 4px color-mix(in oklab, var(--color-lactec-field-border-focus) 12%, transparent);
 }
 .input-field--error,
 .input-field--error:hover {
-  border-color: var(--color-lactec-danger);
+  border-color: var(--color-lactec-field-border-invalid);
 }
 .input-field--error:focus-within {
-  border-color: var(--color-lactec-danger);
-  box-shadow: 0 0 0 4px color-mix(in oklab, var(--color-lactec-danger) 14%, transparent);
+  border-color: var(--color-lactec-field-border-invalid);
+  box-shadow:
+    0 0 0 1px var(--color-lactec-field-border-invalid),
+    0 0 0 4px color-mix(in oklab, var(--color-lactec-field-border-invalid) 14%, transparent);
 }
 .input-field__icon {
   flex: none;
@@ -300,7 +309,7 @@ mat-icon.icone-36 {
   color: var(--color-lactec-primary-dark);
 }
 .input-field--error .input-field__icon {
-  color: var(--color-lactec-danger);
+  color: var(--color-lactec-field-error);
 }
 .input-field__input {
   flex: 1 1 auto;
