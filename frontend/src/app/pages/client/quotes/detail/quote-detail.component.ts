@@ -37,6 +37,9 @@ import { ProposalSkeletonComponent } from './proposal-skeleton.component';
 import { ProposalViewerComponent } from './proposal-viewer.component';
 import { MoedaPipe } from '@shared/pipes/moeda.pipe';
 
+import { registerPageTour } from '@/app/services/tour.service';
+import { quoteDetailTour } from './quote-detail.tour';
+
 const moedaPipe = new MoedaPipe();
 
 /**
@@ -156,6 +159,10 @@ export class QuoteDetailComponent {
   });
 
   constructor() {
+    registerPageTour(() =>
+      quoteDetailTour({ stage: this.stage(), pendingAction: this.pendingAction() }),
+    );
+
     // O router reaproveita a instância quando só o id muda, e ngOnInit não roda
     // de novo.
     toObservable(this.id)

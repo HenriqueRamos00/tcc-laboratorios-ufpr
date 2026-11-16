@@ -17,7 +17,7 @@
   @let billing = form.controls.billing.controls;
   @let approval = form.controls.approval.controls;
 
-  <fieldset class="mt-6 border-0 p-0">
+  <fieldset data-tour="aceite-cobranca" class="mt-6 border-0 p-0">
     <legend class="display mb-4 p-0 text-base font-semibold text-lactec-nav">
       1. Endereço para cobrança
     </legend>
@@ -42,7 +42,7 @@
       <app-text-field [controle]="billing.phone" label="Telefone" tipo="tel" [mascara]="masks.phone" />
     </div>
 
-    <fieldset class="mt-4 border-0 p-0">
+    <fieldset data-tour="aceite-emails-nota" class="mt-4 border-0 p-0">
       <legend class="p-0 text-sm text-lactec-ink-soft">
         Endereço eletrônico para envio de NFS-e (preencher pelo menos dois endereços de e-mail):
       </legend>
@@ -89,7 +89,7 @@
     </fieldset>
   </fieldset>
 
-  <fieldset class="mt-8 border-0 p-0">
+  <fieldset data-tour="aceite-aprovacao" class="mt-8 border-0 p-0">
     <legend class="display mb-4 p-0 text-base font-semibold text-lactec-nav">2. Aprovação</legend>
 
     <div class="grid grid-cols-1 gap-4 md:grid-cols-2">
@@ -138,13 +138,17 @@
 
   <!-- O aceite é o momento em que o cliente decide despachar a amostra, então
        o lembrete da etiqueta fica onde ele ainda pode agir sobre a caixa. -->
-  <div class="mt-8">
+  <div data-tour="aceite-envio-amostra" class="mt-8">
     <app-sample-shipping-notice [proposalCode]="id()" guidance="address-and-labeling" />
   </div>
 
   <div class="mt-6 flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
     @let savedAt = draftSavedAt();
-    <p class="m-0 text-sm text-lactec-ink-soft" [attr.role]="draftUnavailable() ? 'status' : null">
+    <p
+      data-tour="aceite-rascunho"
+      class="m-0 text-sm text-lactec-ink-soft"
+      [attr.role]="draftUnavailable() ? 'status' : null"
+    >
       @if (draftUnavailable()) {
         Este navegador não permitiu guardar o rascunho. Se você sair desta tela antes de enviar, o
         que foi preenchido será perdido.
@@ -155,6 +159,7 @@
     </p>
     <button
       type="submit"
+      data-tour="aceite-enviar"
       class="self-end rounded-lg bg-lactec-success px-6 py-3 text-sm font-semibold text-white
              hover:opacity-90 disabled:opacity-40 md:self-auto"
       [disabled]="sending()"

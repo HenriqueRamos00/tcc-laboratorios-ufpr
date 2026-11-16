@@ -5,7 +5,11 @@
     [title]="'Indicadores de Saúde do Transformador - ' + data.tag"
     [breadcrumbs]="breadcrumbs()"
   >
-    <div acoes class="flex w-full flex-col gap-1 md:w-auto md:items-end">
+    <div
+      acoes
+      data-tour="indicadores-baixar"
+      class="flex w-full flex-col gap-1 md:w-auto md:items-end"
+    >
       <span class="hidden text-xs text-lactec-muted md:block">Baixar relatório</span>
       <button
         type="button"
@@ -19,7 +23,12 @@
     </div>
   </app-page-header>
 
-  <div class="mt-4 flex gap-6 border-b border-lactec-line" role="tablist" aria-label="Tipo de ensaio">
+  <div
+    data-tour="indicadores-abas"
+    class="mt-4 flex gap-6 border-b border-lactec-line"
+    role="tablist"
+    aria-label="Tipo de ensaio"
+  >
     <button
       type="button"
       role="tab"
@@ -76,10 +85,12 @@
 
       <div class="grid grid-cols-1 items-center gap-6 lg:grid-cols-[minmax(0,20rem)_1fr]">
         <app-conformity-gauge
+          data-tour="indicadores-conformidade"
           [classification]="data.physicalChemical.conformity"
           [verdict]="data.physicalChemical.verdict"
         />
         <app-line-chart
+          data-tour="indicadores-evolucao"
           title="Evolução dos Ensaios Físico-Químicos (FQ)"
           [xAxisLabels]="physicalChemicalDates()"
           [series]="physicalChemicalSeries()"
@@ -87,7 +98,7 @@
         />
       </div>
 
-      <div class="mt-6 overflow-x-auto">
+      <div data-tour="indicadores-resultados" class="mt-6 overflow-x-auto">
         <table class="w-full border-collapse text-sm">
           <caption class="sr-only">
             Ensaios físico-químicos, com método, valor-limite da ABNT NBR 10576/17, histórico de
@@ -194,6 +205,7 @@
     </section>
 
     <section
+      data-tour="indicadores-conclusao"
       aria-labelledby="report-title-physical-chemical"
       class="mt-4 rounded-lactec-panel border border-lactec-line bg-lactec-paper p-6"
     >
@@ -221,7 +233,12 @@
       tabindex="0"
       class="mt-6"
     >
-      <div class="grid grid-cols-1 gap-3 sm:grid-cols-2" role="tablist" aria-label="Critério de análise">
+      <div
+        data-tour="indicadores-gases-criterios"
+        class="grid grid-cols-1 gap-3 sm:grid-cols-2"
+        role="tablist"
+        aria-label="Critério de análise"
+      >
       <button
         type="button"
         role="tab"
@@ -264,12 +281,14 @@
 
         <div class="flex justify-center">
           <app-conformity-gauge
+            data-tour="indicadores-conformidade"
             [classification]="data.dissolvedGases.conformity"
             [verdict]="data.dissolvedGases.verdict"
           />
         </div>
 
         <app-line-chart
+          data-tour="indicadores-evolucao"
           class="mt-6"
           title="Evolução dos Gases Dissolvidos (GD) - Escala Log"
           scale="log"
@@ -334,6 +353,7 @@
       </section>
 
       <section
+        data-tour="indicadores-conclusao"
         aria-labelledby="report-title-chromatography"
         class="mt-4 rounded-lactec-panel border border-lactec-line bg-lactec-paper p-6"
       >
@@ -361,7 +381,7 @@
         tabindex="0"
         class="mt-4 rounded-lactec-panel border border-lactec-line bg-lactec-paper p-6"
       >
-        <app-diagnostic-methods [diagnosis]="diagnosis()" />
+        <app-diagnostic-methods data-tour="indicadores-metodos" [diagnosis]="diagnosis()" />
       </section>
     }
     </div>

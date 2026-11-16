@@ -13,7 +13,8 @@ import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 import { MatMenuModule } from '@angular/material/menu';
 import { Router, RouterLink } from '@angular/router';
-import { catchError, EMPTY, switchMap, tap } from 'rxjs';
+import { MatDialogRef } from '@angular/material/dialog';
+import { catchError, EMPTY, firstValueFrom, switchMap, tap } from 'rxjs';
 
 import { PaginationComponent } from '@shared/components/pagination/pagination.component';
 import { LoadingRegionComponent } from '@shared/components/skeleton/loading-region.component';
@@ -39,6 +40,7 @@ import {
   withSessionDecision,
 } from '@/app/model/quote-presentation';
 import { DEFAULT_PAGE_SIZE } from '@/app/model/page';
+import type { TourScene } from '@/app/model/tour';
 import { noticeFor } from '@/app/model/quote-stage-notice';
 import { AppDialogService } from '@/app/services/app-dialog.service';
 import { LoginService } from '@/app/services/login.service';
@@ -49,6 +51,9 @@ import {
   ProposalStatusDialogComponent,
   ProposalStatusDialogData,
 } from './proposal-status-dialog/proposal-status-dialog.component';
+
+import { registerPageTour } from '@/app/services/tour.service';
+import { quoteListTour } from './quote-list.tour';
 
 interface FilterTab {
   value: TabKey;
@@ -136,6 +141,14 @@ export class QuoteListComponent {
 
   private readonly loadedQuotes = signal<ReadonlyArray<DisplayedQuote>>([]);
 
+  private tourDialog: MatDialogRef<ProposalStatusDialogComponent, string> | null = null;
+
+  private readonly statusDialogScene: TourScene = {
+    available: () => this.statusExample() !== undefined,
+    enter: () => this.openStatusExample(),
+    leave: () => this.closeStatusExample(),
+  };
+
   readonly cardPlaceholders = skeletonIndexes(CARD_PLACEHOLDER_COUNT);
   readonly firstLoad = computed(() => this.loading() && this.loadedQuotes().length === 0);
 
@@ -163,6 +176,8 @@ export class QuoteListComponent {
   });
 
   constructor() {
+    registerPageTour(() => quoteListTour(this.statusDialogScene));
+
     toObservable(this.page)
       .pipe(
         tap(() => {
@@ -211,7 +226,27 @@ export class QuoteListComponent {
     this.openStatusDialog(quote);
   }
 
-  private openStatusDialog(quote: DisplayedQuote): void {
+  private statusExample(): DisplayedQuote | undefined {
+    return this.visibleQuotes().find((item) => item.status !== 'relatorio-publicado');
+  }
+
+  private openStatusExample(): Promise<void> {
+    const quote = this.statusExample();
+    if (!quote) return Promise.resolve();
+
+    const dialog = this.openStatusDialog(quote);
+    this.tourDialog = dialog;
+    return firstValueFrom(dialog.afterOpened(), { defaultValue: undefined });
+  }
+
+  private closeStatusExample(): void {
+    this.tourDialog?.close();
+    this.tourDialog = null;
+  }
+
+  private openStatusDialog(
+    quote: DisplayedQuote,
+  ): MatDialogRef<ProposalStatusDialogComponent, string> {
     const closed = isClosed(quote.status);
     const stage: PipelineStage = closed ? 'qualificacao' : quote.status;
     const index = stageIndex(stage);
@@ -240,12 +275,13 @@ export class QuoteListComponent {
       contato: group.key === 'proposta' ? undefined : LABORATORY_CONTACT,
     };
 
-    this.appDialog
-      .open<ProposalStatusDialogComponent, ProposalStatusDialogData, string>(
-        ProposalStatusDialogComponent,
-        data,
-        `${data.title} ${data.proposalId}`,
-      )
+    const dialog = this.appDialog.open<
+      ProposalStatusDialogComponent,
+      ProposalStatusDialogData,
+      string
+    >(ProposalStatusDialogComponent, data, `${data.title} ${data.proposalId}`);
+
+    dialog
       .afterClosed()
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe((resultado) => {
@@ -253,6 +289,8 @@ export class QuoteListComponent {
           void this.router.navigate(['/cliente/quotes', quote.id]);
         }
       });
+
+    return dialog;
   }
 
   onSearchInput(value: string): void {

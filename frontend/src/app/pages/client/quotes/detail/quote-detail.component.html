@@ -10,7 +10,7 @@
   </h2>
 
   <section class="mt-4 rounded-lactec-panel border border-lactec-line bg-lactec-paper p-6">
-    <div class="flex flex-wrap items-baseline justify-between gap-3">
+    <div data-tour="orcamento-resumo" class="flex flex-wrap items-baseline justify-between gap-3">
       <p class="m-0 text-base text-lactec-ink">Cliente: {{ data.companyName }}</p>
       <p class="display m-0 text-xl font-semibold text-lactec-ink md:text-2xl">
         Total: {{ total() }}
@@ -25,7 +25,7 @@
       }}
     </p>
 
-    <div class="mt-4">
+    <div data-tour="orcamento-proposta" class="mt-4">
       @if (proposalAvailable()) {
         <app-proposal-viewer [quoteId]="id()" [fileName]="proposalFileName()" />
       } @else {
@@ -39,9 +39,10 @@
 
     @switch (pendingAction()) {
       @case ('decide') {
-        <div class="mt-6 flex flex-col gap-3 sm:flex-row sm:justify-end">
+        <div data-tour="orcamento-decisao" class="mt-6 flex flex-col gap-3 sm:flex-row sm:justify-end">
           <button
             type="button"
+            data-tour="orcamento-baixar"
             class="inline-flex items-center justify-center gap-2 rounded-lg border border-lactec-line
                    px-5 py-3 text-sm font-semibold text-lactec-ink hover:bg-lactec-surface
                    disabled:opacity-40"
@@ -53,6 +54,7 @@
           </button>
           <button
             type="button"
+            data-tour="orcamento-recusar"
             class="rounded-lg bg-lactec-danger px-5 py-3 text-sm font-semibold text-white
                    hover:opacity-90 disabled:opacity-40"
             [disabled]="sending()"
@@ -64,6 +66,7 @@
             type="button"
             class="rounded-lg bg-lactec-success px-5 py-3 text-sm font-semibold text-white
                    hover:opacity-90 disabled:opacity-40"
+            data-tour="orcamento-aceitar"
             [disabled]="sending()"
             (click)="aceitar()"
           >
@@ -75,7 +78,7 @@
       <!-- Aprovado é aprovado: o que resta ao cliente é despachar a amostra, e
            o portal só fica sabendo disso quando ele conta. -->
       @case ('confirm-shipment') {
-        <div class="mt-6">
+        <div data-tour="orcamento-envio" class="mt-6">
           <app-sample-shipping-notice
             [proposalCode]="data.code"
             guidance="address-and-labeling"
@@ -87,6 +90,7 @@
             type="button"
             class="rounded-lg bg-lactec-success px-5 py-3 text-sm font-semibold text-white
                    hover:opacity-90 disabled:opacity-40"
+            data-tour="orcamento-confirmar-envio"
             [disabled]="sending()"
             (click)="confirmSampleShipment()"
           >
@@ -96,7 +100,7 @@
       }
 
       @default {
-        <p class="mt-6 text-sm text-lactec-ink-soft" role="status">
+        <p data-tour="orcamento-acompanhamento" class="mt-6 text-sm text-lactec-ink-soft" role="status">
           {{ followMessage() }} Acompanhe a situação pela listagem de orçamentos.
         </p>
       }

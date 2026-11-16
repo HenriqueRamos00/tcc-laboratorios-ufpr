@@ -13,6 +13,7 @@
   <!-- Botões de alternância, não o padrão ARIA Tabs: não existe tabpanel nem
        navegação por setas aqui, então `aria-pressed` descreve melhor o que é. -->
   <div
+    data-tour="orcamentos-filtros"
     class="hidden md:flex border-b border-lactec-line gap-6"
     role="group"
     aria-label="Filtrar orçamentos por status"
@@ -38,6 +39,7 @@
     <div class="md:hidden">
       <button
         type="button"
+        data-tour="orcamentos-filtros"
         class="quote-filter-dropdown"
         [matMenuTriggerFor]="filterMenu"
         aria-haspopup="menu"
@@ -54,7 +56,7 @@
       }
     </mat-menu>
 
-    <div class="input-field md:w-80">
+    <div data-tour="orcamentos-busca" class="input-field md:w-80">
       <mat-icon class="input-field__icon" aria-hidden="true">search</mat-icon>
       <input
         type="search"
@@ -75,14 +77,18 @@
     @for (quote of visible; track quote.id) {
       @let badge = badgeFor(quote.status);
 
-      <article class="quote-card">
+      <article data-tour="orcamento-cartao" class="quote-card">
         <div class="quote-card-body">
           <div class="quote-card-body__header">
             <div class="quote-card-field">
               <span class="quote-card-field__label">ID da Proposta</span>
               <span class="quote-card-field__value">{{ quote.code }}</span>
             </div>
-            <span class="quote-status-pill" [ngClass]="badge.badgeClass">
+            <span
+              data-tour="orcamento-status"
+              class="quote-status-pill"
+              [ngClass]="badge.badgeClass"
+            >
               {{ badge.label }}
             </span>
           </div>
@@ -118,6 +124,7 @@
             <button
               mat-flat-button
               type="button"
+              data-tour="orcamento-verificar-status"
               class="quote-card-action"
               (click)="checkStatus(quote)"
             >
@@ -129,6 +136,7 @@
             @if (quote.hasProposal) {
               <a
                 mat-flat-button
+                data-tour="orcamento-visualizar"
                 class="quote-card-action"
                 [routerLink]="['/cliente/quotes', quote.id]"
               >
@@ -159,6 +167,7 @@
 
   @if (!loadError() && total() > 0) {
     <app-pagination
+      data-tour="orcamentos-paginacao"
       label="Paginação da listagem de orçamentos"
       [page]="page()"
       [pageSize]="pageSize"

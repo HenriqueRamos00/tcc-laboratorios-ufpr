@@ -54,6 +54,9 @@ import { TAB_BY_ANALYSIS_TYPE, type HealthTab } from '@/app/model/health-navigat
 import type { Page } from '@/app/model/page';
 import { EquipmentsService } from '@/app/services/equipments.service';
 
+import { registerPageTour } from '@/app/services/tour.service';
+import { equipmentDetailTour } from './equipment-detail.tour';
+
 interface InformationCard {
   readonly icon: string;
   readonly label: string;
@@ -190,6 +193,8 @@ export class EquipmentDetailComponent {
   protected readonly trackById = (row: HistoryRow): string => row.id;
 
   constructor() {
+    registerPageTour(equipmentDetailTour);
+
     // O router reaproveita a instância quando só o id muda, e ngOnInit não roda
     // de novo.
     const id = toObservable(this.id);

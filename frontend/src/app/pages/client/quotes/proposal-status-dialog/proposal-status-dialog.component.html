@@ -2,10 +2,12 @@
   [title]="data.title"
   [subtitle]="(data.protocolo ? 'PROTOCOLO: ' + data.protocolo + ' · ' : '') + 'ID: ' + data.proposalId"
 >
-  <app-status-stepper [steps]="data.steps" [currentIndex]="data.currentIndex" />
+  <div data-tour="status-etapas">
+    <app-status-stepper [steps]="data.steps" [currentIndex]="data.currentIndex" />
+  </div>
 
   @if (data.message) {
-    <div class="status-dialog-message">
+    <div data-tour="status-mensagem" class="status-dialog-message">
       <mat-icon class="status-dialog-message__icon" aria-hidden="true">info</mat-icon>
       <div>
         @if (data.messageTitle) {
@@ -33,7 +35,7 @@
   }
 
   @if (data.hasProposal || data.contato) {
-    <div class="status-dialog-actions">
+    <div data-tour="status-acoes" class="status-dialog-actions">
       @if (data.hasProposal) {
         <div class="status-dialog-actions__group">
           <button

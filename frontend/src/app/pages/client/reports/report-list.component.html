@@ -5,7 +5,12 @@
 
 <!-- Todas as abas ficam alcançáveis pelo Tab: o índice móvel do padrão ARIA
      exige navegação por setas, e sem ela a aba inativa some do teclado. -->
-<div class="mt-4 flex gap-6 border-b border-lactec-line" role="tablist" aria-label="Como encontrar o laudo">
+<div
+  data-tour="relatorios-abas"
+  class="mt-4 flex gap-6 border-b border-lactec-line"
+  role="tablist"
+  aria-label="Como encontrar o laudo"
+>
   <button
     type="button"
     role="tab"
@@ -43,6 +48,7 @@
     <h2 class="sr-only">Todos os laudos publicados</h2>
 
     <app-search-field
+      data-tour="relatorios-busca"
       class="mt-4"
       placeholder="Buscar por relatório, solicitação ou orçamento"
       label="Buscar por relatório, solicitação ou orçamento"
@@ -59,6 +65,7 @@
       />
     } @else {
       <app-report-table
+        data-tour="relatorios-tabela"
         class="mt-4"
         caption="Laudos publicados, com solicitação, amostra, laboratório, situação e data de publicação."
         emptyDescription="Revise o ID informado na busca."
@@ -74,6 +81,7 @@
     <h2 class="sr-only">Orçamentos com relatório publicado</h2>
 
     <app-search-field
+      data-tour="relatorios-orcamentos-busca"
       class="mt-4"
       placeholder="Buscar por ID da proposta, nome ou empresa"
       label="Buscar por ID da proposta, nome ou empresa"
@@ -105,7 +113,7 @@
         @for (quote of visibleQuotes(); track quote.id) {
           @let badge = badgeFor(quote.status);
 
-          <article class="quote-card">
+          <article data-tour="relatorios-orcamento-cartao" class="quote-card">
             <div class="quote-card-body">
               <div class="quote-card-body__header">
                 <div class="quote-card-field">
@@ -138,6 +146,7 @@
 
               <div class="quote-card-body__footer">
                 <a
+                  data-tour="relatorios-ver"
                   class="inline-flex items-center justify-center gap-2 rounded-lg
                          bg-lactec-primary px-4 py-2 text-sm font-semibold
                          text-lactec-on-primary hover:bg-lactec-primary-dark"

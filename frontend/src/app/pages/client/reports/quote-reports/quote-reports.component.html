@@ -44,13 +44,19 @@
   />
 
   @if (currentStageIndex() !== null) {
-    <section class="mt-6 rounded-lactec-panel border border-lactec-line bg-lactec-paper p-6">
+    <section
+      data-tour="laudos-progresso"
+      class="mt-6 rounded-lactec-panel border border-lactec-line bg-lactec-paper p-6"
+    >
       <h2 class="sr-only">Progresso da solicitação</h2>
       <app-status-stepper [steps]="stages" [currentIndex]="currentStageIndex()!" />
     </section>
   }
 
-  <section class="mt-4 flex items-start gap-3 rounded-lactec-panel bg-lactec-line-soft px-5 py-4">
+  <section
+    data-tour="laudos-resumo"
+    class="mt-4 flex items-start gap-3 rounded-lactec-panel bg-lactec-line-soft px-5 py-4"
+  >
     <mat-icon class="shrink-0 text-lactec-nav" aria-hidden="true">description</mat-icon>
     <div class="min-w-0">
       <h2 class="m-0 text-sm font-semibold text-lactec-ink">
@@ -70,6 +76,7 @@
 
   @if (withoutReports()) {
     <app-empty-state
+      data-tour="laudos-sem-relatorio"
       class="mt-6"
       icon="pending_actions"
       title="Este orçamento ainda não tem relatório publicado"
@@ -77,6 +84,7 @@
     />
   } @else {
     <app-search-field
+      data-tour="laudos-busca"
       class="mt-4"
       placeholder="Buscar por relatório ou solicitação"
       label="Buscar por relatório ou solicitação"
@@ -84,6 +92,7 @@
     />
 
     <app-report-table
+      data-tour="laudos-tabela"
       class="mt-4"
       caption="Relatórios deste orçamento, com solicitação, amostra, laboratório, situação e data."
       paginationLabel="Paginação dos relatórios do orçamento"

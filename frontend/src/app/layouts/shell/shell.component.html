@@ -32,11 +32,12 @@
             [routerLink]="item.path"
             routerLinkActive="bg-white/10 text-white"
             [routerLinkActiveOptions]="{ exact: item.exact }"
+            [attr.data-tour]="item.tourTarget"
             (click)="handset && drawer.close()"
             [matTooltip]="isCollapsed ? item.label : ''"
             matTooltipPosition="right"
             matTooltipShowDelay="120"
-            class="flex items-center gap-3 h-11 rounded-lg hover:bg-white/5 hover:text-white transition-colors"
+            class="shell-nav-item flex items-center gap-3 h-11 rounded-lg hover:bg-white/5 hover:text-white transition-colors"
             [class.justify-center]="isCollapsed"
             [class.px-3]="!isCollapsed"
           >
@@ -52,28 +53,90 @@
         class="flex flex-col gap-1 px-2 py-3 border-t border-white/10 shrink-0"
         aria-label="Ações de conta"
       >
-        @for (item of bottomActions; track item.action) {
-          <button
-            type="button"
-            (click)="onSecondaryAction(item.action)"
-            [matTooltip]="isCollapsed ? item.label : ''"
-            matTooltipPosition="right"
-            matTooltipShowDelay="120"
-            class="flex items-center gap-3 h-11 rounded-lg hover:bg-white/5 hover:text-white transition-colors text-left"
-            [class.justify-center]="isCollapsed"
-            [class.px-3]="!isCollapsed"
-          >
-            <mat-icon class="shrink-0">{{ item.icon }}</mat-icon>
-            @if (showLabels) {
-              <span class="font-medium text-sm truncate">{{ item.label }}</span>
-            }
-          </button>
+        <button
+          type="button"
+          [attr.data-tour]="tourTarget.help"
+          (click)="toggleHelp()"
+          [attr.aria-expanded]="helpOpen()"
+          aria-controls="shell-help-options"
+          [matTooltip]="isCollapsed ? 'Ajuda' : ''"
+          matTooltipPosition="right"
+          matTooltipShowDelay="120"
+          class="shell-nav-item flex items-center gap-3 h-11 rounded-lg hover:bg-white/5 hover:text-white transition-colors text-left"
+          [class.justify-center]="isCollapsed"
+          [class.px-3]="!isCollapsed"
+        >
+          <mat-icon class="shrink-0">help_outline</mat-icon>
+          @if (showLabels) {
+            <span class="flex-1 font-medium text-sm truncate">Ajuda</span>
+            <mat-icon class="shrink-0" aria-hidden="true">
+              {{ helpOpen() ? 'expand_more' : 'expand_less' }}
+            </mat-icon>
+          }
+        </button>
+        @if (helpOpen()) {
+          <div id="shell-help-options" class="flex flex-col gap-1" role="group" aria-label="Ajuda">
+            <button
+              type="button"
+              (click)="chooseHelp('menu')"
+              [matTooltip]="isCollapsed ? 'Sobre o menu' : ''"
+              matTooltipPosition="right"
+              matTooltipShowDelay="120"
+              class="shell-nav-item flex items-center gap-3 h-10 rounded-lg hover:bg-white/5 hover:text-white transition-colors text-left"
+              [class.justify-center]="isCollapsed"
+              [class.pl-9]="!isCollapsed"
+              [class.pr-3]="!isCollapsed"
+            >
+              <mat-icon class="shrink-0 icone-20" aria-hidden="true">menu_open</mat-icon>
+              @if (showLabels) {
+                <span class="text-sm truncate">Sobre o menu</span>
+              } @else {
+                <span class="sr-only">Sobre o menu</span>
+              }
+            </button>
+            <button
+              type="button"
+              [disabled]="!pageHasTour()"
+              (click)="chooseHelp('page')"
+              [matTooltip]="isCollapsed ? 'Sobre esta página' : ''"
+              matTooltipPosition="right"
+              matTooltipShowDelay="120"
+              class="shell-nav-item flex items-center gap-3 h-10 rounded-lg hover:bg-white/5 hover:text-white transition-colors text-left
+                     disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:bg-transparent"
+              [class.justify-center]="isCollapsed"
+              [class.pl-9]="!isCollapsed"
+              [class.pr-3]="!isCollapsed"
+            >
+              <mat-icon class="shrink-0 icone-20" aria-hidden="true">web_asset</mat-icon>
+              @if (showLabels) {
+                <span class="text-sm truncate">Sobre esta página</span>
+              } @else {
+                <span class="sr-only">Sobre esta página</span>
+              }
+            </button>
+          </div>
         }
+        <button
+          type="button"
+          [attr.data-tour]="tourTarget.profile"
+          [matTooltip]="isCollapsed ? 'Perfil' : ''"
+          matTooltipPosition="right"
+          matTooltipShowDelay="120"
+          class="shell-nav-item flex items-center gap-3 h-11 rounded-lg hover:bg-white/5 hover:text-white transition-colors text-left"
+          [class.justify-center]="isCollapsed"
+          [class.px-3]="!isCollapsed"
+        >
+          <mat-icon class="shrink-0">person_outline</mat-icon>
+          @if (showLabels) {
+            <span class="font-medium text-sm truncate">Perfil</span>
+          }
+        </button>
         @if (handset) {
           <button
             type="button"
-            (click)="drawer.close(); logout()"
-            class="flex items-center gap-3 h-11 rounded-lg hover:bg-white/5 hover:text-white transition-colors text-left px-3"
+            [attr.data-tour]="tourTarget.logout"
+            (click)="logout()"
+            class="shell-nav-item flex items-center gap-3 h-11 rounded-lg hover:bg-white/5 hover:text-white transition-colors text-left px-3"
           >
             <mat-icon class="shrink-0">logout</mat-icon>
             <span class="font-medium text-sm truncate">Sair</span>
@@ -85,6 +148,7 @@
         <div class="px-2 py-3 border-t border-white/10 shrink-0">
           <button
             type="button"
+            [attr.data-tour]="tourTarget.collapse"
             (click)="toggleCollapse()"
             [attr.aria-expanded]="!isCollapsed"
             aria-controls="shell-primary-nav"
@@ -92,7 +156,7 @@
             [matTooltip]="isCollapsed ? 'Expandir menu' : ''"
             matTooltipPosition="right"
             matTooltipShowDelay="120"
-            class="w-full flex items-center gap-3 h-11 rounded-lg hover:bg-white/5
+            class="shell-nav-item w-full flex items-center gap-3 h-11 rounded-lg hover:bg-white/5
                    hover:text-white transition-colors text-left"
             [class.justify-center]="isCollapsed"
             [class.px-3]="!isCollapsed"
@@ -136,6 +200,7 @@
           <button
             mat-icon-button
             type="button"
+            [attr.data-tour]="tourTarget.logout"
             (click)="logout()"
             aria-label="Sair"
           >

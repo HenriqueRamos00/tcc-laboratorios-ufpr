@@ -8,6 +8,7 @@
   >
     <a
       acoes
+      data-tour="equipamento-indicadores"
       [routerLink]="['/cliente/equipamentos', data.id, 'indicadores']"
       class="inline-flex items-center gap-2 rounded-lg bg-lactec-primary px-4 py-2 text-sm
              font-semibold text-lactec-on-primary hover:bg-lactec-primary-dark"
@@ -17,7 +18,10 @@
     </a>
   </app-page-header>
 
-  <section class="mt-6 rounded-lactec-panel border border-lactec-line bg-lactec-paper p-6">
+  <section
+    data-tour="equipamento-identificacao"
+    class="mt-6 rounded-lactec-panel border border-lactec-line bg-lactec-paper p-6"
+  >
     <h2 class="sr-only">Identificação do equipamento</h2>
 
     @if (nameplateNotice()) {
@@ -53,6 +57,7 @@
     <h2 class="display m-0 text-xl font-semibold text-lactec-ink">Histórico de Relatórios</h2>
 
     <app-data-table
+      data-tour="equipamento-historico"
       class="mt-4"
       caption="Relatórios já publicados para este equipamento, do mais recente ao mais antigo."
       paginationLabel="Paginação do histórico de relatórios"
@@ -76,6 +81,7 @@
         <div class="flex gap-2" [class.flex-col]="compact" [class.justify-end]="!compact">
           @if (row.tab) {
             <a
+              data-tour="equipamento-historico-indicadores"
               [routerLink]="['/cliente/equipamentos', data.id, 'indicadores', row.id]"
               [queryParams]="{ aba: row.tab }"
               class="inline-flex items-center rounded-lg bg-lactec-primary px-3 py-2 text-xs
@@ -90,6 +96,7 @@
           }
           <button
             type="button"
+            data-tour="equipamento-historico-download"
             class="inline-flex items-center gap-1 rounded-lg border border-lactec-line
                    px-3 py-2 text-xs font-semibold text-lactec-ink hover:bg-lactec-surface
                    disabled:opacity-40"
