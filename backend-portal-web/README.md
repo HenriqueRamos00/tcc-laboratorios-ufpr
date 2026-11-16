@@ -366,6 +366,11 @@ O Auth2 recebe o mesmo token configurado no C# e mantém apenas seu hash.
 `AUTH_ORACLE_PASSWORD`, `AUTH_SCHEMA_OWNER_PASSWORD` e `AUTH_DATASOURCE_PASSWORD`
 configuram o Oracle; `SQLSERVER_SA_PASSWORD` configura o SQL Server local.
 
+O C# encaminha `POST /auth/recoveries` e `POST /auth/password-resets` ao Spring no
+modo `backend-lab` ou ao Auth2 no modo `lactec`. O backend escolhido envia o e-mail.
+Configure `SPRING_MAIL_*` para Backend Lab ou `AUTH_MAIL_*` para Auth2, conforme o
+[guia de e-mail](../README.md#e-mail-e-recuperação-de-senha).
+
 Reinícios preservam as contas do Auth2 e não redefinem senhas ou permissões editadas.
 O `autolab-init` recarrega a massa sintética do AutoLAB a cada execução.
 `docker compose -f compose.auth.yaml down` preserva os dois bancos; `down -v` apaga

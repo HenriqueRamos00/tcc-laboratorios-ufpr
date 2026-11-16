@@ -50,6 +50,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                 Object userIdClaim = claims.get("userId");
                 String subject = claims.getSubject();
                 String roleClaim = claims.get("role", String.class);
+                Number credentialVersionClaim = claims.get("credentialVersion", Number.class);
                 var issuedAt = claims.getIssuedAt();
 
                 boolean hasSubject = subject != null && !subject.isBlank();
@@ -71,6 +72,9 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                             usuarioRepository
                                     .findById(userIdNumber.longValue())
                                     .filter(Usuario::isAtivo)
+                                    .filter(conta -> credentialVersionClaim == null
+                                            ? conta.getSenhaVersaoAtual() == 0L
+                                            : conta.getSenhaVersaoAtual() == credentialVersionClaim.longValue())
                                     .orElse(null);
                     if (usuario != null
                             && (clientRoute

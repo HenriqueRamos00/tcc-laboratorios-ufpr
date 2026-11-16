@@ -32,6 +32,14 @@ export const routes: Routes = [
           ),
         title: 'Acessar - Portal Interno Lactec',
       },
+      {
+        path: 'recuperar-senha',
+        loadComponent: () =>
+          import('@/app/pages/password-recovery/password-recovery.component').then(
+            (module) => module.PasswordRecoveryComponent,
+          ),
+        title: 'Recuperar senha - Portal Interno Lactec',
+      },
     ],
   },
 

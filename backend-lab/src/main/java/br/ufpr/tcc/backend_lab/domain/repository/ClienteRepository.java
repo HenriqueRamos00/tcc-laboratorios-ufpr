@@ -12,6 +12,8 @@ import java.util.Optional;
 public interface ClienteRepository extends JpaRepository<Cliente, Long> {
     Optional<Cliente> findByUsuarioId(Long id);
 
+    boolean existsByUsuarioId(Long id);
+
     long countByUsuarioPerfilAndUsuarioAtivoTrue(PerfilUsuario perfil);
 
     // Pesquisa dados do usuário e das empresas vinculadas sem duplicar o cliente por vínculo.
