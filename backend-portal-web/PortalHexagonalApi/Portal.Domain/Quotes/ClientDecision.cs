@@ -23,7 +23,7 @@ public sealed record BillingAddress(
     string PostalCode,
     string Contact,
     string Phone,
-    string InvoiceEmails);
+    IReadOnlyList<string> InvoiceEmails);
 
 public sealed record AcceptanceApproval(
     string RequesterName,

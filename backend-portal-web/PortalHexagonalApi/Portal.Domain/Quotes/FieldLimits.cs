@@ -8,7 +8,8 @@ public static class FieldLimits
     public const int PersonName = 150;
     public const int CompanyName = 150;
     public const int Email = 254;
-    public const int InvoiceEmails = 500;
+    public const int MinInvoiceEmails = 2;
+    public const int MaxInvoiceEmails = 5;
     public const int Cnpj = 14;
     public const int StateRegistration = 14;
     public const int Street = 150;

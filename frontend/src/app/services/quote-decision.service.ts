@@ -7,6 +7,8 @@ import type { QuoteRejection, AcceptanceTerms } from '@/app/model/acceptance';
 import type { RequestStatus } from '@/app/model/analysis-pipeline';
 import { statusOfClientDecision, type ClientDecision } from '@/app/model/quote';
 
+import { AcceptanceDraftService } from './acceptance-draft.service';
+
 export interface RecordedDecision {
   readonly proposalId: string;
   readonly status: RequestStatus;
@@ -16,6 +18,7 @@ export interface RecordedDecision {
 @Injectable({ providedIn: 'root' })
 export class QuoteDecisionService {
   private readonly http = inject(HttpClient);
+  private readonly drafts = inject(AcceptanceDraftService);
   private readonly baseUrl = `${API_URL}/api/quotes`;
   private readonly registro = signal<ReadonlyMap<string, RecordedDecision>>(new Map());
 
@@ -59,7 +62,10 @@ export class QuoteDecisionService {
           status: statusOfClientDecision(decision.kind),
           recordedAt: new Date(decision.recordedAt),
         })),
-        tap((valor) => this.registro.update((atual) => new Map(atual).set(proposalId, valor))),
+        tap((valor) => {
+          this.registro.update((atual) => new Map(atual).set(proposalId, valor));
+          this.drafts.discard(proposalId);
+        }),
       );
   }
 }

@@ -8,7 +8,7 @@ import { MatIconModule } from '@angular/material/icon';
   host: { class: 'block' },
   template: `
     <div
-      class="flex flex-col items-center justify-center gap-2 rounded-2xl border border-dashed
+      class="flex flex-col items-center justify-center gap-2 rounded-lactec-panel border border-dashed
              border-lactec-line bg-lactec-paper px-6 py-10 text-center"
       [attr.role]="tom() === 'erro' ? 'alert' : 'status'"
     >

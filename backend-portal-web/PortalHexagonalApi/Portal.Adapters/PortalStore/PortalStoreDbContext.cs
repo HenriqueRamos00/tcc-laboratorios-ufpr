@@ -54,12 +54,22 @@ public sealed class PortalStoreDbContext : DbContext
             terms.Property(row => row.BillingPostalCode).HasMaxLength(FieldLimits.PostalCode).IsFixedLength().IsUnicode(false);
             terms.Property(row => row.BillingContact).HasMaxLength(FieldLimits.PersonName);
             terms.Property(row => row.BillingPhone).HasMaxLength(FieldLimits.Phone).IsUnicode(false);
-            terms.Property(row => row.BillingInvoiceEmails).HasMaxLength(FieldLimits.InvoiceEmails).IsUnicode(false);
             terms.Property(row => row.RequesterName).HasMaxLength(FieldLimits.PersonName);
             terms.Property(row => row.ResponsibleName).HasMaxLength(FieldLimits.PersonName);
             terms.Property(row => row.JobTitle).HasMaxLength(FieldLimits.JobTitle);
             terms.Property(row => row.Department).HasMaxLength(FieldLimits.Department);
             terms.Property(row => row.ResultsEmail).HasMaxLength(FieldLimits.Email).IsUnicode(false);
+
+            terms.HasMany(row => row.InvoiceEmails).WithOne()
+                .HasForeignKey(row => row.DecisionId).OnDelete(DeleteBehavior.Cascade);
+        });
+
+        modelBuilder.Entity<InvoiceEmailRow>(email =>
+        {
+            email.ToTable("AcceptanceInvoiceEmails");
+            email.HasKey(row => new { row.DecisionId, row.Position });
+            email.Property(row => row.Email).HasMaxLength(FieldLimits.Email).IsUnicode(false).IsRequired();
+            email.HasIndex(row => new { row.DecisionId, row.Email }).IsUnique();
         });
 
         modelBuilder.Entity<PurchaseOrderRow>(order =>

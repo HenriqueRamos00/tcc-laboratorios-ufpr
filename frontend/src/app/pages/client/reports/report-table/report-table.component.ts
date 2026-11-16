@@ -93,12 +93,21 @@ const dataPipe = new DataPipe();
       [minimumRows]="minimumRows()"
       [(query)]="query"
     >
-      <ng-template appDataTableActions [appDataTableActionsOf]="rows()" let-row>
+      <ng-template
+        appDataTableActions
+        [appDataTableActionsOf]="rows()"
+        let-row
+        let-compact="compact"
+      >
         <button
           type="button"
-          class="inline-flex h-10 w-10 items-center justify-center rounded-lg
+          class="inline-flex h-10 items-center justify-center gap-2 rounded-lg
                  bg-lactec-nav text-lactec-on-primary hover:bg-lactec-nav-dark
                  disabled:opacity-40"
+          [class.w-10]="!compact"
+          [class.h-11]="compact"
+          [class.w-full]="compact"
+          [class.px-4]="compact"
           [disabled]="!row.pdfAvailable || downloading() === row.id"
           [attr.aria-label]="
             row.pdfAvailable
@@ -111,6 +120,11 @@ const dataPipe = new DataPipe();
           <mat-icon aria-hidden="true">
             {{ downloading() === row.id ? 'hourglass_empty' : 'download' }}
           </mat-icon>
+          @if (compact) {
+            <span class="text-sm font-semibold" aria-hidden="true">
+              {{ row.pdfAvailable ? 'Baixar relatório' : 'PDF indisponível' }}
+            </span>
+          }
         </button>
       </ng-template>
     </app-data-table>

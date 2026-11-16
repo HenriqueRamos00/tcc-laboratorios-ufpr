@@ -5,6 +5,7 @@ import { TestBed } from '@angular/core/testing';
 import { API_URL } from '@/app/environment/env';
 import type { AcceptanceTerms } from '@/app/model/acceptance';
 
+import { AcceptanceDraftService } from './acceptance-draft.service';
 import { QuoteDecisionService, type RecordedDecision } from './quote-decision.service';
 
 describe('QuoteDecisionService', () => {
@@ -26,7 +27,7 @@ describe('QuoteDecisionService', () => {
       proposalId: 'quote 3',
       billing: {
         company: 'EMPRESA', cnpj: '30960572000183', stateRegistration: '', street: 'Rua 1', city: 'Curitiba',
-        state: 'PR', district: '', postalCode: '80000-000', contact: '', phone: '', invoiceEmails: '',
+        state: 'PR', district: '', postalCode: '80000-000', contact: '', phone: '', invoiceEmails: ['financeiro@empresa.com', 'fiscal@empresa.com'],
       },
       approval: {
         requesterName: 'Marina', responsibleName: 'Joao', jobTitle: 'Engenheira', department: '',
@@ -69,6 +70,23 @@ describe('QuoteDecisionService', () => {
 
     expect(service.decisionFor('quote-6')?.status).toBe('aguardando-amostra');
     expect(service.decisionFor('quote-1')?.status).toBe('recusado');
+  });
+
+  it('apaga o rascunho do termo quando o orçamento recebe uma decisão, e só então', () => {
+    const drafts = TestBed.inject(AcceptanceDraftService);
+    const discard = spyOn(drafts, 'discard');
+
+    service.recusar({ proposalId: 'quote-1', justification: 'fora do orçamento' }).subscribe();
+    const rejection = http.expectOne(`${API_URL}/api/quotes/quote-1/rejection`);
+    expect(discard).not.toHaveBeenCalled();
+    rejection.flush(respond('rejection'));
+
+    service.confirmSampleShipment('quote-3').subscribe({ error: () => {} });
+    http
+      .expectOne(`${API_URL}/api/quotes/quote-3/sample-shipment`)
+      .flush({ code: 'client-decision-not-allowed' }, { status: 409, statusText: 'Conflict' });
+
+    expect(discard.calls.allArgs()).toEqual([['quote-1']]);
   });
 
   it('não registra nada quando o portal recusa a decisão', () => {

@@ -28,6 +28,19 @@ recarregar. Nome e papel vêm da resposta de login; CNPJs ficam em
 protegidas encerram a sessão; 403 é exibido sem logout. O login mostra a espera
 indicada por `Retry-After` em 429, sem repetir a chamada automaticamente.
 
+O termo de aceite (`/cliente/quotes/:id/aceite`) guarda um rascunho do que foi
+preenchido no mesmo armazenamento da sessão (`localStorage` com **Me mantenha
+conectado**, `sessionStorage` sem), na chave
+`lactec.acceptance-draft:<usuário>:<orçamento>`, com versão e validade de 7 dias.
+O rascunho é gravado após uma pausa na digitação e ao sair da tela; ao voltar, o
+portal pergunta se o cliente quer continuar ou começar em branco. Ele é apagado
+quando o orçamento recebe uma decisão (aceite, ordem de compra ou recusa), quando o
+cliente descarta, no logout pelo menu, quando vence e quando outro usuário entra no
+mesmo navegador. Sessão encerrada por expiração mantém o rascunho, para que o
+cliente retome depois de entrar de novo. Sair da rota com alteração não enviada
+abre um diálogo do portal; fechar a aba só pede a confirmação do navegador se o
+rascunho não pôde ser gravado.
+
 Antes de gravar uma nova sessão, o frontend confere o contrato da resposta, a
 expiração e o perfil de cliente. No modo `lactec`, confere também o serviço e a
 estrutura das autorizações, aceitando uma lista de empresas vazia. Uma tentativa

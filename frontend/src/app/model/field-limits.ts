@@ -2,7 +2,6 @@ export const FIELD_LIMITS = {
   personName: 150,
   companyName: 150,
   email: 254,
-  invoiceEmails: 500,
   stateRegistration: 14,
   street: 150,
   city: 60,

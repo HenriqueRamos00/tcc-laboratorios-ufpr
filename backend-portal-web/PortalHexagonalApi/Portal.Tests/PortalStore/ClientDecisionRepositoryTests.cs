@@ -1,5 +1,6 @@
 using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Metadata;
 
 using Portal.Adapters.PortalStore;
 using Portal.Application.Quotes.Exceptions;
@@ -49,7 +50,46 @@ public sealed class ClientDecisionRepositoryTests : IDisposable
             .SingleAsync(row => row.QuoteId == "quote-6");
         Assert.Equal(order.PurchaseOrder!.Sha256, stored.PurchaseOrder!.Sha256);
         Assert.Equal(order.PurchaseOrder.Content, stored.PurchaseOrder.Content);
-        Assert.Equal("Rua das Flores, 10", (await reading.Set<AcceptanceTermsRow>().SingleAsync()).BillingStreet);
+        AcceptanceTermsRow terms = await reading.Set<AcceptanceTermsRow>()
+            .Include(row => row.InvoiceEmails).SingleAsync();
+        Assert.Equal("Rua das Flores, 10", terms.BillingStreet);
+        Assert.Equal(
+            [(1, "financeiro@empresa.com"), (2, "fiscal@empresa.com")],
+            terms.InvoiceEmails.OrderBy(row => row.Position).Select(row => (row.Position, row.Email)));
+    }
+
+    [Fact]
+    public async Task OBancoRecusaOMesmoEmailDeNfseDuasVezesNoMesmoTermo()
+    {
+        AcceptanceTerms terms = Terms();
+        ClientDecision repeated = Decision("quote-3", ClientDecisionKind.Acceptance) with
+        {
+            Terms = terms with
+            {
+                Billing = terms.Billing with { InvoiceEmails = ["fiscal@empresa.com", "fiscal@empresa.com"] }
+            }
+        };
+
+        await using PortalStoreDbContext database = Database();
+        SqlServerClientDecisionRepository repository = new(database);
+
+        await Assert.ThrowsAsync<ClientDecisionStoreUnavailableException>(() =>
+            repository.AddAsync(repeated, CancellationToken.None));
+        Assert.Empty(await database.ClientDecisions.AsNoTracking().ToListAsync());
+    }
+
+    [Fact]
+    public void OsEmailsDeNfseFicamNumaTabelaFilhaComOLimiteDoProtocoloESemUnicode()
+    {
+        using PortalStoreDbContext database = Database();
+        IEntityType table = database.Model.FindEntityType(typeof(InvoiceEmailRow))!;
+        IProperty email = table.FindProperty(nameof(InvoiceEmailRow.Email))!;
+
+        Assert.Equal("AcceptanceInvoiceEmails", table.GetTableName());
+        Assert.Equal((FieldLimits.Email, false), (email.GetMaxLength(), email.IsUnicode()));
+        Assert.Equal(
+            [nameof(InvoiceEmailRow.DecisionId), nameof(InvoiceEmailRow.Position)],
+            table.FindPrimaryKey()!.Properties.Select(property => property.Name));
     }
 
     [Fact]
@@ -75,7 +115,7 @@ public sealed class ClientDecisionRepositoryTests : IDisposable
 
     private static AcceptanceTerms Terms() => new(
         new BillingAddress("EMPRESA DE ENERGIA", "30960572000183", "", "Rua das Flores, 10", "Curitiba", "PR",
-            "Centro", "80000000", "Marina", "41999999999", "financeiro@empresa.com"),
+            "Centro", "80000000", "Marina", "41999999999", ["financeiro@empresa.com", "fiscal@empresa.com"]),
         new AcceptanceApproval("Marina Costa", "Joao Lima", "Engenheira", "Manutencao",
             new DateOnly(2026, 11, 15), true, "laudos@empresa.com"));
 }

@@ -11,6 +11,7 @@ import { filter, map } from 'rxjs';
 
 import { LogoComponent } from '@shared/components/logo/logo.component';
 
+import { AcceptanceDraftService } from '@/app/services/acceptance-draft.service';
 import { LoginService } from '@/app/services/login.service';
 
 import { backTargetFor } from './parent-path';
@@ -57,6 +58,7 @@ export class ShellComponent {
   private readonly breakpoints = inject(BreakpointObserver);
   private readonly router = inject(Router);
   private readonly loginService = inject(LoginService);
+  private readonly acceptanceDrafts = inject(AcceptanceDraftService);
 
   readonly isHandset = toSignal(
     this.breakpoints.observe([HANDSET_QUERY]).pipe(map((estado) => estado.matches)),
@@ -93,6 +95,11 @@ export class ShellComponent {
       if (typeof localStorage === 'undefined') return;
       localStorage.setItem(COLLAPSED_KEY, this.collapsed() ? '1' : '0');
     });
+
+    effect(() => {
+      const user = this.loginService.currentIdentity();
+      if (user) this.acceptanceDrafts.keepOnlyValidDraftsOf(user.id);
+    });
   }
 
   toggleCollapse(): void {
@@ -105,6 +112,7 @@ export class ShellComponent {
   }
 
   logout(): void {
+    this.acceptanceDrafts.clear();
     this.loginService.logout();
     this.router.navigateByUrl('/login');
   }

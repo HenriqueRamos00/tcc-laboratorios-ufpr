@@ -1,6 +1,7 @@
 import { Routes } from '@angular/router';
 
 import { authGuard } from '@core/guards/auth.guard';
+import { unsentChangesGuard } from '@core/guards/unsent-changes.guard';
 
 import { CLIENT_ROLE } from '@/app/model/roles';
 
@@ -54,6 +55,7 @@ export const routes: Routes = [
             (modulo) => modulo.AcceptanceTermsComponent,
           ),
         title: 'Termo de aceite - Portal Lactec',
+        canDeactivate: [unsentChangesGuard],
       },
       {
         path: 'relatorios',

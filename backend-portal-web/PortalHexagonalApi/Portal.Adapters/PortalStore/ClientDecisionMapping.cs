@@ -68,13 +68,17 @@ public static class ClientDecisionMapping
         BillingPostalCode = terms.Billing.PostalCode,
         BillingContact = terms.Billing.Contact,
         BillingPhone = terms.Billing.Phone,
-        BillingInvoiceEmails = terms.Billing.InvoiceEmails,
         RequesterName = terms.Approval.RequesterName,
         ResponsibleName = terms.Approval.ResponsibleName,
         JobTitle = terms.Approval.JobTitle,
         Department = terms.Approval.Department,
         ApprovalDate = terms.Approval.Date,
         AllowsResultsByEmail = terms.Approval.AllowsResultsByEmail,
-        ResultsEmail = terms.Approval.ResultsEmail
+        ResultsEmail = terms.Approval.ResultsEmail,
+        InvoiceEmails =
+        [
+            .. terms.Billing.InvoiceEmails.Select((email, index) =>
+                new InvoiceEmailRow { DecisionId = decisionId, Position = index + 1, Email = email })
+        ]
     };
 }

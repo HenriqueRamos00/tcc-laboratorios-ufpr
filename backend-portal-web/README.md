@@ -585,14 +585,23 @@ fica no banco próprio `portal`, num SQL Server em contêiner:
   `dotnet ef migrations add <Nome> --project Portal.Adapters --startup-project Portal.Adapters --context PortalStoreDbContext --output-dir PortalStore/Migrations`.
 - **Tabelas:** `portal.ClientDecisions` (orçamento, tipo, autor e horário; índice único por
   orçamento e vaga, uma para aceite/ordem de compra/recusa e outra para o envio da amostra),
-  `portal.AcceptanceTerms` (termo de aceite), `portal.PurchaseOrders` (PDF, nome, tamanho e
-  SHA-256) e `portal.Rejections` (justificativa).
+  `portal.AcceptanceTerms` (termo de aceite), `portal.AcceptanceInvoiceEmails` (e-mails para
+  envio da NFS-e, um por linha: termo, posição e endereço, com índice único por termo e
+  endereço), `portal.PurchaseOrders` (PDF, nome, tamanho e SHA-256) e `portal.Rejections`
+  (justificativa).
+- **Migração única:** enquanto o banco não guarda dado a preservar, mudança de esquema
+  regenera a `CriarBancoDoPortal` em vez de empilhar outra. Um banco criado pela versão
+  anterior precisa ser recriado (apague o volume `portal-sqlserver-data`).
 - **Rotas** (só no modo `lactec`, com o cliente logado):
   `POST /api/quotes/{id}/acceptance` (JSON do termo), `POST /api/quotes/{id}/purchase-order`
   (multipart, campo `file`, PDF de até 10 MB), `POST /api/quotes/{id}/sample-shipment` e
   `POST /api/quotes/{id}/rejection` (`{ "justification": "..." }`, até 2000 caracteres).
   Respondem 201 com a decisão, 404 quando o orçamento não é da empresa do cliente, 409 quando
   a etapa não aceita a decisão ou ela já existe, e 501 sem banco do portal configurado.
+- **E-mails de NFS-e no termo:** `billing.invoiceEmails` é uma lista de 2 a 5 endereços, cada
+  um com até 254 caracteres ASCII, sem repetição (a comparação ignora maiúsculas). O servidor
+  não separa endereços de um texto só: fora da regra, responde 400 nomeando o campo
+  (`billing.invoiceEmails` ou `billing.invoiceEmails[posição]`).
 - **Regras:** aceitar, enviar ordem de compra ou recusar só com proposta pronta (a partir da
   negociação) e antes de "aprovado pelo cliente"; confirmar o envio da amostra só em
   "aprovado pelo cliente". A etapa considerada é a mais avançada entre a comercial, a do

@@ -1,4 +1,5 @@
 using System.Net.Mail;
+using System.Text;
 using System.Text.RegularExpressions;
 
 using Portal.Domain.Quotes;
@@ -16,7 +17,7 @@ public sealed record BillingAddressRequest(
     string? PostalCode,
     string? Contact,
     string? Phone,
-    string? InvoiceEmails);
+    IReadOnlyList<string?>? InvoiceEmails);
 
 public sealed record AcceptanceApprovalRequest(
     string? RequesterName,
@@ -53,7 +54,7 @@ public sealed partial record AcceptanceTermsRequest(BillingAddressRequest? Billi
 
         if (Approval.Date is null) problems.Add("approval.date");
         if (Approval.AllowsResultsByEmail && resultsEmail.Length == 0) problems.Add("approval.resultsEmail");
-        if (resultsEmail.Length > 0 && !MailAddress.TryCreate(resultsEmail, out _)) problems.Add("approval.resultsEmail");
+        if (resultsEmail.Length > 0 && !IsEmail(resultsEmail)) problems.Add("approval.resultsEmail");
 
         BillingAddress billing = new(
             company,
@@ -66,7 +67,7 @@ public sealed partial record AcceptanceTermsRequest(BillingAddressRequest? Billi
             postalCode,
             Optional(Billing.Contact, "billing.contact", FieldLimits.PersonName, problems),
             Formatted(Billing.Phone, "billing.phone", PhoneFormat(), required: false, problems),
-            Optional(Billing.InvoiceEmails, "billing.invoiceEmails", FieldLimits.InvoiceEmails, problems));
+            InvoiceEmailList(Billing.InvoiceEmails, problems));
 
         AcceptanceApproval approval = new(
             requesterName,
@@ -79,7 +80,7 @@ public sealed partial record AcceptanceTermsRequest(BillingAddressRequest? Billi
 
         if (problems.Count > 0)
         {
-            problem = "Campos ausentes ou longos demais: " + string.Join(", ", problems.Distinct()) + ".";
+            problem = "Campos ausentes ou invalidos: " + string.Join(", ", problems.Distinct()) + ".";
             return false;
         }
 
@@ -87,6 +88,29 @@ public sealed partial record AcceptanceTermsRequest(BillingAddressRequest? Billi
         problem = string.Empty;
         return true;
     }
+
+    private static IReadOnlyList<string> InvoiceEmailList(IReadOnlyList<string?>? values, List<string> problems)
+    {
+        const string field = "billing.invoiceEmails";
+        List<string> emails = [.. (values ?? []).Select(value => value?.Trim() ?? string.Empty)];
+
+        if (emails.Count is < FieldLimits.MinInvoiceEmails or > FieldLimits.MaxInvoiceEmails) problems.Add(field);
+
+        HashSet<string> seen = new(StringComparer.OrdinalIgnoreCase);
+        for (int position = 0; position < emails.Count; position++)
+        {
+            string email = emails[position];
+            if (email.Length > FieldLimits.Email || !IsEmail(email) || !seen.Add(email))
+                problems.Add($"{field}[{position}]");
+        }
+
+        return emails;
+    }
+
+    private static bool IsEmail(string value) =>
+        Ascii.IsValid(value)
+        && MailAddress.TryCreate(value, out MailAddress? parsed)
+        && string.Equals(parsed.Address, value, StringComparison.OrdinalIgnoreCase);
 
     private static string Formatted(string? value, string field, Regex format, bool required, List<string> problems)
     {

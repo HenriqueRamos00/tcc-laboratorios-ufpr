@@ -127,6 +127,7 @@ export class TextFieldComponent {
     this.eventos();
     const controle = this.controle();
     if (controle.hasError('email')) return 'Informe um e-mail válido';
+    if (controle.hasError('repetido')) return 'Este e-mail já foi informado em outro campo';
     if (controle.hasError('mask')) return 'Preencha o campo completo';
     return 'Campo obrigatório';
   });

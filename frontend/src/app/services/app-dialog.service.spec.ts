@@ -1,7 +1,7 @@
 import { BreakpointObserver } from '@angular/cdk/layout';
 import { Component } from '@angular/core';
 import { fakeAsync, flush, TestBed, tick } from '@angular/core/testing';
-import { of } from 'rxjs';
+import { BehaviorSubject } from 'rxjs';
 
 import { DialogShellComponent } from '@shared/components/dialog-shell/dialog-shell.component';
 
@@ -26,13 +26,14 @@ class DialogoDeTeste {
 class TelaQueAbreODialogo {}
 
 function abrirDialogo(celular: boolean) {
+  const tela = new BehaviorSubject({ matches: celular, breakpoints: {} });
   TestBed.configureTestingModule({
     providers: [
       {
         provide: BreakpointObserver,
         useValue: {
-          isMatched: () => celular,
-          observe: () => of({ matches: celular, breakpoints: {} }),
+          isMatched: () => tela.value.matches,
+          observe: () => tela.asObservable(),
         },
       },
     ],
@@ -48,7 +49,13 @@ function abrirDialogo(celular: boolean) {
   flush();
   fixture.detectChanges();
 
-  return fixture;
+  const mudarTela = (paraCelular: boolean) => {
+    tela.next({ matches: paraCelular, breakpoints: {} });
+    fixture.detectChanges();
+    flush();
+  };
+
+  return Object.assign(fixture, { mudarTela });
 }
 
 describe('AppDialogService', () => {
@@ -75,6 +82,28 @@ describe('AppDialogService', () => {
     expect(painel).not.toBeNull();
     expect(painel.style.width).toBe('100vw');
     expect(painel.style.height).toBe('100dvh');
+
+    fixture.destroy();
+    flush();
+  }));
+
+  it('reajusta o painel quando a tela passa do celular para o computador e volta', fakeAsync(() => {
+    const fixture = abrirDialogo(true);
+    const painel = () => document.querySelector('.cdk-overlay-pane') as HTMLElement;
+
+    fixture.mudarTela(false);
+
+    expect(painel().classList).toContain('lactec-dialog-desktop');
+    expect(painel().classList).not.toContain('lactec-dialog-mobile');
+    expect(painel().style.width).toBe('min(700px, 92vw)');
+    expect(painel().style.height).toBe('');
+
+    fixture.mudarTela(true);
+
+    expect(painel().classList).toContain('lactec-dialog-mobile');
+    expect(painel().classList).not.toContain('lactec-dialog-desktop');
+    expect(painel().style.width).toBe('100vw');
+    expect(painel().style.height).toBe('100dvh');
 
     fixture.destroy();
     flush();

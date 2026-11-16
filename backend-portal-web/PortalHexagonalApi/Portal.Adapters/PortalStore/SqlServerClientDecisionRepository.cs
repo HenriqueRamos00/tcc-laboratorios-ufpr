@@ -9,9 +9,6 @@ namespace Portal.Adapters.PortalStore;
 
 public sealed class SqlServerClientDecisionRepository : IClientDecisionRepository
 {
-    private const int UniqueIndexViolation = 2601;
-    private const int UniqueConstraintViolation = 2627;
-
     private readonly PortalStoreDbContext _database;
 
     public SqlServerClientDecisionRepository(PortalStoreDbContext database)
@@ -34,8 +31,7 @@ public sealed class SqlServerClientDecisionRepository : IClientDecisionRepositor
         {
             _database.ChangeTracker.Clear();
 
-            if (failure.InnerException is SqlException { Number: UniqueIndexViolation or UniqueConstraintViolation }
-                || await SlotIsTakenAsync(row, cancellationToken))
+            if (await SlotIsTakenAsync(row, cancellationToken))
                 throw new ClientDecisionConflictException("O orcamento ja tem essa decisao registrada.", failure);
 
             throw new ClientDecisionStoreUnavailableException("O banco do portal recusou a gravacao.", failure);

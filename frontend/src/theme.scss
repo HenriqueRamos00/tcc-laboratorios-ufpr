@@ -125,6 +125,13 @@ html {
   @include mat.icon-button-overrides((icon-color: var(--color-lactec-muted)));
 }
 
+.mat-mdc-icon-button.dialog-shell__close {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+}
+
 // Botão compacto dos cards de orçamento.
 .quote-card-action {
   @include mat.button-overrides(
@@ -152,10 +159,14 @@ html {
   );
 }
 
-// Modal: no desktop o painel é quadrado; no mobile o overlay é só um contêiner
+// Modal: no desktop o painel tem o raio dos cartões; no mobile o overlay é só um contêiner
 // transparente - quem desenha barra, escurecedor e sheet é o .dialog-sheet.
 .lactec-dialog-desktop {
-  @include mat.dialog-overrides((container-shape: 0));
+  @include mat.dialog-overrides((container-shape: var(--radius-lactec-panel)));
+}
+
+.cdk-overlay-backdrop.cdk-overlay-backdrop-showing:has(+ .cdk-global-overlay-wrapper > .lactec-dialog-mobile) {
+  background: transparent;
 }
 
 .lactec-dialog-mobile {

@@ -9,7 +9,7 @@
   <app-loading-region label="Carregando relatórios…">
     <app-page-header-skeleton [breadcrumbs]="true" [subtitle]="true" />
 
-    <div class="mt-6 rounded-2xl border border-lactec-line bg-lactec-paper p-6">
+    <div class="mt-6 rounded-lactec-panel border border-lactec-line bg-lactec-paper p-6">
       <div class="status-stepper">
         @for (step of stepPlaceholders; track step; let last = $last; let index = $index) {
           <div class="status-stepper__step" [class.max-md:hidden]="index >= 3">
@@ -23,7 +23,7 @@
       </div>
     </div>
 
-    <div class="mt-4 flex items-start gap-3 rounded-2xl bg-lactec-line-soft px-5 py-4">
+    <div class="mt-4 flex items-start gap-3 rounded-lactec-panel bg-lactec-line-soft px-5 py-4">
       <app-skeleton class="h-6 w-6 shrink-0" tone="strong" />
       <div class="min-w-0 flex-1">
         <app-skeleton class="my-0.5 h-4 w-48 max-w-full" tone="strong" />
@@ -44,13 +44,13 @@
   />
 
   @if (currentStageIndex() !== null) {
-    <section class="mt-6 rounded-2xl border border-lactec-line bg-lactec-paper p-6">
+    <section class="mt-6 rounded-lactec-panel border border-lactec-line bg-lactec-paper p-6">
       <h2 class="sr-only">Progresso da solicitação</h2>
       <app-status-stepper [steps]="stages" [currentIndex]="currentStageIndex()!" />
     </section>
   }
 
-  <section class="mt-4 flex items-start gap-3 rounded-2xl bg-lactec-line-soft px-5 py-4">
+  <section class="mt-4 flex items-start gap-3 rounded-lactec-panel bg-lactec-line-soft px-5 py-4">
     <mat-icon class="shrink-0 text-lactec-nav" aria-hidden="true">description</mat-icon>
     <div class="min-w-0">
       <h2 class="m-0 text-sm font-semibold text-lactec-ink">

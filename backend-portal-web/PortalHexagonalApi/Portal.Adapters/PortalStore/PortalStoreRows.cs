@@ -29,7 +29,6 @@ public sealed class AcceptanceTermsRow
     public string BillingPostalCode { get; set; } = string.Empty;
     public string BillingContact { get; set; } = string.Empty;
     public string BillingPhone { get; set; } = string.Empty;
-    public string BillingInvoiceEmails { get; set; } = string.Empty;
     public string RequesterName { get; set; } = string.Empty;
     public string ResponsibleName { get; set; } = string.Empty;
     public string JobTitle { get; set; } = string.Empty;
@@ -37,6 +36,14 @@ public sealed class AcceptanceTermsRow
     public DateOnly ApprovalDate { get; set; }
     public bool AllowsResultsByEmail { get; set; }
     public string ResultsEmail { get; set; } = string.Empty;
+    public List<InvoiceEmailRow> InvoiceEmails { get; set; } = [];
+}
+
+public sealed class InvoiceEmailRow
+{
+    public Guid DecisionId { get; set; }
+    public int Position { get; set; }
+    public string Email { get; set; } = string.Empty;
 }
 
 public sealed class PurchaseOrderRow

@@ -61,12 +61,6 @@ namespace Portal.Adapters.PortalStore.Migrations
                         .HasMaxLength(60)
                         .HasColumnType("nvarchar(60)");
 
-                    b.Property<string>("BillingInvoiceEmails")
-                        .IsRequired()
-                        .HasMaxLength(500)
-                        .IsUnicode(false)
-                        .HasColumnType("varchar(500)");
-
                     b.Property<string>("BillingPhone")
                         .IsRequired()
                         .HasMaxLength(15)
@@ -187,6 +181,28 @@ namespace Portal.Adapters.PortalStore.Migrations
                     b.ToTable("ClientDecisions", "portal");
                 });
 
+            modelBuilder.Entity("Portal.Adapters.PortalStore.InvoiceEmailRow", b =>
+                {
+                    b.Property<Guid>("DecisionId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<int>("Position")
+                        .HasColumnType("int");
+
+                    b.Property<string>("Email")
+                        .IsRequired()
+                        .HasMaxLength(254)
+                        .IsUnicode(false)
+                        .HasColumnType("varchar(254)");
+
+                    b.HasKey("DecisionId", "Position");
+
+                    b.HasIndex("DecisionId", "Email")
+                        .IsUnique();
+
+                    b.ToTable("AcceptanceInvoiceEmails", "portal");
+                });
+
             modelBuilder.Entity("Portal.Adapters.PortalStore.PurchaseOrderRow", b =>
                 {
                     b.Property<Guid>("DecisionId")
@@ -240,6 +256,15 @@ namespace Portal.Adapters.PortalStore.Migrations
                         .IsRequired();
                 });
 
+            modelBuilder.Entity("Portal.Adapters.PortalStore.InvoiceEmailRow", b =>
+                {
+                    b.HasOne("Portal.Adapters.PortalStore.AcceptanceTermsRow", null)
+                        .WithMany("InvoiceEmails")
+                        .HasForeignKey("DecisionId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
             modelBuilder.Entity("Portal.Adapters.PortalStore.PurchaseOrderRow", b =>
                 {
                     b.HasOne("Portal.Adapters.PortalStore.ClientDecisionRow", null)
@@ -256,6 +281,11 @@ namespace Portal.Adapters.PortalStore.Migrations
                         .HasForeignKey("Portal.Adapters.PortalStore.RejectionRow", "DecisionId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
+                });
+
+            modelBuilder.Entity("Portal.Adapters.PortalStore.AcceptanceTermsRow", b =>
+                {
+                    b.Navigation("InvoiceEmails");
                 });
 
             modelBuilder.Entity("Portal.Adapters.PortalStore.ClientDecisionRow", b =>

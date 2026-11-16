@@ -1,3 +1,5 @@
+import { BreakpointObserver } from '@angular/cdk/layout';
+import { of } from 'rxjs';
 import { LiveAnnouncer } from '@angular/cdk/a11y';
 import { Component, signal } from '@angular/core';
 import { ComponentFixture, fakeAsync, TestBed, tick } from '@angular/core/testing';
@@ -440,6 +442,55 @@ describe('DataTableComponent', () => {
       expect(empty?.textContent).toContain('Revise a busca.');
       expect(element.querySelector('tbody[data-skeleton]')).toBeNull();
       expect(element.querySelector('app-pagination')?.textContent).toContain('0 de 0');
+    });
+  });
+
+  describe('em tela estreita', () => {
+    beforeEach(() => {
+      TestBed.configureTestingModule({
+        providers: [
+          {
+            provide: BreakpointObserver,
+            useValue: {
+              isMatched: () => true,
+              observe: () => of({ matches: true, breakpoints: {} }),
+            },
+          },
+        ],
+      });
+    });
+
+    it('troca a tabela por um cartão por linha, sem rolagem lateral', async () => {
+      const { element } = await mountLoaded();
+
+      expect(element.querySelector('table')).toBeNull();
+      const cards = Array.from(element.querySelectorAll<HTMLElement>('li[data-row]'));
+      expect(cards.length).toBe(TRANSFORMERS.length);
+      expect(Array.from(cards[0].querySelectorAll('dt')).map((label) => label.textContent?.trim())).toEqual([
+        'Número de Série',
+        'TAG',
+        'Tensão',
+        'Laudos',
+      ]);
+      expect(cards[0].querySelector('dd strong')?.textContent).toBe('tr-00001');
+    });
+
+    it('põe as ações embaixo do conteúdo de cada cartão', async () => {
+      const { fixture, host, element } = await mountLoaded();
+      const card = element.querySelectorAll<HTMLElement>('li[data-row]')[1];
+
+      const action = card.lastElementChild?.querySelector('button') as HTMLButtonElement;
+      action.click();
+      fixture.detectChanges();
+
+      expect(card.lastElementChild?.previousElementSibling?.tagName).toBe('DL');
+      expect(host.opened()).toBe('b');
+    });
+
+    it('pede a primeira opção de tamanho de página, porque a lista rola com a página', async () => {
+      const { host } = await mountLoaded();
+
+      expect(host.query().pageSize).toBe(10);
     });
   });
 });

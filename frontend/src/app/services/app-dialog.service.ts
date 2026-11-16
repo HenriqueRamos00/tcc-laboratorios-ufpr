@@ -1,8 +1,24 @@
 import { BreakpointObserver } from '@angular/cdk/layout';
 import { inject, Injectable, Type } from '@angular/core';
 import { MatDialog, MatDialogConfig, MatDialogRef } from '@angular/material/dialog';
+import { distinctUntilChanged, map, skip, takeUntil } from 'rxjs';
 
 const HANDSET_QUERY = '(max-width: 767.98px)';
+const MOBILE_PANEL = 'lactec-dialog-mobile';
+const DESKTOP_PANEL = 'lactec-dialog-desktop';
+
+interface DialogLayout {
+  readonly width: string;
+  readonly height: string;
+  readonly position: { top?: string; left?: string };
+  readonly panelClass: string;
+}
+
+function layoutFor(handset: boolean): DialogLayout {
+  return handset
+    ? { width: '100vw', height: '100dvh', position: { top: '0', left: '0' }, panelClass: MOBILE_PANEL }
+    : { width: 'min(700px, 92vw)', height: '', position: {}, panelClass: DESKTOP_PANEL };
+}
 
 @Injectable({ providedIn: 'root' })
 export class AppDialogService {
@@ -22,41 +38,32 @@ export class AppDialogService {
   ): MatDialogRef<T, R> {
     const handset = this.breakpoints.isMatched(HANDSET_QUERY);
 
-    // No mobile o overlay ocupa a tela inteira e fica transparente: a própria
-    // estrutura do modal (barra que cobre a navigation real + escurecedor + sheet)
-    // é desenhada dentro do dialog-shell. Por isso o backdrop do CDK é desligado.
-    const mobile: MatDialogConfig<D> = {
-      width: '100vw',
-      maxWidth: '100vw',
-      height: '100dvh',
-      position: { top: '0', left: '0' },
-      hasBackdrop: false,
-      panelClass: 'lactec-dialog-mobile',
-      // Sem a animação de zoom do Material: a barra falsa e o escurecedor
-      // aparecem na hora. Quem anima é só o sheet (CSS, deslizando de baixo).
-      enterAnimationDuration: '0ms',
-      exitAnimationDuration: '0ms',
-    };
-
-    // O modal de status leva, lado a lado, o botão de baixar a proposta e a
-    // caixa de contato com o endereço inteiro à vista; em 560px os dois não
-    // cabiam na mesma linha e a caixa descia sozinha para o rodapé.
-    const desktop: MatDialogConfig<D> = {
-      width: '700px',
-      maxWidth: '92vw',
-      panelClass: 'lactec-dialog-desktop',
-    };
-
-    return this.dialog.open<T, D, R>(component, {
+    const ref = this.dialog.open<T, D, R>(component, {
       data,
       ariaLabel,
-      // O foco entra pelo título do diálogo, e não no contêiner: parado no
-      // contêiner, o leitor de tela anuncia o rótulo e nada do conteúdo. Todo
-      // diálogo daqui passa pelo `app-dialog-shell`, que transforma o título em
-      // `<h2>`; shell sem título deixa o CDK sem heading para focar.
       autoFocus: 'first-heading',
-      ...(handset ? mobile : desktop),
+      maxWidth: '100vw',
+      ...layoutFor(handset),
+      ...(handset ? { enterAnimationDuration: '0ms', exitAnimationDuration: '0ms' } : {}),
       ...extra,
     });
+
+    this.breakpoints
+      .observe(HANDSET_QUERY)
+      .pipe(
+        map((state) => state.matches),
+        distinctUntilChanged(),
+        skip(1),
+        takeUntil(ref.afterClosed()),
+      )
+      .subscribe((nowHandset) => {
+        const layout = layoutFor(nowHandset);
+        ref.removePanelClass(nowHandset ? DESKTOP_PANEL : MOBILE_PANEL);
+        ref.addPanelClass(layout.panelClass);
+        ref.updateSize(layout.width, layout.height);
+        ref.updatePosition(layout.position);
+      });
+
+    return ref;
   }
 }

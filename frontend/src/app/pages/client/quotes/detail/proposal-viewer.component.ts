@@ -1,3 +1,4 @@
+import { BreakpointObserver } from '@angular/cdk/layout';
 import {
   ChangeDetectionStrategy,
   Component,
@@ -8,14 +9,14 @@ import {
   signal,
   viewChild,
 } from '@angular/core';
-import { takeUntilDestroyed, toObservable } from '@angular/core/rxjs-interop';
+import { takeUntilDestroyed, toObservable, toSignal } from '@angular/core/rxjs-interop';
 import { MatIconModule } from '@angular/material/icon';
 import {
   NgxExtendedPdfViewerModule,
   ScrollModeType,
   pdfDefaultOptions,
 } from 'ngx-extended-pdf-viewer';
-import { catchError, EMPTY, switchMap, tap } from 'rxjs';
+import { catchError, EMPTY, map, switchMap, tap } from 'rxjs';
 
 import { EmptyStateComponent } from '@shared/components/empty-state/empty-state.component';
 import { LoadingRegionComponent } from '@shared/components/skeleton/loading-region.component';
@@ -33,6 +34,8 @@ pdfDefaultOptions.enableScripting = false;
 // desta pasta, e é para ela que o `angular.json` copia os arquivos da
 // biblioteca. Mexer num dos dois lados sem o outro deixa a tela em branco.
 pdfDefaultOptions.assetsFolder = 'assets';
+
+const NARROW_SCREEN = '(max-width: 767.98px)';
 
 /**
  * A proposta aparece dentro da página de detalhe, com rolagem contínua entre as
@@ -98,7 +101,7 @@ pdfDefaultOptions.assetsFolder = 'assets';
         <ngx-extended-pdf-viewer
           [src]="file"
           [height]="viewerHeight()"
-          [zoom]="'100%'"
+          [zoom]="zoom()"
           [language]="'pt-BR'"
           [filenameForDownload]="fileName()"
           [pageViewMode]="'multiple'"
@@ -133,7 +136,15 @@ export class ProposalViewerComponent {
   readonly fileName = input.required<string>();
 
   private readonly quotes = inject(QuotesService);
+  private readonly breakpoints = inject(BreakpointObserver);
   private readonly panel = viewChild.required<ElementRef<HTMLElement>>('panel');
+
+  protected readonly zoom = toSignal(
+    this.breakpoints
+      .observe(NARROW_SCREEN)
+      .pipe(map((state) => (state.matches ? 'page-width' : '100%'))),
+    { initialValue: this.breakpoints.isMatched(NARROW_SCREEN) ? 'page-width' : '100%' },
+  );
 
   protected readonly ScrollModeType = ScrollModeType;
   protected readonly proposalFile = signal<Blob | null>(null);

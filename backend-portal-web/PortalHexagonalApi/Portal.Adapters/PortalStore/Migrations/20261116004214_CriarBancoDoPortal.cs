@@ -50,7 +50,6 @@ namespace Portal.Adapters.PortalStore.Migrations
                     BillingPostalCode = table.Column<string>(type: "char(8)", unicode: false, fixedLength: true, maxLength: 8, nullable: false),
                     BillingContact = table.Column<string>(type: "nvarchar(150)", maxLength: 150, nullable: false),
                     BillingPhone = table.Column<string>(type: "varchar(15)", unicode: false, maxLength: 15, nullable: false),
-                    BillingInvoiceEmails = table.Column<string>(type: "varchar(500)", unicode: false, maxLength: 500, nullable: false),
                     RequesterName = table.Column<string>(type: "nvarchar(150)", maxLength: 150, nullable: false),
                     ResponsibleName = table.Column<string>(type: "nvarchar(150)", maxLength: 150, nullable: false),
                     JobTitle = table.Column<string>(type: "nvarchar(100)", maxLength: 100, nullable: false),
@@ -114,6 +113,34 @@ namespace Portal.Adapters.PortalStore.Migrations
                         onDelete: ReferentialAction.Cascade);
                 });
 
+            migrationBuilder.CreateTable(
+                name: "AcceptanceInvoiceEmails",
+                schema: "portal",
+                columns: table => new
+                {
+                    DecisionId = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
+                    Position = table.Column<int>(type: "int", nullable: false),
+                    Email = table.Column<string>(type: "varchar(254)", unicode: false, maxLength: 254, nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_AcceptanceInvoiceEmails", x => new { x.DecisionId, x.Position });
+                    table.ForeignKey(
+                        name: "FK_AcceptanceInvoiceEmails_AcceptanceTerms_DecisionId",
+                        column: x => x.DecisionId,
+                        principalSchema: "portal",
+                        principalTable: "AcceptanceTerms",
+                        principalColumn: "DecisionId",
+                        onDelete: ReferentialAction.Cascade);
+                });
+
+            migrationBuilder.CreateIndex(
+                name: "IX_AcceptanceInvoiceEmails_DecisionId_Email",
+                schema: "portal",
+                table: "AcceptanceInvoiceEmails",
+                columns: new[] { "DecisionId", "Email" },
+                unique: true);
+
             migrationBuilder.CreateIndex(
                 name: "IX_ClientDecisions_QuoteId_Slot",
                 schema: "portal",
@@ -126,7 +153,7 @@ namespace Portal.Adapters.PortalStore.Migrations
         protected override void Down(MigrationBuilder migrationBuilder)
         {
             migrationBuilder.DropTable(
-                name: "AcceptanceTerms",
+                name: "AcceptanceInvoiceEmails",
                 schema: "portal");
 
             migrationBuilder.DropTable(
@@ -135,6 +162,10 @@ namespace Portal.Adapters.PortalStore.Migrations
 
             migrationBuilder.DropTable(
                 name: "Rejections",
+                schema: "portal");
+
+            migrationBuilder.DropTable(
+                name: "AcceptanceTerms",
                 schema: "portal");
 
             migrationBuilder.DropTable(

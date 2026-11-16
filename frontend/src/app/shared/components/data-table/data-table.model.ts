@@ -15,6 +15,7 @@ export interface DataTableColumn<T> {
 
 export interface DataTableRowContext<T> {
   readonly $implicit: T;
+  readonly compact: boolean;
 }
 
 export function unmeasuredQuery(): DataTableQuery {
