@@ -18,19 +18,18 @@ import java.io.IOException
 
 class EquipmentServiceTest {
     @Test
-    fun `maps controller array nullable fields and ignores unused fields with Bearer header`() = runBlocking {
+    fun `maps controller array nullable fields and ignores unused fields through the portal route`() = runBlocking {
         val service = service("""[
             {"id":"opaque-1","serialNumber":"SN-17","tag":"TR-A","type":null,"location":null,
              "company":"Empresa","identification":"unused","reportCount":3,"mostRecentReportDate":"2026-10-12"},
             {"id":"opaque-2","serialNumber":null,"tag":"TR-B","type":"Transformador","location":"Local"},
             {"id":"opaque-3","tag":"TR-C"}
         ]""") { request ->
-            assertEquals("Bearer session-token", request.header("Authorization"))
             assertEquals("/api/equipments", request.url.encodedPath)
             assertNull(request.url.query)
             assertEquals("GET", request.method)
         }
-        val equipment = service.getEquipment("session-token")
+        val equipment = service.getEquipment()
         assertEquals(3, equipment.size)
         assertEquals(Equipment("opaque-1", "SN-17", "TR-A", null, null), equipment[0])
         assertEquals(Equipment("opaque-2", null, "TR-B", "Transformador", "Local"), equipment[1])
@@ -39,14 +38,14 @@ class EquipmentServiceTest {
 
     @Test
     fun `empty array stays empty`() = runBlocking {
-        assertTrue(service("[]").getEquipment("token").isEmpty())
+        assertTrue(service("[]").getEquipment().isEmpty())
     }
 
     @Test
     fun `HTTP errors remain errors instead of an empty list`() = runBlocking {
         listOf(401, 403, 404, 500, 502, 503).forEach { code ->
             try {
-                service("{}", code = code).getEquipment("token")
+                service("{}", code = code).getEquipment()
                 fail("Expected HTTP $code")
             } catch (error: HttpException) {
                 assertEquals(code, error.code())
@@ -58,7 +57,7 @@ class EquipmentServiceTest {
     fun `missing or malformed response is a loading failure`() = runBlocking {
         listOf("null", "{}", "not json").forEach { body ->
             try {
-                service(body).getEquipment("token")
+                service(body).getEquipment()
                 fail("Expected invalid-body failure")
             } catch (error: Exception) {
                 assertFalse(error is HttpException)
@@ -70,10 +69,10 @@ class EquipmentServiceTest {
     fun `network failure and cancellation are preserved`() = runBlocking {
         listOf(IOException("Offline"), CancellationException("Cancelled")).forEach { failure ->
             val api = object : EquipmentApiService {
-                override suspend fun getEquipment(authorization: String): Response<List<Equipment>> = throw failure
+                override suspend fun getEquipment(): Response<List<Equipment>> = throw failure
             }
             try {
-                EquipmentService(api).getEquipment("token")
+                EquipmentService(api).getEquipment()
                 fail("Expected original failure")
             } catch (error: Exception) {
                 assertSame(failure, error)
@@ -103,7 +102,7 @@ class EquipmentServiceTest {
             okhttp3.Response.Builder().request(chain.request()).protocol(Protocol.HTTP_1_1)
                 .code(code).message("Test response").body(body.toResponseBody()).build()
         }).build()
-        val api = Retrofit.Builder().baseUrl("http://localhost/api/").client(client)
+        val api = Retrofit.Builder().baseUrl("http://localhost/").client(client)
             .addConverterFactory(GsonConverterFactory.create()).build().create(EquipmentApiService::class.java)
         return EquipmentService(api)
     }

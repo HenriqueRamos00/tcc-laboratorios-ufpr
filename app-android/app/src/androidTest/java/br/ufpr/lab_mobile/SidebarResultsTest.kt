@@ -48,7 +48,7 @@ class SidebarResultsTest {
         QuoteSimulations.clear()
         oldRetrofit = retrofitField.get(null)
         oldBaseUrl = baseUrlField.get(null)
-        val client = OkHttpClient.Builder().addInterceptor(Interceptor { chain ->
+        val client = OkHttpClient.Builder().addInterceptor(TestSession.interceptor(context)).addInterceptor(Interceptor { chain ->
             Response.Builder().request(chain.request()).protocol(Protocol.HTTP_1_1).code(200)
                 .message("Instrumented response").body("[]".toResponseBody()).build()
         }).build()
@@ -61,7 +61,7 @@ class SidebarResultsTest {
         retrofitField.set(null, oldRetrofit)
         baseUrlField.set(null, oldBaseUrl)
         QuoteSimulations.clear()
-        context.getSharedPreferences(LoginActivity.SESSION_PREFERENCES, 0).edit().clear().commit()
+        TestSession.clear(context)
     }
 
     @Test
@@ -188,26 +188,22 @@ class SidebarResultsTest {
         instrumentation.sendKeyDownUpSync(KeyEvent.KEYCODE_BACK)
         await("Back returns to original Quotes") { activeActivity() === quotes }
         navigate(R.id.navEquipment, EquipmentActivity::class.java)
-        context.getSharedPreferences(LoginActivity.SESSION_PREFERENCES, 0).edit()
-            .putString(LoginActivity.ACCESS_TOKEN, "test-session").commit()
         openDrawer(R.id.navEquipment)
         onActive { it.findViewById<View>(R.id.logoutButton).performClick() }
         await("equipment logout returns to Login") { activeActivity() is LoginActivity }
-        assertNull(context.getSharedPreferences(LoginActivity.SESSION_PREFERENCES, 0).getString(LoginActivity.ACCESS_TOKEN, null))
+        assertNull(context.portalApplication.sessions.current)
     }
 
     @Test
     fun logoutClearsSavedAndSimulationSessionsAndMissingSessionOpensLogin() {
-        context.getSharedPreferences(LoginActivity.SESSION_PREFERENCES, 0).edit()
-            .putString(LoginActivity.ACCESS_TOKEN, "test-session").commit()
-        QuoteSimulations.startSession("test-session")
-        assertTrue(QuoteSimulations.isSessionActive("test-session"))
         launchResults()
+        val sessionId = context.portalApplication.sessions.current!!.id
+        assertTrue(QuoteSimulations.isSessionActive(sessionId))
         openDrawer(R.id.navReports)
         onActive { it.findViewById<View>(R.id.logoutButton).performClick() }
         await("login shown after logout") { activeActivity() is LoginActivity }
-        assertNull(context.getSharedPreferences(LoginActivity.SESSION_PREFERENCES, 0).getString(LoginActivity.ACCESS_TOKEN, null))
-        assertFalse(QuoteSimulations.isSessionActive("test-session"))
+        assertNull(context.portalApplication.sessions.current)
+        assertFalse(QuoteSimulations.isSessionActive(sessionId))
         scenario?.close()
         scenario = null
         launchResults(token = null)
@@ -216,14 +212,14 @@ class SidebarResultsTest {
 
     private fun launchResults(token: String? = "test-session") {
         val intent = Intent(context, ResultsActivity::class.java)
-        token?.let { intent.putExtra(LoginActivity.EXTRA_ACCESS_TOKEN, it) }
+        TestSession.start(context, token)
         scenario = ActivityScenario.launch<ResultsActivity>(intent)
     }
 
     private fun launchQuotes() {
         scenario?.close()
         scenario = ActivityScenario.launch<QuotesActivity>(
-            Intent(context, QuotesActivity::class.java).putExtra(LoginActivity.EXTRA_ACCESS_TOKEN, "test-session"),
+            Intent(context, QuotesActivity::class.java).also { TestSession.start(context, "test-session") },
         )
     }
 

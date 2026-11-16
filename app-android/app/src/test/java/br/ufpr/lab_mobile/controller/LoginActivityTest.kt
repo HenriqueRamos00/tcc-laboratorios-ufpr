@@ -6,12 +6,6 @@ import org.junit.Test
 
 class LoginActivityTest {
     @Test
-    fun `credencial local funciona somente em debug`() {
-        assertEquals(true, isTestLogin(true, "lactec@lactec.com", "lactec"))
-        assertEquals(false, isTestLogin(false, "lactec@lactec.com", "lactec"))
-    }
-
-    @Test
     fun `valida os campos localmente`() {
         assertEquals(
             LoginInputError(EmailError.INVALID, passwordMissing = true),
@@ -26,6 +20,7 @@ class LoginActivityTest {
         assertEquals(LoginOutcome.Failure, loginOutcome(200, ""))
         assertEquals(LoginOutcome.InvalidCredentials, loginOutcome(401, null))
         assertEquals(LoginOutcome.ServiceUnavailable, loginOutcome(502, null))
+        assertEquals(LoginOutcome.Cooldown, loginOutcome(429, null))
         assertEquals(LoginOutcome.Failure, loginOutcome(500, null))
     }
 }

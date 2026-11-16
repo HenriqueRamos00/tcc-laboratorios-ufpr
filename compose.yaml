@@ -103,6 +103,7 @@ services:
 
   app-android:
     profiles: [android]
+    network_mode: host
     build:
       context: ./app-android
       args:
@@ -112,6 +113,8 @@ services:
     environment:
       GRADLE_OPTS: -Dorg.gradle.daemon=false
       ADB_DEVICE: ${ADB_DEVICE:-}
+      ADB_REVERSE_PORT: ${ADB_REVERSE_PORT:-5125}
+      PORTAL_API_URL: ${ANDROID_PORTAL_API_URL:-}
     volumes:
       - ./app-android:/workspace
       - app-android-gradle-home:/home/dev/.gradle

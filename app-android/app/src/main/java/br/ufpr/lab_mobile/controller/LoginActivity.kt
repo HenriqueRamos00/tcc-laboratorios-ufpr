@@ -11,13 +11,10 @@ import androidx.core.content.getSystemService
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowInsetsCompat
 import androidx.lifecycle.lifecycleScope
-import br.ufpr.lab_mobile.BuildConfig
 import br.ufpr.lab_mobile.R
 import br.ufpr.lab_mobile.databinding.ActivityLoginBinding
-import br.ufpr.lab_mobile.service.LoginApiService
 import br.ufpr.lab_mobile.service.LoginService
-import br.ufpr.lab_mobile.service.RetrofitProvider
-import br.ufpr.lab_mobile.model.QuoteSimulations
+import br.ufpr.lab_mobile.portalApplication
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -39,18 +36,25 @@ class LoginActivity : AppCompatActivity() {
             insets
         }
 
-        loginService = LoginService(
-            RetrofitProvider.retrofit(getString(R.string.api_base_url))
-                .create(LoginApiService::class.java),
-        )
-        getSharedPreferences(SESSION_PREFERENCES, MODE_PRIVATE)
-            .getString(ACCESS_TOKEN, null)?.let {
-            openQuotes(it)
-            return
-        }
+        loginService = LoginService(portalApplication.loginApi)
         binding.loginButton.setOnClickListener { submit() }
         binding.forgotPassword.setOnClickListener {
             showMessage(getString(R.string.password_recovery_unavailable))
+        }
+        if (intent.getBooleanExtra(EXTRA_SESSION_EXPIRED, false)) showMessage(getString(R.string.session_expired))
+        restoreSession()
+    }
+
+    private fun restoreSession() {
+        if (portalApplication.sessions.current == null) return
+        setLoading(true)
+        lifecycleScope.launch {
+            try {
+                if (withContext(Dispatchers.IO) { portalApplication.sessions.restore() }) openQuotes()
+                else showMessage(getString(R.string.session_expired))
+            } catch (error: CancellationException) { throw error
+            } catch (_: Exception) { showMessage(getString(R.string.session_restore_error))
+            } finally { setLoading(false) }
         }
     }
 
@@ -66,22 +70,23 @@ class LoginActivity : AppCompatActivity() {
 
         getSystemService<InputMethodManager>()
             ?.hideSoftInputFromWindow(binding.password.windowToken, 0)
-        if (isTestLogin(BuildConfig.DEBUG, email, password)) {
-            saveSessionAndOpenQuotes(TEST_TOKEN)
-            return
-        }
-
+        val remember = binding.keepConnected.isChecked
         setLoading(true)
         lifecycleScope.launch {
             try {
                 val response = withContext(Dispatchers.IO) {
                     loginService.login(email, password)
                 }
+                response.errorBody()?.close()
 
-                when (val outcome = loginOutcome(response.code(), response.body()?.accessToken)) {
-                    is LoginOutcome.Success -> saveSessionAndOpenQuotes(outcome.accessToken)
+                when (loginOutcome(response.code(), response.body()?.accessToken)) {
+                    is LoginOutcome.Success -> {
+                        withContext(Dispatchers.IO) { portalApplication.sessions.signIn(response.body(), remember) }
+                        openQuotes()
+                    }
                     LoginOutcome.InvalidCredentials -> showMessage(getString(R.string.invalid_credentials))
                     LoginOutcome.ServiceUnavailable -> showMessage(getString(R.string.login_service_unavailable))
+                    LoginOutcome.Cooldown -> showMessage(getString(R.string.login_cooldown, response.headers()["Retry-After"]?.toIntOrNull()?.coerceAtLeast(1) ?: 60))
                     LoginOutcome.Failure -> showMessage(getString(R.string.login_loading_error))
                 }
             } catch (error: CancellationException) {
@@ -118,44 +123,28 @@ class LoginActivity : AppCompatActivity() {
 
     private fun setLoading(loading: Boolean) {
         binding.loginButton.isEnabled = !loading
+        binding.email.isEnabled = !loading
+        binding.password.isEnabled = !loading
+        binding.keepConnected.isEnabled = !loading
         binding.loginButton.text = getString(if (loading) R.string.logging_in else R.string.login_action)
         binding.loginProgress.visibility = if (loading) View.VISIBLE else View.GONE
     }
 
-    private fun saveSessionAndOpenQuotes(accessToken: String) {
-        QuoteSimulations.clear()
-        val preferences = getSharedPreferences(SESSION_PREFERENCES, MODE_PRIVATE).edit()
-        if (binding.keepConnected.isChecked) preferences.putString(ACCESS_TOKEN, accessToken)
-        else preferences.remove(ACCESS_TOKEN)
-        preferences.apply()
-        openQuotes(accessToken)
-    }
-
-    private fun openQuotes(accessToken: String) {
+    private fun openQuotes() {
         startActivity(
             Intent(this, QuotesActivity::class.java)
-                .putExtra(EXTRA_ACCESS_TOKEN, accessToken),
+                .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK),
         )
         finish()
     }
 
     companion object {
         fun clearSession(context: Context) {
-            QuoteSimulations.clear()
-            context.getSharedPreferences(SESSION_PREFERENCES, Context.MODE_PRIVATE).edit().remove(ACCESS_TOKEN).apply()
+            context.portalApplication.sessions.logout()
         }
-        const val TEST_TOKEN = "local-test-token"
-        const val SESSION_PREFERENCES = "session"
-        const val ACCESS_TOKEN = "access_token"
-        const val EXTRA_ACCESS_TOKEN = "access_token"
+        const val EXTRA_SESSION_EXPIRED = "session_expired"
     }
 }
-
-private const val TEST_EMAIL = "lactec@lactec.com"
-private const val TEST_PASSWORD = "lactec"
-
-internal fun isTestLogin(debug: Boolean, email: String, password: String) =
-    debug && email == TEST_EMAIL && password == TEST_PASSWORD
 
 internal data class LoginInputError(val emailError: EmailError?, val passwordMissing: Boolean)
 internal enum class EmailError { REQUIRED, INVALID }
@@ -176,6 +165,7 @@ internal sealed interface LoginOutcome {
     data class Success(val accessToken: String) : LoginOutcome
     data object InvalidCredentials : LoginOutcome
     data object ServiceUnavailable : LoginOutcome
+    data object Cooldown : LoginOutcome
     data object Failure : LoginOutcome
 }
 
@@ -186,5 +176,6 @@ internal fun loginOutcome(statusCode: Int, accessToken: String?): LoginOutcome =
             ?: LoginOutcome.Failure
         401 -> LoginOutcome.InvalidCredentials
         502 -> LoginOutcome.ServiceUnavailable
+        429 -> LoginOutcome.Cooldown
         else -> LoginOutcome.Failure
     }

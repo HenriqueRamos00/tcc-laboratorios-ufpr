@@ -168,5 +168,7 @@
         <item>Refused</item>
         <item>Cancelled</item>
     </string-array>
-    <string name="api_base_url" translatable="false">http://127.0.0.1:5125/api</string>
+    <string name="portal_greeting">Olá, %1$s</string>
+    <string name="session_restore_error">Não foi possível verificar sua sessão. Verifique a conexão ou entre novamente.</string>
+    <string name="login_cooldown">Login temporariamente bloqueado. Tente novamente em %1$d segundos.</string>
 </resources>

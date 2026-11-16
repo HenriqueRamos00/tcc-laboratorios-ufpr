@@ -9,7 +9,6 @@ import java.text.Normalizer
 import retrofit2.HttpException
 import retrofit2.Response
 import retrofit2.http.GET
-import retrofit2.http.Header
 import retrofit2.http.Path
 import retrofit2.http.Query
 import retrofit2.http.Streaming
@@ -27,32 +26,29 @@ import kotlinx.coroutines.withContext
 
 interface QuoteApiService {
     @Streaming
-    @GET("quotes/{id}/document")
+    @GET("api/quotes/{id}/document")
     suspend fun getDocument(
-        @Header("Authorization") authorization: String,
         @Path("id") id: String,
     ): Response<ResponseBody>
 
-    @GET("quotes/{id}")
+    @GET("api/quotes/{id}")
     suspend fun getQuote(
-        @Header("Authorization") authorization: String,
         @Path("id") id: String,
     ): Response<Quote>
 
-    @GET("quotes")
+    @GET("api/quotes")
     suspend fun getQuotes(
-        @Header("Authorization") authorization: String,
         @Query("search") search: String?,
         @Query("status") status: String?,
     ): Response<JsonElement>
 }
 
 class QuoteService(private val api: QuoteApiService) {
-    suspend fun downloadDocument(token: String, id: String, destination: File) {
+    suspend fun downloadDocument(id: String, destination: File) {
         require(id.isNotBlank()) { "Quote ID must not be blank" }
         var complete = false
         try {
-            val response = api.getDocument("Bearer $token", id.trim())
+            val response = api.getDocument(id.trim())
             if (!response.isSuccessful) {
                 response.errorBody()?.close()
                 throw HttpException(response)
@@ -99,15 +95,15 @@ class QuoteService(private val api: QuoteApiService) {
         }
     }
 
-    suspend fun getQuote(token: String, id: String): Quote {
+    suspend fun getQuote(id: String): Quote {
         require(id.isNotBlank()) { "Quote ID must not be blank" }
-        val response = api.getQuote("Bearer $token", id.trim())
+        val response = api.getQuote(id.trim())
         if (!response.isSuccessful) throw HttpException(response)
         return response.body() ?: throw IllegalStateException("Empty quote response")
     }
 
-    suspend fun getQuotes(token: String, search: String?, status: String?): List<Quote> {
-        val response = api.getQuotes("Bearer $token", search, status)
+    suspend fun getQuotes(search: String?, status: String?): List<Quote> {
+        val response = api.getQuotes(search, status)
         if (!response.isSuccessful) throw HttpException(response)
         return parseQuotes(response.body())
             .filter { matchesSearch(it, search) }
