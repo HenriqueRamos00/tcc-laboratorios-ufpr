@@ -9,7 +9,17 @@ import {
   signal,
 } from '@angular/core';
 import { takeUntilDestroyed, toObservable } from '@angular/core/rxjs-interop';
-import { catchError, combineLatest, EMPTY, finalize, of, switchMap, tap } from 'rxjs';
+import {
+  catchError,
+  combineLatest,
+  distinctUntilChanged,
+  EMPTY,
+  filter,
+  finalize,
+  of,
+  switchMap,
+  tap,
+} from 'rxjs';
 import { MatIconModule } from '@angular/material/icon';
 import { RouterLink } from '@angular/router';
 
@@ -18,7 +28,14 @@ import { handFileToTheBrowser } from '@shared/file-download';
 import { EmptyStateComponent } from '@shared/components/empty-state/empty-state.component';
 import { PageHeaderComponent } from '@shared/components/page-header/page-header.component';
 import { DataUnavailableComponent } from '@shared/components/data-unavailable/data-unavailable.component';
-import { PaginationComponent } from '@shared/components/pagination/pagination.component';
+import { DataTableActionsDirective } from '@shared/components/data-table/data-table-actions.directive';
+import { DataTableComponent } from '@shared/components/data-table/data-table.component';
+import {
+  isMeasured,
+  sameQuery,
+  unmeasuredQuery,
+  type DataTableColumn,
+} from '@shared/components/data-table/data-table.model';
 
 import {
   ANALYSIS_TYPE_LABEL,
@@ -51,7 +68,11 @@ interface HistoryRow {
   readonly fileName: string;
 }
 
-const PER_PAGE = 10;
+const HISTORY_COLUMNS: readonly DataTableColumn<HistoryRow>[] = [
+  { key: 'date', header: 'Data do relatório' },
+  { key: 'analysisType', header: 'Tipo de análise' },
+  { key: 'status', header: 'Status' },
+];
 
 const DOWNLOAD_FAILURE =
   'Não foi possível baixar o relatório agora. Tente novamente em instantes.';
@@ -77,7 +98,7 @@ function historyRow(report: EquipmentReport): HistoryRow {
     analysisType: ANALYSIS_TYPE_LABEL[report.analysisType],
     status: REPORT_STATUS_LABEL[report.status],
     tab: TAB_BY_ANALYSIS_TYPE[report.analysisType],
-    hasFile: report.hasSignedDocument,
+    hasFile: report.pdfAvailable ?? report.hasSignedDocument,
     fileName: `relatorio-${report.analysisType}-${report.date}.pdf`,
   };
 }
@@ -91,7 +112,8 @@ function historyRow(report: EquipmentReport): HistoryRow {
     PageHeaderComponent,
     EmptyStateComponent,
     DataUnavailableComponent,
-    PaginationComponent,
+    DataTableComponent,
+    DataTableActionsDirective,
   ],
   templateUrl: './equipment-detail.component.html',
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -105,11 +127,11 @@ export class EquipmentDetailComponent {
 
   protected readonly equipment = signal<EquipmentDetail | null>(null);
   protected readonly history = signal<Page<EquipmentReport> | null>(null);
-  protected readonly historyLoading = signal(false);
+  protected readonly historyLoading = signal(true);
   protected readonly failed = signal(false);
   protected readonly unavailable = signal(false);
-  protected readonly page = signal(1);
-  protected readonly perPage = PER_PAGE;
+  protected readonly historyColumns = HISTORY_COLUMNS;
+  protected readonly historyQuery = signal(unmeasuredQuery());
 
   /** Identificador do relatório cujo arquivo está sendo buscado agora. */
   protected readonly downloading = signal<string | null>(null);
@@ -123,7 +145,6 @@ export class EquipmentDetailComponent {
       { icon: 'sell', label: 'TAG', value: equipment.equipmentTag ?? equipment.tag },
       { icon: 'category', label: 'Tipo de Equipamento', value: equipment.type ?? NOT_REPORTED },
       { icon: 'water_drop', label: 'Tipo do Óleo', value: equipment.oilType ?? NOT_REPORTED },
-      { icon: 'location_on', label: 'Local', value: equipment.location },
       { icon: 'business_center', label: 'Empresa', value: equipment.company },
       { icon: 'bolt', label: 'Tensão', value: equipment.voltage ?? NOT_REPORTED },
       { icon: 'electric_meter', label: 'Potência', value: equipment.power ?? NOT_REPORTED },
@@ -147,6 +168,8 @@ export class EquipmentDetailComponent {
 
   protected readonly historyTotal = computed(() => this.history()?.total ?? 0);
 
+  protected readonly trackById = (row: HistoryRow): string => row.id;
+
   constructor() {
     // O router reaproveita a instância quando só o id muda, e ngOnInit não roda
     // de novo.
@@ -158,7 +181,8 @@ export class EquipmentDetailComponent {
         this.failed.set(false);
         this.unavailable.set(false);
         this.history.set(null);
-        this.page.set(1);
+        this.historyLoading.set(true);
+        this.historyQuery.update((current) => ({ ...current, page: 1 }));
         this.downloadFailure.set('');
       }),
       switchMap((value) =>
@@ -173,15 +197,21 @@ export class EquipmentDetailComponent {
       takeUntilDestroyed(),
     ).subscribe((detail) => this.equipment.set(detail));
 
-    combineLatest([id, toObservable(this.page)])
+    const measuredQuery = toObservable(this.historyQuery).pipe(
+      filter(isMeasured),
+      distinctUntilChanged(sameQuery),
+    );
+
+    combineLatest([id, measuredQuery])
       .pipe(
-        tap(() => this.historyLoading.set(true)),
-        switchMap(([value, page]) =>
-          this.equipments.reportHistory(value, { page, pageSize: PER_PAGE }).pipe(
-            catchError(() =>
-              of<Page<EquipmentReport>>({ items: [], total: 0, page, pageSize: PER_PAGE }),
-            ),
-          ),
+        tap(() => {
+          this.historyLoading.set(true);
+          this.downloadFailure.set('');
+        }),
+        switchMap(([value, query]) =>
+          this.equipments
+            .reportHistory(value, query)
+            .pipe(catchError(() => of<Page<EquipmentReport>>({ items: [], total: 0, ...query }))),
         ),
         takeUntilDestroyed(),
       )
@@ -189,11 +219,6 @@ export class EquipmentDetailComponent {
         this.history.set(result);
         this.historyLoading.set(false);
       });
-  }
-
-  protected goToPage(page: number): void {
-    this.downloadFailure.set('');
-    this.page.set(page);
   }
 
   protected download(row: HistoryRow): void {

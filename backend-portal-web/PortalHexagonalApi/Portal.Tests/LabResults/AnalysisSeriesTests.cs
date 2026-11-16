@@ -77,7 +77,7 @@ public sealed class AnalysisSeriesTests
 
         Assert.Equal(
             ["01400/2026-001", "01500/2026-001"],
-            series.Readings.Select(reading => reading.ProtocoloLactec));
+            series.Readings.Select(reading => reading.AnalysisId));
     }
 
     [Fact]

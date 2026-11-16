@@ -59,7 +59,7 @@ public sealed class AutoLabSampleTests : IDisposable
     public async Task TheAllScopeSeesEveryCompany()
     {
         Page<SampleAnalysis> page = await LabTests().GetAnalysesAsync(
-            VisibilityScope.All, PageRequest.First, CancellationToken.None);
+            VisibilityScope.All, null, PageRequest.First, CancellationToken.None);
 
         Assert.Equal(6, page.TotalCount);
         Assert.Equal(
@@ -75,7 +75,7 @@ public sealed class AutoLabSampleTests : IDisposable
         Page<SampleAnalysis> ofAnother = await LabTests().GetAnalysesOfEquipmentAsync(
             Competitor, "571289", new PageRequest(1, 1), CancellationToken.None);
         Page<SampleAnalysis> listing = await LabTests().GetAnalysesAsync(
-            Energy, PageRequest.First, CancellationToken.None);
+            Energy, null, PageRequest.First, CancellationToken.None);
 
         Assert.Equal(4, ofTheOwner.TotalCount);
         Assert.Empty(ofAnother.Items);
@@ -164,7 +164,7 @@ public sealed class AutoLabSampleTests : IDisposable
     public async Task TheReportListingFiltersByQuoteAndByCompany()
     {
         Page<LabReport> ofQuote = await Issues().ListReportsAsync(
-            VisibilityScope.All, "EAQ_2026_45496_V_1", PageRequest.First, CancellationToken.None);
+            VisibilityScope.All, "2026_45496", PageRequest.First, CancellationToken.None);
         Page<LabReport> ofCompetitor = await Issues().ListReportsAsync(
             Competitor, null, PageRequest.First, CancellationToken.None);
         Page<LabReport> ofEnergy = await Issues().ListReportsAsync(
@@ -181,7 +181,7 @@ public sealed class AutoLabSampleTests : IDisposable
     public async Task TheReportOfAnotherCompanyIsNotDownloaded()
     {
         Page<LabReport> reports = await Issues().ListReportsAsync(
-            VisibilityScope.All, "EAQ_2026_45496_V_1", PageRequest.First, CancellationToken.None);
+            VisibilityScope.All, "2026_45496", PageRequest.First, CancellationToken.None);
 
         Assert.Null(await Issues().GetSignedDocumentOfReportAsync(
             Energy, reports.Items[0].Id, CancellationToken.None));

@@ -70,7 +70,6 @@ public sealed record ReportResponse
         RequestNumber = report.RequestNumber,
         QuoteCode = report.QuoteCode,
         SampleId = report.SampleId,
-        SampleName = report.SampleName,
         Client = report.Client,
         Status = report.Status,
         ScheduledDate = DateOf(report.ScheduledDate),
@@ -80,7 +79,8 @@ public sealed record ReportResponse
         PdfAvailable = report.HasSignedDocument,
         Code = report.Identification,
         Protocol = report.RequestNumber,
-        Sample = report.SampleName,
+        Sample = report.SampleId,
+        Laboratory = report.Laboratory,
         PublishedOn = DateOf(report.PublicationDate)
     };
 

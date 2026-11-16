@@ -6,6 +6,7 @@ import { Iec60599FaultCodesComponent } from '@shared/components/iec-60599-fault-
 import { IeeeC57104ChartComponent } from '@shared/components/ieee-c57104-chart/ieee-c57104-chart.component';
 import { Nbr7274ChartComponent } from '@shared/components/nbr-7274-chart/nbr-7274-chart.component';
 import { DuvalTriangleComponent } from '@shared/components/duval-triangle/duval-triangle.component';
+import { ZoomLensComponent } from '@shared/components/zoom-lens/zoom-lens.component';
 
 import { readableDate } from '@shared/brazilian-date';
 
@@ -90,6 +91,7 @@ function ratioOutcomeText(ratio: GasRatioReading): string {
     Iec60599FaultCodesComponent,
     IeeeC57104ChartComponent,
     Nbr7274ChartComponent,
+    ZoomLensComponent,
   ],
   templateUrl: './diagnostic-methods.component.html',
   changeDetection: ChangeDetectionStrategy.OnPush,

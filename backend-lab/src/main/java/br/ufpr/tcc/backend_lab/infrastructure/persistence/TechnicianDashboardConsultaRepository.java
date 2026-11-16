@@ -32,6 +32,7 @@ public class TechnicianDashboardConsultaRepository {
                         resultSet.getLong("total")));
     }
 
+    // Agrupa pendências em até 7 dias, de 8 a 15 dias e há mais de 15 dias.
     public PendingReportAgeCount contarIdadeRelatoriosPendentes(
             StatusValidacaoRelatorio validationStatus,
             OffsetDateTime sevenDaysAgo, OffsetDateTime fifteenDaysAgo) {
@@ -54,6 +55,7 @@ public class TechnicianDashboardConsultaRepository {
                         row.getObject("oldest_created_at", OffsetDateTime.class)));
     }
 
+    // Combina eventos de validação e publicação e os agrupa nos meses fornecidos pelo caso de uso.
     public List<MonthlyReportCount> contarRelatoriosPorMes(
             List<OffsetDateTime> monthStarts, OffsetDateTime until) {
         MapSqlParameterSource parameters = new MapSqlParameterSource()

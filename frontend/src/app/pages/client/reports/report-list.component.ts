@@ -1,10 +1,15 @@
 import { ChangeDetectionStrategy, Component, computed, DestroyRef, inject, signal } from '@angular/core';
 import { takeUntilDestroyed, toObservable } from '@angular/core/rxjs-interop';
-import { catchError, EMPTY, switchMap, tap } from 'rxjs';
+import { catchError, distinctUntilChanged, EMPTY, filter, switchMap, tap } from 'rxjs';
 import { NgClass } from '@angular/common';
 import { MatIconModule } from '@angular/material/icon';
 import { RouterLink } from '@angular/router';
 
+import {
+  isMeasured,
+  sameQuery,
+  unmeasuredQuery,
+} from '@shared/components/data-table/data-table.model';
 import { EmptyStateComponent } from '@shared/components/empty-state/empty-state.component';
 import { PageHeaderComponent } from '@shared/components/page-header/page-header.component';
 import { SearchFieldComponent } from '@shared/components/search-field/search-field.component';
@@ -54,17 +59,22 @@ export class ReportListComponent {
   protected readonly reportSearch = signal('');
   protected readonly quoteSearch = signal('');
 
-  protected readonly pageSize = DEFAULT_PAGE_SIZE;
-  protected readonly reportPage = signal(1);
+  protected readonly quotePageSize = DEFAULT_PAGE_SIZE;
+  protected readonly reportQuery = signal(unmeasuredQuery());
   protected readonly reportTotal = signal(0);
   protected readonly reportsLoading = signal(true);
-  protected readonly reports = signal<readonly Report[] | null>(null);
+  protected readonly reports = signal<readonly Report[]>([]);
   protected readonly quotesWithReport = signal<readonly DisplayedQuote[] | null>(null);
+  // Os orçamentos vêm paginados da API; a aba mostra os da página carregada que
+  // já têm laudo publicado, e a paginação percorre os demais.
+  protected readonly quotePage = signal(1);
+  protected readonly quoteTotal = signal(0);
+  protected readonly quotesLoading = signal(true);
   protected readonly reportsFailed = signal(false);
   protected readonly quotesFailed = signal(false);
 
   protected readonly visibleReports = computed(() => {
-    const list = this.reports() ?? [];
+    const list = this.reports();
     const term = this.reportSearch().trim().toLowerCase();
     if (!term) return list;
     return list.filter((report) =>
@@ -87,14 +97,16 @@ export class ReportListComponent {
   });
 
   constructor() {
-    toObservable(this.reportPage)
+    toObservable(this.reportQuery)
       .pipe(
+        filter(isMeasured),
+        distinctUntilChanged(sameQuery),
         tap(() => {
           this.reportsLoading.set(true);
           this.reportsFailed.set(false);
         }),
-        switchMap((page) =>
-          this.reportsService.list({ page, pageSize: this.pageSize }).pipe(
+        switchMap((query) =>
+          this.reportsService.list(query).pipe(
             catchError(() => {
               this.reportsFailed.set(true);
               this.reportsLoading.set(false);
@@ -110,22 +122,36 @@ export class ReportListComponent {
         this.reportsLoading.set(false);
       });
 
-    this.quotesService
-      .getQuotes()
-      .pipe(takeUntilDestroyed(this.destroyRef))
-      .subscribe({
-        next: (quotes) =>
-          this.quotesWithReport.set(
-            quotes
-              .map(toDisplayedQuote)
-              .filter((quote) => quote.status === 'relatorio-publicado'),
+    toObservable(this.quotePage)
+      .pipe(
+        tap(() => {
+          this.quotesLoading.set(true);
+          this.quotesFailed.set(false);
+        }),
+        switchMap((page) =>
+          this.quotesService.list({ page, pageSize: this.quotePageSize }).pipe(
+            catchError(() => {
+              this.quotesFailed.set(true);
+              this.quotesLoading.set(false);
+              return EMPTY;
+            }),
           ),
-        error: () => this.quotesFailed.set(true),
+        ),
+        takeUntilDestroyed(this.destroyRef),
+      )
+      .subscribe((result) => {
+        this.quotesWithReport.set(
+          result.items
+            .map(toDisplayedQuote)
+            .filter((quote) => quote.status === 'relatorio-publicado'),
+        );
+        this.quoteTotal.set(result.total);
+        this.quotesLoading.set(false);
       });
   }
 
-  protected goToReportPage(page: number): void {
-    this.reportPage.set(page);
+  protected goToQuotePage(page: number): void {
+    this.quotePage.set(page);
   }
 
   protected selectTab(tab: ReportsTab): void {

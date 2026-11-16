@@ -2,6 +2,8 @@ import type { HttpResponse } from '@angular/common/http';
 
 export const DEFAULT_PAGE_SIZE = 50;
 
+export const MAX_PAGE_SIZE = 200;
+
 export interface PageRequest {
   readonly page: number;
   readonly pageSize: number;

@@ -26,7 +26,7 @@ internal sealed class AutoLabTestDatabase : IDisposable
 
         CREATE TABLE dbo.Equipamentos (
             NumSerie TEXT COLLATE Latin1_General_CI_AS NULL,
-            Tag TEXT NULL,
+            Tag TEXT COLLATE Latin1_General_CI_AS NULL,
             AnoFabricacao TEXT NULL,
             Potencia TEXT NULL,
             Tensao TEXT NULL,

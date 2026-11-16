@@ -14,6 +14,7 @@ public interface ClienteRepository extends JpaRepository<Cliente, Long> {
 
     long countByUsuarioPerfilAndUsuarioAtivoTrue(PerfilUsuario perfil);
 
+    // Pesquisa dados do usuário e das empresas vinculadas sem duplicar o cliente por vínculo.
     @Query(
             """
             select c from Cliente c

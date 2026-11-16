@@ -2,6 +2,7 @@ using System.Globalization;
 using System.Text;
 
 using Portal.Adapters.Reports;
+using Portal.Application.Paging;
 using Portal.Application.Quotes;
 using Portal.Domain.Quotes;
 
@@ -75,8 +76,8 @@ public sealed class LactecDemoReportDocumentRepositoryTests
 
     private sealed class AuthorizedQuotes(params Quote[] visibleQuotes) : IQuoteRepository
     {
-        public Task<IReadOnlyList<Quote>> GetQuotesAsync(CancellationToken cancellationToken) =>
-            Task.FromResult<IReadOnlyList<Quote>>(visibleQuotes);
+        public Task<Page<Quote>> GetQuotesAsync(PageRequest page, CancellationToken cancellationToken) =>
+            Task.FromResult(Page<Quote>.Of(visibleQuotes, page));
 
         public Task<Quote?> GetQuoteByIdAsync(string id, CancellationToken cancellationToken) =>
             Task.FromResult(visibleQuotes.FirstOrDefault(quote => quote.Id == id));

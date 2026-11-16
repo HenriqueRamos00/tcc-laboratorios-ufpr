@@ -1,6 +1,7 @@
 package br.ufpr.tcc.backend_lab.application.usecase;
 
 import br.ufpr.tcc.backend_lab.application.dto.request.ValidarRelatorioRequest;
+import br.ufpr.tcc.backend_lab.application.dto.RelatorioSnapshot;
 import br.ufpr.tcc.backend_lab.application.dto.response.RelatorioDtos;
 import br.ufpr.tcc.backend_lab.application.service.GeradorPdfRelatorio;
 import br.ufpr.tcc.backend_lab.application.service.MontadorSnapshotRelatorio;
@@ -105,6 +106,7 @@ public class ValidarRelatorioUseCase {
         relatorio.setValidatedCompany(execucaoAtual.getOrcamento().getEmpresa());
         relatorio.setValidatedQuote(execucaoAtual.getOrcamento());
         relatorio.setValidatedSample(execucaoAtual.getAmostra());
+        relatorio.setValidatedEquipmentId(idEquipamento(snapshot));
         var persisted = relatorios.saveAndFlush(relatorio);
 
         DocumentoRelatorio documento = new DocumentoRelatorio();
@@ -112,5 +114,12 @@ public class ValidarRelatorioUseCase {
         documento.setContent(pdf);
         documentos.saveAndFlush(documento);
         return RelatorioDtos.validacao(persisted);
+    }
+
+    private static Long idEquipamento(RelatorioSnapshot snapshot) {
+        if (snapshot.test() == null || snapshot.test().analyzedEquipment() == null) {
+            return null;
+        }
+        return Long.valueOf(snapshot.test().analyzedEquipment().id());
     }
 }

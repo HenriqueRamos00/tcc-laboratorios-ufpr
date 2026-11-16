@@ -239,16 +239,16 @@ export const EQUIPAMENTOS = [
   { NumSerie: 'S/N', Tag: 'TR-00019', AnoFabricacao: '1990', Potencia: '300', Tensao: '13,8', Fabricante: 'MONTADORA DE EQUIPAMENTOS', VolumeOleo: '400', UnidadePotencia: 'kVA', TipoDeOleo: 'Óleo Mineral Isolante', TipoEquipamento: 'TRANSFORMADOR' },
 ];
 export const SITUA_PROCESS = [
-  { OrcamentoCRM: 'EAQ_2026_45490_V_1', Recebido: true, Protocolado: true, SituacaoEnsaios: 0, SolicitacaoRelatorio: 0 },
-  { OrcamentoCRM: 'EAQ_2026_45491_V_1', Recebido: true, Protocolado: true, SituacaoEnsaios: 1, SolicitacaoRelatorio: 0 },
-  { OrcamentoCRM: 'EAQ_2026_45492_V_1', Recebido: true, Protocolado: true, SituacaoEnsaios: 2, SolicitacaoRelatorio: 0 },
-  { OrcamentoCRM: 'EAQ_2026_45493_V_1', Recebido: true, Protocolado: true, SituacaoEnsaios: 3, SolicitacaoRelatorio: 0 },
-  { OrcamentoCRM: 'EAQ_2026_45494_V_1', Recebido: true, Protocolado: true, SituacaoEnsaios: 2, SolicitacaoRelatorio: 1 },
-  { OrcamentoCRM: 'EAQ_2026_45495_V_1', Recebido: true, Protocolado: true, SituacaoEnsaios: 3, SolicitacaoRelatorio: 2 },
-  { OrcamentoCRM: 'EAQ_2026_45496_V_1', Recebido: true, Protocolado: true, SituacaoEnsaios: 5, SolicitacaoRelatorio: 2 },
-  { OrcamentoCRM: 'EAQ_2026_45499_V_1', Recebido: true, Protocolado: true, SituacaoEnsaios: 3, SolicitacaoRelatorio: 2 },
-  { OrcamentoCRM: 'EAQ_2026_45499_V_1', Recebido: false, Protocolado: false, SituacaoEnsaios: null, SolicitacaoRelatorio: 0 },
-  { OrcamentoCRM: 'EAQ_2026_45482_V_1', Recebido: false, Protocolado: false, SituacaoEnsaios: null, SolicitacaoRelatorio: 0 },
+  { OrcamentoCRM: '2026_45490', Recebido: true, Protocolado: true, SituacaoEnsaios: 0, SolicitacaoRelatorio: 0 },
+  { OrcamentoCRM: '2026_45491', Recebido: true, Protocolado: true, SituacaoEnsaios: 1, SolicitacaoRelatorio: 0 },
+  { OrcamentoCRM: '2026_45492', Recebido: true, Protocolado: true, SituacaoEnsaios: 2, SolicitacaoRelatorio: 0 },
+  { OrcamentoCRM: '2026_45493', Recebido: true, Protocolado: true, SituacaoEnsaios: 3, SolicitacaoRelatorio: 0 },
+  { OrcamentoCRM: '2026_45494', Recebido: true, Protocolado: true, SituacaoEnsaios: 2, SolicitacaoRelatorio: 1 },
+  { OrcamentoCRM: '2026_45495', Recebido: true, Protocolado: true, SituacaoEnsaios: 3, SolicitacaoRelatorio: 2 },
+  { OrcamentoCRM: '2026_45496', Recebido: true, Protocolado: true, SituacaoEnsaios: 5, SolicitacaoRelatorio: 2 },
+  { OrcamentoCRM: '2026_45499', Recebido: true, Protocolado: true, SituacaoEnsaios: 3, SolicitacaoRelatorio: 2 },
+  { OrcamentoCRM: '2026_45499', Recebido: false, Protocolado: false, SituacaoEnsaios: null, SolicitacaoRelatorio: 0 },
+  { OrcamentoCRM: '2026_45482', Recebido: false, Protocolado: false, SituacaoEnsaios: null, SolicitacaoRelatorio: 0 },
   { OrcamentoCRM: '2026_49001', Recebido: true, Protocolado: true, SituacaoEnsaios: 4, SolicitacaoRelatorio: 2 },
   { OrcamentoCRM: '2026_49001_UHAB Agua Boa', Recebido: true, Protocolado: true, SituacaoEnsaios: 0, SolicitacaoRelatorio: 0 },
   { OrcamentoCRM: 'EAQ 2026_49002', Recebido: true, Protocolado: true, SituacaoEnsaios: 3, SolicitacaoRelatorio: 1 },
@@ -280,17 +280,17 @@ const CONCLUSAO_FISICO_QUIMICO = [
 
 export const RELATORIOS = [
   {
-    identificacao: 'LACTEC-02272/2026', orcamentoCRM: 'EAQ_2026_45499_V_1', numeroSolicitacao: 'SOL-2026-00417',
+    identificacao: 'LACTEC-02272/2026', orcamentoCRM: '2026_45499', numeroSolicitacao: 'SOL-2026-00417',
     tipo: 'cromatografia',
     emissoes: [{ revisao: 0, situacao: 'Publicado', publicadoEmDias: 2, pdf: true }],
   },
   {
-    identificacao: 'LACTEC-02962/2026', orcamentoCRM: 'EAQ_2026_45496_V_1', numeroSolicitacao: 'SOL-2026-00718',
+    identificacao: 'LACTEC-02962/2026', orcamentoCRM: '2026_45496', numeroSolicitacao: 'SOL-2026-00718',
     tipo: 'cromatografia',
     emissoes: [{ revisao: 0, situacao: 'Publicado', publicadoEmDias: 1, pdf: true }],
   },
   {
-    identificacao: 'LACTEC-02354 R1/2026', orcamentoCRM: 'EAQ_2026_45499_V_1', numeroSolicitacao: 'SOL-2026-00351',
+    identificacao: 'LACTEC-02354 R1/2026', orcamentoCRM: '2026_45499', numeroSolicitacao: 'SOL-2026-00351',
     tipo: 'fisico-quimico',
     emissoes: [
       { revisao: 0, situacao: 'Substituído', emitidoEmDias: -12, publicadoEmDias: 1, pdf: true, substituidaPelaRevisao: 1 },
@@ -298,42 +298,42 @@ export const RELATORIOS = [
     ],
   },
   {
-    identificacao: 'LACTEC-02465/2026', orcamentoCRM: 'EAQ_2026_45493_V_1', numeroSolicitacao: 'SOL-2026-00439',
+    identificacao: 'LACTEC-02465/2026', orcamentoCRM: '2026_45493', numeroSolicitacao: 'SOL-2026-00439',
     tipo: 'cromatografia',
     emissoes: [{ revisao: 0, situacao: 'Emitido', publicadoEmDias: null, pdf: false }],
   },
   {
-    identificacao: 'LACTEC-02820/2026', orcamentoCRM: 'EAQ_2026_45493_V_1', numeroSolicitacao: 'SOL-2026-00482',
+    identificacao: 'LACTEC-02820/2026', orcamentoCRM: '2026_45493', numeroSolicitacao: 'SOL-2026-00482',
     tipo: 'fisico-quimico', semConclusao: true,
     emissoes: [{ revisao: 0, situacao: 'Em revisão', publicadoEmDias: null, pdf: false }],
   },
   {
-    identificacao: 'LACTEC-02665/2026', orcamentoCRM: 'EAQ_2026_45500_V_1', numeroSolicitacao: 'SOL-2026-00563',
+    identificacao: 'LACTEC-02665/2026', orcamentoCRM: '2026_45500', numeroSolicitacao: 'SOL-2026-00563',
     tipo: 'cromatografia',
     emissoes: [{ revisao: 0, situacao: 'Publicado', publicadoEmDias: 2, pdf: true }],
   },
   {
-    identificacao: 'LACTEC-03781/2025', orcamentoCRM: 'EAQ_2026_45495_V_1', numeroSolicitacao: 'SOL-2025-02114',
+    identificacao: 'LACTEC-03781/2025', orcamentoCRM: '2026_45495', numeroSolicitacao: 'SOL-2025-02114',
     tipo: 'cromatografia',
     emissoes: [{ revisao: 0, situacao: 'Publicado', publicadoEmDias: 1, pdf: true }],
   },
   {
-    identificacao: 'LACTEC-04502/2025', orcamentoCRM: 'EAQ_2026_45495_V_1', numeroSolicitacao: 'SOL-2025-02630',
+    identificacao: 'LACTEC-04502/2025', orcamentoCRM: '2026_45495', numeroSolicitacao: 'SOL-2025-02630',
     tipo: 'cromatografia',
     emissoes: [{ revisao: 0, situacao: 'Publicado', publicadoEmDias: 1, pdf: true, apagada: true }],
   },
   {
-    identificacao: 'LACTEC-01188/2026', orcamentoCRM: 'EAQ_2026_45499_V_1', numeroSolicitacao: 'SOL-2026-00712',
+    identificacao: 'LACTEC-01188/2026', orcamentoCRM: '2026_45499', numeroSolicitacao: 'SOL-2026-00712',
     tipo: 'cromatografia',
     emissoes: [{ revisao: 0, situacao: 'Publicado', publicadoEmDias: 2, pdf: true }],
   },
   {
-    identificacao: 'LACTEC-00421/2026', orcamentoCRM: 'EAQ_2026_45495_V_1', numeroSolicitacao: 'SOL-2026-00188',
+    identificacao: 'LACTEC-00421/2026', orcamentoCRM: '2026_45495', numeroSolicitacao: 'SOL-2026-00188',
     tipo: 'fisico-quimico',
     emissoes: [{ revisao: 0, situacao: 'Publicado', publicadoEmDias: 1, pdf: true }],
   },
   {
-    identificacao: 'LACTEC-01502/2026', orcamentoCRM: 'EAQ_2026_45493_V_1', numeroSolicitacao: 'SOL-2026-00894',
+    identificacao: 'LACTEC-01502/2026', orcamentoCRM: '2026_45493', numeroSolicitacao: 'SOL-2026-00894',
     tipo: 'fisico-quimico', semTitulo: true, semConclusao: true,
     emissoes: [{ revisao: 0, situacao: 'Emitido', publicadoEmDias: null, pdf: false }],
   },

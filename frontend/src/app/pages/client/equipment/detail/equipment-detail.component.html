@@ -49,82 +49,54 @@
     </dl>
   </section>
 
-  <section class="mt-6 rounded-2xl border border-lactec-line bg-lactec-paper p-6">
+  <section class="mt-6">
     <h2 class="display m-0 text-xl font-semibold text-lactec-ink">Histórico de Relatórios</h2>
 
-    @if (visible().length) {
-      <div class="mt-4 overflow-x-auto">
-        <table class="w-full border-collapse text-sm">
-          <caption class="sr-only">
-            Relatórios já publicados para este equipamento, do mais recente ao mais antigo.
-          </caption>
-          <thead>
-            <tr class="bg-lactec-line-soft text-left">
-              <th scope="col" class="px-4 py-3 font-semibold text-lactec-ink">Data do relatório</th>
-              <th scope="col" class="px-4 py-3 font-semibold text-lactec-ink">Tipo de análise</th>
-              <th scope="col" class="px-4 py-3 font-semibold text-lactec-ink">Status</th>
-              <th scope="col" class="px-4 py-3 text-right font-semibold text-lactec-ink">Ações</th>
-            </tr>
-          </thead>
-          <tbody>
-            @for (row of visible(); track row.id) {
-              <tr class="border-t border-lactec-line-soft">
-                <td class="px-4 py-3 text-lactec-ink">{{ row.date }}</td>
-                <td class="px-4 py-3 text-lactec-ink">{{ row.analysisType }}</td>
-                <td class="px-4 py-3 text-lactec-ink">{{ row.status }}</td>
-                <td class="px-4 py-3">
-                  <div class="flex justify-end gap-2">
-                    @if (row.tab) {
-                      <a
-                        [routerLink]="['/cliente/equipamentos', data.id, 'indicadores', row.id]"
-                        [queryParams]="{ aba: row.tab }"
-                        class="rounded-lg bg-lactec-primary px-3 py-2 text-xs font-semibold
-                               text-lactec-on-primary hover:bg-lactec-primary-dark"
-                      >
-                        Ver Indicadores
-                      </a>
-                    }
-                    <button
-                      type="button"
-                      class="inline-flex items-center gap-1 rounded-lg border border-lactec-line
-                             px-3 py-2 text-xs font-semibold text-lactec-ink hover:bg-lactec-surface
-                             disabled:opacity-40"
-                      [disabled]="!row.hasFile || downloading() === row.id"
-                      [attr.aria-label]="'Baixar o relatório de ' + row.analysisType + ' de ' + row.date"
-                      (click)="download(row)"
-                    >
-                      <mat-icon class="icone-16" aria-hidden="true">download</mat-icon>
-                      {{ downloading() === row.id ? 'Baixando…' : 'Download' }}
-                    </button>
-                  </div>
-                </td>
-              </tr>
-            }
-          </tbody>
-        </table>
-      </div>
+    <app-data-table
+      class="mt-4"
+      caption="Relatórios já publicados para este equipamento, do mais recente ao mais antigo."
+      paginationLabel="Paginação do histórico de relatórios"
+      loadingMessage="Carregando histórico…"
+      emptyIcon="science"
+      emptyTitle="Não há histórico de análises disponível para este equipamento"
+      [minimumRows]="5"
+      [columns]="historyColumns"
+      [rows]="visible()"
+      [trackBy]="trackById"
+      [total]="historyTotal()"
+      [loading]="historyLoading()"
+      [(query)]="historyQuery"
+    >
+      <ng-template appDataTableActions [appDataTableActionsOf]="visible()" let-row>
+        <div class="flex justify-end gap-2">
+          @if (row.tab) {
+            <a
+              [routerLink]="['/cliente/equipamentos', data.id, 'indicadores', row.id]"
+              [queryParams]="{ aba: row.tab }"
+              class="rounded-lg bg-lactec-primary px-3 py-2 text-xs font-semibold
+                     text-lactec-on-primary hover:bg-lactec-primary-dark"
+            >
+              Ver Indicadores
+            </a>
+          }
+          <button
+            type="button"
+            class="inline-flex items-center gap-1 rounded-lg border border-lactec-line
+                   px-3 py-2 text-xs font-semibold text-lactec-ink hover:bg-lactec-surface
+                   disabled:opacity-40"
+            [disabled]="!row.hasFile || downloading() === row.id"
+            [attr.aria-label]="'Baixar o relatório de ' + row.analysisType + ' de ' + row.date"
+            (click)="download(row)"
+          >
+            <mat-icon class="icone-16" aria-hidden="true">download</mat-icon>
+            {{ downloading() === row.id ? 'Baixando…' : 'Download' }}
+          </button>
+        </div>
+      </ng-template>
+    </app-data-table>
 
-      @if (downloadFailure()) {
-        <p class="mt-4 text-sm text-lactec-danger" role="alert">{{ downloadFailure() }}</p>
-      }
-
-      <app-pagination
-        class="mt-4"
-        label="Paginação do histórico de relatórios"
-        [page]="page()"
-        [pageSize]="perPage"
-        [total]="historyTotal()"
-        [disabled]="historyLoading()"
-        (pageChange)="goToPage($event)"
-      />
-    } @else if (history() === null) {
-      <p class="mt-4 text-sm text-lactec-muted" role="status">Carregando histórico…</p>
-    } @else {
-      <app-empty-state
-        class="mt-4"
-        icon="science"
-        title="Não há histórico de análises disponível para este equipamento"
-      />
+    @if (downloadFailure()) {
+      <p class="mt-4 text-sm text-lactec-danger" role="alert">{{ downloadFailure() }}</p>
     }
   </section>
 } @else if (unavailable()) {

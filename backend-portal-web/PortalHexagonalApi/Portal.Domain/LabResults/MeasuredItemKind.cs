@@ -8,5 +8,6 @@ public enum MeasuredItemKind
 {
     DissolvedGas,
     GasTotalizer,
-    PhysicalChemicalProperty
+    PhysicalChemicalProperty,
+    Other
 }

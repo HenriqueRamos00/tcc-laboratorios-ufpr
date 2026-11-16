@@ -35,6 +35,7 @@ public interface OrcamentoRepository extends JpaRepository<Orcamento, Long> {
     @Query("select orcamento from Orcamento orcamento where orcamento.id = :id")
     Optional<Orcamento> buscarPorIdComBloqueio(@Param("id") Long id);
 
+    // Lê o status comercial enquanto bloqueia a linha para evitar decisões concorrentes.
     @Query(value = "select status from orcamentos where id = :id for update", nativeQuery = true)
     Optional<String> buscarStatusComBloqueio(@Param("id") Long id);
     /**
@@ -46,6 +47,7 @@ public interface OrcamentoRepository extends JpaRepository<Orcamento, Long> {
     @Query("select orcamento from Orcamento orcamento where orcamento.id = :id")
     Optional<Orcamento> buscarParaDecisao(Long id);
 
+    // Pesquisa orçamentos internos por status e texto em código, nome, descrição ou empresa.
     @EntityGraph(attributePaths = "empresa")
     @Query(
             value =
@@ -77,6 +79,7 @@ public interface OrcamentoRepository extends JpaRepository<Orcamento, Long> {
     Page<Orcamento> pesquisarInternos(
             String busca, StatusComercialOrcamento status, Pageable pageable);
 
+    // Retorna apenas orçamentos com status comercial elegível para vincular a um ensaio.
     @EntityGraph(attributePaths = "empresa")
     @Query(value = """
             select orcamento from Orcamento orcamento
@@ -98,6 +101,8 @@ public interface OrcamentoRepository extends JpaRepository<Orcamento, Long> {
             @Param("statusComercialElegivel") List<StatusComercialOrcamento> statusComercialElegivel,
             Pageable pageable);
 
+    // A autorização vem do vínculo entre o cliente autenticado e a empresa do orçamento.
+    // EXISTS evita repetir o orçamento caso o cliente tenha mais de um vínculo compatível.
     @Query(
             """
             select orcamento

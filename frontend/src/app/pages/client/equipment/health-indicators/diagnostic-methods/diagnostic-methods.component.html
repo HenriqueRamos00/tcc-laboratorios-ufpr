@@ -7,18 +7,20 @@
         <div class="mt-6 grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
           @for (triangulo of block.triangles; track triangulo.number) {
             <div class="rounded-lg border border-lactec-line-soft p-4">
-              <app-duval-triangle [triangle]="triangulo" />
+              <app-zoom-lens><app-duval-triangle [triangle]="triangulo" /></app-zoom-lens>
             </div>
           }
 
           <div class="rounded-lg border border-lactec-line-soft p-4">
             @if (block.pentagon.point; as point) {
-              <app-duval-pentagon
-                [zone]="block.pentagon.zone"
-                [x]="point.x"
-                [y]="point.y"
-                [percentages]="pentagonPercentages()"
-              />
+              <app-zoom-lens>
+                <app-duval-pentagon
+                  [zone]="block.pentagon.zone"
+                  [x]="point.x"
+                  [y]="point.y"
+                  [percentages]="pentagonPercentages()"
+                />
+              </app-zoom-lens>
             } @else {
               <p class="m-0 text-center text-sm text-lactec-muted">
                 Pentágono de Duval não plotado. {{ block.pentagon.notPlotted }}

@@ -33,18 +33,25 @@ public sealed class InMemoryLabTestRepository : ILabTestRepository
 
     public List<PageRequest> PagesAsked { get; } = [];
 
+    public List<EquipmentSearch?> SearchesAsked { get; } = [];
+
     public Task<Page<SampleAnalysis>> GetAnalysesAsync(
         VisibilityScope scope,
+        EquipmentSearch? search,
         PageRequest equipmentPage,
         CancellationToken cancellationToken)
     {
         TimesTheWholeTenantWasAsked++;
         PagesAsked.Add(equipmentPage);
+        SearchesAsked.Add(search);
 
         List<SampleAnalysis> ofTenant = [.. In(scope)];
 
         Page<string> keys = Page<string>.Of(
-            TestedEquipment.Gather(ofTenant).Select(equipment => equipment.EquipmentKey),
+            TestedEquipment.Gather(ofTenant)
+                .Where(equipment => search is null || equipment.Reports.Any(report =>
+                    Holds(equipment.SerialNumber, search) || Holds(report.Identification, search)))
+                .Select(equipment => equipment.EquipmentKey),
             equipmentPage);
 
         return Task.FromResult(keys.WithItems<SampleAnalysis>(
@@ -80,6 +87,11 @@ public sealed class InMemoryLabTestRepository : ILabTestRepository
                 analysis.ProtocoloLactec, protocoloLactec, StringComparison.Ordinal));
 
         return Task.FromResult(found);
+    }
+
+    private static bool Holds(string? text, EquipmentSearch search)
+    {
+        return text is not null && text.Contains(search.Term, StringComparison.OrdinalIgnoreCase);
     }
 
     private IEnumerable<SampleAnalysis> In(VisibilityScope scope)

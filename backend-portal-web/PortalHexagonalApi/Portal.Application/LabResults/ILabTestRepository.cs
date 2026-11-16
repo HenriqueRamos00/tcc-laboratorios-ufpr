@@ -17,6 +17,7 @@ public interface ILabTestRepository
 {
     Task<Page<SampleAnalysis>> GetAnalysesAsync(
         VisibilityScope scope,
+        EquipmentSearch? search,
         PageRequest equipmentPage,
         CancellationToken cancellationToken);
 

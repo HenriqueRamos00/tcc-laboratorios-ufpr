@@ -219,9 +219,11 @@ describe('Consulta de relatórios técnicos', () => {
     expect(service.publish).toHaveBeenCalledWith(report.id, validatedReport.version);
     expect(component.detail()?.published).toBeTrue();
     expect(component.detail()?.publishedBy?.name).toBe('Técnica Exemplo');
-    expect(fixture.nativeElement.textContent).toContain('Relatório publicado para o cliente');
+    expect(fixture.nativeElement.textContent).toContain('Relatório publicado e status do ensaio atualizado.');
     expect(fixture.nativeElement.textContent).toContain('Publicado por');
-    expect(fixture.nativeElement.textContent).toContain('status técnico do ensaio continua manual');
+    expect(fixture.nativeElement.textContent).toContain('Ver status do ensaio');
+    const atalho = fixture.nativeElement.querySelector('a[href$="/status"]');
+    expect(atalho?.getAttribute('href')).toBe(`/tecnico/ensaios/${publishedDetail.test.id}/status`);
   });
 
   it('mantém o documento sem publicação quando a versão diverge', () => {

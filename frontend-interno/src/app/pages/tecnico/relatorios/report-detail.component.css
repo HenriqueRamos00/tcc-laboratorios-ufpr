@@ -296,6 +296,7 @@
 }
 
 .report-notice {
+  flex-wrap: wrap;
   display: flex;
   align-items: flex-start;
   gap: 0.625rem;

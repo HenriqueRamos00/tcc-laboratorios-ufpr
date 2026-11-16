@@ -45,7 +45,6 @@ public class Usuario {
 	private String email;
 
 	// Índice único adicional para garantir unicidade sem diferenciar caixa.
-	// Pode ficar nulo durante a atualização inicial de bancos já existentes.
 	@Column(name = "email_normalizado", length = 254)
 	private String emailNormalizado;
 

@@ -1,3 +1,4 @@
+using Portal.Application.Paging;
 using Portal.Application.Pipeline;
 using Portal.Domain.Pipeline;
 using Portal.Domain.Quotes;
@@ -9,9 +10,10 @@ namespace Portal.Application.Quotes;
 /// a fonte comercial, que sabe o que foi negociado, e a fonte do laboratorio, que sabe o
 /// que foi ensaiado. Compor e regra, e por isso mora aqui e nao no controller.
 ///
-/// A listagem pergunta a etapa de todos os orcamentos de uma vez, entregando os codigos
-/// deles. Perguntar um por um devolveria exatamente a mesma resposta HTTP e faria um
-/// adaptador de banco abrir uma consulta por orcamento; perguntar sem os codigos faria ele
+/// A listagem pergunta a etapa de todos os orcamentos da pagina de uma vez, entregando as
+/// chaves de laboratorio deles (<see cref="LaboratoryQuoteKey"/>), e nao o codigo publico.
+/// Perguntar um por um devolveria exatamente a mesma resposta HTTP e faria um adaptador de
+/// banco abrir uma consulta por orcamento; perguntar sem os codigos faria ele
 /// trazer a consulta inteira para descartar quase tudo. Nenhum teste de contrato enxerga
 /// essa troca, e e por isso que o duble da porta conta quais perguntas recebeu.
 /// </summary>
@@ -31,23 +33,29 @@ public sealed class QuoteService : IQuoteUseCase
         _laboratoryProgress = laboratoryProgress;
     }
 
-    public async Task<IReadOnlyList<QuoteWithLaboratoryStage>> GetQuotesAsync(
+    public async Task<Page<QuoteWithLaboratoryStage>> GetQuotesAsync(
+        PageRequest page,
         CancellationToken cancellationToken)
     {
-        IReadOnlyList<Quote> quotes = await _quoteRepository.GetQuotesAsync(cancellationToken);
+        ArgumentNullException.ThrowIfNull(page);
 
-        if (quotes.Count == 0) return [];
+        Page<Quote> quotes = await _quoteRepository.GetQuotesAsync(page, cancellationToken);
 
-        string[] codes = [.. quotes
-            .Select(quote => quote.Code)
-            .Where(code => !string.IsNullOrWhiteSpace(code))
+        if (quotes.Items.Count == 0) return quotes.WithItems<QuoteWithLaboratoryStage>([]);
+
+        // So a pagina servida e perguntada ao laboratorio, e so pelas chaves validas: um
+        // orcamento sem codigo de cotacao reconhecivel nao vira pergunta nenhuma.
+        string[] keys = [.. quotes.Items
+            .Select(quote => quote.LaboratoryKey?.Value)
+            .OfType<string>()
             .Distinct(StringComparer.OrdinalIgnoreCase)];
 
-        IReadOnlyList<LaboratoryProgress> progress = codes.Length == 0
+        IReadOnlyList<LaboratoryProgress> progress = keys.Length == 0
             ? []
-            : await _laboratoryProgress.GetProgressOfQuotesAsync(codes, cancellationToken);
+            : await _laboratoryProgress.GetProgressOfQuotesAsync(keys, cancellationToken);
 
-        return [.. quotes.Select(quote => new QuoteWithLaboratoryStage(quote, StageOf(progress, quote.Code)))];
+        return quotes.WithItems<QuoteWithLaboratoryStage>([.. quotes.Items
+            .Select(quote => new QuoteWithLaboratoryStage(quote, StageOf(progress, quote.LaboratoryKey)))]);
     }
 
     public async Task<QuoteWithLaboratoryStage?> GetQuoteByIdAsync(
@@ -59,10 +67,10 @@ public sealed class QuoteService : IQuoteUseCase
         Quote? quote = await _quoteRepository.GetQuoteByIdAsync(id, cancellationToken);
 
         if (quote is null) return null;
-        if (string.IsNullOrWhiteSpace(quote.Code)) return new QuoteWithLaboratoryStage(quote, null);
+        if (quote.LaboratoryKey is not { } key) return new QuoteWithLaboratoryStage(quote, null);
 
         LaboratoryProgress? progress = await _laboratoryProgress
-            .GetProgressOfQuoteAsync(quote.Code, cancellationToken);
+            .GetProgressOfQuoteAsync(key.Value, cancellationToken);
 
         return new QuoteWithLaboratoryStage(quote, progress?.Stage);
     }
@@ -91,15 +99,15 @@ public sealed class QuoteService : IQuoteUseCase
         return await _documents.GetDocumentAsync(id, cancellationToken);
     }
 
-    private static PipelineStage? StageOf(IReadOnlyList<LaboratoryProgress> progress, string quoteCode)
+    /// <summary>
+    /// A etapa que volta do laboratorio e devolvida ao orcamento pela mesma chave com que foi
+    /// perguntada, e nunca pelo codigo publico: o <c>OrcamentoCRM</c> que a fonte devolve e a
+    /// forma nua da chave, e o <see cref="Quote.Code"/> nao e.
+    /// </summary>
+    private static PipelineStage? StageOf(IReadOnlyList<LaboratoryProgress> progress, LaboratoryQuoteKey? key)
     {
-        if (string.IsNullOrWhiteSpace(quoteCode)) return null;
+        if (key is null) return null;
 
-        return progress
-            .FirstOrDefault(item => string.Equals(
-                item.QuoteCode,
-                quoteCode.Trim(),
-                StringComparison.OrdinalIgnoreCase))
-            ?.Stage;
+        return progress.FirstOrDefault(item => key.Matches(item.QuoteCode))?.Stage;
     }
 }

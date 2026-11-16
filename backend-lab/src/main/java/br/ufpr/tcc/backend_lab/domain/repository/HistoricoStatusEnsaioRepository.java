@@ -7,6 +7,7 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
 public interface HistoricoStatusEnsaioRepository extends JpaRepository<HistoricoStatusEnsaio, Long> {
+    // Carrega o técnico junto com o histórico e ordena os eventos cronologicamente.
     @Query("""
             select h from HistoricoStatusEnsaio h join fetch h.tecnico
             where h.execucao.id = :execucaoId

@@ -1179,70 +1179,70 @@
   ],
   "dbo.SituaProcess": [
     {
-      "OrcamentoCRM": "EAQ_2026_45490_V_1",
+      "OrcamentoCRM": "2026_45490",
       "Recebido": true,
       "Protocolado": true,
       "SituacaoEnsaios": 0,
       "SolicitacaoRelatorio": 0
     },
     {
-      "OrcamentoCRM": "EAQ_2026_45491_V_1",
+      "OrcamentoCRM": "2026_45491",
       "Recebido": true,
       "Protocolado": true,
       "SituacaoEnsaios": 1,
       "SolicitacaoRelatorio": 0
     },
     {
-      "OrcamentoCRM": "EAQ_2026_45492_V_1",
+      "OrcamentoCRM": "2026_45492",
       "Recebido": true,
       "Protocolado": true,
       "SituacaoEnsaios": 2,
       "SolicitacaoRelatorio": 0
     },
     {
-      "OrcamentoCRM": "EAQ_2026_45493_V_1",
+      "OrcamentoCRM": "2026_45493",
       "Recebido": true,
       "Protocolado": true,
       "SituacaoEnsaios": 3,
       "SolicitacaoRelatorio": 0
     },
     {
-      "OrcamentoCRM": "EAQ_2026_45494_V_1",
+      "OrcamentoCRM": "2026_45494",
       "Recebido": true,
       "Protocolado": true,
       "SituacaoEnsaios": 2,
       "SolicitacaoRelatorio": 1
     },
     {
-      "OrcamentoCRM": "EAQ_2026_45495_V_1",
+      "OrcamentoCRM": "2026_45495",
       "Recebido": true,
       "Protocolado": true,
       "SituacaoEnsaios": 3,
       "SolicitacaoRelatorio": 2
     },
     {
-      "OrcamentoCRM": "EAQ_2026_45496_V_1",
+      "OrcamentoCRM": "2026_45496",
       "Recebido": true,
       "Protocolado": true,
       "SituacaoEnsaios": 5,
       "SolicitacaoRelatorio": 2
     },
     {
-      "OrcamentoCRM": "EAQ_2026_45499_V_1",
+      "OrcamentoCRM": "2026_45499",
       "Recebido": true,
       "Protocolado": true,
       "SituacaoEnsaios": 3,
       "SolicitacaoRelatorio": 2
     },
     {
-      "OrcamentoCRM": "EAQ_2026_45499_V_1",
+      "OrcamentoCRM": "2026_45499",
       "Recebido": false,
       "Protocolado": false,
       "SituacaoEnsaios": null,
       "SolicitacaoRelatorio": 0
     },
     {
-      "OrcamentoCRM": "EAQ_2026_45482_V_1",
+      "OrcamentoCRM": "2026_45482",
       "Recebido": false,
       "Protocolado": false,
       "SituacaoEnsaios": null,
@@ -1575,9 +1575,9 @@
     {
       "NumeroSolicitacao": "SOL-2026-00417",
       "Oid": "2108CA54-493F-EE9D-4EFE-1CC001241425",
-      "OrcamentoCRM": "EAQ_2026_45499_V_1",
+      "OrcamentoCRM": "2026_45499",
       "IDAmostra": "AM-01417/2026-001",
-      "Nome": "Óleo isolante 571289",
+      "Nome": "Óleos",
       "PdfAssinado": "E2B74A16-C143-8B94-99FB-BE0A53D7F64A",
       "ClienteSolicitante": "EMPRESA DE ENERGIA",
       "Identificacao": "LACTEC-02272/2026",
@@ -1590,9 +1590,9 @@
     {
       "NumeroSolicitacao": "SOL-2026-00718",
       "Oid": "DE68BFCA-243B-D7FB-A893-2E58BB59D741",
-      "OrcamentoCRM": "EAQ_2026_45496_V_1",
+      "OrcamentoCRM": "2026_45496",
       "IDAmostra": "AM-01718/2026-005",
-      "Nome": "Óleo isolante 36170301",
+      "Nome": "Óleos",
       "PdfAssinado": "C762942E-DE0B-62DD-0850-908277EF1704",
       "ClienteSolicitante": "DISTRIBUIDORA DE ENERGIA",
       "Identificacao": "LACTEC-02962/2026",
@@ -1605,9 +1605,9 @@
     {
       "NumeroSolicitacao": "SOL-2026-00351",
       "Oid": "CB551668-0F0D-9D78-E1FE-326F648BB9D9",
-      "OrcamentoCRM": "EAQ_2026_45499_V_1",
+      "OrcamentoCRM": "2026_45499",
       "IDAmostra": "AM-01351/2026-004",
-      "Nome": "Óleo isolante 111.594/1",
+      "Nome": "Óleos",
       "PdfAssinado": "A7333C2E-F0FC-B79C-9647-3A2C05082E97",
       "ClienteSolicitante": "EMPRESA DE ENERGIA",
       "Identificacao": "LACTEC-02354 R1/2026",
@@ -1620,9 +1620,9 @@
     {
       "NumeroSolicitacao": "SOL-2026-00351",
       "Oid": "F560A9C3-C8AF-7AE0-0C7B-F1033ED2F12A",
-      "OrcamentoCRM": "EAQ_2026_45499_V_1",
+      "OrcamentoCRM": "2026_45499",
       "IDAmostra": "AM-01351/2026-004",
-      "Nome": "Óleo isolante 111.594/1",
+      "Nome": "Óleos",
       "PdfAssinado": "E3279473-B89A-3CBA-8F3F-81BEB42D67B9",
       "ClienteSolicitante": "EMPRESA DE ENERGIA",
       "Identificacao": "LACTEC-02354 R1/2026",
@@ -1635,9 +1635,9 @@
     {
       "NumeroSolicitacao": "SOL-2026-00439",
       "Oid": "87C6CCFC-B53C-F766-A001-A14C62733EC7",
-      "OrcamentoCRM": "EAQ_2026_45493_V_1",
+      "OrcamentoCRM": "2026_45493",
       "IDAmostra": "AM-01439/2026-004",
-      "Nome": "Óleo isolante 884120",
+      "Nome": "Óleos",
       "PdfAssinado": null,
       "ClienteSolicitante": "EMPRESA DE ENERGIA",
       "Identificacao": "LACTEC-02465/2026",
@@ -1650,9 +1650,9 @@
     {
       "NumeroSolicitacao": "SOL-2026-00482",
       "Oid": "B0340867-89D5-A477-1262-BF5108349C28",
-      "OrcamentoCRM": "EAQ_2026_45493_V_1",
+      "OrcamentoCRM": "2026_45493",
       "IDAmostra": "AM-01482/2026-001",
-      "Nome": "Óleo isolante 884121",
+      "Nome": "Óleos",
       "PdfAssinado": null,
       "ClienteSolicitante": "EMPRESA DE ENERGIA",
       "Identificacao": "LACTEC-02820/2026",
@@ -1665,9 +1665,9 @@
     {
       "NumeroSolicitacao": "SOL-2026-00563",
       "Oid": "F4ABCF3F-C9BF-6DD9-DEEF-F744865C4234",
-      "OrcamentoCRM": "EAQ_2026_45500_V_1",
+      "OrcamentoCRM": "2026_45500",
       "IDAmostra": "AM-01563/2026-018",
-      "Nome": "Óleo isolante 5233",
+      "Nome": "Óleos",
       "PdfAssinado": "F3F6EFCB-582E-29BA-7DF8-4E3EC27A0157",
       "ClienteSolicitante": "DISTRIBUIDORA DE ENERGIA",
       "Identificacao": "LACTEC-02665/2026",
@@ -1680,9 +1680,9 @@
     {
       "NumeroSolicitacao": "SOL-2025-02114",
       "Oid": "4228551D-A950-0DC0-DA30-7B1F29BB3E3A",
-      "OrcamentoCRM": "EAQ_2026_45495_V_1",
+      "OrcamentoCRM": "2026_45495",
       "IDAmostra": "AM-02114/2025-001",
-      "Nome": "Óleo isolante 571289",
+      "Nome": "Óleos",
       "PdfAssinado": "D07DE797-CAA7-BE53-764E-5E4D47E13A8D",
       "ClienteSolicitante": "EMPRESA DE ENERGIA",
       "Identificacao": "LACTEC-03781/2025",
@@ -1695,9 +1695,9 @@
     {
       "NumeroSolicitacao": "SOL-2026-00712",
       "Oid": "49759DAF-BD1A-0CA2-9CF8-2F5ACBAD6F2B",
-      "OrcamentoCRM": "EAQ_2026_45499_V_1",
+      "OrcamentoCRM": "2026_45499",
       "IDAmostra": "AM-00712/2026-001",
-      "Nome": "Óleo isolante 571289",
+      "Nome": "Óleos",
       "PdfAssinado": "0DA2C2F6-29D9-9565-1FF3-E711429FE975",
       "ClienteSolicitante": "EMPRESA DE ENERGIA",
       "Identificacao": "LACTEC-01188/2026",
@@ -1710,9 +1710,9 @@
     {
       "NumeroSolicitacao": "SOL-2026-00188",
       "Oid": "A6F2DE48-92EC-C4F7-2EE7-5E8AEE5AA679",
-      "OrcamentoCRM": "EAQ_2026_45495_V_1",
+      "OrcamentoCRM": "2026_45495",
       "IDAmostra": "AM-00188/2026-004",
-      "Nome": "Óleo isolante 111.594/1",
+      "Nome": "Óleos",
       "PdfAssinado": "A234FD10-F287-2EB8-7A85-F547DBE5BCCB",
       "ClienteSolicitante": "EMPRESA DE ENERGIA",
       "Identificacao": "LACTEC-00421/2026",
@@ -1725,9 +1725,9 @@
     {
       "NumeroSolicitacao": "SOL-2026-00894",
       "Oid": "22A99665-5B38-2B80-CF30-DF4B404B189D",
-      "OrcamentoCRM": "EAQ_2026_45493_V_1",
+      "OrcamentoCRM": "2026_45493",
       "IDAmostra": "AM-00894/2026-004",
-      "Nome": "Óleo isolante 111.594/1",
+      "Nome": "Óleos",
       "PdfAssinado": null,
       "ClienteSolicitante": "EMPRESA DE ENERGIA",
       "Identificacao": "LACTEC-01502/2026",

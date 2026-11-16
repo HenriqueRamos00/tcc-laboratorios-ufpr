@@ -17,7 +17,7 @@ import {
   type RequestStatus,
 } from '@/app/model/analysis-pipeline';
 import type { Quote } from '@/app/model/quote';
-import { hasProposal, recognizeStage } from '@/app/model/quote-presentation';
+import { hasProposal, stageOfQuote, statusAfterDecision } from '@/app/model/quote-presentation';
 import { AppDialogService } from '@/app/services/app-dialog.service';
 import { LoginService } from '@/app/services/login.service';
 import { QuoteDecisionService } from '@/app/services/quote-decision.service';
@@ -99,11 +99,9 @@ export class QuoteDetailComponent {
   // A decisão tomada nesta sessão vale mais que a etapa que veio na carga da
   // tela: o Salesforce ainda não sabe do aceite que acabou de acontecer aqui.
   protected readonly stage = computed<RequestStatus | null>(() => {
-    const decidido = this.decisions.decisions().get(this.id());
-    if (decidido) return decidido.status;
-
+    const decidido = this.decisions.decisions().get(this.id())?.status;
     const quote = this.quote();
-    return quote ? recognizeStage(quote.stage) : null;
+    return quote ? statusAfterDecision(stageOfQuote(quote), decidido) : (decidido ?? null);
   });
 
   protected readonly pendingAction = computed<PendingAction>(() => {

@@ -26,13 +26,60 @@ public sealed class SampleAnalysis
         if (string.IsNullOrWhiteSpace(identification)) throw new AnalysisWithoutIdentificationException();
         if (string.IsNullOrWhiteSpace(company)) throw new AnalysisWithoutCompanyException();
 
-        ProtocoloLactec = protocoloLactec.Trim();
+        AnalysisId = protocoloLactec.Trim();
+        ReportId = AnalysisId;
+        ProtocoloLactec = AnalysisId;
         Identification = identification.Trim();
         SerialNumber = Blank(serialNumber) ? null : serialNumber!.Trim();
         Company = company.Trim();
-        EquipmentKey = SerialNumber ?? ProtocoloLactec;
+        EquipmentId = null;
+        TestId = null;
+        EquipmentKey = SerialNumber ?? AnalysisId;
         IssueDate = issueDate;
         AnalysisEndDate = analysisEndDate;
+        ReportDate = analysisEndDate;
+        PublishedAt = null;
+        Measurements = Accept(measurements);
+    }
+
+    /// <summary>
+    /// Publicação recebida do Backend Lab. O protocolo é opcional e nunca participa da
+    /// identidade; equipamento e publicação usam os IDs persistidos pela fonte.
+    /// </summary>
+    public SampleAnalysis(
+        string analysisId,
+        string reportId,
+        string testId,
+        string? protocol,
+        string? equipmentId,
+        string identification,
+        string company,
+        DateTimeOffset publishedAt,
+        DateTime reportDate,
+        IEnumerable<Measurement> measurements)
+    {
+        if (string.IsNullOrWhiteSpace(analysisId)) throw new ArgumentException("A análise precisa de um ID.", nameof(analysisId));
+        if (string.IsNullOrWhiteSpace(reportId)) throw new ArgumentException("A publicação precisa de um ID.", nameof(reportId));
+        if (string.IsNullOrWhiteSpace(testId)) throw new ArgumentException("A execução precisa de um ID.", nameof(testId));
+        if (string.IsNullOrWhiteSpace(equipmentId)) throw new ArgumentException("A análise precisa do ID do equipamento.", nameof(equipmentId));
+        if (string.IsNullOrWhiteSpace(identification)) throw new AnalysisWithoutIdentificationException();
+        if (string.IsNullOrWhiteSpace(company)) throw new AnalysisWithoutCompanyException();
+
+        AnalysisId = analysisId.Trim();
+        ReportId = reportId.Trim();
+        TestId = testId.Trim();
+        ProtocoloLactec = Blank(protocol) ? null : protocol!.Trim();
+        EquipmentId = equipmentId.Trim();
+        EquipmentKey = EquipmentId;
+        Identification = identification.Trim();
+        SerialNumber = null;
+        Company = company.Trim();
+        PublishedAt = publishedAt;
+        // Spring publica o instante da publicação, sem afirmar início ou conclusão efetiva.
+        // O instante e a data civil exibida ficam em PublishedAt e ReportDate.
+        IssueDate = default;
+        AnalysisEndDate = default;
+        ReportDate = reportDate;
         Measurements = Accept(measurements);
     }
 
@@ -73,7 +120,16 @@ public sealed class SampleAnalysis
         return string.IsNullOrWhiteSpace(value);
     }
 
-    public string ProtocoloLactec { get; }
+    /// <summary>Identidade estável usada pelas rotas e séries; no Backend Lab é o reportId.</summary>
+    public string AnalysisId { get; }
+
+    public string ReportId { get; }
+
+    public string? TestId { get; }
+
+    public string? ProtocoloLactec { get; }
+
+    public string? EquipmentId { get; }
 
     public string Identification { get; }
 
@@ -87,6 +143,14 @@ public sealed class SampleAnalysis
     public DateTime IssueDate { get; }
 
     public DateTime AnalysisEndDate { get; }
+
+    /// <summary>
+    /// Data civil exibida pelo Portal. AutoLAB fornece o fim da análise; Backend Lab fornece
+    /// a data local da publicação, pois o contrato não oferece a data de conclusão efetiva.
+    /// </summary>
+    public DateTime ReportDate { get; }
+
+    public DateTimeOffset? PublishedAt { get; }
 
     public IReadOnlyList<Measurement> Measurements { get; }
 

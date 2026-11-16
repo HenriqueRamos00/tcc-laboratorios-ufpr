@@ -12,7 +12,7 @@ internal static class FirstPageExtensions
         string company)
     {
         Page<EquipmentWithNameplate> page = await consultation.ListEquipmentAsync(
-            VisibilityScope.OfCompany(company), PageRequest.First, CancellationToken.None);
+            VisibilityScope.OfCompany(company), null, PageRequest.First, CancellationToken.None);
 
         return page.Items;
     }
@@ -22,7 +22,7 @@ internal static class FirstPageExtensions
         string company)
     {
         Page<SampleAnalysis> page = await repository.GetAnalysesAsync(
-            VisibilityScope.OfCompany(company), PageRequest.First, CancellationToken.None);
+            VisibilityScope.OfCompany(company), null, PageRequest.First, CancellationToken.None);
 
         return page.Items;
     }

@@ -1,6 +1,7 @@
 package br.ufpr.tcc.backend_lab.application.usecase;
 
 import br.ufpr.tcc.backend_lab.application.dto.request.PublicarRelatorioRequest;
+import br.ufpr.tcc.backend_lab.application.dto.request.AtualizarStatusEnsaioRequest;
 import br.ufpr.tcc.backend_lab.application.dto.response.RelatorioDtos;
 import br.ufpr.tcc.backend_lab.application.service.DisponibilidadeRelatorios;
 import br.ufpr.tcc.backend_lab.domain.exception.ConflitoRelatorioException;
@@ -9,6 +10,7 @@ import br.ufpr.tcc.backend_lab.domain.exception.RelatorioNaoEncontradoException;
 import br.ufpr.tcc.backend_lab.domain.model.entity.PerfilUsuario;
 import br.ufpr.tcc.backend_lab.domain.model.enums.StatusValidacaoRelatorio;
 import br.ufpr.tcc.backend_lab.domain.repository.RelatorioTecnicoRepository;
+import br.ufpr.tcc.backend_lab.domain.repository.ExecucaoEnsaioRepository;
 import br.ufpr.tcc.backend_lab.domain.repository.UsuarioRepository;
 import java.time.OffsetDateTime;
 import java.time.ZoneOffset;
@@ -20,12 +22,17 @@ public class PublicarRelatorioUseCase {
     private final RelatorioTecnicoRepository relatorios;
     private final UsuarioRepository usuarios;
     private final DisponibilidadeRelatorios disponibilidade;
+    private final ExecucaoEnsaioRepository ensaios;
+    private final AtualizarStatusEnsaioUseCase atualizarStatus;
 
     public PublicarRelatorioUseCase(RelatorioTecnicoRepository relatorios,
-            UsuarioRepository usuarios, DisponibilidadeRelatorios disponibilidade) {
+            UsuarioRepository usuarios, DisponibilidadeRelatorios disponibilidade,
+            ExecucaoEnsaioRepository ensaios, AtualizarStatusEnsaioUseCase atualizarStatus) {
         this.relatorios = relatorios;
         this.usuarios = usuarios;
         this.disponibilidade = disponibilidade;
+        this.ensaios = ensaios;
+        this.atualizarStatus = atualizarStatus;
     }
 
     @Transactional
@@ -39,6 +46,10 @@ public class PublicarRelatorioUseCase {
             throw new DadosRelatorioInvalidosException("Técnico autenticado não identificado");
         }
         long id = ObterRelatorioUseCase.id(reportId);
+        var referencia = relatorios.findById(id)
+                .orElseThrow(() -> new RelatorioNaoEncontradoException("Relatório não encontrado"));
+        var ensaio = ensaios.buscarParaEditar(referencia.getExecucao().getId())
+                .orElseThrow(() -> new RelatorioNaoEncontradoException("Ensaio do relatório não encontrado"));
         var relatorio = relatorios.buscarParaValidacao(id)
                 .orElseThrow(() -> new RelatorioNaoEncontradoException("Relatório não encontrado"));
         if (request.version() != relatorio.getVersion()) {
@@ -70,6 +81,9 @@ public class PublicarRelatorioUseCase {
         relatorio.setPublishedAt(OffsetDateTime.now(ZoneOffset.UTC));
         relatorio.setPublishedBy(tecnico);
         relatorios.saveAndFlush(relatorio);
+        atualizarStatus.executar(ensaio.getId().toString(),
+                new AtualizarStatusEnsaioRequest("set-status", "report-published",
+                        "Relatório publicado para o cliente", ensaio.getVersion()), tecnicoId);
         return RelatorioDtos.publicacao(relatorio);
     }
 }

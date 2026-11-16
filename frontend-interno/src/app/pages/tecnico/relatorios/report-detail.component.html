@@ -23,6 +23,7 @@
     <div class="report-notice report-notice--success" role="status">
       <mat-icon aria-hidden="true">public</mat-icon>
       <p>{{ publicationMessage() }}</p>
+      <a mat-button [routerLink]="['/tecnico/ensaios', currentReport.test.id, 'status']">Ver status do ensaio</a>
     </div>
   }
   @if (publicationConflict()) {
@@ -118,10 +119,10 @@
         <p>{{ currentReport.validationStatus === 'pending-validation' ? 'O PDF de rascunho apresenta o conteúdo atual para revisão.' : 'O PDF validado contém o conteúdo preservado na validação.' }}</p>
       }
       @if (currentReport.validationStatus === 'validated' && !currentReport.published) {
-        <p>{{ currentReport.pdfAvailable ? 'A publicação é uma ação separada e não altera o status técnico do ensaio.' : 'O PDF validado não está acessível. A publicação fica bloqueada até o documento estar disponível.' }}</p>
+        <p>{{ currentReport.pdfAvailable ? 'A publicação disponibiliza o PDF ao cliente e atualiza o ensaio para Relatório publicado.' : 'O PDF validado não está acessível. A publicação fica bloqueada até o documento estar disponível.' }}</p>
       }
       @if (currentReport.published && currentReport.pdfAvailable) {
-        <p>Este relatório está publicado e seu PDF validado está acessível ao cliente. A etapa técnica do ensaio é alterada separadamente.</p>
+        <p>Este relatório está publicado e seu PDF validado está acessível ao cliente. O status do ensaio foi atualizado na publicação e pode ser alterado posteriormente.</p>
       } @else if (currentReport.published) {
         <p>O registro de publicação existe, mas o PDF não está acessível no momento.</p>
       }

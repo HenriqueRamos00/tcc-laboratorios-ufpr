@@ -8,6 +8,7 @@ import br.ufpr.tcc.backend_lab.domain.model.entity.PerfilUsuario;
 import br.ufpr.tcc.backend_lab.domain.model.entity.Usuario;
 import br.ufpr.tcc.backend_lab.domain.repository.ClienteRepository;
 import br.ufpr.tcc.backend_lab.domain.repository.UsuarioRepository;
+import java.util.List;
 
 import lombok.RequiredArgsConstructor;
 
@@ -38,10 +39,22 @@ public class AcessoClienteAtual {
     }
 
     public void autorizar(Cliente cliente, Empresa empresa) {
-        if (!empresa.isAtivo()
-                || cliente.getEmpresas().stream()
-                        .noneMatch(e -> e.getId().equals(empresa.getId()))) {
-            throw RegraNegocioException.acessoNegado("Sem permissão para este orçamento");
+        if (!estaVinculadoA(cliente, empresa)) {
+            throw RegraNegocioException.acessoNegado("Sem permissão para esta empresa");
         }
+    }
+
+    public List<Long> idsEmpresasAtivas(Cliente cliente) {
+        return cliente.getEmpresas().stream()
+                .filter(Empresa::isAtivo)
+                .map(Empresa::getId)
+                .distinct()
+                .toList();
+    }
+
+    public boolean estaVinculadoA(Cliente cliente, Empresa empresa) {
+        return empresa != null && empresa.isAtivo()
+                && cliente.getEmpresas().stream()
+                        .anyMatch(vinculada -> vinculada.getId().equals(empresa.getId()));
     }
 }

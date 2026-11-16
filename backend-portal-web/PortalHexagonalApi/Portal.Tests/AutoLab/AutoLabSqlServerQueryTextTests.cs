@@ -1,7 +1,10 @@
+using System.Text.RegularExpressions;
+
 using Microsoft.EntityFrameworkCore;
 
 using Portal.Adapters.AutoLab;
 using Portal.Api.AutoLab;
+using Portal.Application.LabResults;
 using Portal.Application.Paging;
 using Portal.Application.Visibility;
 
@@ -22,6 +25,7 @@ public sealed class AutoLabSqlServerQueryTextTests
     private static readonly string[] Names =
     [
         "EquipmentKeys",
+        "EquipmentKeysOfSearch",
         "RowsOfEquipmentKeys",
         "ProtocolsOfEquipment",
         "RowsOfProtocols",
@@ -55,6 +59,7 @@ public sealed class AutoLabSqlServerQueryTextTests
 
     [Theory]
     [InlineData("EquipmentKeys")]
+    [InlineData("EquipmentKeysOfSearch")]
     [InlineData("RowsOfEquipmentKeys")]
     [InlineData("ProtocolsOfEquipment")]
     [InlineData("RowsOfProtocols")]
@@ -79,12 +84,13 @@ public sealed class AutoLabSqlServerQueryTextTests
     public void TheIdentityLookupsKeepAComparisonOnTheBareColumn(string name, string column)
     {
         Assert.Matches(
-            new System.Text.RegularExpressions.Regex(@"\[\w+\]\.\[" + column + @"\] (=|IN) "),
+            new Regex(@"\[\w+\]\.\[" + column + @"\] (=|IN) "),
             SqlOf(name));
     }
 
     [Theory]
     [InlineData("EquipmentKeys")]
+    [InlineData("EquipmentKeysOfSearch")]
     [InlineData("ProtocolsOfEquipment")]
     [InlineData("Reports")]
     public void ThePagedKeysUseADeterministicOffsetFetch(string name)
@@ -94,6 +100,49 @@ public sealed class AutoLabSqlServerQueryTextTests
         Assert.Contains("ORDER BY", sql, StringComparison.Ordinal);
         Assert.Contains("OFFSET", sql, StringComparison.Ordinal);
         Assert.Contains("FETCH NEXT", sql, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void TheSearchIsAnEscapedCaseInsensitiveLikeOverTheThreeColumns()
+    {
+        string sql = SqlOf("EquipmentKeysOfSearch");
+
+        _output.WriteLine(sql);
+
+        const string like = @" COLLATE Latin1_General_CI_AS LIKE @\w+ ESCAPE N'\\'";
+
+        Assert.Matches(new Regex(@"\[\w+\]\.\[NumSerie\]" + like), sql);
+        Assert.Matches(new Regex(@"\[\w+\]\.\[Identificacao\]" + like), sql);
+        Assert.Matches(new Regex(@"\[\w+\]\.\[Tag\]" + like), sql);
+        Assert.Equal(3, Regex.Count(sql, @"ESCAPE N'\\'"));
+        Assert.Matches(new Regex(@"LEFT JOIN \(\s*SELECT DISTINCT [^\n]+\s+FROM \[dbo\]\.\[Equipamentos\]"), sql);
+        Assert.DoesNotContain("EXISTS", sql, StringComparison.Ordinal);
+        Assert.Equal(1, Regex.Count(sql, @"\[dbo\]\.\[vwDadosEnsaios\]"));
+        Assert.Matches(new Regex(@"HAVING [^\n]*MAX\(CASE"), sql);
+        Assert.Contains("[EmpresaTrafo]", sql, StringComparison.Ordinal);
+        Assert.DoesNotContain("CHARINDEX", sql, StringComparison.Ordinal);
+        Assert.DoesNotContain("TR[_]%", sql, StringComparison.Ordinal);
+        Assert.Contains(@"%TR\[\_\%\\%", sql, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void ThePatternOfTheLongestSearchIsNotCutToTheSizeOfTheColumn()
+    {
+        string sql = SqlOf("EquipmentKeysOfLongestSearch");
+
+        string pattern = "%" + string.Concat(Enumerable.Repeat(@"\_", EquipmentSearch.MaxLength)) + "%";
+
+        Assert.Contains("nvarchar(4000) = N'" + pattern + "'", sql, StringComparison.Ordinal);
+        Assert.DoesNotContain("nvarchar(100) = N'%", sql, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void TheListingWithoutSearchDoesNotTouchTheRegistryNorUseLike()
+    {
+        string sql = SqlOf("EquipmentKeys");
+
+        Assert.DoesNotContain("LIKE", sql, StringComparison.Ordinal);
+        Assert.DoesNotContain("Equipamentos", sql, StringComparison.Ordinal);
     }
 
     [Fact]
@@ -147,6 +196,13 @@ public sealed class AutoLabSqlServerQueryTextTests
         Assert.DoesNotContain(problems, problem => problem.Contains("segredo", StringComparison.Ordinal));
     }
 
+    private static EquipmentSearch SearchFor(string text)
+    {
+        Assert.True(EquipmentSearch.TryCreate(text, out EquipmentSearch? search));
+
+        return search!;
+    }
+
     private static string SqlOf(string name)
     {
         using AutoLabDbContext database = new(new DbContextOptionsBuilder<AutoLabDbContext>()
@@ -159,7 +215,9 @@ public sealed class AutoLabSqlServerQueryTextTests
 
         return name switch
         {
-            "EquipmentKeys" => AutoLabQueries.EquipmentKeys(database, company).OnlyThePage(page).ToQueryString(),
+            "EquipmentKeys" => AutoLabQueries.EquipmentKeys(database, company, null).OnlyThePage(page).ToQueryString(),
+            "EquipmentKeysOfLongestSearch" => AutoLabQueries.EquipmentKeys(database, company, SearchFor(new string('_', EquipmentSearch.MaxLength))).OnlyThePage(page).ToQueryString(),
+            "EquipmentKeysOfSearch" => AutoLabQueries.EquipmentKeys(database, company, SearchFor("TR[_%\\")).OnlyThePage(page).ToQueryString(),
             "RowsOfEquipmentKeys" => AutoLabQueries.RowsOfEquipmentKeys(database, company, values, 5001).ToQueryString(),
             "ProtocolsOfEquipment" => AutoLabQueries.ProtocolsOfEquipment(database, company, "571289").OnlyThePage(page).ToQueryString(),
             "RowsOfProtocols" => AutoLabQueries.RowsOfProtocols(database, company, values, 5001).ToQueryString(),
@@ -169,7 +227,7 @@ public sealed class AutoLabSqlServerQueryTextTests
             "SignedDocumentOf" => AutoLabQueries.SignedDocumentOf(database, "LACTEC-02272/2026").ToQueryString(),
             "IdentificationsWithSignedDocument" => AutoLabQueries.IdentificationsWithSignedDocument(database, values, 501).ToQueryString(),
             "CurrentIssueOf" => AutoLabQueries.CurrentIssueOf(database, "LACTEC-02272/2026").ToQueryString(),
-            "Reports" => AutoLabQueries.Reports(database, VisibilityScope.All, "EAQ_2026_45499_V_1").OnlyThePage(page).ToQueryString(),
+            "Reports" => AutoLabQueries.Reports(database, VisibilityScope.All, "2026_45499").OnlyThePage(page).ToQueryString(),
             "SignedDocumentOfReport" => AutoLabQueries.SignedDocumentOfReport(database, company, Guid.Empty).ToQueryString(),
             _ => throw new ArgumentOutOfRangeException(nameof(name))
         };

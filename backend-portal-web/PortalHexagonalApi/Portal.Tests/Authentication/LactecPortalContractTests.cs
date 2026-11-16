@@ -247,6 +247,12 @@ public sealed class LactecPortalContractTests
     [InlineData("PortalJwt:SigningKey", "not-base64")]
     [InlineData("PortalJwt:SigningKey", "YQ==")]
     [InlineData("PortalJwt:ExpirationSeconds", "0")]
+    [InlineData("Salesforce:Url", "")]
+    [InlineData("Salesforce:Url", "/services/oauth2/token")]
+    [InlineData("Salesforce:Url", "ftp://salesforce.test/")]
+    [InlineData("Salesforce:GrantType", "")]
+    [InlineData("Salesforce:ClientId", "")]
+    [InlineData("Salesforce:ClientSecret", " ")]
     public void ConfiguracaoIncompletaImpedeInicializacao(string key, string value)
     {
         using var backend = new AuthHandler(HttpStatusCode.OK, Identity);
@@ -431,6 +437,12 @@ internal sealed class AuthPortal(HttpMessageHandler handler, string? overrideKey
         builder.UseSetting("PortalJwt:Issuer", "portal-test");
         builder.UseSetting("PortalJwt:Audience", "portal-web-test");
         builder.UseSetting("PortalJwt:SigningKey", SigningKey);
+        // Sem dados de demonstracao, lactec exige o Salesforce na inicializacao. Os testes que
+        // consultam o Salesforce trocam o HTTP; estes valores so passam pela validacao.
+        builder.UseSetting("Salesforce:Url", "https://salesforce.test/");
+        builder.UseSetting("Salesforce:GrantType", "client_credentials");
+        builder.UseSetting("Salesforce:ClientId", "client-id-test");
+        builder.UseSetting("Salesforce:ClientSecret", "client-secret-test");
         if (overrideKey is not null) builder.UseSetting(overrideKey, overrideValue);
         builder.ConfigureTestServices(services => services
             .AddHttpClient<IClientAuthenticator, BackendAuthAdapter>().ConfigurePrimaryHttpMessageHandler(() => handler));

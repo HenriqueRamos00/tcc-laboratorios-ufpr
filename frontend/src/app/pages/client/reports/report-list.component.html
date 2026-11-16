@@ -55,32 +55,15 @@
         title="Não foi possível carregar os relatórios no momento"
         descricao="A consulta ao AutoLAB falhou. Tente novamente em instantes."
       />
-    } @else if (reports() === null) {
-      <p class="mt-4 text-sm text-lactec-muted" role="status">Carregando relatórios…</p>
-    } @else if (visibleReports().length) {
+    } @else {
       <app-report-table
         class="mt-4"
         caption="Laudos publicados, com solicitação, amostra, laboratório, situação e data de publicação."
+        emptyDescription="Revise o ID informado na busca."
         [reports]="visibleReports()"
-      />
-    } @else {
-      <app-empty-state
-        class="mt-4"
-        icon="search_off"
-        title="Nenhum relatório encontrado"
-        descricao="Revise o ID informado na busca."
-      />
-    }
-
-    @if (!reportsFailed() && reportTotal() > 0) {
-      <app-pagination
-        class="mt-4"
-        label="Paginação dos relatórios"
-        [page]="reportPage()"
-        [pageSize]="pageSize"
         [total]="reportTotal()"
-        [disabled]="reportsLoading()"
-        (pageChange)="goToReportPage($event)"
+        [loading]="reportsLoading()"
+        [(query)]="reportQuery"
       />
     }
   </section>
@@ -163,6 +146,18 @@
         icon="search_off"
         title="Nenhum orçamento com relatório publicado"
         descricao="Quando um laudo for publicado, o orçamento dele aparece aqui."
+      />
+    }
+
+    @if (!quotesFailed() && quoteTotal() > quotePageSize) {
+      <app-pagination
+        class="mt-4"
+        label="Paginação dos orçamentos"
+        [page]="quotePage()"
+        [pageSize]="quotePageSize"
+        [total]="quoteTotal()"
+        [disabled]="quotesLoading()"
+        (pageChange)="goToQuotePage($event)"
       />
     }
   </section>

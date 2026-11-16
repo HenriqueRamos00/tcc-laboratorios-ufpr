@@ -22,6 +22,7 @@ import { MatIconModule } from '@angular/material/icon';
                focus:border-lactec-primary focus:outline-none"
         [attr.aria-label]="label()"
         [placeholder]="placeholder()"
+        [attr.maxlength]="maxLength()"
         [ngModel]="termo()"
         (ngModelChange)="termo.set($event)"
       />
@@ -33,4 +34,5 @@ export class SearchFieldComponent {
   readonly termo = model('');
   readonly placeholder = input('Pesquisar...');
   readonly label = input('Pesquisar');
+  readonly maxLength = input<number | null>(null);
 }

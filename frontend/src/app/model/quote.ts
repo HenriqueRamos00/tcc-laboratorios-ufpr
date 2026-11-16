@@ -6,6 +6,7 @@ export type Quote = {
   name: string;
   status: string;
   stage: string;
+  laboratoryStage?: string | null;
   description: string;
   companyName: string;
   protocol?: string;
