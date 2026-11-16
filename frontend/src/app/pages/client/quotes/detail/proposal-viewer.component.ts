@@ -18,8 +18,11 @@ import {
 import { catchError, EMPTY, switchMap, tap } from 'rxjs';
 
 import { EmptyStateComponent } from '@shared/components/empty-state/empty-state.component';
+import { LoadingRegionComponent } from '@shared/components/skeleton/loading-region.component';
 
 import { QuotesService } from '@/app/services/quotes.service';
+
+import { ProposalSkeletonComponent } from './proposal-skeleton.component';
 
 // Um PDF pode trazer JavaScript dentro do arquivo, e proposta comercial não
 // precisa executar nada. A biblioteca já entrega desligado; a linha fica
@@ -50,7 +53,13 @@ pdfDefaultOptions.assetsFolder = 'assets';
 @Component({
   selector: 'app-proposal-viewer',
   standalone: true,
-  imports: [NgxExtendedPdfViewerModule, MatIconModule, EmptyStateComponent],
+  imports: [
+    NgxExtendedPdfViewerModule,
+    MatIconModule,
+    EmptyStateComponent,
+    LoadingRegionComponent,
+    ProposalSkeletonComponent,
+  ],
   host: {
     class: 'block',
     '(document:keydown.escape)': 'leaveFullScreen()',
@@ -108,9 +117,9 @@ pdfDefaultOptions.assetsFolder = 'assets';
           descricao="O documento não respondeu. Tente de novo em instantes ou baixe o PDF para ler fora do portal."
         />
       } @else {
-        <p class="m-0 px-3 py-12 text-center text-sm text-lactec-muted" role="status">
-          Carregando a proposta…
-        </p>
+        <app-loading-region label="Carregando a proposta…">
+          <app-proposal-skeleton [framed]="false" [height]="viewerHeight()" />
+        </app-loading-region>
       }
     </div>
   `,

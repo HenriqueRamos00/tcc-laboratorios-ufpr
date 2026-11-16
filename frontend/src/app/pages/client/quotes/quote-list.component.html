@@ -67,7 +67,11 @@
     </div>
   </div>
 
-  <div class="flex flex-col gap-4 md:gap-5">
+  <div
+    class="flex flex-col gap-4 md:gap-5"
+    [class.opacity-60]="loading() && visible.length > 0"
+    [attr.aria-busy]="loading() ? 'true' : null"
+  >
     @for (quote of visible; track quote.id) {
       @let badge = badgeFor(quote.status);
 
@@ -135,7 +139,15 @@
         </div>
       </article>
     } @empty {
-      @if (loadError()) {
+      @if (firstLoad()) {
+        <app-loading-region label="Carregando orçamentos…">
+          <div class="flex flex-col gap-4 md:gap-5">
+            @for (card of cardPlaceholders; track card) {
+              <app-quote-card-skeleton [actions]="2" />
+            }
+          </div>
+        </app-loading-region>
+      } @else if (loadError()) {
         <p class="text-lactec-muted text-sm">
           Não foi possível carregar os orçamentos. Tente novamente mais tarde.
         </p>

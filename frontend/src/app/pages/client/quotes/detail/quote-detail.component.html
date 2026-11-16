@@ -110,5 +110,30 @@
     descricao="A consulta ao Salesforce falhou. Tente novamente em instantes."
   />
 } @else {
-  <p class="text-sm text-lactec-muted" role="status">Carregando orçamento…</p>
+  <app-loading-region label="Carregando orçamento…">
+    <app-page-header-skeleton [breadcrumbs]="true" [subtitle]="true" />
+
+    <div class="mt-5 flex h-7 items-center md:h-8">
+      <app-skeleton class="h-5 w-96 max-w-full md:h-6" />
+    </div>
+
+    <div class="mt-4 rounded-2xl border border-lactec-line bg-lactec-paper p-6">
+      <div class="flex flex-wrap items-center justify-between gap-3">
+        <app-skeleton class="my-0.5 h-5 w-64 max-w-full" />
+        <app-skeleton class="h-7 w-44 md:h-8" />
+      </div>
+
+      <app-skeleton class="mt-5 mb-2 h-6 w-24" />
+      <app-skeleton class="my-0.5 h-4 w-full" />
+      <app-skeleton class="my-0.5 h-4 w-2/3" />
+
+      <app-proposal-skeleton class="mt-4" />
+
+      <div class="mt-6 flex flex-col gap-3 sm:flex-row sm:justify-end">
+        <app-skeleton class="h-11 w-full sm:w-36" shape="block" />
+        <app-skeleton class="h-11 w-full sm:w-44" shape="block" />
+        <app-skeleton class="h-11 w-full sm:w-44" shape="block" />
+      </div>
+    </div>
+  </app-loading-region>
 }

@@ -27,6 +27,13 @@ import { readableDate } from '@shared/brazilian-date';
 import { handFileToTheBrowser } from '@shared/file-download';
 import { EmptyStateComponent } from '@shared/components/empty-state/empty-state.component';
 import { PageHeaderComponent } from '@shared/components/page-header/page-header.component';
+import { LoadingRegionComponent } from '@shared/components/skeleton/loading-region.component';
+import { PageHeaderSkeletonComponent } from '@shared/components/skeleton/page-header-skeleton.component';
+import { SkeletonComponent } from '@shared/components/skeleton/skeleton.component';
+import {
+  skeletonIndexes,
+  TableSkeletonComponent,
+} from '@shared/components/skeleton/table-skeleton.component';
 import { DataUnavailableComponent } from '@shared/components/data-unavailable/data-unavailable.component';
 import { DataTableActionsDirective } from '@shared/components/data-table/data-table-actions.directive';
 import { DataTableComponent } from '@shared/components/data-table/data-table.component';
@@ -74,6 +81,10 @@ const HISTORY_COLUMNS: readonly DataTableColumn<HistoryRow>[] = [
   { key: 'status', header: 'Status' },
 ];
 
+const NAMEPLATE_CARD_COUNT = 10;
+
+const HISTORY_MINIMUM_ROWS = 5;
+
 const DOWNLOAD_FAILURE =
   'Não foi possível baixar o relatório agora. Tente novamente em instantes.';
 
@@ -114,6 +125,10 @@ function historyRow(report: EquipmentReport): HistoryRow {
     DataUnavailableComponent,
     DataTableComponent,
     DataTableActionsDirective,
+    LoadingRegionComponent,
+    PageHeaderSkeletonComponent,
+    SkeletonComponent,
+    TableSkeletonComponent,
   ],
   templateUrl: './equipment-detail.component.html',
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -132,6 +147,8 @@ export class EquipmentDetailComponent {
   protected readonly unavailable = signal(false);
   protected readonly historyColumns = HISTORY_COLUMNS;
   protected readonly historyQuery = signal(unmeasuredQuery());
+  protected readonly historyMinimumRows = HISTORY_MINIMUM_ROWS;
+  protected readonly cardPlaceholders = skeletonIndexes(NAMEPLATE_CARD_COUNT);
 
   /** Identificador do relatório cujo arquivo está sendo buscado agora. */
   protected readonly downloading = signal<string | null>(null);

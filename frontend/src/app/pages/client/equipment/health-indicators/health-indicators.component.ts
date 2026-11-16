@@ -10,6 +10,7 @@ import { readableDate } from '@shared/brazilian-date';
 import { ClassificationBadgeComponent } from '@shared/components/classification-badge/classification-badge.component';
 import { ConformityGaugeComponent } from '@shared/components/conformity-gauge/conformity-gauge.component';
 import { EmptyStateComponent } from '@shared/components/empty-state/empty-state.component';
+import { LoadingRegionComponent } from '@shared/components/skeleton/loading-region.component';
 import {
   LineChartComponent,
   type ChartSeries,
@@ -92,6 +93,10 @@ function measuredValueText(valor: MeasuredValue): string {
 }
 
 import { DiagnosticMethodsComponent } from './diagnostic-methods/diagnostic-methods.component';
+import {
+  HealthIndicatorsSkeletonComponent,
+  type HealthSkeletonLayout,
+} from './health-indicators-skeleton.component';
 
 @Component({
   selector: 'app-indicadores',
@@ -107,6 +112,8 @@ import { DiagnosticMethodsComponent } from './diagnostic-methods/diagnostic-meth
     LineChartComponent,
     ConformityBannerComponent,
     DataUnavailableComponent,
+    LoadingRegionComponent,
+    HealthIndicatorsSkeletonComponent,
   ],
   templateUrl: './health-indicators.component.html',
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -145,6 +152,10 @@ export class HealthIndicatorsComponent {
   });
 
   protected readonly gasSubTab = signal<GasSubTab>('criterios');
+
+  protected readonly skeletonLayout = computed<HealthSkeletonLayout>(() =>
+    this.activeTab() === 'gases' ? this.gasSubTab() : 'fisico-quimico',
+  );
 
   private readonly query = computed(() => ({
     id: this.id(),

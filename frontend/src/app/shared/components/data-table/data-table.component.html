@@ -53,11 +53,9 @@
             }
           </tr>
         } @empty {
-          <tr class="border-t border-lactec-line-soft">
-            <td class="px-6 py-10 text-center" [attr.colspan]="columnCount()">
-              @if (loading()) {
-                <p class="m-0 text-sm text-lactec-muted" role="status">{{ loadingMessage() }}</p>
-              } @else {
+          @if (!loading()) {
+            <tr class="border-t border-lactec-line-soft">
+              <td class="px-6 py-10 text-center" [attr.colspan]="columnCount()">
                 <div class="flex flex-col items-center gap-2" role="status">
                   <mat-icon class="icone-36 text-lactec-faint" aria-hidden="true">
                     {{ emptyIcon() }}
@@ -67,11 +65,33 @@
                     <p class="m-0 max-w-prose text-sm text-lactec-muted">{{ emptyDescription() }}</p>
                   }
                 </div>
-              }
-            </td>
-          </tr>
+              </td>
+            </tr>
+          }
         }
       </tbody>
+      @if (skeletonRows().length) {
+        <tbody data-skeleton [appSkeletonPlaceholder]="loadingMessage()">
+          @for (row of skeletonRows(); track row) {
+            <tr class="border-t border-lactec-line-soft" [style.height.px]="rowHeight()">
+              @for (column of columns(); track column.key; let position = $index) {
+                <td class="px-4 py-1.5">
+                  <app-skeleton
+                    class="h-4"
+                    [class]="skeletonWidthClass(row, position)"
+                    [class.ml-auto]="column.align === 'end'"
+                  />
+                </td>
+              }
+              @if (actions()) {
+                <td class="px-4 py-1.5">
+                  <app-skeleton class="ml-auto h-6 w-24" />
+                </td>
+              }
+            </tr>
+          }
+        </tbody>
+      }
     </table>
   </div>
 

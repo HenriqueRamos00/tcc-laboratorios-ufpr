@@ -59,7 +59,7 @@
       loadingMessage="Carregando histórico…"
       emptyIcon="science"
       emptyTitle="Não há histórico de análises disponível para este equipamento"
-      [minimumRows]="5"
+      [minimumRows]="historyMinimumRows"
       [columns]="historyColumns"
       [rows]="visible()"
       [trackBy]="trackById"
@@ -113,5 +113,34 @@
     descricao="A consulta falhou. Tente novamente em instantes."
   />
 } @else {
-  <p class="text-sm text-lactec-muted" role="status">Carregando equipamento…</p>
+  <app-loading-region label="Carregando equipamento…">
+    <app-page-header-skeleton [breadcrumbs]="true">
+      <app-skeleton class="h-9 w-56" shape="block" />
+    </app-page-header-skeleton>
+
+    <div class="mt-6 rounded-2xl border border-lactec-line bg-lactec-paper p-6">
+      <div class="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+        @for (card of cardPlaceholders; track card) {
+          <div class="flex items-center gap-4 rounded-lg border border-lactec-line-soft px-4 py-4">
+            <app-skeleton class="h-11 w-11 shrink-0" shape="round" />
+            <div class="min-w-0">
+              <app-skeleton class="my-0.5 h-4 w-28" />
+              <app-skeleton class="my-0.5 h-5 w-36" />
+            </div>
+          </div>
+        }
+      </div>
+    </div>
+
+    <div class="mt-6">
+      <div class="flex h-7 items-center">
+        <app-skeleton class="h-5 w-56" />
+      </div>
+      <app-table-skeleton
+        class="mt-4"
+        [columns]="historyColumns.length + 1"
+        [rows]="historyMinimumRows"
+      />
+    </div>
+  </app-loading-region>
 }

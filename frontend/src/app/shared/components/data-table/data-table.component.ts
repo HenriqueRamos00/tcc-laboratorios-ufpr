@@ -18,6 +18,12 @@ import {
 import { MatIconModule } from '@angular/material/icon';
 
 import { DataUnavailableComponent } from '@shared/components/data-unavailable/data-unavailable.component';
+import { SkeletonPlaceholderDirective } from '@shared/components/skeleton/skeleton-placeholder.directive';
+import { SkeletonComponent } from '@shared/components/skeleton/skeleton.component';
+import {
+  skeletonCellWidthClass,
+  skeletonIndexes,
+} from '@shared/components/skeleton/table-skeleton.component';
 import {
   PaginationComponent,
   type PageSizeOption,
@@ -40,7 +46,14 @@ const AUTOMATIC = 'auto';
 @Component({
   selector: 'app-data-table',
   standalone: true,
-  imports: [NgTemplateOutlet, MatIconModule, DataUnavailableComponent, PaginationComponent],
+  imports: [
+    NgTemplateOutlet,
+    MatIconModule,
+    DataUnavailableComponent,
+    PaginationComponent,
+    SkeletonComponent,
+    SkeletonPlaceholderDirective,
+  ],
   templateUrl: './data-table.component.html',
   host: { class: 'block min-w-0' },
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -94,6 +107,12 @@ export class DataTableComponent<T> {
     () => this.columns().length + (this.actions() ? 1 : 0),
   );
 
+  protected readonly skeletonRows = computed(() =>
+    this.loading() && this.rows().length === 0
+      ? skeletonIndexes(Math.min(this.pageSize(), this.fittingRows()))
+      : [],
+  );
+
   private readonly cellTemplates = computed(
     () => new Map(this.cells().map((cell) => [cell.key(), cell.template])),
   );
@@ -121,6 +140,10 @@ export class DataTableComponent<T> {
     if (column.value) return column.value(row);
     const value = (row as Record<string, unknown>)[column.key];
     return typeof value === 'string' || typeof value === 'number' ? value : null;
+  }
+
+  protected skeletonWidthClass(row: number, column: number): string {
+    return skeletonCellWidthClass(row, column);
   }
 
   protected goToPage(page: number): void {
