@@ -11,7 +11,7 @@
       data-tour="equipamento-indicadores"
       [routerLink]="['/cliente/equipamentos', data.id, 'indicadores']"
       class="inline-flex items-center gap-2 rounded-lg bg-lactec-primary px-4 py-2 text-sm
-             font-semibold text-lactec-on-primary hover:bg-lactec-primary-dark"
+             font-semibold text-lactec-on-primary hover:bg-lactec-primary-strong"
     >
       Ver Indicadores de Saúde
       <mat-icon class="icone-16" aria-hidden="true">arrow_forward</mat-icon>
@@ -54,7 +54,7 @@
   </section>
 
   <section class="mt-6">
-    <h2 class="display m-0 text-xl font-semibold text-lactec-ink">Histórico de Relatórios</h2>
+    <h2 class="font-display tracking-display m-0 text-xl font-semibold text-lactec-ink">Histórico de Relatórios</h2>
 
     <app-data-table
       data-tour="equipamento-historico"
@@ -85,7 +85,7 @@
               [routerLink]="['/cliente/equipamentos', data.id, 'indicadores', row.id]"
               [queryParams]="{ aba: row.tab }"
               class="inline-flex items-center rounded-lg bg-lactec-primary px-3 py-2 text-xs
-                     font-semibold text-lactec-on-primary hover:bg-lactec-primary-dark"
+                     font-semibold text-lactec-on-primary hover:bg-lactec-primary-strong"
               [class.h-11]="compact"
               [class.w-full]="compact"
               [class.justify-center]="compact"

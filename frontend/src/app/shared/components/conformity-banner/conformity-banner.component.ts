@@ -29,8 +29,7 @@ const NOT_ASSESSED_COLOR_PAIR = 'bg-lactec-line-soft text-lactec-ink-soft';
   host: { class: 'block' },
   template: `
     <span
-      class="display block w-full px-3 py-1.5 text-center text-sm font-semibold
-             tracking-wide uppercase"
+      class="font-display tracking-display block w-full px-3 py-1.5 text-center text-sm font-semibold uppercase"
       [class]="colorPair()"
     >
       @if (label(); as text) {

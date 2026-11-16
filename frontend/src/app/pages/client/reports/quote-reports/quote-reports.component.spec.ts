@@ -125,26 +125,26 @@ describe('QuoteReportsComponent, os laudos de um orçamento só', () => {
 
   it('a etapa destacada é a etapa real do orçamento', fakeAsync(() => {
     const publicado = montarTela('quote-15').tela;
-    expect(publicado.querySelector('.status-stepper__step[data-state="active"]')?.textContent)
+    expect(publicado.querySelector('[role="listitem"][data-state="active"]')?.textContent)
       .toContain('Relatório publicado');
 
     TestBed.resetTestingModule();
     const elaborando = montarTela('quote-18').tela;
-    expect(elaborando.querySelector('.status-stepper__step[data-state="active"]')?.textContent)
+    expect(elaborando.querySelector('[role="listitem"][data-state="active"]')?.textContent)
       .toContain('Elaborando relatório');
   }));
 
   it('a etapa do laboratório é a destacada quando está à frente da comercial', fakeAsync(() => {
     const { tela } = montarTela('quote-20');
 
-    expect(tela.querySelector('.status-stepper__step[data-state="active"]')?.textContent)
+    expect(tela.querySelector('[role="listitem"][data-state="active"]')?.textContent)
       .toContain('Validado');
   }));
 
   it('etapa de laboratório desconhecida é ignorada, e vale a comercial', fakeAsync(() => {
     const { tela } = montarTela('quote-21');
 
-    expect(tela.querySelector('.status-stepper__step[data-state="active"]')?.textContent)
+    expect(tela.querySelector('[role="listitem"][data-state="active"]')?.textContent)
       .toContain('Aprovado pelo cliente');
   }));
 

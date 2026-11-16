@@ -5,19 +5,19 @@
     [breadcrumbs]="breadcrumbs()"
   />
 
-  <h2 class="display mt-5 text-xl font-semibold text-lactec-nav md:text-2xl">
+  <h2 class="font-display tracking-display mt-5 text-xl font-semibold text-lactec-primary-deep md:text-2xl">
     Detalhes do Orçamento: {{ data.name }}
   </h2>
 
   <section class="mt-4 rounded-lactec-panel border border-lactec-line bg-lactec-paper p-6">
     <div data-tour="orcamento-resumo" class="flex flex-wrap items-baseline justify-between gap-3">
       <p class="m-0 text-base text-lactec-ink">Cliente: {{ data.companyName }}</p>
-      <p class="display m-0 text-xl font-semibold text-lactec-ink md:text-2xl">
+      <p class="font-display tracking-display m-0 text-xl font-semibold text-lactec-ink md:text-2xl">
         Total: {{ total() }}
       </p>
     </div>
 
-    <h3 class="display mt-5 mb-2 text-base font-semibold text-lactec-ink">Detalhes</h3>
+    <h3 class="font-display tracking-display mt-5 mb-2 text-base font-semibold text-lactec-ink">Detalhes</h3>
     <p class="m-0 text-sm text-lactec-ink-soft">
       {{
         data.description ||

@@ -174,7 +174,7 @@ const ESPERA_MAXIMA_PELA_LARGADA_EM_MS = 150;
       }
 
       @if (assessed()) {
-        <p class="display m-0 text-xl font-semibold tracking-wide text-lactec-ink">
+        <p class="font-display tracking-display m-0 text-xl font-semibold text-lactec-ink">
           @if (verdict(); as verdictText) {
             {{ verdictText }}
           } @else {

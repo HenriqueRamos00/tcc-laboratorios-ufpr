@@ -102,7 +102,7 @@ const dataPipe = new DataPipe();
         <button
           type="button"
           class="inline-flex h-10 items-center justify-center gap-2 rounded-lg
-                 bg-lactec-nav text-lactec-on-primary hover:bg-lactec-nav-dark
+                 bg-lactec-primary-deep text-lactec-on-primary hover:bg-lactec-primary-deep-strong
                  disabled:opacity-40"
           [class.w-10]="!compact"
           [class.h-11]="compact"

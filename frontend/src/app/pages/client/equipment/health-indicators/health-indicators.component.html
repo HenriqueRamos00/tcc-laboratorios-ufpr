@@ -13,8 +13,8 @@
       <span class="hidden text-xs text-lactec-muted md:block">Baixar relatório</span>
       <button
         type="button"
-        class="flex h-11 w-full items-center justify-center gap-2 rounded-lg bg-lactec-nav
-               text-lactec-on-primary hover:bg-lactec-nav-dark md:w-11"
+        class="flex h-11 w-full items-center justify-center gap-2 rounded-lg bg-lactec-primary-deep
+               text-lactec-on-primary hover:bg-lactec-primary-deep-strong md:w-11"
         aria-label="Baixar relatório histórico dos indicadores"
       >
         <mat-icon aria-hidden="true">download</mat-icon>
@@ -211,7 +211,7 @@
     >
       <h2
         id="report-title-physical-chemical"
-        class="display m-0 text-base font-semibold tracking-wide text-lactec-ink uppercase"
+        class="font-display tracking-display m-0 text-base font-semibold text-lactec-ink uppercase"
       >
         @if (data.physicalChemical.report.title; as title) {
           {{ title }}
@@ -247,7 +247,7 @@
         [attr.aria-selected]="gasSubTab() === 'criterios'"
         [attr.tabindex]="gasSubTab() === 'criterios' ? 0 : -1"
         class="rounded-lg px-4 py-3 text-sm font-semibold text-lactec-on-primary"
-        [class.bg-lactec-nav]="gasSubTab() === 'criterios'"
+        [class.bg-lactec-primary-deep]="gasSubTab() === 'criterios'"
         [class.bg-lactec-primary]="gasSubTab() !== 'criterios'"
         (click)="selectGasSubTab('criterios')"
       >
@@ -261,7 +261,7 @@
         [attr.aria-selected]="gasSubTab() === 'metodos'"
         [attr.tabindex]="gasSubTab() === 'metodos' ? 0 : -1"
         class="rounded-lg px-4 py-3 text-sm font-semibold text-lactec-on-primary"
-        [class.bg-lactec-nav]="gasSubTab() === 'metodos'"
+        [class.bg-lactec-primary-deep]="gasSubTab() === 'metodos'"
         [class.bg-lactec-primary]="gasSubTab() !== 'metodos'"
         (click)="selectGasSubTab('metodos')"
       >
@@ -359,7 +359,7 @@
       >
         <h2
           id="report-title-chromatography"
-          class="display m-0 text-base font-semibold tracking-wide text-lactec-ink uppercase"
+          class="font-display tracking-display m-0 text-base font-semibold text-lactec-ink uppercase"
         >
           @if (data.dissolvedGases.report.title; as title) {
             {{ title }}

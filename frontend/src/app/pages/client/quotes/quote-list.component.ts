@@ -102,6 +102,7 @@ function greetingForNow(agora = new Date()): string {
     QuoteCardSkeletonComponent,
   ],
   templateUrl: './quote-list.component.html',
+  styleUrl: './quote-list.component.css',
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class QuoteListComponent {

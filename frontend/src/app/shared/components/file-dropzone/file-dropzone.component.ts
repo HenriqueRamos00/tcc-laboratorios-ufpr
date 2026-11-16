@@ -13,13 +13,13 @@ const MEGABYTE = 1024 * 1024;
       class="flex flex-col items-center justify-center gap-3 rounded-lg border-2 border-dashed
              px-6 py-10 text-center transition-colors"
       [class.border-lactec-primary]="arrastando()"
-      [class.border-lactec-field-border]="!arrastando()"
+      [class.border-lactec-line-control]="!arrastando()"
       [style.background]="arrastando() ? 'rgba(24, 165, 184, 0.06)' : 'var(--color-lactec-surface)'"
       (dragover)="aoArrastarSobre($event)"
       (dragleave)="aoSairDaArea($event)"
       (drop)="aoSoltar($event)"
     >
-      <mat-icon class="icone-36 text-lactec-nav" aria-hidden="true">cloud_upload</mat-icon>
+      <mat-icon class="icone-36 text-lactec-primary-deep" aria-hidden="true">cloud_upload</mat-icon>
 
       @if (arquivo(); as escolhido) {
         <p class="m-0 text-sm font-medium text-lactec-ink">{{ escolhido.name }}</p>
@@ -47,7 +47,7 @@ const MEGABYTE = 1024 * 1024;
     </p>
 
     @if (erro(); as mensagem) {
-      <p class="mt-1 text-center text-xs text-lactec-field-error" role="alert">{{ mensagem }}</p>
+      <p class="mt-1 text-center text-xs text-lactec-danger-ink" role="alert">{{ mensagem }}</p>
     }
   `,
   changeDetection: ChangeDetectionStrategy.OnPush,

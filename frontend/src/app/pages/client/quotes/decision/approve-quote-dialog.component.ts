@@ -16,16 +16,16 @@ import type { ApprovalMethod } from '@/app/model/acceptance';
       <div class="flex flex-col gap-3">
         <button
           type="button"
-          class="w-full rounded-lg bg-lactec-nav px-4 py-3 text-sm font-semibold
-                 text-lactec-on-primary hover:bg-lactec-nav-dark"
+          class="w-full rounded-lg bg-lactec-primary-deep px-4 py-3 text-sm font-semibold
+                 text-lactec-on-primary hover:bg-lactec-primary-deep-strong"
           (click)="escolher('ordem-de-compra')"
         >
           Tenho Ordem de Compra
         </button>
         <button
           type="button"
-          class="w-full rounded-lg bg-lactec-nav px-4 py-3 text-sm font-semibold
-                 text-lactec-on-primary hover:bg-lactec-nav-dark"
+          class="w-full rounded-lg bg-lactec-primary-deep px-4 py-3 text-sm font-semibold
+                 text-lactec-on-primary hover:bg-lactec-primary-deep-strong"
           (click)="escolher('termo-de-aceite')"
         >
           Preencher Termo de Aceite

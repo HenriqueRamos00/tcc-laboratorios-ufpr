@@ -1,7 +1,13 @@
-<div class="status-stepper" role="list" aria-label="Progresso da proposta">
+<div class="flex w-full items-start" role="list" aria-label="Progresso da proposta">
   @for (step of visibleSteps(); track step.key; let last = $last) {
-    <div class="status-stepper__step" [attr.data-state]="step.state" role="listitem">
-      <div class="status-stepper__circle">
+    <div class="group flex min-w-0 flex-[1_1_0] flex-col items-center gap-2" [attr.data-state]="step.state" role="listitem">
+      <div
+        class="inline-flex size-10 items-center justify-center rounded-full bg-lactec-line text-lactec-muted
+               transition-[background-color,color,box-shadow] duration-160 ease-[ease]
+               group-data-[state=active]:bg-lactec-primary group-data-[state=active]:text-lactec-on-primary
+               group-data-[state=active]:ring-4 group-data-[state=active]:ring-lactec-primary/18
+               group-data-[state=completed]:bg-lactec-primary-deep group-data-[state=completed]:text-lactec-on-primary"
+      >
         @switch (step.state) {
           @case ('completed') {
             <mat-icon class="status-stepper__icon" aria-hidden="true">check</mat-icon>
@@ -18,11 +24,15 @@
           }
         }
       </div>
-      <span class="status-stepper__label">{{ step.label }}</span>
+      <span
+        class="text-center text-[10px] leading-[1.3] font-semibold tracking-[0.04em] text-lactec-muted uppercase
+               group-data-[state=active]:text-lactec-primary-strong
+               group-data-[state=completed]:text-lactec-ink-soft"
+      >{{ step.label }}</span>
     </div>
     @if (!last) {
       <span
-        class="status-stepper__connector"
+        class="mt-[19px] h-0.5 min-w-3 flex-[1_1_16px] rounded-[2px] bg-lactec-line data-[completed=true]:bg-lactec-primary-deep"
         [attr.data-completed]="step.state === 'completed'"
         aria-hidden="true"
       ></span>

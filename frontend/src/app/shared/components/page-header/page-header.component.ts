@@ -41,7 +41,7 @@ export interface Breadcrumb {
 
     <div class="flex flex-wrap items-start justify-between gap-4">
       <div class="min-w-0">
-        <h1 class="display text-2xl md:text-3xl font-semibold text-lactec-ink m-0">
+        <h1 class="font-display tracking-display text-2xl md:text-3xl font-semibold text-lactec-ink m-0">
           {{ title() }}
         </h1>
         @if (subtitle()) {

@@ -37,7 +37,7 @@ export type ResumeDraftChoice = 'resume' | 'start-over';
         </button>
         <button
           type="button"
-          class="rounded-lg bg-lactec-primary-dark px-5 py-3 text-sm font-semibold
+          class="rounded-lg bg-lactec-primary-strong px-5 py-3 text-sm font-semibold
                  text-lactec-on-primary hover:opacity-90"
           (click)="choose('resume')"
         >

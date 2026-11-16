@@ -139,7 +139,7 @@ describe('QuoteListComponent, etapa do laboratório', () => {
     const { fixture } = montarListagem(COM_LABORATORIO.slice(0, 1));
 
     const rotulos = Array.from(
-      (fixture.nativeElement as HTMLElement).querySelectorAll('.quote-status-pill'),
+      (fixture.nativeElement as HTMLElement).querySelectorAll('[data-tour="orcamento-status"]'),
     ).map((rotulo) => rotulo.textContent?.trim());
 
     expect(rotulos).toEqual(['Em Execução']);
@@ -428,7 +428,7 @@ describe('QuoteListComponent, link para o orçamento', () => {
     const { fixture, componente } = montarListagem();
 
     const cartoes = Array.from(
-      (fixture.nativeElement as HTMLElement).querySelectorAll('.quote-card'),
+      (fixture.nativeElement as HTMLElement).querySelectorAll('article'),
     );
     const levaAoOrcamento = cartoes.map(
       (cartao) => !!cartao.querySelector('a[href^="/cliente/quotes/"]'),
