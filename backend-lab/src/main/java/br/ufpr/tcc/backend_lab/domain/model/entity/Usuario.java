@@ -52,6 +52,13 @@ public class Usuario {
 	@Column(name = "senha_hash", nullable = false)
 	private String senhaHash;
 
+	@Column(name = "senha_versao")
+	private Long senhaVersao;
+
+	public long getSenhaVersaoAtual() {
+		return senhaVersao == null ? 0L : senhaVersao;
+	}
+
 	@Enumerated(EnumType.STRING)
 	@Column(nullable = false, length = 20)
 	private PerfilUsuario perfil;

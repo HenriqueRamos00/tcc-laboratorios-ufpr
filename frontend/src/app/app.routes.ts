@@ -20,6 +20,22 @@ export const routes: Routes = [
           import('@/app/pages/login/login.component').then((modulo) => modulo.LoginComponent),
         title: 'Acessar - Portal Lactec',
       },
+      {
+        path: 'recuperar-senha',
+        loadComponent: () =>
+          import('@/app/pages/password-recovery/password-recovery.component').then(
+            (modulo) => modulo.PasswordRecoveryComponent,
+          ),
+        title: 'Recuperar senha - Portal Lactec',
+      },
+      {
+        path: 'confirmar-email',
+        loadComponent: () =>
+          import('@/app/pages/email-confirmation/email-confirmation.component').then(
+            (modulo) => modulo.EmailConfirmationComponent,
+          ),
+        title: 'Confirmar e-mail - Portal Lactec',
+      },
     ],
   },
 

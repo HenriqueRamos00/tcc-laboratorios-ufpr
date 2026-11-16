@@ -46,7 +46,10 @@ public class UpdateClienteUseCase {
         usuario.setNome(request.name());
         usuario.setEmail(request.email());
         usuario.setAtivo(request.status().toAtivo());
-        if (request.password() != null) usuario.setSenhaHash(encoder.encode(request.password()));
+        if (request.password() != null) {
+            usuario.setSenhaHash(encoder.encode(request.password()));
+            usuario.setSenhaVersao(usuario.getSenhaVersaoAtual() + 1);
+        }
         cliente.setUsuario(usuarios.saveAndFlush(usuario));
         cliente.setPhone(request.phone());
         cliente.setPosition(request.position());

@@ -355,6 +355,11 @@ raiz. O Auth2 recebe o mesmo token configurado no C# e mantém apenas seu hash. 
 não envia e-mail por padrão; confirmação de novos cadastros e recuperação de senha
 exigem SMTP configurado no Auth2.
 
+O C# encaminha `POST /auth/recoveries` e `POST /auth/password-resets` ao Spring no
+modo `backend-lab` ou ao Auth2 no modo `lactec`. O backend escolhido envia o e-mail.
+Configure `SPRING_MAIL_*` para Backend Lab ou `AUTH_MAIL_*` para Auth2, conforme o
+[guia de e-mail](../README.md#e-mail-e-recuperação-de-senha).
+
 Reinícios preservam os dados e não redefinem as senhas ou permissões editadas.
 `docker compose -f compose.auth.yaml down` preserva o banco; `down -v` apaga o
 ambiente demo, permitindo recriar as contas com os padrões. O volume é separado

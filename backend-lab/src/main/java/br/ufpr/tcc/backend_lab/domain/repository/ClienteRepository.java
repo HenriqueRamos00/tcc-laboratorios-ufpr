@@ -12,6 +12,8 @@ import java.util.Optional;
 public interface ClienteRepository extends JpaRepository<Cliente, Long> {
     Optional<Cliente> findByUsuarioId(Long id);
 
+    boolean existsByUsuarioId(Long id);
+
     long countByUsuarioPerfilAndUsuarioAtivoTrue(PerfilUsuario perfil);
 
     @Query(

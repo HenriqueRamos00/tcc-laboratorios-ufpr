@@ -45,7 +45,7 @@ export class LoginComponent {
   }
 
   showRecoveryGuidance(): void {
-    this.infoMessage.set('A recuperação de senha ainda não está disponível. Procure o administrador do sistema.');
+    void this.router.navigateByUrl('/recuperar-senha');
   }
 
   submit(): void {
