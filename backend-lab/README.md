@@ -342,10 +342,18 @@ O seed fica desativado por padrão e deve ser usado apenas no desenvolvimento lo
 `execucoes_ensaios.status` persiste os sete códigos técnicos do Apêndice E (`incomplete`, `complete`, `validated`, `finalized`, `drafting-report`, `report-published`, `cancelled`). A aplicação converte os códigos estritamente; valor desconhecido causa erro de leitura, sem status substituto.
 
 
-## Integração futura de equipamentos e análises do cliente
+## Equipamentos e resultados publicados para o cliente
 
-As consultas de equipamentos e medições liberadas em `/api/client/**` estão previstas no
-[plano de integração do Portal do Cliente](docs/integracao-portal-cliente.md). No Compose
-regular, a API C# mantém login, orçamentos e relatórios publicados do Spring e responde
-501 (`lab-integration-pending`) para equipamentos e indicadores enquanto essa integração
-não estiver disponível.
+As consultas em `/api/client/equipments`, `/api/client/equipments/{id}/analyses`,
+`/api/client/analyses/{id}` e `/api/client/reports/{id}` fornecem equipamentos e resultados
+publicados aos clientes autorizados. O acesso considera os vínculos atuais com as empresas
+antes de paginar os resultados. Equipamentos desativados deixam a listagem, mas os relatórios
+publicados continuam acessíveis aos clientes autorizados.
+
+O Compose regular usa os adapters C# para manter os contratos do Portal do Cliente.
+As datas das análises Spring correspondem à publicação do laudo. No cadastro interno,
+é possível informar fabricante, ano de fabricação, potência em MVA, tipo de óleo e volume
+em litros. Campos sem informação permanecem vazios.
+
+Os endpoints e seus contratos estão descritos no
+[documento de integração](docs/integracao-portal-cliente.md).

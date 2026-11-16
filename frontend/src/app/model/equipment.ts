@@ -92,4 +92,5 @@ export interface EquipmentReport {
   readonly analysisType: ReportAnalysisType;
   readonly status: ReportStatus;
   readonly hasSignedDocument: boolean;
+  readonly pdfAvailable?: boolean;
 }

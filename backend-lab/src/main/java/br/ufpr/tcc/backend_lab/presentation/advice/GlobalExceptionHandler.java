@@ -102,6 +102,10 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(DataIntegrityViolationException.class)
     public ResponseEntity<ApiErrorResponse> handleViolacaoIntegridade(
             DataIntegrityViolationException exception) {
+        if (ViolacaoUnicidade.patrimonioInstrumento(exception)) {
+            return ResponseEntity.status(HttpStatus.CONFLICT)
+                    .body(new ApiErrorResponse("O patrimônio já está cadastrado"));
+        }
         if (ViolacaoUnicidade.codigoAmostra(exception)) {
             return ResponseEntity.status(HttpStatus.CONFLICT)
                     .body(new ApiErrorResponse("O código da amostra já está cadastrado", "sample-code-conflict"));

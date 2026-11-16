@@ -26,6 +26,13 @@ public static class LabTestSourceRegistration
             return services;
         }
 
+        if (options.Source == LabResultsOptions.BackendLabSource)
+        {
+            // O fluxo de cliente usa IClientLabResultsRepository e não exige claim de tenant.
+            services.AddScoped<ILabTestRepository, NotConnectedLabTestRepository>();
+            return services;
+        }
+
         if (options.Scope is not (LabResultsOptions.AllScope or LabResultsOptions.CompanyScope))
             throw new InvalidOperationException(
                 $"Configuracao '{LabResultsOptions.SectionName}:Scope' ausente ou com valor desconhecido "

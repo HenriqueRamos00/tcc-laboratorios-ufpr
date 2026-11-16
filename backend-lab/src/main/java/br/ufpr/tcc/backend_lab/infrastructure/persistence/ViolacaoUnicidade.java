@@ -18,6 +18,10 @@ public final class ViolacaoUnicidade {
     private static final Set<String> CONSTRAINTS_CNPJ = Set.of("uk_empresas_cnpj");
     private static final Set<String> CONSTRAINTS_AMOSTRA = Set.of("uk_amostras_codigo");
 
+    public static boolean patrimonioInstrumento(Throwable error) {
+        return isViolation(error, Set.of("uk_instrumentos_patrimonio"));
+    }
+
     private ViolacaoUnicidade() {}
 
     public static boolean email(Throwable error) {

@@ -26,7 +26,7 @@ public static class PositionalFlattening
         return new HealthIndicatorsResponse
         {
             EquipmentId = opaqueIdentifier,
-            Tag = indicators.SerialNumber ?? indicators.Identification,
+            Tag = indicators.Tag ?? indicators.SerialNumber ?? indicators.Identification,
             SelectedAnalysis = FindSelectedAnalysis(indicators.SelectedAnalysis),
             PhysicalChemical = BuildPhysicalChemicalBlock(indicators),
             DissolvedGases = BuildGasBlock(indicators),
@@ -37,7 +37,12 @@ public static class PositionalFlattening
                     Key = measuredItem.Code,
                     Name = measuredItem.Label,
                     OriginalText = measuredItem.OriginalText,
-                    ProtocoloLactec = measuredItem.ProtocoloLactec
+                    ProtocoloLactec = measuredItem.ProtocoloLactec,
+                    AnalysisId = measuredItem.AnalysisId,
+                    Unit = measuredItem.Unit,
+                    Method = measuredItem.Method,
+                    ReferenceLimit = measuredItem.ReferenceLimit,
+                    ResultKind = measuredItem.ResultKind
                 })],
             TotalizerChecks = [.. indicators.TotalizerChecks.Select(check =>
                 new TotalizerCheckResponse
@@ -57,8 +62,8 @@ public static class PositionalFlattening
 
         return new SelectedAnalysisResponse
         {
-            Id = OpaqueIdentifier.Encode(analysis.ProtocoloLactec),
-            Date = WireDate.From(analysis.AnalysisEndDate),
+            Id = OpaqueIdentifier.Encode(analysis.AnalysisId),
+            Date = WireDate.From(analysis.ReportDate),
             Label = analysis.Identification,
             HasPhysicalChemical = analysis.HasPhysicalChemicalProperty,
             HasDissolvedGases = analysis.HasDissolvedGas
@@ -187,6 +192,6 @@ public static class PositionalFlattening
 
     private static string DateOf(SeriesReading reading)
     {
-        return WireDate.From(reading.AnalysisEndDate);
+        return WireDate.From(reading.ReportDate);
     }
 }

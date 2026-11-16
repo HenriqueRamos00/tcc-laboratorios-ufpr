@@ -59,6 +59,7 @@ builder.Services.AddPortalDataSource(builder.Configuration);
 builder.Services.AddReportDocumentRepository(builder.Configuration);
 
 builder.Services.AddLabTestRepository(builder.Configuration);
+builder.Services.AddClientLabResultsSource(builder.Configuration);
 builder.Services.AddEquipmentRegistrySource(builder.Configuration);
 builder.Services.AddLaboratoryProgressSource(builder.Configuration);
 builder.Services.AddReportDocumentSource(builder.Configuration);

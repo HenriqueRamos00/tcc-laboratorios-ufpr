@@ -10,8 +10,9 @@ public sealed record MeasuredItem(
     string Code,
     string Label,
     string Formula,
-    string Unit,
+    string? Unit,
     MeasuredItemKind Role,
     bool IsCombustible,
-    string TestMethod,
-    string RegulatoryLimit);
+    string? TestMethod,
+    string? RegulatoryLimit,
+    string? SourceCode = null);

@@ -21,6 +21,26 @@ const voltageValidator: ValidatorFn = (control) => {
   return /^[0-9]{1,6}(\.[0-9]{1,3})?$/.test(value) && Number(value) > 0 ? null : { voltage: true };
 };
 
+const optionalTextValidator = (max: number): ValidatorFn => (control) => {
+  const value = control.value.trim();
+  return value.length > max ? { maxlength: true } : null;
+};
+
+const manufactureYearValidator: ValidatorFn = (control) => {
+  const value = control.value;
+  if (value === null || value === '') return null;
+  const year = Number(value);
+  return Number.isInteger(year) && year >= 1 && year <= 9999 ? null : { manufactureYear: true };
+};
+
+const optionalPositiveDecimalValidator = (allowZero: boolean): ValidatorFn => (control) => {
+  const value = control.value.trim().replace(',', '.');
+  if (!value) return null;
+  if (!/^[0-9]{1,9}(\.[0-9]{1,3})?$/.test(value)) return { decimal: true };
+  const decimal = Number(value);
+  return allowZero ? decimal >= 0 ? null : { decimal: true } : decimal > 0 ? null : { decimal: true };
+};
+
 export interface EquipamentoFormDialogData {
   equipamento: Equipamento | null;
 }
@@ -53,6 +73,11 @@ export class EquipamentoFormDialogComponent {
     type: [this.data.equipamento?.type ?? ('' as EquipamentoTipo | ''), Validators.required],
     substation: [this.data.equipamento?.substation ?? '', textValidator(150)],
     primaryVoltage: [this.data.equipamento?.primaryVoltage ?? '', voltageValidator],
+    manufacturer: [this.data.equipamento?.manufacturer ?? '', optionalTextValidator(150)],
+    manufactureYear: [this.data.equipamento?.manufactureYear ?? null, manufactureYearValidator],
+    powerMva: [this.data.equipamento?.powerMva ?? '', optionalPositiveDecimalValidator(false)],
+    oilType: [this.data.equipamento?.oilType ?? '', optionalTextValidator(100)],
+    oilVolumeLiters: [this.data.equipamento?.oilVolumeLiters ?? '', optionalPositiveDecimalValidator(true)],
     companyId: [this.data.equipamento?.companyId ?? '', [Validators.required, (control: AbstractControl) =>
       this.companyOptions().some((empresa) => empresa.id === control.value) ? null : { company: true }]],
     riskLevel: [this.data.equipamento?.riskLevel ?? ('' as EquipamentoRisco | ''), Validators.required],
@@ -98,6 +123,11 @@ export class EquipamentoFormDialogComponent {
       type: value.type,
       substation: value.substation.trim(),
       primaryVoltage: value.primaryVoltage.trim().replace(',', '.'),
+      manufacturer: value.manufacturer.trim() || null,
+      manufactureYear: value.manufactureYear,
+      powerMva: value.powerMva.trim() ? value.powerMva.trim().replace(',', '.') : null,
+      oilType: value.oilType.trim() || null,
+      oilVolumeLiters: value.oilVolumeLiters.trim() ? value.oilVolumeLiters.trim().replace(',', '.') : null,
       companyId: value.companyId,
       riskLevel: value.riskLevel,
     };

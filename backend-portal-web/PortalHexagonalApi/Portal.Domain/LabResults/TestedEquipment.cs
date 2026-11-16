@@ -1,3 +1,5 @@
+using Portal.Domain.LabResults.Exceptions;
+
 namespace Portal.Domain.LabResults;
 
 /// <summary>
@@ -91,7 +93,7 @@ public sealed class TestedEquipment
     private static EquipmentReport BuildReport(SampleAnalysis analysis)
     {
         return new EquipmentReport(
-            analysis.ProtocoloLactec,
+            analysis.ProtocoloLactec ?? throw new AnalysisWithoutProtocolException(),
             analysis.Identification,
             analysis.AnalysisEndDate,
             analysis.IssueDate,

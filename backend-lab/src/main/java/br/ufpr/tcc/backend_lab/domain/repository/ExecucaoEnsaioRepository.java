@@ -17,6 +17,7 @@ import org.springframework.data.repository.query.Param;
 public interface ExecucaoEnsaioRepository extends JpaRepository<ExecucaoEnsaio, Long> {
     boolean existsByOrcamentoId(Long orcamentoId);
 
+    // Projeta o status dos ensaios associados aos orçamentos informados.
     @Query("""
             select e.orcamento.id as orcamentoId, e.status as status
             from ExecucaoEnsaio e where e.orcamento.id in :ids
@@ -28,15 +29,18 @@ public interface ExecucaoEnsaioRepository extends JpaRepository<ExecucaoEnsaio, 
         StatusEnsaio getStatus();
     }
 
+    // Pesquisa ensaios pelo código, tipo, amostra ou empresa do orçamento.
     @EntityGraph(attributePaths = {"amostra", "amostra.orcamento", "amostra.orcamento.empresa", "responsavel"})
     @Query("""
             select e from ExecucaoEnsaio e
-            where (lower(e.codigo) like lower(concat('%', :q, '%')) escape '!'
+            where (:quoteId is null or e.orcamento.id = :quoteId)
+              and (lower(e.codigo) like lower(concat('%', :q, '%')) escape '!'
                 or lower(e.tipo) like lower(concat('%', :q, '%')) escape '!'
                 or lower(e.amostra.codigo) like lower(concat('%', :q, '%')) escape '!'
                 or lower(e.amostra.orcamento.empresa.legalName) like lower(concat('%', :q, '%')) escape '!')
             """)
-    Page<ExecucaoEnsaio> pesquisar(@Param("q") String busca, Pageable pageable);
+    Page<ExecucaoEnsaio> pesquisar(@Param("q") String busca,
+            @Param("quoteId") Long orcamentoId, Pageable pageable);
 
     @EntityGraph(attributePaths = {"amostra", "amostra.orcamento", "amostra.orcamento.empresa",
             "amostra.equipamentoAnalisado", "orcamento", "responsavel"})

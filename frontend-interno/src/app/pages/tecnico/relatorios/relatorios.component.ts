@@ -293,7 +293,7 @@ export class RelatoriosComponent {
       .pipe(
         tap(() => {
           if (this.selectedId() === report.id) {
-            this.publicationMessage.set('Relatório publicado para o cliente. O status técnico do ensaio continua manual.');
+            this.publicationMessage.set('Relatório publicado e status do ensaio atualizado.');
             this.detailRequests.next(report.id);
           }
           this.listRequests.next();

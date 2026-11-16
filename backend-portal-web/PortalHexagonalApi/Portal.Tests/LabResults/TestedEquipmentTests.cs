@@ -1,4 +1,5 @@
 using Portal.Domain.LabResults;
+using Portal.Domain.LabResults.Exceptions;
 
 using Xunit;
 
@@ -6,6 +7,24 @@ namespace Portal.Tests.LabResults;
 
 public sealed class TestedEquipmentTests
 {
+    [Fact]
+    public void AConsultaLegadaRecusaAnaliseSemProtocolo()
+    {
+        SampleAnalysis analysis = new(
+            "analysis-1",
+            "report-1",
+            "test-1",
+            null,
+            "equipment-1",
+            "report-code-1",
+            "Empresa",
+            DateTimeOffset.Parse("2026-11-14T12:00:00Z"),
+            new DateTime(2026, 11, 14),
+            []);
+
+        Assert.Throws<AnalysisWithoutProtocolException>(() => TestedEquipment.Gather([analysis]));
+    }
+
     /// <summary>
     /// O risco que o agrupamento existe para evitar. Dois laudos reais podem ter a coluna de
     /// numero de serie em branco, e agrupar por ela juntaria transformadores diferentes num

@@ -77,9 +77,9 @@ public sealed record PhysicalChemicalTestResponse
 
     public required string Name { get; init; }
 
-    public required string Method { get; init; }
+    public string? Method { get; init; }
 
-    public required string Limit { get; init; }
+    public string? Limit { get; init; }
 
     public required IReadOnlyList<object?> ValuesByAnalysis { get; init; }
 
@@ -141,7 +141,17 @@ public sealed record UnreadableResultResponse
 
     public required string OriginalText { get; init; }
 
-    public required string ProtocoloLactec { get; init; }
+    public string? ProtocoloLactec { get; init; }
+
+    public string? AnalysisId { get; init; }
+
+    public string? Unit { get; init; }
+
+    public string? Method { get; init; }
+
+    public string? ReferenceLimit { get; init; }
+
+    public string? ResultKind { get; init; }
 }
 
 /// <summary>

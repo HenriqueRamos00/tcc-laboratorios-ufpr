@@ -140,6 +140,25 @@ describe('EquipmentDetailComponent', () => {
     expect(botao.disabled).toBeTrue();
   }));
 
+  for (const pdfAvailable of [true, false]) {
+    it(`respeita disponibilidade explícita do PDF ${pdfAvailable ? 'disponível' : 'indisponível'} sem presumir assinatura`, fakeAsync(() => {
+      TestBed.configureTestingModule({
+        providers: [provideRouter([]), provideHttpClient(), provideHttpClientTesting()],
+      });
+      const fixture = TestBed.createComponent(EquipmentDetailComponent);
+      fixture.componentRef.setInput('id', EQUIPMENT_ID);
+      fixture.detectChanges();
+      const http = TestBed.inject(HttpTestingController);
+      http.expectOne(`${API_URL}/api/equipments/${EQUIPMENT_ID}`).flush(DETAIL);
+      http.expectOne(HISTORY_URL).flush([{
+        ...HISTORY[0], hasSignedDocument: !pdfAvailable, pdfAvailable,
+      }]);
+      fixture.detectChanges();
+      const button = fixture.nativeElement.querySelector('tbody button') as HTMLButtonElement;
+      expect(button.disabled).toBe(!pdfAvailable);
+    }));
+  }
+
   /**
    * O que o cadastro informa aparece com a unidade que ele escreveu, e nenhuma frase de
    * ausência é dita quando ele conhece a série.

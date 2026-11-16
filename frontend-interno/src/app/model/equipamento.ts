@@ -7,6 +7,11 @@ export interface EquipamentoRequest {
   tag: string;
   substation: string;
   primaryVoltage: string;
+  manufacturer: string | null;
+  manufactureYear: number | null;
+  powerMva: string | null;
+  oilType: string | null;
+  oilVolumeLiters: string | null;
   companyId: string;
   type: EquipamentoTipo;
   riskLevel: EquipamentoRisco;

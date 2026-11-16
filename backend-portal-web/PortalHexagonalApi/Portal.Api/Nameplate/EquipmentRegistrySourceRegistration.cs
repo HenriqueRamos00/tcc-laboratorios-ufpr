@@ -38,12 +38,17 @@ public static class EquipmentRegistrySourceRegistration
                 services.AddScoped<IEquipmentNameplateRepository, AutoLabEquipmentRegistryRepository>();
                 return services;
 
+            case EquipmentRegistryOptions.BackendLabSource:
+                services.AddScoped<IEquipmentNameplateRepository, NullEquipmentNameplateRepository>();
+                return services;
+
             default:
                 throw new InvalidOperationException(
                     $"Configuracao '{EquipmentRegistryOptions.SectionName}:Source' com valor desconhecido "
                     + $"'{options.Source}'. Valores aceitos: "
                     + $"'{EquipmentRegistryOptions.NotConnectedSource}', "
-                    + $"'{EquipmentRegistryOptions.SqlServerSource}'.");
+                    + $"'{EquipmentRegistryOptions.SqlServerSource}', "
+                    + $"'{EquipmentRegistryOptions.BackendLabSource}'.");
         }
     }
 }

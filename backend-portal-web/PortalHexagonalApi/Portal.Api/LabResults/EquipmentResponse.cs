@@ -46,11 +46,11 @@ public sealed record EquipmentResponse
 
     public required string Company { get; init; }
 
-    public required string Identification { get; init; }
+    public required string? Identification { get; init; }
 
     public required int ReportCount { get; init; }
 
-    public required string MostRecentReportDate { get; init; }
+    public required string? MostRecentReportDate { get; init; }
 
     /// <summary>
     /// Se o cadastro tem alguma coisa a dizer sobre este equipamento. Falso quando o
@@ -97,11 +97,11 @@ public sealed record EquipmentDetailResponse
 
     public required string Company { get; init; }
 
-    public required string Identification { get; init; }
+    public required string? Identification { get; init; }
 
     public required int ReportCount { get; init; }
 
-    public required string MostRecentReportDate { get; init; }
+    public required string? MostRecentReportDate { get; init; }
 
     public string? OilType { get; init; }
 
@@ -126,7 +126,14 @@ public sealed record EquipmentReportResponse
 
     public required ReportAnalysisType AnalysisType { get; init; }
 
+    /// <summary>O tipo original do snapshot, preservado quando a tela não tem rótulo fechado.</summary>
+    public string? AnalysisTypeCode { get; init; }
+
     public required ReportStatus Status { get; init; }
 
+    /// <summary>Assinatura digital disponível no AutoLAB; não representa mera disponibilidade de PDF.</summary>
     public required bool HasSignedDocument { get; init; }
+
+    /// <summary>Disponibilidade de download do PDF, sem afirmar assinatura digital.</summary>
+    public bool PdfAvailable { get; init; }
 }

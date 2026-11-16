@@ -19,6 +19,7 @@
     <ProjectReference Include="..\Portal.Application\Portal.Application.csproj" />
     <ProjectReference Include="..\Portal.Adapters\Portal.Adapters.csproj" />
     <ProjectReference Include="..\Portal.Domain\Portal.Domain.csproj" />
+    <InternalsVisibleTo Include="Portal.Tests" />
   </ItemGroup>
 
 </Project>

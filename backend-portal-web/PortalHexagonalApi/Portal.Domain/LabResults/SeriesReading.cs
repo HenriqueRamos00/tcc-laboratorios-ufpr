@@ -1,7 +1,7 @@
 namespace Portal.Domain.LabResults;
 
 /// <summary>
-/// Uma analise vista pela serie historica: a data que ordena, o protocolo que identifica e
+/// Uma publicação vista pela série histórica: a data que ordena, o ID que identifica e
 /// os valores indexados pelo codigo do item medido.
 ///
 /// Os valores vem por codigo e nunca por indice. Indice obriga quem recebe a manter um
@@ -9,7 +9,7 @@ namespace Portal.Domain.LabResults;
 /// dentro de uma massa escrita a mao.
 /// </summary>
 public sealed record SeriesReading(
-    string ProtocoloLactec,
+    string AnalysisId,
     string Identification,
-    DateTime AnalysisEndDate,
+    DateTime ReportDate,
     IReadOnlyDictionary<string, MeasuredValue> ValuesByItemCode);
