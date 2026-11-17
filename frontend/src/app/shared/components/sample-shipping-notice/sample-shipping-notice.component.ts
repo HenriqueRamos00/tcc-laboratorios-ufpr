@@ -7,6 +7,7 @@ import { LABORATORY_ADDRESS, type ShippingGuidance } from '@/app/model/sample-sh
   selector: 'app-sample-shipping-notice',
   standalone: true,
   imports: [MatIconModule],
+  host: { class: 'block' },
   templateUrl: './sample-shipping-notice.component.html',
   changeDetection: ChangeDetectionStrategy.OnPush,
 })

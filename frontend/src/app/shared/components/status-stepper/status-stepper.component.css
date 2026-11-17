@@ -1,0 +1,12 @@
+/* Elemento mais classe: o Material fixa 24px e `display: inline-block` em
+   `.mat-icon` fora de camada, e utilitária do Tailwind não vence regra sem
+   camada. */
+mat-icon.status-stepper__icon {
+  font-size: 20px;
+  width: 20px;
+  height: 20px;
+  line-height: 20px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}

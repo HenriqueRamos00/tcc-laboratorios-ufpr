@@ -53,7 +53,7 @@ function vertice(index: number, raio: number): { x: number; y: number } {
   host: { class: 'block' },
   template: `
     <figure class="m-0 flex flex-col items-center gap-2">
-      <figcaption class="display text-sm font-semibold tracking-wide text-lactec-ink">
+      <figcaption class="font-display tracking-display text-sm font-semibold text-lactec-ink">
         PENTÁGONO DE DUVAL
       </figcaption>
 

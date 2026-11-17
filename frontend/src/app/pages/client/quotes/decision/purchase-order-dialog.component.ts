@@ -23,8 +23,8 @@ import { FileDropzoneComponent } from '@shared/components/file-dropzone/file-dro
         </button>
         <button
           type="button"
-          class="w-full rounded-lg bg-lactec-nav px-4 py-3 text-sm font-semibold
-                 text-lactec-on-primary hover:bg-lactec-nav-dark disabled:opacity-40"
+          class="w-full rounded-lg bg-lactec-primary-deep px-4 py-3 text-sm font-semibold
+                 text-lactec-on-primary hover:bg-lactec-primary-deep-strong disabled:opacity-40"
           [disabled]="!arquivo()"
           (click)="submeter()"
         >

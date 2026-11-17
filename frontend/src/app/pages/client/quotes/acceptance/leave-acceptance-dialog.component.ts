@@ -43,7 +43,7 @@ export type LeaveAcceptanceChoice = 'keep-draft' | 'discard';
         <button
           type="button"
           class="rounded-lg border border-lactec-danger-ink bg-lactec-paper px-5 py-3 text-sm
-                 font-semibold text-lactec-danger-ink hover:bg-lactec-danger-bg"
+                 font-semibold text-lactec-danger-ink hover:bg-lactec-danger-surface"
           (click)="leave('discard')"
         >
           {{ data.draftSaved ? 'Descartar e sair' : 'Sair sem guardar' }}
@@ -51,7 +51,7 @@ export type LeaveAcceptanceChoice = 'keep-draft' | 'discard';
         @if (data.draftSaved) {
           <button
             type="button"
-            class="rounded-lg bg-lactec-primary-dark px-5 py-3 text-sm font-semibold
+            class="rounded-lg bg-lactec-primary-strong px-5 py-3 text-sm font-semibold
                    text-lactec-on-primary hover:opacity-90"
             (click)="leave('keep-draft')"
           >

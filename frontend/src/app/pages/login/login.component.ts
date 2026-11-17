@@ -1,4 +1,5 @@
 import { ChangeDetectionStrategy, Component, computed, DestroyRef, inject, signal } from '@angular/core';
+import { NgClass } from '@angular/common';
 import { HttpErrorResponse } from '@angular/common/http';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { finalize, timer, takeWhile } from 'rxjs';
@@ -17,6 +18,7 @@ import { LoginService } from '@/app/services/login.service';
   selector: 'app-login',
   standalone: true,
   imports: [
+    NgClass,
     ReactiveFormsModule,
     MatIconModule,
     MatButtonModule,
@@ -25,6 +27,7 @@ import { LoginService } from '@/app/services/login.service';
     LogoComponent,
   ],
   templateUrl: './login.component.html',
+  styleUrl: './login.component.css',
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class LoginComponent {

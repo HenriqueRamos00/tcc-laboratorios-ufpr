@@ -99,6 +99,9 @@ import {
   type HealthSkeletonLayout,
 } from './health-indicators-skeleton.component';
 
+import { registerPageTour } from '@/app/services/tour.service';
+import { healthIndicatorsTour } from './health-indicators.tour';
+
 const dataPipe = new DataPipe();
 const numeroPipe = new NumeroPipe();
 
@@ -160,6 +163,10 @@ export class HealthIndicatorsComponent {
   protected readonly skeletonLayout = computed<HealthSkeletonLayout>(() =>
     this.activeTab() === 'gases' ? this.gasSubTab() : 'fisico-quimico',
   );
+
+  constructor() {
+    registerPageTour(() => healthIndicatorsTour(this.skeletonLayout()));
+  }
 
   private readonly query = computed(() => ({
     id: this.id(),

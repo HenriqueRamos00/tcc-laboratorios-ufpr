@@ -61,6 +61,9 @@ import {
   type ResumeDraftDialogData,
 } from './resume-draft-dialog.component';
 
+import { registerPageTour } from '@/app/services/tour.service';
+import { acceptanceTermsTour } from './acceptance-terms.tour';
+
 export const DRAFT_SAVE_DELAY_MS = 600;
 
 function comparableEmail(value: string): string {
@@ -168,6 +171,8 @@ export class AcceptanceTermsComponent implements OnInit, ConfirmsLeaving {
   private finished = false;
 
   constructor() {
+    registerPageTour(acceptanceTermsTour);
+
     // O e-mail só é obrigatório quando o cliente autoriza o envio de resultados
     // por e-mail (HU-09, critério 4).
     this.form.controls.approval.controls.allowsResultsByEmail.valueChanges

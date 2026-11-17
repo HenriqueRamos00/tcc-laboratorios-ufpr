@@ -56,7 +56,7 @@ let proximoId = 0;
       height: 2.75rem;
       width: 100%;
       border-radius: 0.5rem;
-      border: 1px solid var(--color-lactec-field-border);
+      border: 1px solid var(--color-lactec-line-control);
       background: var(--color-lactec-paper);
       padding: 0 0.75rem;
       font-size: 0.875rem;
@@ -64,21 +64,21 @@ let proximoId = 0;
     }
 
     .campo:hover {
-      border-color: var(--color-lactec-field-border-hover);
+      border-color: var(--color-lactec-muted);
     }
 
     .campo:focus {
-      border-color: var(--color-lactec-field-border-focus);
-      box-shadow: 0 0 0 1px var(--color-lactec-field-border-focus);
+      border-color: var(--color-lactec-primary);
+      box-shadow: 0 0 0 1px var(--color-lactec-primary);
       outline: none;
     }
 
     .campo[aria-invalid='true'] {
-      border-color: var(--color-lactec-field-border-invalid);
+      border-color: var(--color-lactec-danger);
     }
 
     .campo[aria-invalid='true']:focus {
-      box-shadow: 0 0 0 1px var(--color-lactec-field-border-invalid);
+      box-shadow: 0 0 0 1px var(--color-lactec-danger);
     }
 
     .campo:disabled {
@@ -90,7 +90,7 @@ let proximoId = 0;
       margin-top: 0.25rem;
       display: block;
       font-size: 0.75rem;
-      color: var(--color-lactec-field-error);
+      color: var(--color-lactec-danger-ink);
     }
   `,
   changeDetection: ChangeDetectionStrategy.OnPush,

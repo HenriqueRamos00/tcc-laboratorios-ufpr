@@ -182,7 +182,7 @@ describe('ReportListComponent, as duas portas de entrada dos laudos', () => {
 
     abrirAba('tab-quotes');
     const exibidos = Array.from(
-      tela.querySelectorAll('#panel-quotes article .quote-card-field__value'),
+      tela.querySelectorAll('#panel-quotes article span'),
     )
       .map((campo) => campo.textContent?.trim())
       .filter((texto) => /^(EAQ|SET)_/.test(texto ?? ''));

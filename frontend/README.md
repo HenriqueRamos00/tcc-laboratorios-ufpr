@@ -65,6 +65,25 @@ Chromium para `npm test -- --watch=false`.
 
 This project was generated using [Angular CLI](https://github.com/angular/angular-cli) version 19.2.27.
 
+## Ajuda guiada (tour)
+
+O botão **Ajuda** do menu lateral expande, no próprio menu, dois roteiros: **Sobre o menu** e
+**Sobre esta página**.
+O destaque, o balão e o foco são do [driver.js](https://driverjs.com) (MIT, versão fixada no
+`package.json`); a sequência dos passos é do `TourService` (`src/app/services/tour.service.ts`).
+
+- Os tipos ficam em `src/app/model/tour.ts`.
+- Os passos de cada tela ficam ao lado dela, em `*.tour.ts` (o do menu é
+  `layouts/shell/shell.tour.ts`), e a tela se registra com `registerPageTour(...)` no construtor.
+- Cada passo aponta para um elemento marcado com `data-tour="nome"`. Nunca use classe de estilo
+  como alvo. Quando o layout muda entre celular e desktop, marque os dois elementos com o mesmo
+  nome: o tour escolhe o que estiver visível.
+- Alvo ausente ou escondido é pulado. Passo com `region: 'menu'` abre a gaveta no celular.
+- Passo que precisa de uma janela aberta (como a de status do orçamento) declara uma `scene`, com
+  `enter` e `leave`; o tour entra na cena antes do passo e sai dela ao seguir adiante ou encerrar.
+- O visual do balão está em `src/styles.css`, nas regras `.driver-popover.lactec-tour`, com os
+  tokens `lactec-tour-*`.
+
 ## Development server
 
 To start a local development server, run:

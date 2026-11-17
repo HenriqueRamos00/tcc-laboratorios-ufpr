@@ -26,9 +26,9 @@ export interface RejectQuoteDialogData {
         <textarea
           rows="4"
           [maxlength]="limits.justification"
-          class="mt-2 w-full rounded-lg border border-lactec-field-border bg-lactec-paper px-3 py-2
+          class="mt-2 w-full rounded-lg border border-lactec-line-control bg-lactec-paper px-3 py-2
                  text-sm text-lactec-ink placeholder:text-lactec-muted
-                 hover:border-lactec-field-border-hover focus:border-lactec-field-border-focus focus:outline-none focus:ring-1 focus:ring-lactec-field-border-focus"
+                 hover:border-lactec-muted focus:border-lactec-primary focus:outline-none focus:ring-1 focus:ring-lactec-primary"
           placeholder="Justificativa..."
           [ngModel]="justification()"
           (ngModelChange)="justification.set($event)"

@@ -55,6 +55,9 @@ import {
   ReportTableComponent,
 } from '../report-table/report-table.component';
 
+import { registerPageTour } from '@/app/services/tour.service';
+import { quoteReportsTour } from './quote-reports.tour';
+
 const ETAPAS: readonly StatusStepperStep[] = PIPELINE_STAGES.map((stage) => ({
   key: stage.key,
   label: stage.label,
@@ -137,6 +140,8 @@ export class QuoteReportsComponent {
   });
 
   constructor() {
+    registerPageTour(quoteReportsTour);
+
     const quote = toObservable(this.quoteId).pipe(
       tap(() => {
         this.quote.set(null);

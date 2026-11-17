@@ -58,8 +58,12 @@ function montarModal(data: ProposalStatusDialogData = DADOS, copiaFunciona = tru
   return { fixture, tela: fixture.nativeElement as HTMLElement, copiados };
 }
 
+const CAIXA_DO_CONTATO = 'input[aria-labelledby="label-do-contato"]';
+const BOTAO_DE_COPIAR = 'button[aria-label^="Copiar o endereço"]';
+const BOTAO_DE_BAIXAR = '[data-tour="status-acoes"] button:not([aria-label])';
+
 function caixaDoContato(tela: HTMLElement): HTMLInputElement {
-  return tela.querySelector('.status-dialog-contact__value') as HTMLInputElement;
+  return tela.querySelector(CAIXA_DO_CONTATO) as HTMLInputElement;
 }
 
 describe('ProposalStatusDialogComponent, contato e download', () => {
@@ -78,7 +82,7 @@ describe('ProposalStatusDialogComponent, contato e download', () => {
   it('o botão ao redor da caixa copia o endereço do contato', () => {
     const { tela, copiados } = montarModal();
 
-    (tela.querySelector('.status-dialog-contact__copy') as HTMLButtonElement).click();
+    (tela.querySelector(BOTAO_DE_COPIAR) as HTMLButtonElement).click();
 
     expect(copiados).toEqual([CONTATO]);
   });
@@ -86,7 +90,7 @@ describe('ProposalStatusDialogComponent, contato e download', () => {
   it('quando a área de transferência recusa, manda copiar pela caixa', () => {
     const { fixture, tela } = montarModal(DADOS, false);
 
-    (tela.querySelector('.status-dialog-contact__copy') as HTMLButtonElement).click();
+    (tela.querySelector(BOTAO_DE_COPIAR) as HTMLButtonElement).click();
     fixture.detectChanges();
 
     expect(tela.textContent).toContain('Selecione o endereço na caixa');
@@ -95,8 +99,8 @@ describe('ProposalStatusDialogComponent, contato e download', () => {
   it('não mostra a caixa de contato nas etapas anteriores ao laboratório', () => {
     const { tela } = montarModal({ ...DADOS, contato: undefined, protocolo: undefined });
 
-    expect(tela.querySelector('.status-dialog-contact')).toBeNull();
-    expect(tela.querySelector('.status-dialog-download')).not.toBeNull();
+    expect(tela.querySelector(CAIXA_DO_CONTATO)).toBeNull();
+    expect(tela.querySelector(BOTAO_DE_BAIXAR)).not.toBeNull();
   });
 
   // Em qualificação e em análise pela área ninguém escreveu a proposta ainda:
@@ -104,8 +108,8 @@ describe('ProposalStatusDialogComponent, contato e download', () => {
   it('não oferece download enquanto a proposta não foi escrita', () => {
     const { tela } = montarModal({ ...DADOS, hasProposal: false });
 
-    expect(tela.querySelector('.status-dialog-download')).toBeNull();
-    expect(tela.querySelector('.status-dialog-contact')).not.toBeNull();
+    expect(tela.querySelector(BOTAO_DE_BAIXAR)).toBeNull();
+    expect(tela.querySelector(CAIXA_DO_CONTATO)).not.toBeNull();
   });
 
   // O cliente lê a etapa no stepper e descobre que precisa despachar a amostra
@@ -129,7 +133,7 @@ describe('ProposalStatusDialogComponent, contato e download', () => {
   // escrever, e o cliente via o retorno sumir em instantes.
   it('o aviso do segundo clique não some com o temporizador do primeiro', fakeAsync(() => {
     const { fixture, tela } = montarModal();
-    const copiar = tela.querySelector('.status-dialog-contact__copy') as HTMLButtonElement;
+    const copiar = tela.querySelector(BOTAO_DE_COPIAR) as HTMLButtonElement;
 
     copiar.click();
     tick(1900);
@@ -149,7 +153,7 @@ describe('ProposalStatusDialogComponent, contato e download', () => {
     const clicar = spyOn(HTMLAnchorElement.prototype, 'click');
     const { fixture, tela } = montarModal();
 
-    (tela.querySelector('.status-dialog-download') as HTMLButtonElement).click();
+    (tela.querySelector(BOTAO_DE_BAIXAR) as HTMLButtonElement).click();
     fixture.detectChanges();
 
     const pedido = TestBed.inject(HttpTestingController).expectOne(
@@ -173,7 +177,7 @@ describe('ProposalStatusDialogComponent, contato e download', () => {
     const criar = spyOn(URL, 'createObjectURL');
     const { fixture, tela } = montarModal();
 
-    (tela.querySelector('.status-dialog-download') as HTMLButtonElement).click();
+    (tela.querySelector(BOTAO_DE_BAIXAR) as HTMLButtonElement).click();
     TestBed.inject(HttpTestingController)
       .expectOne(`${API_URL}/api/quotes/quote-15/document`)
       .flush(new Blob(['sem documento']), { status: 404, statusText: 'Not Found' });

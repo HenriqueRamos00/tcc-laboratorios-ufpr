@@ -31,6 +31,9 @@ import { ReportsService } from '@/app/services/reports.service';
 
 import { ReportTableComponent } from './report-table/report-table.component';
 
+import { registerPageTour } from '@/app/services/tour.service';
+import { reportListTour } from './report-list.tour';
+
 // A tela tem dois jeitos de achar um laudo, e nenhum dos dois acompanha etapa:
 // quem já sabe o que procura varre todos os laudos publicados; quem veio pelo
 // orçamento escolhe o orçamento e entra só nos laudos dele.
@@ -105,6 +108,8 @@ export class ReportListComponent {
   });
 
   constructor() {
+    registerPageTour(reportListTour);
+
     toObservable(this.reportQuery)
       .pipe(
         filter(isMeasured),
