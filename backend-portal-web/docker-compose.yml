@@ -26,9 +26,6 @@ services:
   portal-api:
     cap_drop:
       - NET_RAW
-    networks:
-      - default
-      - lactec-auth
     build:
       context: .
       dockerfile: Dockerfile
@@ -57,8 +54,3 @@ services:
 
 volumes:
   portal-sqlserver-data:
-
-networks:
-  lactec-auth:
-    name: lactec-auth
-    external: true
