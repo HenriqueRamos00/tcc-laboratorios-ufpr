@@ -104,11 +104,40 @@ do banco demo local; a massa local é usada quando não há essa configuração.
 
 Na execução local, a API Spring é publicada em `127.0.0.1:8080` por padrão. `APP_BIND_ADDRESS` configura a interface de publicação; use `0.0.0.0` quando um Portal Interno em Compose separado acessar a API por `host.docker.internal`. O Compose integrado usa a rede Docker e dispensa esse ajuste. No navegador, o Portal Interno usa a origem da própria aplicação e seu proxy `/api`. Em implantação, disponibilize esse proxy por HTTPS e mantenha o PostgreSQL na rede privada.
 
-O `.env` da raiz configura o PostgreSQL, o seed e o JWT do Spring. `backend-portal-web/.env` continua disponível para configurações próprias do C#, como Salesforce. Os Compose das subpastas permitem execução isolada.
+O `.env` da raiz configura o PostgreSQL, o seed, o JWT e o SMTP do Spring. `backend-portal-web/.env` continua disponível para configurações próprias do C#, como Salesforce. Os Compose das subpastas permitem execução isolada.
 
 Configure `JWT_SECRET` (mínimo de 32 bytes UTF-8) e `JWT_EXPIRATION_SECONDS` (padrão de 3600 segundos). O Spring valida a assinatura e a validade do token e consulta a situação e o perfil atuais do usuário para autorizar as rotas protegidas. Alterar o segredo exige novo login.
 
 Antes de iniciar o Compose da raiz, encerre os serviços das subpastas que estiverem usando as mesmas portas.
+
+### E-mail e recuperação de senha
+
+Configure o SMTP no `.env` da raiz. Cada backend tem seu próprio grupo de variáveis:
+
+| Variáveis | Serviço | Uso |
+| --- | --- | --- |
+| `SPRING_MAIL_*` | Backend Lab (`compose.yaml`) | Recuperação no Portal Interno e no Portal do Cliente em modo `backend-lab` |
+| `AUTH_MAIL_*` | Backend Auth2 (`compose.auth.yaml`) | Recuperação de clientes e confirmação de e-mail em modo `lactec` |
+
+Nos dois grupos, preencha `HOST`, `PORT`, `USERNAME`, `PASSWORD` e `SENDER`. `USERNAME` é a conta SMTP e `SENDER` é o remetente autorizado pelo provedor. Os serviços podem usar a mesma conta ou contas diferentes; preencha cada grupo separadamente.
+
+No Auth2, o Compose passa `AUTH_MAIL_USERNAME` e `AUTH_MAIL_PASSWORD` como `SPRING_MAIL_USERNAME` e `SPRING_MAIL_PASSWORD` dentro do container. O remetente `AUTH_MAIL_SENDER` vira `AUTH_NOTIFICATION_SENDER`. Os nomes separados no `.env` permitem configurar os dois serviços sem misturar as contas.
+
+No Backend Lab, habilite `SPRING_MAIL_ENABLED=true`. Essa opção não se aplica ao Auth2. Para Gmail, use uma [senha de app com verificação em duas etapas](https://support.google.com/accounts/answer/185833?hl=pt-BR). Mantenha as credenciais no `.env` local.
+
+Os links do Backend Lab usam `INTERNAL_PORTAL_RECOVERY_URL` e `CLIENT_PORTAL_RECOVERY_URL`; o Spring acrescenta o token. No Auth2, mantenha `{token}` em `AUTH_RECOVERY_LINK` e `AUTH_CONFIRMATION_LINK`. Os exemplos estão no `.env.example`.
+
+Depois de alterar o `.env`, recrie o backend usado, com suas dependências já rodando:
+
+```bash
+docker compose up -d --no-deps --force-recreate backend-lab
+# Para o stack Auth2, use este comando:
+docker compose -f compose.auth.yaml up -d --no-deps --force-recreate backend-auth2
+```
+
+`docker compose restart` não recarrega essas variáveis. Os arquivos `.env` dos frontends não configuram o SMTP.
+
+Se o e-mail não chegar, confira os logs do backend que envia. `MailAuthenticationException` indica falha na autenticação SMTP. A API responde antes do envio, por isso a resposta de sucesso não confirma a entrega.
 
 ### Selecionar serviços
 

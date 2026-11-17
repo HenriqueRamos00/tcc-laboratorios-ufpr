@@ -41,6 +41,7 @@ public class UpdateTecnicoUseCase {
 		tecnico.setAtivo(request.status().toAtivo());
 		if (request.password() != null && !request.password().isBlank()) {
 			tecnico.setSenhaHash(passwordEncoder.encode(request.password()));
+			tecnico.setSenhaVersao(tecnico.getSenhaVersaoAtual() + 1);
 		}
 		try {
 			return TecnicoResponse.fromEntity(usuarioRepository.saveAndFlush(tecnico));
