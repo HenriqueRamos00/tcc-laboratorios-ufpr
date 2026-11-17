@@ -40,11 +40,19 @@
     [loading]="loading()"
     [(query)]="query"
   >
-    <ng-template appDataTableActions [appDataTableActionsOf]="equipmentList()" let-equipment>
+    <ng-template
+      appDataTableActions
+      [appDataTableActionsOf]="equipmentList()"
+      let-equipment
+      let-compact="compact"
+    >
       <a
         [routerLink]="['/cliente/equipamentos', equipment.id]"
         class="inline-flex items-center gap-2 rounded-lg bg-lactec-primary px-4 py-2
                text-sm font-semibold text-lactec-on-primary hover:bg-lactec-primary-dark"
+        [class.h-11]="compact"
+        [class.w-full]="compact"
+        [class.justify-center]="compact"
       >
         Ver Detalhes
         <mat-icon class="icone-16" aria-hidden="true">arrow_forward</mat-icon>

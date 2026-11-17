@@ -5,14 +5,15 @@
 
 <!-- Todas as abas ficam alcançáveis pelo Tab: o índice móvel do padrão ARIA
      exige navegação por setas, e sem ela a aba inativa some do teclado. -->
-<div class="mt-4 border-b border-lactec-line" role="tablist" aria-label="Como encontrar o laudo">
+<div class="mt-4 flex gap-6 border-b border-lactec-line" role="tablist" aria-label="Como encontrar o laudo">
   <button
     type="button"
     role="tab"
     id="tab-reports"
     aria-controls="panel-reports"
     [attr.aria-selected]="activeTab() === 'reports'"
-    class="px-4 py-3 text-sm"
+    class="-mb-px border-b-2 border-transparent py-3 text-sm"
+    [class.border-lactec-primary]="activeTab() === 'reports'"
     [class.font-semibold]="activeTab() === 'reports'"
     [class.text-lactec-ink]="activeTab() === 'reports'"
     [class.text-lactec-muted]="activeTab() !== 'reports'"
@@ -26,7 +27,8 @@
     id="tab-quotes"
     aria-controls="panel-quotes"
     [attr.aria-selected]="activeTab() === 'quotes'"
-    class="px-4 py-3 text-sm"
+    class="-mb-px border-b-2 border-transparent py-3 text-sm"
+    [class.border-lactec-primary]="activeTab() === 'quotes'"
     [class.font-semibold]="activeTab() === 'quotes'"
     [class.text-lactec-ink]="activeTab() === 'quotes'"
     [class.text-lactec-muted]="activeTab() !== 'quotes'"

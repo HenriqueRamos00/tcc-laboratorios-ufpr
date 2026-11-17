@@ -30,7 +30,7 @@ module.exports = function (config) {
         base: 'ChromeHeadless',
         // --disable-dev-shm-usage: o /dev/shm padrão do Docker tem 64 MB e o
         // Chromium trava ao estourá-lo durante a suíte.
-        flags: ['--no-sandbox', '--disable-gpu', '--disable-dev-shm-usage'],
+        flags: ['--no-sandbox', '--disable-gpu', '--disable-dev-shm-usage', '--window-size=1280,900'],
       },
     },
     restartOnFileChange: true,

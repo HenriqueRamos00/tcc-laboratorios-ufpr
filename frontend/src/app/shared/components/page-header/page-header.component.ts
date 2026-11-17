@@ -15,23 +15,27 @@ export interface Breadcrumb {
   host: { class: 'block' },
   template: `
     @if (breadcrumbs().length) {
-      <nav class="flex items-center gap-1 text-sm mb-2" aria-label="Trilha de navegação">
-        @for (breadcrumb of breadcrumbs(); track breadcrumb.label; let last = $last) {
-          @if (breadcrumb.route && !last) {
-            <a [routerLink]="breadcrumb.route" class="text-lactec-primary hover:underline">
-              {{ breadcrumb.label }}
-            </a>
-          } @else {
-            <span class="text-lactec-ink-soft" [attr.aria-current]="last ? 'page' : null">
-              {{ breadcrumb.label }}
-            </span>
+      <nav class="mb-2 text-sm" aria-label="Trilha de navegação">
+        <ol class="m-0 flex list-none flex-wrap items-center gap-x-1 gap-y-1 p-0">
+          @for (breadcrumb of breadcrumbs(); track breadcrumb.label; let last = $last) {
+            <li class="inline-flex min-w-0 items-center gap-1">
+              @if (breadcrumb.route && !last) {
+                <a [routerLink]="breadcrumb.route" class="text-lactec-primary hover:underline">
+                  {{ breadcrumb.label }}
+                </a>
+              } @else {
+                <span class="text-lactec-ink-soft" [attr.aria-current]="last ? 'page' : null">
+                  {{ breadcrumb.label }}
+                </span>
+              }
+              @if (!last) {
+                <mat-icon class="icone-16 shrink-0 text-lactec-faint" aria-hidden="true">
+                  chevron_right
+                </mat-icon>
+              }
+            </li>
           }
-          @if (!last) {
-            <mat-icon class="icone-16 text-lactec-faint" aria-hidden="true">
-              chevron_right
-            </mat-icon>
-          }
-        }
+        </ol>
       </nav>
     }
 

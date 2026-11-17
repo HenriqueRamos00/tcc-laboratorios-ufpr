@@ -1,3 +1,6 @@
+import { API_URL } from '@/app/environment/env';
+import { provideHttpClient } from '@angular/common/http';
+import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { fakeAsync, TestBed, tick } from '@angular/core/testing';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { provideRouter, Router } from '@angular/router';
@@ -41,6 +44,8 @@ function mountDetail(stageName: string, laboratoryStage?: string) {
   TestBed.configureTestingModule({
     providers: [
       provideRouter([]),
+      provideHttpClient(),
+      provideHttpClientTesting(),
       {
         provide: QuotesService,
         useValue: {
@@ -146,7 +151,10 @@ describe('QuoteDetailComponent, a ação que a etapa pede', () => {
     const { fixture, view, destinations } = mountDetail('Aprovado pelo cliente');
 
     buttonWith(view, CONFIRM_SHIPMENT_BUTTON)?.click();
-    tick(500);
+    TestBed.inject(HttpTestingController)
+      .expectOne(`${API_URL}/api/quotes/quote-1/sample-shipment`)
+      .flush({ id: 'decisao-1', kind: 'sample-shipment', recordedAt: '2026-11-15T12:00:00Z' });
+    tick();
     fixture.detectChanges();
 
     expect(TestBed.inject(QuoteDecisionService).decisionFor('quote-1')?.status).toBe(

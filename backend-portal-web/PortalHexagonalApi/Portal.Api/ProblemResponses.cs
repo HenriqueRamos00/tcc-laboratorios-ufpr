@@ -199,6 +199,42 @@ internal static class ProblemResponses
             detail);
     }
 
+    public static IActionResult InvalidClientDecision(this ControllerBase controller, string detail)
+    {
+        return controller.AsProblem(
+            StatusCodes.Status400BadRequest,
+            "invalid-client-decision",
+            "Decisao invalida.",
+            detail);
+    }
+
+    public static IActionResult ClientDecisionNotAllowed(this ControllerBase controller)
+    {
+        return controller.AsProblem(
+            StatusCodes.Status409Conflict,
+            "client-decision-not-allowed",
+            "Decisao nao permitida.",
+            "A etapa atual do orcamento nao aceita esta decisao, ou ela ja foi registrada.");
+    }
+
+    public static IActionResult ClientDecisionsNotAvailable(this ControllerBase controller)
+    {
+        return controller.AsProblem(
+            StatusCodes.Status501NotImplemented,
+            "client-decisions-not-available",
+            "Registro de decisoes indisponivel.",
+            "Este ambiente nao tem banco do portal configurado ou nao usa o login do cliente Lactec.");
+    }
+
+    public static IActionResult ClientDecisionStoreUnavailable(this ControllerBase controller)
+    {
+        return controller.AsProblem(
+            StatusCodes.Status502BadGateway,
+            "client-decision-store-unavailable",
+            "Banco do portal indisponivel.",
+            "Nao foi possivel registrar a decisao agora. Tente novamente em instantes.");
+    }
+
     public static IActionResult QuoteNotFound(this ControllerBase controller)
     {
         return controller.AsProblem(

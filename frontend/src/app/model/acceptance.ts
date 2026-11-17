@@ -1,5 +1,7 @@
 // Termo de Aceite (Anexo II da proposta): HU-09.
 
+export const INVOICE_EMAIL_COUNT = { min: 2, max: 5 } as const;
+
 export interface BillingAddress {
   company: string;
   cnpj: string;
@@ -11,8 +13,7 @@ export interface BillingAddress {
   postalCode: string;
   contact: string;
   phone: string;
-  fax: string;
-  invoiceEmails: string;
+  invoiceEmails: string[];
 }
 
 export interface AcceptanceApproval {
@@ -34,6 +35,8 @@ export interface AcceptanceTerms {
   readonly billing: BillingAddress;
   readonly approval: AcceptanceApproval;
 }
+
+export type AcceptanceFormValue = Pick<AcceptanceTerms, 'billing' | 'approval'>;
 
 /** Como o cliente autoriza a execução: ordem de compra ou termo preenchido. */
 export type ApprovalMethod = 'ordem-de-compra' | 'termo-de-aceite';

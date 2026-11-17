@@ -102,8 +102,9 @@ e comentado no lugar de uso.
   com os CNPJs autorizados no JWT; o modo `backend-lab` mantém seu adapter de
   demonstração no C#. Erros de consulta são exibidos na tela, sem fallback para
   fixtures no Angular.
-- **Aceite e recusa** ficam registrados em memória durante a sessão
-  (`QuoteDecisionService`), com o formato do POST que a aplicação Java vai expor.
+- **Aceite, ordem de compra, envio de amostra e recusa** são gravados pela API C#
+  no banco do portal (`QuoteDecisionService` faz os POSTs). O termo de aceite
+  pela metade fica como rascunho no navegador até ser enviado ou descartado.
 - **PDF da proposta** vem do Salesforce e ainda não está integrado; a tela mostra
   o aviso em vez de um visualizador vazio.
 

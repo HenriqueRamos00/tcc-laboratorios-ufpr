@@ -5,20 +5,21 @@
     [title]="'Indicadores de Saúde do Transformador - ' + data.tag"
     [breadcrumbs]="breadcrumbs()"
   >
-    <div acoes class="flex flex-col items-end gap-1">
-      <span class="text-xs text-lactec-muted">Baixar relatório</span>
+    <div acoes class="flex w-full flex-col gap-1 md:w-auto md:items-end">
+      <span class="hidden text-xs text-lactec-muted md:block">Baixar relatório</span>
       <button
         type="button"
-        class="flex h-11 w-11 items-center justify-center rounded-lg bg-lactec-nav
-               text-lactec-on-primary hover:bg-lactec-nav-dark"
+        class="flex h-11 w-full items-center justify-center gap-2 rounded-lg bg-lactec-nav
+               text-lactec-on-primary hover:bg-lactec-nav-dark md:w-11"
         aria-label="Baixar relatório histórico dos indicadores"
       >
         <mat-icon aria-hidden="true">download</mat-icon>
+        <span class="text-sm font-semibold md:hidden" aria-hidden="true">Baixar relatório</span>
       </button>
     </div>
   </app-page-header>
 
-  <div class="mt-4 border-b border-lactec-line" role="tablist" aria-label="Tipo de ensaio">
+  <div class="mt-4 flex gap-6 border-b border-lactec-line" role="tablist" aria-label="Tipo de ensaio">
     <button
       type="button"
       role="tab"
@@ -29,7 +30,8 @@
       [attr.aria-disabled]="lockedTabReason()['fisico-quimico'] ? true : null"
       [matTooltip]="lockedTabReason()['fisico-quimico'] ?? ''"
       matTooltipShowDelay="120"
-      class="px-4 py-3 text-sm"
+      class="-mb-px border-b-2 border-transparent py-3 text-sm"
+      [class.border-lactec-primary]="activeTab() === 'fisico-quimico'"
       [class.font-semibold]="activeTab() === 'fisico-quimico'"
       [class.text-lactec-ink]="activeTab() === 'fisico-quimico'"
       [class.text-lactec-muted]="activeTab() !== 'fisico-quimico'"
@@ -49,7 +51,8 @@
       [attr.aria-disabled]="lockedTabReason()['gases'] ? true : null"
       [matTooltip]="lockedTabReason()['gases'] ?? ''"
       matTooltipShowDelay="120"
-      class="px-4 py-3 text-sm"
+      class="-mb-px border-b-2 border-transparent py-3 text-sm"
+      [class.border-lactec-primary]="activeTab() === 'gases'"
       [class.font-semibold]="activeTab() === 'gases'"
       [class.text-lactec-ink]="activeTab() === 'gases'"
       [class.text-lactec-muted]="activeTab() !== 'gases'"
@@ -67,7 +70,7 @@
       role="tabpanel"
       aria-labelledby="aba-fisico-quimico"
       tabindex="0"
-      class="mt-6 rounded-2xl border border-lactec-line bg-lactec-paper p-6"
+      class="mt-6 rounded-lactec-panel border border-lactec-line bg-lactec-paper p-6"
     >
       <h2 class="sr-only">Ensaios físico-químicos</h2>
 
@@ -192,7 +195,7 @@
 
     <section
       aria-labelledby="report-title-physical-chemical"
-      class="mt-4 rounded-2xl border border-lactec-line bg-lactec-paper p-6"
+      class="mt-4 rounded-lactec-panel border border-lactec-line bg-lactec-paper p-6"
     >
       <h2
         id="report-title-physical-chemical"
@@ -255,7 +258,7 @@
         role="tabpanel"
         aria-labelledby="aba-criterios"
         tabindex="0"
-        class="mt-4 rounded-2xl border border-lactec-line bg-lactec-paper p-6"
+        class="mt-4 rounded-lactec-panel border border-lactec-line bg-lactec-paper p-6"
       >
         <h2 class="sr-only">Cromatografia de gases dissolvidos</h2>
 
@@ -332,7 +335,7 @@
 
       <section
         aria-labelledby="report-title-chromatography"
-        class="mt-4 rounded-2xl border border-lactec-line bg-lactec-paper p-6"
+        class="mt-4 rounded-lactec-panel border border-lactec-line bg-lactec-paper p-6"
       >
         <h2
           id="report-title-chromatography"
@@ -356,7 +359,7 @@
         role="tabpanel"
         aria-labelledby="aba-metodos"
         tabindex="0"
-        class="mt-4 rounded-2xl border border-lactec-line bg-lactec-paper p-6"
+        class="mt-4 rounded-lactec-panel border border-lactec-line bg-lactec-paper p-6"
       >
         <app-diagnostic-methods [diagnosis]="diagnosis()" />
       </section>

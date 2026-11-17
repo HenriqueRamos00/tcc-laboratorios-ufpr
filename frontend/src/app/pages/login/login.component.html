@@ -29,7 +29,7 @@
 
       <div class="flex flex-col gap-2">
         <label for="login-email" class="text-xs font-medium text-lactec-ink-soft tracking-wide">
-          E-mail <span class="text-lactec-danger">*</span>
+          E-mail <span class="text-lactec-field-error">*</span>
         </label>
         <div class="input-field" [class.input-field--error]="emailInvalid">
           <mat-icon class="input-field__icon" aria-hidden="true">mail_outline</mat-icon>
@@ -46,7 +46,7 @@
           />
         </div>
         @if (emailInvalid) {
-          <p id="login-email-error" class="text-xs text-lactec-danger m-0" role="alert">
+          <p id="login-email-error" class="text-xs text-lactec-field-error m-0" role="alert">
             {{ emailCtrl.hasError('required') ? 'Campo obrigatório.' : 'Informe um e-mail válido.' }}
           </p>
         }
@@ -54,7 +54,7 @@
 
       <div class="flex flex-col gap-2">
         <label for="login-password" class="text-xs font-medium text-lactec-ink-soft tracking-wide">
-          Senha <span class="text-lactec-danger">*</span>
+          Senha <span class="text-lactec-field-error">*</span>
         </label>
         <div class="input-field" [class.input-field--error]="passwordInvalid">
           <mat-icon class="input-field__icon" aria-hidden="true">lock_outline</mat-icon>
@@ -78,7 +78,7 @@
           </button>
         </div>
         @if (passwordInvalid) {
-          <p id="login-password-error" class="text-xs text-lactec-danger m-0" role="alert">
+          <p id="login-password-error" class="text-xs text-lactec-field-error m-0" role="alert">
             {{ passwordCtrl.hasError('required') ? 'Campo obrigatório.' : 'A senha deve ter no máximo 72 caracteres.' }}
           </p>
         }

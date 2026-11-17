@@ -18,7 +18,7 @@ export function skeletonIndexes(count: number): readonly number[] {
   imports: [SkeletonComponent],
   host: { class: 'block min-w-0' },
   template: `
-    <div class="overflow-hidden rounded-2xl border border-lactec-line bg-lactec-paper">
+    <div class="overflow-hidden rounded-lactec-panel border border-lactec-line bg-lactec-paper">
       <div class="flex h-11 items-center gap-8 bg-lactec-line-soft px-4">
         @for (column of columnIndexes(); track column) {
           <app-skeleton class="h-3.5 w-24" tone="strong" />

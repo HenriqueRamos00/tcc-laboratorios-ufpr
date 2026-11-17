@@ -1,6 +1,6 @@
 // Gera a massa de teste de cromatografia do frontend a partir do dado real.
 //
-// Entrada: `tools/massa-autolab.mjs`, a mesma massa que gera o banco local do AutoLAB.
+// Entrada: `tools/massa-autolab.mjs`, a mesma massa que gera o `autolab-sample.json` da suíte da API.
 // Saida:
 // `frontend/src/app/model/measured-gas-sample.spec-util.ts`.
 //
@@ -151,7 +151,7 @@ const HEADER = `// Massa de teste de cromatografia derivada do dado REAL das vie
 //
 // ARQUIVO GERADO. Nao edite a mao: regere com
 // \`tools/gerar-amostra-de-cromatografia.mjs\`, que le \`tools/massa-autolab.mjs\`
-// (a mesma massa do banco local do AutoLAB) e recusa gravar quando o
+// (a mesma massa da suíte da API) e recusa gravar quando o
 // totalizador publicado de um protocolo não bate exatamente com a soma dos nove
 // gases daquele protocolo.
 //

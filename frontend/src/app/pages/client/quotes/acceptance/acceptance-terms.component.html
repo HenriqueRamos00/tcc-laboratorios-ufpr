@@ -5,7 +5,7 @@
 />
 
 <form
-  class="mt-6 rounded-2xl border border-lactec-line bg-lactec-paper p-6"
+  class="mt-6 rounded-lactec-panel border border-lactec-line bg-lactec-paper p-6"
   [formGroup]="form"
   (ngSubmit)="submit()"
   novalidate
@@ -23,44 +23,83 @@
     </legend>
 
     <div class="grid grid-cols-1 gap-4 md:grid-cols-3">
-      <app-text-field [controle]="billing.company" label="Empresa" />
-      <app-text-field [controle]="billing.cnpj" label="CNPJ" inputmode="numeric" />
-      <app-text-field [controle]="billing.stateRegistration" label="I.E." />
+      <app-text-field [controle]="billing.company" label="Empresa" [maxlength]="limits.companyName" />
+      <app-text-field [controle]="billing.cnpj" label="CNPJ" [mascara]="masks.cnpj" [caixaAlta]="true" />
+      <app-text-field [controle]="billing.stateRegistration" label="I.E." [maxlength]="limits.stateRegistration" />
     </div>
 
-    <app-text-field class="mt-4" [controle]="billing.street" label="Endereço" />
+    <app-text-field class="mt-4" [controle]="billing.street" label="Endereço" [maxlength]="limits.street" />
 
     <div class="mt-4 grid grid-cols-1 gap-4 md:grid-cols-4">
-      <app-text-field [controle]="billing.city" label="Cidade" />
-      <app-text-field [controle]="billing.state" label="UF" [maxlength]="2" [caixaAlta]="true" />
-      <app-text-field [controle]="billing.district" label="Bairro" />
-      <app-text-field [controle]="billing.postalCode" label="CEP" inputmode="numeric" />
+      <app-text-field [controle]="billing.city" label="Cidade" [maxlength]="limits.city" />
+      <app-text-field [controle]="billing.state" label="UF" [mascara]="masks.state" [caixaAlta]="true" />
+      <app-text-field [controle]="billing.district" label="Bairro" [maxlength]="limits.district" />
+      <app-text-field [controle]="billing.postalCode" label="CEP" inputmode="numeric" [mascara]="masks.postalCode" />
     </div>
 
-    <div class="mt-4 grid grid-cols-1 gap-4 md:grid-cols-3">
-      <app-text-field [controle]="billing.contact" label="Contato" />
-      <app-text-field [controle]="billing.phone" label="Telefone" tipo="tel" />
-      <app-text-field [controle]="billing.fax" label="Fax" tipo="tel" />
+    <div class="mt-4 grid grid-cols-1 gap-4 md:grid-cols-2">
+      <app-text-field [controle]="billing.contact" label="Contato" [maxlength]="limits.personName" />
+      <app-text-field [controle]="billing.phone" label="Telefone" tipo="tel" [mascara]="masks.phone" />
     </div>
 
-    <app-text-field
-      class="mt-4"
-      [controle]="billing.invoiceEmails"
-      label="Endereço eletrônico para envio de NFS-e (preencher pelo menos dois endereços de e-mail):"
-    />
+    <fieldset class="mt-4 border-0 p-0">
+      <legend class="p-0 text-sm text-lactec-ink-soft">
+        Endereço eletrônico para envio de NFS-e (preencher pelo menos dois endereços de e-mail):
+      </legend>
+      <p class="mt-1 mb-0 text-xs text-lactec-ink-soft">
+        Informe de {{ invoiceEmailCount.min }} a {{ invoiceEmailCount.max }} endereços diferentes. A
+        nota fiscal é enviada para todos eles.
+      </p>
+
+      <div class="mt-3 grid grid-cols-1 gap-4 md:grid-cols-2">
+        @for (email of billing.invoiceEmails.controls; track email; let index = $index) {
+          <div class="flex items-start gap-2">
+            <app-text-field
+              class="min-w-0 flex-1"
+              [controle]="email"
+              [label]="'E-mail ' + (index + 1) + ' para NFS-e'"
+              [maxlength]="limits.email"
+              tipo="email"
+            />
+            @if (index >= invoiceEmailCount.min) {
+              <button
+                type="button"
+                class="mt-6 h-11 rounded-lg border border-lactec-field-border bg-lactec-paper px-3
+                       text-sm font-semibold text-lactec-ink hover:border-lactec-field-border-hover"
+                [attr.aria-label]="'Remover o e-mail ' + (index + 1) + ' para NFS-e'"
+                (click)="removeInvoiceEmail(index)"
+              >
+                Remover
+              </button>
+            }
+          </div>
+        }
+      </div>
+
+      @if (billing.invoiceEmails.length < invoiceEmailCount.max) {
+        <button
+          type="button"
+          class="mt-3 rounded-lg border border-lactec-field-border bg-lactec-paper px-4 py-2 text-sm
+                 font-semibold text-lactec-primary-dark hover:border-lactec-field-border-hover"
+          (click)="addInvoiceEmail()"
+        >
+          Adicionar outro e-mail
+        </button>
+      }
+    </fieldset>
   </fieldset>
 
   <fieldset class="mt-8 border-0 p-0">
     <legend class="display mb-4 p-0 text-base font-semibold text-lactec-nav">2. Aprovação</legend>
 
     <div class="grid grid-cols-1 gap-4 md:grid-cols-2">
-      <app-text-field [controle]="approval.requesterName" label="Nome do Solicitante" />
-      <app-text-field [controle]="approval.responsibleName" label="Nome do Responsável" />
+      <app-text-field [controle]="approval.requesterName" label="Nome do Solicitante" [maxlength]="limits.personName" />
+      <app-text-field [controle]="approval.responsibleName" label="Nome do Responsável" [maxlength]="limits.personName" />
     </div>
 
     <div class="mt-4 grid grid-cols-1 gap-4 md:grid-cols-3">
-      <app-text-field [controle]="approval.jobTitle" label="Cargo" />
-      <app-text-field [controle]="approval.department" label="Setor" />
+      <app-text-field [controle]="approval.jobTitle" label="Cargo" [maxlength]="limits.jobTitle" />
+      <app-text-field [controle]="approval.department" label="Setor" [maxlength]="limits.department" />
       <app-text-field [controle]="approval.date" label="Data" tipo="date" />
     </div>
 
@@ -90,6 +129,7 @@
       <app-text-field
         class="md:w-80"
         [controle]="approval.resultsEmail"
+        [maxlength]="limits.email"
         label="Endereço de e-mail:"
         tipo="email"
       />
@@ -102,11 +142,21 @@
     <app-sample-shipping-notice [proposalCode]="id()" guidance="address-and-labeling" />
   </div>
 
-  <div class="mt-6 flex justify-end">
+  <div class="mt-6 flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+    @let savedAt = draftSavedAt();
+    <p class="m-0 text-sm text-lactec-ink-soft" [attr.role]="draftUnavailable() ? 'status' : null">
+      @if (draftUnavailable()) {
+        Este navegador não permitiu guardar o rascunho. Se você sair desta tela antes de enviar, o
+        que foi preenchido será perdido.
+      } @else if (savedAt) {
+        Rascunho guardado neste navegador às {{ savedAt | date: 'HH:mm' }}. Ele fica disponível por
+        {{ draftValidityDays }} dias e é apagado ao enviar o aceite ou ao sair da conta.
+      }
+    </p>
     <button
       type="submit"
-      class="rounded-lg bg-lactec-success px-6 py-3 text-sm font-semibold text-white
-             hover:opacity-90 disabled:opacity-40"
+      class="self-end rounded-lg bg-lactec-success px-6 py-3 text-sm font-semibold text-white
+             hover:opacity-90 disabled:opacity-40 md:self-auto"
       [disabled]="sending()"
     >
       Enviar Aceite

@@ -5,6 +5,10 @@
    nenhuma classe utilitária as usa, porque src/theme.scss (tema do Angular
    Material) as referencia por var(). */
 @theme static {
+  --radius-lactec-control: 0.5rem;
+  --spacing-lactec-panel: 1.5rem;
+  --spacing-lactec-panel-gap: 1rem;
+  --radius-lactec-panel: calc(var(--radius-lactec-control) + var(--spacing-lactec-panel));
   /* Marca */
   --color-lactec-primary: #138291;
   --color-lactec-primary-dark: #106A77;
@@ -90,6 +94,11 @@
   /* Borda de campo sob o cursor: um passo acima de `line`, que nesse estado
      some. */
   --color-lactec-line-strong: #C9D1D5;
+  --color-lactec-field-border: #758A94;
+  --color-lactec-field-border-hover: var(--color-lactec-muted);
+  --color-lactec-field-border-focus: var(--color-lactec-primary);
+  --color-lactec-field-border-invalid: var(--color-lactec-danger);
+  --color-lactec-field-error: var(--color-lactec-danger-ink);
   --color-lactec-pill-proc-border: #B9DDE4;
   --color-lactec-pill-analysis-border: #EFCF9A;
 
@@ -267,26 +276,30 @@ mat-icon.icone-36 {
   height: 44px;
   padding: 0 12px;
   background: var(--color-lactec-paper);
-  border: 1px solid var(--color-lactec-line);
+  border: 1px solid var(--color-lactec-field-border);
   border-radius: 8px;
   transition:
     border-color 120ms ease,
     box-shadow 120ms ease;
 }
 .input-field:hover {
-  border-color: var(--color-lactec-line-strong);
+  border-color: var(--color-lactec-field-border-hover);
 }
 .input-field:focus-within {
-  border-color: var(--color-lactec-primary);
-  box-shadow: 0 0 0 4px color-mix(in oklab, var(--color-lactec-primary) 12%, transparent);
+  border-color: var(--color-lactec-field-border-focus);
+  box-shadow:
+    0 0 0 1px var(--color-lactec-field-border-focus),
+    0 0 0 4px color-mix(in oklab, var(--color-lactec-field-border-focus) 12%, transparent);
 }
 .input-field--error,
 .input-field--error:hover {
-  border-color: var(--color-lactec-danger);
+  border-color: var(--color-lactec-field-border-invalid);
 }
 .input-field--error:focus-within {
-  border-color: var(--color-lactec-danger);
-  box-shadow: 0 0 0 4px color-mix(in oklab, var(--color-lactec-danger) 14%, transparent);
+  border-color: var(--color-lactec-field-border-invalid);
+  box-shadow:
+    0 0 0 1px var(--color-lactec-field-border-invalid),
+    0 0 0 4px color-mix(in oklab, var(--color-lactec-field-border-invalid) 14%, transparent);
 }
 .input-field__icon {
   flex: none;
@@ -300,7 +313,7 @@ mat-icon.icone-36 {
   color: var(--color-lactec-primary-dark);
 }
 .input-field--error .input-field__icon {
-  color: var(--color-lactec-danger);
+  color: var(--color-lactec-field-error);
 }
 .input-field__input {
   flex: 1 1 auto;
@@ -637,71 +650,60 @@ mat-icon.status-stepper__icon {
 .dialog-shell {
   display: flex;
   flex-direction: column;
-  gap: 16px;
-  padding: 20px;
+  gap: var(--spacing-lactec-panel-gap);
+  padding: var(--spacing-lactec-panel);
 }
-.dialog-shell__navbar {
+.dialog-shell__header {
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   justify-content: space-between;
-  gap: 12px;
+  gap: var(--spacing-lactec-panel-gap);
 }
-.dialog-shell__brand {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  min-width: 0;
-}
-.dialog-shell__title-block {
+.dialog-shell__heading {
   display: flex;
   flex-direction: column;
-  gap: 2px;
+  gap: 4px;
+  min-width: 0;
 }
 .dialog-shell__title {
   margin: 0;
   font-family: 'Instrument Sans', system-ui, sans-serif;
   font-size: 24px;
   font-weight: 600;
+  line-height: 32px;
   color: var(--color-lactec-ink);
   letter-spacing: -0.01em;
+}
+.dialog-shell__header:has(.dialog-shell__close) .dialog-shell__title:first-child {
+  margin-top: -4px;
+}
+.dialog-shell__title:focus {
+  outline: none;
 }
 .dialog-shell__subtitle {
   margin: 0;
   font-size: 13px;
   color: var(--color-lactec-muted);
 }
+.dialog-shell__close {
+  flex: none;
+  margin: -8px -8px 0 0;
+}
 .dialog-shell__content {
   display: flex;
   flex-direction: column;
-  gap: 16px;
-  padding: 8px 0;
+  gap: var(--spacing-lactec-panel-gap);
 }
 .dialog-shell__footer {
-  border-top: 1px solid var(--color-lactec-line);
-  padding-top: 12px;
   display: flex;
   justify-content: flex-start;
+  border-top: 1px solid var(--color-lactec-line);
+  padding-top: var(--spacing-lactec-panel-gap);
+}
+.dialog-shell__footer:empty {
+  display: none;
 }
 
-.status-dialog-brand {
-  display: inline-flex;
-  align-items: baseline;
-  gap: 6px;
-  font-family: 'Instrument Sans', system-ui, sans-serif;
-  font-size: 13px;
-  font-weight: 600;
-  letter-spacing: 0.04em;
-  color: var(--color-lactec-ink-soft);
-}
-.status-dialog-brand__lactec {
-  color: var(--color-lactec-nav);
-}
-.status-dialog-brand__sep {
-  color: var(--color-lactec-divider);
-}
-.status-dialog-brand__lab {
-  color: var(--color-lactec-muted);
-}
 
 .status-dialog-message {
   display: flex;
@@ -885,13 +887,6 @@ mat-icon.sample-shipping-notice__icon {
 }
 
 
-.status-dialog-protocol {
-  font-size: 11px;
-  letter-spacing: 0.12em;
-  color: var(--color-lactec-faint);
-  text-transform: uppercase;
-}
-
 
 /* Mobile: o overlay vira a tela toda e transparente. Quem desenha barra +
    escurecedor + sheet é o .dialog-sheet abaixo, só com flexbox. A largura vem
@@ -922,7 +917,7 @@ mat-icon.sample-shipping-notice__icon {
   display: flex;
   flex-direction: column;
   justify-content: flex-end;
-  overflow: hidden;
+  overflow: clip;
   background: color-mix(in oklab, var(--color-lactec-ink) 55%, transparent);
   cursor: pointer;
 }
@@ -932,10 +927,6 @@ mat-icon.sample-shipping-notice__icon {
   flex: none;
   max-height: 100%;
   overflow-y: auto;
-  display: flex;
-  flex-direction: column;
-  gap: 16px;
-  padding: 20px;
   cursor: default;
   background: var(--color-lactec-paper);
   animation: dialog-sheet-up 260ms ease;
@@ -947,9 +938,6 @@ mat-icon.sample-shipping-notice__icon {
   to {
     transform: translateY(0);
   }
-}
-.lactec-dialog-desktop .dialog-shell {
-  padding: 24px 40px 20px;
 }
 
 /* Visualizador da proposta (ngx-extended-pdf-viewer).

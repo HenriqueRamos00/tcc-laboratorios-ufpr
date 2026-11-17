@@ -4,6 +4,7 @@ using Portal.Application.Pipeline.Exceptions;
 using Portal.Application.Quotes;
 using Portal.Domain.Pipeline;
 using Portal.Domain.Quotes;
+using Portal.Tests.Quotes;
 
 using Xunit;
 
@@ -188,7 +189,8 @@ public sealed class QuoteStageTests
         ILaboratoryProgressRepository laboratory,
         params Quote[] quotes)
     {
-        return new QuoteService(new ScriptedQuoteRepository(quotes), new ScriptedDocuments(), laboratory);
+        return new QuoteService(
+            new ScriptedQuoteRepository(quotes), new ScriptedDocuments(), laboratory, new InMemoryClientDecisionRepository());
     }
 
     private static Quote QuoteOf(string id, string code)

@@ -11,4 +11,7 @@ namespace Portal.Domain.Quotes;
 /// sobrescrever <see cref="Quote.Stage"/>: a etapa que a fonte comercial escreveu continua
 /// sendo a unica coisa que explica um orcamento que o laboratorio nao conhece.
 /// </summary>
-public sealed record QuoteWithLaboratoryStage(Quote Quote, PipelineStage? LaboratoryStage);
+public sealed record QuoteWithLaboratoryStage(
+    Quote Quote,
+    PipelineStage? LaboratoryStage,
+    ClientDecision? LatestClientDecision = null);

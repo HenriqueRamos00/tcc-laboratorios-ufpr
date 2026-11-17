@@ -1,3 +1,4 @@
+import { FIELD_LIMITS } from '@/app/model/field-limits';
 import { ChangeDetectionStrategy, Component, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { MAT_DIALOG_DATA, MatDialogRef } from '@angular/material/dialog';
@@ -24,9 +25,10 @@ export interface RejectQuoteDialogData {
         </span>
         <textarea
           rows="4"
-          class="mt-2 w-full rounded-lg border border-lactec-line bg-lactec-paper px-3 py-2
+          [maxlength]="limits.justification"
+          class="mt-2 w-full rounded-lg border border-lactec-field-border bg-lactec-paper px-3 py-2
                  text-sm text-lactec-ink placeholder:text-lactec-muted
-                 focus:border-lactec-primary focus:outline-none"
+                 hover:border-lactec-field-border-hover focus:border-lactec-field-border-focus focus:outline-none focus:ring-1 focus:ring-lactec-field-border-focus"
           placeholder="Justificativa..."
           [ngModel]="justification()"
           (ngModelChange)="justification.set($event)"
@@ -59,6 +61,7 @@ export class RejectQuoteDialogComponent {
   protected readonly data = inject<RejectQuoteDialogData>(MAT_DIALOG_DATA);
   private readonly dialogRef = inject(MatDialogRef<RejectQuoteDialogComponent>);
 
+  protected readonly limits = FIELD_LIMITS;
   protected readonly justification = signal('');
 
   protected rejeitar(): void {

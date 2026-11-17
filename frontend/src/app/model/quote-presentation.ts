@@ -10,7 +10,9 @@ import {
   type PipelineStage,
   type RequestStatus,
 } from './analysis-pipeline';
-import type { Quote } from './quote';
+import { statusOfClientDecision, type Quote } from './quote';
+import { DataPipe } from '@shared/pipes/data.pipe';
+import { MoedaPipe } from '@shared/pipes/moeda.pipe';
 
 /** Um orçamento já resolvido para a tela: rótulo pronto, valor e data legíveis. */
 export interface DisplayedQuote {
@@ -72,16 +74,8 @@ export const STATUS_BADGE: Record<RequestStatus, StatusBadge> = {
 
 const FIELD_PLACEHOLDER = '—';
 
-const BRL_FORMATTER = new Intl.NumberFormat('pt-BR', {
-  style: 'currency',
-  currency: 'BRL',
-});
-
-const DATE_FORMATTER = new Intl.DateTimeFormat('pt-BR', {
-  day: '2-digit',
-  month: '2-digit',
-  year: 'numeric',
-});
+const dataPipe = new DataPipe();
+const moedaPipe = new MoedaPipe();
 
 // O match exato cobre os valores conhecidos do Salesforce; o regex do
 // `recognizeStage` existe para variações futuras não derrubarem a tela.
@@ -127,20 +121,18 @@ function recognizeLaboratoryStage(wireName: string | null | undefined): Pipeline
   return isPipelineStage(key) ? key : null;
 }
 
-export function stageOfQuote(quote: Pick<Quote, 'stage' | 'laboratoryStage'>): RequestStatus {
+export function stageOfQuote(
+  quote: Pick<Quote, 'stage' | 'laboratoryStage' | 'clientDecision'>,
+): RequestStatus {
   const commercial = recognizeStage(quote.stage ?? '');
   if (isClosed(commercial)) return commercial;
 
   const laboratory = recognizeLaboratoryStage(quote.laboratoryStage);
-  return laboratory && stageIndex(laboratory) > stageIndex(commercial) ? laboratory : commercial;
+  const reached = laboratory && stageIndex(laboratory) > stageIndex(commercial) ? laboratory : commercial;
+  const decided = quote.clientDecision ? statusOfClientDecision(quote.clientDecision.kind) : undefined;
+  return statusAfterDecision(reached, decided);
 }
 
-// O Salesforce manda ISO 8601 com offset: 2026-03-13T13:16:07.000+0000.
-function readableCreatedDate(createdDate: string | null): string {
-  if (!createdDate) return FIELD_PLACEHOLDER;
-  const date = new Date(createdDate);
-  return Number.isNaN(date.getTime()) ? FIELD_PLACEHOLDER : DATE_FORMATTER.format(date);
-}
 
 function resolveExternalContact(quote: Quote): string {
   return (
@@ -161,8 +153,8 @@ export function toDisplayedQuote(quote: Quote): DisplayedQuote {
     description: quote.description?.trim() || '',
     company: quote.companyName?.trim() || FIELD_PLACEHOLDER,
     externalContact: resolveExternalContact(quote),
-    createdAt: readableCreatedDate(quote.createdDate),
-    estimatedValue: hasValue ? BRL_FORMATTER.format(quote.totalPrice) : undefined,
+    createdAt: dataPipe.transform(quote.createdDate) || FIELD_PLACEHOLDER,
+    estimatedValue: hasValue ? moedaPipe.transform(quote.totalPrice) : undefined,
     status,
     hasProposal: hasProposal(status),
   };

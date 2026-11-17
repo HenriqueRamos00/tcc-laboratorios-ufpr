@@ -324,9 +324,10 @@ Execute na raiz do repositório:
 docker compose -f compose.auth.yaml up -d --build
 ```
 
-O arquivo é independente e inicia Oracle com Auth2 e migrações Flyway, SQL Server
-com AutoLAB local (`autolab-init`), API C# e frontend. Abra
-http://localhost:4200. Não requer Salesforce, Backend Lab, `.env` nem cadastro manual.
+O arquivo inicia Oracle com Auth2 e migrações Flyway, SQL Server (banco `portal`), API C#
+e frontend. Abra http://localhost:4200. Não requer Salesforce, Backend Lab nem cadastro manual,
+mas exige `backend-portal-web/.env` com a conexão do AutoLAB real (e a VPN do Lactec): não
+existe mais cópia local do AutoLAB.
 As senhas locais são distintas e podem ser substituídas no `.env` da raiz:
 
 | Cliente | Senha | Empresa / CNPJ | Orçamentos | Equipamentos / laudos |
@@ -367,7 +368,6 @@ O Auth2 recebe o mesmo token configurado no C# e mantém apenas seu hash.
 configuram o Oracle; `SQLSERVER_SA_PASSWORD` configura o SQL Server local.
 
 Reinícios preservam as contas do Auth2 e não redefinem senhas ou permissões editadas.
-O `autolab-init` recarrega a massa sintética do AutoLAB a cada execução.
 `docker compose -f compose.auth.yaml down` preserva os dois bancos; `down -v` apaga
 o Oracle, o SQL Server local (incluindo eventual banco Auth legado) e os volumes do frontend.
 Os volumes são separados dos demais Composes. Este arquivo substitui o antigo overlay de rede externa e
@@ -462,11 +462,8 @@ views `vwDadosEnsaios`, `Equipamentos`, `SituaProcess` e `vwRelatoriosEnsaios` e
 tabelas `RelatorioEmissao` e `FileData`.
 
 As credenciais do AutoLAB real vem do ambiente ou do `.env` (nunca do `appsettings`
-versionado). O `compose.auth.yaml` carrega primeiro os padrões públicos do banco local em
-`docker/autolab/demo.env`, usando a mesma senha configurada para seu SQL Server. Depois
-carrega `backend-portal-web/.env`, cujos valores de conexão AutoLAB têm precedência.
-Sem esse arquivo, o demo local continua funcionando; com uma conexão externa configurada,
-a API consulta essa origem. O `appsettings.Development.json` usa fontes desconectadas e
+versionado), e tanto o `docker-compose.yml` quanto o `compose.auth.yaml` as leem de
+`backend-portal-web/.env`. O `appsettings.Development.json` usa fontes desconectadas e
 não define credenciais AutoLAB:
 
 ```env
@@ -593,41 +590,50 @@ seletivo), e `GET /api/reports` sem `quoteCode` ordena `vwRelatoriosEnsaios` int
 consulta de levantamento que ordenou a view sem filtro levou 25,6 s em producao. Use
 `all` so no banco local ate existir o filtro por CNPJ.
 
-### Banco local do AutoLAB
+### Banco do portal (decisões do cliente)
 
-`docker/autolab/01-create-database.sql` cria `autolab` com `SQL_Latin1_General_CP1_CI_AS`;
-`02-create-objects.sql` cria `vwDadosEnsaios`, `Equipamentos`, `SituaProcess`,
-`vwRelatoriosEnsaios` e `dCliente` como views com os nomes, colunas, tipos e nulabilidade
-levantados em producao (sobre tabelas locais `*Local`), e `RelatorioEmissao`/`FileData`
-como as tabelas XPO, com os indices. `03-load-sample.sql` e gerado, junto com
-`PortalHexagonalApi/Portal.Tests/AutoLab/autolab-sample.json` (a mesma massa carregada no
-SQLite da suite), a partir de `tools/massa-autolab.mjs`:
+O AutoLAB e a Salesforce são somente leitura para o portal. O que o cliente decide no portal
+fica no banco próprio `portal`, num SQL Server em contêiner:
 
-```bash
-node tools/gerar-massa-autolab.mjs
-```
-
-O cadastro local de EMPRESA DE ENERGIA usa CNPJ `30.960.572/0001-83`,
-alinhado ao cliente `client1` do Auth2 e aos orçamentos demonstrativos.
-A massa tem 11 laudos de 6 equipamentos (EMPRESA DE ENERGIA e DISTRIBUIDORA DE ENERGIA),
-o cadastro de placas, as linhas de `SituaProcess` com os codigos dos orcamentos ficticios
-na forma nua de `OrcamentoCRM` (`2026_45482`, nunca `EAQ_2026_45482_V_1`, como no AutoLAB
-real; algumas linhas avulsas reproduzem as variantes reais `2026_49001_UHAB Agua Boa` e
-`EAQ 2026_49002`, que nao viram chave de nenhum orcamento),
-um relatorio por laudo com PDFs assinados de uma pagina, laudos sem PDF, uma revisao
-substituida, um relatorio apagado (`GCRecord`) e um sem titulo nem conclusao. Para
-recarregar: `docker compose -f compose.auth.yaml run --rm autolab-init`. Para `dotnet run`
-fora do Docker, troque `AutoLab__Server` pelo endereco publicado da instancia.
+- **Serviço:** `portal-sqlserver`, no `docker-compose.yml` deste diretório, com volume
+  `portal-sqlserver-data` e porta `127.0.0.1:${PORTAL_SQLSERVER_PORT:-1434}` para inspeção.
+  A senha de SA vem de `PORTAL_SQLSERVER_SA_PASSWORD` no `.env`.
+- **Criação:** a API aplica as migrações do EF Core ao subir (`PortalStore__Source=sql-server`)
+  e cria o banco e o esquema `portal` se não existirem. As migrações ficam em
+  `Portal.Adapters/PortalStore/Migrations`; para gerar uma nova:
+  `dotnet ef migrations add <Nome> --project Portal.Adapters --startup-project Portal.Adapters --context PortalStoreDbContext --output-dir PortalStore/Migrations`.
+- **Tabelas:** `portal.ClientDecisions` (orçamento, tipo, autor e horário; índice único por
+  orçamento e vaga, uma para aceite/ordem de compra/recusa e outra para o envio da amostra),
+  `portal.AcceptanceTerms` (termo de aceite), `portal.AcceptanceInvoiceEmails` (e-mails para
+  envio da NFS-e, um por linha: termo, posição e endereço, com índice único por termo e
+  endereço), `portal.PurchaseOrders` (PDF, nome, tamanho e SHA-256) e `portal.Rejections`
+  (justificativa).
+- **Migração única:** enquanto o banco não guarda dado a preservar, mudança de esquema
+  regenera a `CriarBancoDoPortal` em vez de empilhar outra. Um banco criado pela versão
+  anterior precisa ser recriado (apague o volume `portal-sqlserver-data`).
+- **Rotas** (só no modo `lactec`, com o cliente logado):
+  `POST /api/quotes/{id}/acceptance` (JSON do termo), `POST /api/quotes/{id}/purchase-order`
+  (multipart, campo `file`, PDF de até 10 MB), `POST /api/quotes/{id}/sample-shipment` e
+  `POST /api/quotes/{id}/rejection` (`{ "justification": "..." }`, até 2000 caracteres).
+  Respondem 201 com a decisão, 404 quando o orçamento não é da empresa do cliente, 409 quando
+  a etapa não aceita a decisão ou ela já existe, e 501 sem banco do portal configurado.
+- **E-mails de NFS-e no termo:** `billing.invoiceEmails` é uma lista de 2 a 5 endereços, cada
+  um com até 254 caracteres ASCII, sem repetição (a comparação ignora maiúsculas). O servidor
+  não separa endereços de um texto só: fora da regra, responde 400 nomeando o campo
+  (`billing.invoiceEmails` ou `billing.invoiceEmails[posição]`).
+- **Regras:** aceitar, enviar ordem de compra ou recusar só com proposta pronta (a partir da
+  negociação) e antes de "aprovado pelo cliente"; confirmar o envio da amostra só em
+  "aprovado pelo cliente". A etapa considerada é a mais avançada entre a comercial, a do
+  laboratório e as decisões já gravadas. `GET /api/quotes` e `GET /api/quotes/{id}` devolvem a
+  decisão mais recente em `clientDecision`.
+- **Em produção:** use um login próprio do banco `portal`, em vez de `sa`.
 
 ## Limitações conhecidas e trabalho futuro
 
 - **Aceite e recusa de proposta não voltam ao Salesforce.** A integração com o Salesforce é
-  somente leitura. No Portal do Cliente, aceite, recusa, ordem de compra e confirmação de
-  envio de amostra ficam em memória, durante a sessão do navegador
-  (`frontend/src/app/services/quote-decision.service.ts`): recarregar a página ou entrar
-  de outro dispositivo perde a decisão, e o comercial não a recebe. A gravação no
-  Salesforce (ou no serviço que o representar) é trabalho futuro; as assinaturas do
-  serviço Angular já seguem as rotas `POST /api/quotes/{id}/...` previstas.
+  somente leitura. Aceite, recusa, ordem de compra e confirmação de envio de amostra ficam
+  no banco do portal (veja "Banco do portal"), e o comercial ainda não os recebe. Levar essas
+  decisões à Salesforce (ou ao serviço que o representar) é trabalho futuro.
 - Filtro por situação e busca da listagem de orçamentos valem para a página carregada,
   como nas demais listas; filtrar no Salesforce é trabalho futuro.
 

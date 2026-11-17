@@ -12,7 +12,7 @@ import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { MatIconModule } from '@angular/material/icon';
 import { finalize } from 'rxjs';
 
-import { readableDate } from '@shared/brazilian-date';
+import { DataPipe } from '@shared/pipes/data.pipe';
 import { DataTableActionsDirective } from '@shared/components/data-table/data-table-actions.directive';
 import { DataTableComponent } from '@shared/components/data-table/data-table.component';
 import {
@@ -51,7 +51,7 @@ function reportRow(report: Report): ReportRow {
     requestNumber: report.requestNumber ?? NOT_REPORTED,
     sample: sample || NOT_REPORTED,
     status: report.status ?? NOT_REPORTED,
-    publishedOn: published ? readableDate(published) : NOT_REPORTED,
+    publishedOn: published ? dataPipe.transform(published) : NOT_REPORTED,
     pdfAvailable: report.pdfAvailable ?? report.hasSignedDocument,
     laboratory: report.laboratory?.trim() || null,
     fileName: `relatorio-${(report.identification ?? report.id).replace(/[^\w.-]+/g, '-')}.pdf`,
@@ -68,6 +68,8 @@ const COLUMNS: readonly DataTableColumn<ReportRow>[] = [
 ];
 
 export const REPORT_TABLE_COLUMN_COUNT = COLUMNS.length + 1;
+
+const dataPipe = new DataPipe();
 
 @Component({
   selector: 'app-report-table',
@@ -91,12 +93,21 @@ export const REPORT_TABLE_COLUMN_COUNT = COLUMNS.length + 1;
       [minimumRows]="minimumRows()"
       [(query)]="query"
     >
-      <ng-template appDataTableActions [appDataTableActionsOf]="rows()" let-row>
+      <ng-template
+        appDataTableActions
+        [appDataTableActionsOf]="rows()"
+        let-row
+        let-compact="compact"
+      >
         <button
           type="button"
-          class="inline-flex h-10 w-10 items-center justify-center rounded-lg
+          class="inline-flex h-10 items-center justify-center gap-2 rounded-lg
                  bg-lactec-nav text-lactec-on-primary hover:bg-lactec-nav-dark
                  disabled:opacity-40"
+          [class.w-10]="!compact"
+          [class.h-11]="compact"
+          [class.w-full]="compact"
+          [class.px-4]="compact"
           [disabled]="!row.pdfAvailable || downloading() === row.id"
           [attr.aria-label]="
             row.pdfAvailable
@@ -109,6 +120,11 @@ export const REPORT_TABLE_COLUMN_COUNT = COLUMNS.length + 1;
           <mat-icon aria-hidden="true">
             {{ downloading() === row.id ? 'hourglass_empty' : 'download' }}
           </mat-icon>
+          @if (compact) {
+            <span class="text-sm font-semibold" aria-hidden="true">
+              {{ row.pdfAvailable ? 'Baixar relatório' : 'PDF indisponível' }}
+            </span>
+          }
         </button>
       </ng-template>
     </app-data-table>

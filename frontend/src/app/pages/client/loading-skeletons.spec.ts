@@ -62,6 +62,8 @@ describe('skeletons das telas do cliente', () => {
       TestBed.configureTestingModule({
         providers: [
           provideRouter([]),
+          provideHttpClient(),
+          provideHttpClientTesting(),
           { provide: HealthService, useValue: { equipmentIndicators: () => response } },
         ],
       });
@@ -122,6 +124,8 @@ describe('skeletons das telas do cliente', () => {
       TestBed.configureTestingModule({
         providers: [
           provideRouter([]),
+          provideHttpClient(),
+          provideHttpClientTesting(),
           {
             provide: QuotesService,
             useValue: {
@@ -214,6 +218,8 @@ describe('skeletons das telas do cliente', () => {
       TestBed.configureTestingModule({
         providers: [
           provideRouter([]),
+          provideHttpClient(),
+          provideHttpClientTesting(),
           {
             provide: QuotesService,
             useValue: { getQuoteById: () => quote, quoteDocument: () => document },
@@ -267,6 +273,8 @@ describe('skeletons das telas do cliente', () => {
       TestBed.configureTestingModule({
         providers: [
           provideRouter([]),
+          provideHttpClient(),
+          provideHttpClientTesting(),
           { provide: QuotesService, useValue: { getQuoteById: () => quote } },
           { provide: ReportsService, useValue: { list: () => NEVER } },
         ],
@@ -306,6 +314,8 @@ describe('skeletons das telas do cliente', () => {
       TestBed.configureTestingModule({
         providers: [
           provideRouter([]),
+          provideHttpClient(),
+          provideHttpClientTesting(),
           {
             provide: QuotesService,
             useValue: {

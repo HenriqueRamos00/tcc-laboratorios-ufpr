@@ -47,28 +47,12 @@ services:
         - CMD-SHELL
         - >-
           SQLCMDPASSWORD="$$MSSQL_SA_PASSWORD" /opt/mssql-tools18/bin/sqlcmd -S localhost -U sa -C -b
-          -Q "SELECT COUNT(*) FROM tempdb.sys.tables; IF DB_ID(N'autolab') IS NOT NULL EXEC(N'USE [autolab]; SELECT 1');"
+          -Q "SELECT COUNT(*) FROM tempdb.sys.tables;"
           -o /dev/null
       interval: 5s
       timeout: 5s
       retries: 30
       start_period: 20s
-
-  autolab-init:
-    image: mcr.microsoft.com/mssql/server:2022-latest
-    entrypoint: ["/bin/bash", "-c"]
-    command:
-      - >-
-        for arquivo in /sql/01-create-database.sql /sql/02-create-objects.sql /sql/03-load-sample.sql; do
-          /opt/mssql-tools18/bin/sqlcmd -S sqlserver -U sa -C -b -f 65001 -i "$$arquivo" || exit 1;
-        done
-    environment:
-      SQLCMDPASSWORD: *demo-sql-password
-    volumes:
-      - ./backend-portal-web/docker/autolab:/sql:ro
-    depends_on:
-      sqlserver:
-        condition: service_healthy
 
   auth-migrate:
     build:
@@ -119,10 +103,7 @@ services:
     build:
       context: ./backend-portal-web
     env_file:
-      # Local defaults first; the user's AutoLAB connection takes precedence.
-      - path: ./backend-portal-web/docker/autolab/demo.env
       - path: ./backend-portal-web/.env
-        required: false
     environment:
       ASPNETCORE_ENVIRONMENT: Development
       ASPNETCORE_URLS: http://+:8080
@@ -136,6 +117,11 @@ services:
       EquipmentRegistry__Source: sql-server
       LaboratoryProgress__Source: sql-server
       ReportDocuments__Source: sql-server
+      PortalStore__Source: sql-server
+      PortalStore__Server: sqlserver
+      PortalStore__Database: portal
+      PortalStore__User: sa
+      PortalStore__Password: *demo-sql-password
       BackendAuth__BaseUrl: http://backend-auth2:8081
       BackendAuth__ServiceToken: *demo-service-token
       BackendAuth__ServiceCode: portal-web
@@ -148,8 +134,8 @@ services:
     depends_on:
       backend-auth2:
         condition: service_healthy
-      autolab-init:
-        condition: service_completed_successfully
+      sqlserver:
+        condition: service_healthy
 
   frontend:
     restart: unless-stopped

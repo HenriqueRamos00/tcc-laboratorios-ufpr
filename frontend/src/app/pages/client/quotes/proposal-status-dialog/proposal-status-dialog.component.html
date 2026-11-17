@@ -2,12 +2,6 @@
   [title]="data.title"
   [subtitle]="(data.protocolo ? 'PROTOCOLO: ' + data.protocolo + ' · ' : '') + 'ID: ' + data.proposalId"
 >
-  <div dialog-brand class="status-dialog-brand">
-    <span class="status-dialog-brand__lactec">LACTEC</span>
-    <span class="status-dialog-brand__sep">|</span>
-    <span class="status-dialog-brand__lab">LABORATÓRIOS</span>
-  </div>
-
   <app-status-stepper [steps]="data.steps" [currentIndex]="data.currentIndex" />
 
   @if (data.message) {
@@ -95,6 +89,4 @@
       }
     </div>
   }
-
-  <small dialog-footer class="status-dialog-protocol">PROTOCOLO SEGURO LACTEC 2026</small>
 </app-dialog-shell>

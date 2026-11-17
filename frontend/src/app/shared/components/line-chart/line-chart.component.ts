@@ -1,6 +1,7 @@
 import { ChangeDetectionStrategy, Component, computed, input, signal } from '@angular/core';
 
 import { eixoDeValores, rotuloDoEixo } from '../eixo-de-valores';
+import { NumeroPipe } from '@shared/pipes/numero.pipe';
 
 // A escala logarítmica existe porque a cromatografia tem o nitrogênio quatro
 // ordens de grandeza acima do acetileno e some numa escala linear.
@@ -89,6 +90,8 @@ interface PlottedSeries {
 // Lacuna de coleta nao e "nao detectado": o ensaio nao foi feito naquela data.
 // A tabela de indicadores marca a mesma ausencia do mesmo jeito.
 const MARK_FOR_COLLECTION_NOT_PERFORMED = '-';
+
+const numeroPipe = new NumeroPipe();
 
 @Component({
   selector: 'app-line-chart',
@@ -313,9 +316,7 @@ export class LineChartComponent {
   }
 
   protected formatNumber(value: number | null): string {
-    if (value === null) return MARK_FOR_COLLECTION_NOT_PERFORMED;
-    if (Math.abs(value) >= 1000) return value.toLocaleString('pt-BR');
-    return Number.isInteger(value) ? String(value) : value.toLocaleString('pt-BR');
+    return value === null ? MARK_FOR_COLLECTION_NOT_PERFORMED : numeroPipe.transform(value);
   }
 
   private positionX(index: number): number {

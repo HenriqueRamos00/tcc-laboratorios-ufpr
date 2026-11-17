@@ -1,11 +1,14 @@
 using System.Text.Json;
 using System.Text.Json.Serialization;
 
+using Microsoft.Extensions.DependencyInjection.Extensions;
+
 using Portal.Api.Configuration;
 using Portal.Api.Authentication;
 using Portal.Api.LabResults;
 using Portal.Api.Nameplate;
 using Portal.Api.Pipeline;
+using Portal.Api.PortalStore;
 using Portal.Api.ReportDocuments;
 using Portal.Api.Reports;
 using SpringReports = Portal.Application.Reports;
@@ -48,6 +51,8 @@ builder.Services
     });
 
 builder.Services.AddScoped<IQuoteUseCase, QuoteService>();
+builder.Services.AddScoped<IForRecordingClientDecisions, ClientDecisionRecording>();
+builder.Services.TryAddSingleton(TimeProvider.System);
 builder.Services.AddScoped<ILoginUseCase, LoginService>();
 builder.Services.AddScoped<IForConsultingLabResults, LabResultsConsultation>();
 builder.Services.AddScoped<IForDownloadingSignedReports, SignedReportDownload>();
@@ -63,6 +68,7 @@ builder.Services.AddClientLabResultsSource(builder.Configuration);
 builder.Services.AddEquipmentRegistrySource(builder.Configuration);
 builder.Services.AddLaboratoryProgressSource(builder.Configuration);
 builder.Services.AddReportDocumentSource(builder.Configuration);
+builder.Services.AddPortalStore(builder.Configuration);
 
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddOpenApi(options => options.AddDocumentTransformer<PortalBearerDocumentTransformer>());

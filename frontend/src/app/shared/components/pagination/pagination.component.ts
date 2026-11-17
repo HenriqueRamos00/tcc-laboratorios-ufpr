@@ -19,8 +19,9 @@ export interface PageSizeOption {
         <label class="mr-auto flex items-center gap-2 text-sm text-lactec-muted">
           Linhas por página
           <select
-            class="h-10 rounded-lg border border-lactec-line bg-lactec-paper px-2 text-sm
-                   text-lactec-ink disabled:opacity-40"
+            class="h-10 rounded-lg border border-lactec-field-border bg-lactec-paper px-2 text-sm
+                   text-lactec-ink hover:border-lactec-field-border-hover focus:border-lactec-field-border-focus focus:outline-none
+                   focus:ring-1 focus:ring-lactec-field-border-focus disabled:opacity-40"
             [disabled]="disabled()"
             (change)="choosePageSize($event)"
           >

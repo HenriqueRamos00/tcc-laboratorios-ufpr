@@ -1,18 +1,16 @@
 // Massa de teste de cromatografia derivada do dado REAL das views do AutoLAB.
 //
 // ARQUIVO GERADO. Nao edite a mao: regere com
-// `tools/gerar-amostra-de-cromatografia.mjs`, que le os dois arquivos JSON
-// Lines do adaptador de amostra embutida do backend e recusa gravar quando o
+// `tools/gerar-amostra-de-cromatografia.mjs`, que le `tools/massa-autolab.mjs`
+// (a mesma massa da suíte da API) e recusa gravar quando o
 // totalizador publicado de um protocolo não bate exatamente com a soma dos nove
 // gases daquele protocolo.
 //
-// Fonte, por procedência - a distinção é a mesma que o backend faz em
-// `ReadMeasuredSample()`, e existe porque teste que afirma sobre número medido
+// Fonte, por procedência - existe porque teste que afirma sobre número medido
 // não pode ler número escrito à mão:
 //
-//   'medida'        LabTestSample.jsonl, transcrição das views.
-//   'demonstracao'  DemonstrationSeries.jsonl, escrito à mão para um
-//                   equipamento ter mais de um laudo.
+//   'medida'        transcrição das views.
+//   'demonstracao'  escrito à mão para um equipamento ter mais de um laudo.
 //
 // NÃO é código de produção: nada no aplicativo importa este arquivo. Ele existe
 // para os testes afirmarem sobre número medido, e não sobre número escolhido por
