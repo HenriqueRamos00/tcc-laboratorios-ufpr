@@ -16,7 +16,7 @@ O fluxo será:
 Frontend -> API C# -> endpoints de cliente do Backend Lab -> PostgreSQL
 ```
 
-A API C# continuará adaptando as respostas ao contrato do frontend e calculando os indicadores que já pertencem ao seu domínio. O Spring será responsável pela persistência, autorização do cliente e liberação dos resultados. O modo `compose.auth.yaml` continuará utilizando suas integrações com Backend Auth e AutoLAB.
+A API C# continuará adaptando as respostas ao contrato do frontend e calculando os indicadores que já pertencem ao seu domínio. O Spring será responsável pela persistência, autorização do cliente e liberação dos resultados. O modo `compose.auth.yaml` continuará utilizando suas integrações com Backend Auth2 e AutoLAB.
 
 ## Base existente e trabalho novo
 

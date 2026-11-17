@@ -15,7 +15,7 @@ PORTAL_WEB_PORT=4300 docker compose up -d web  # outra porta, se a 4200 estiver 
 
 O login usa `POST /auth/login` da API C#, configurada em `src/app/environment/env.ts`.
 Não há conta ou token de desenvolvimento no frontend. Cadastre o cliente na fonte
-selecionada pelo C# (`backend-lab` ou `lactec`, que usa Backend Auth).
+selecionada pelo C# (`backend-lab` ou `lactec`, que usa Backend Auth2).
 
 No modo `lactec`, o C# emite JWT de 15 minutos. A opção **Me mantenha conectado**
 fica marcada inicialmente: quando marcada, a sessão usa `localStorage`; desmarcada,
@@ -47,16 +47,15 @@ estrutura das autorizações, aceitando uma lista de empresas vazia. Uma tentati
 recusada ou resposta inválida preserva a sessão válida anterior. A verificação de
 assinatura e a autorização dos recursos continuam no backend.
 
-Para subir o portal com Backend Auth e sem Backend Lab, siga a
+Para subir o portal com Backend Auth2 e sem Backend Lab, siga a
 [configuração da API C#](../backend-portal-web/README.md#configuração-e-execução-em-lactec).
 Para a demonstração completa, execute `docker compose -f compose.auth.yaml up -d --build`
-na raiz e abra http://localhost:4200. Entre com `client1@lactec.com` ou
-`client2@lactec.com`, usando o próprio e-mail como senha. Cada conta vê seus
-orçamentos e ensaios. `lactec@lactec.com` é administrador somente do Backend Auth.
-As fixtures da tela de relatórios são filtradas pelos orçamentos autorizados na API:
-client1 recebe os quatro relatórios de `quote-18`; client2 recebe cinco de
-`quote-15` e `quote-19`. Os PDFs de laudos continuam sendo os exemplos locais existentes.
-As regras de publicação HTTPS e armazenamento do JWT também estão documentadas lá.
+na raiz e abra http://localhost:4200. As contas, senhas e vínculos de empresas estão no
+[README do Auth2](../backend-auth2/README.md#usuários-e-acesso).
+Cada conta vê os orçamentos da própria empresa. Equipamentos, ensaios e relatórios
+vêm do AutoLAB real, que exige conexão configurada em `backend-portal-web/.env` e VPN.
+As regras de publicação HTTPS e armazenamento do JWT estão na
+[documentação da API C#](../backend-portal-web/README.md#configuração-e-execução-em-lactec).
 No modo `lactec`, os orçamentos do Salesforce são filtrados pelos CNPJs no JWT,
 inclusive o detalhe e o PDF. Sem empresas vinculadas, a lista fica vazia. O Angular
 propaga erros da API e não substitui os resultados por orçamentos de demonstração.

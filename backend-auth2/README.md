@@ -1,36 +1,123 @@
 # backend-auth2
 
-Servico de autenticacao e autorizacao compartilhado pelas aplicacoes do Lactec. Ele existe
-como **segunda implementacao** do mesmo requisito, para ser comparada com `backend-auth/`,
-que foi escrita por outro integrante. As duas atendem o mesmo contrato publico.
+Serviço de autenticação e autorização compartilhado pelas aplicações do Lactec.
+O login de clientes exige token de aplicação; as operações administrativas usam
+Bearer tokens opacos. A API C# integra este serviço no modo `Portal__DataSource=lactec`
+e emite o JWT do Portal do Cliente.
 
-Spring Boot 4.1.1, Java 21, Oracle 23ai, Maven.
+Spring Boot 4.1.2, Java 21, Oracle e Maven.
 
-## Demonstracao do portal
+## Demonstração do portal
 
-Na raiz do repositorio, `docker compose -f compose.auth.yaml up -d --build --remove-orphans`
-sobe Oracle, migracoes, Auth2, SQL Server com AutoLAB, API C# e frontend com os dados demo.
-O Oracle guarda a autenticacao; o SQL Server fornece equipamentos, ensaios e relatorios.
-O seed fica desligado
-por padrao neste modulo e no seu Compose independente; so o Compose demo define
-`AUTH_DEMO_SEED_ENABLED=true` e as senhas iniciais.
+Requisitos: Docker Engine, Docker Compose e `backend-portal-web/.env` com a conexão do
+AutoLAB real, acessível pela VPN do Lactec. Se o arquivo ainda não existir, copie
+[`backend-portal-web/.env.example`](../backend-portal-web/.env.example) e preencha
+as credenciais `AutoLab__*`. Execute na raiz do repositório:
 
-Ele cria `portal-web`, seu token de integracao, o administrador `lactec@lactec.com` e
-os clientes `client1@lactec.com` e `client2@lactec.com`, ativos e com e-mail confirmado.
-O client1 representa EMPRESA DE ENERGIA, CNPJ `30960572000183`; o client2 representa
-DISTRIBUIDORA DE ENERGIA, CNPJ `11222333000181`. As senhas distintas cumprem a politica
-de cadastro e sao guardadas com Argon2id. Os valores locais e suas variaveis de
-substituicao estao no [README da raiz](../README.md#demonstração-com-backend-auth2).
+```bash
+docker compose -f compose.auth.yaml up -d --build --remove-orphans
+```
 
-O seed roda em uma transacao pela credencial restrita da aplicacao. Reiniciar nao
-redefine senha, nome, situacao ou vinculos de registros existentes. Tokens vencidos sao
-renovados, mas revogacao manual e preservada. Os dados demo nao entram nas migracoes Flyway.
-O demo nao configura SMTP; os clientes pre-cadastrados ja podem entrar, mas os fluxos
-de confirmacao e recuperacao de novos cadastros exigem configurar envio de e-mail.
+O Compose inicia Oracle para autenticação, migrações Flyway, Auth2, SQL Server com o
+banco `portal`, API C# e frontend. Equipamentos, ensaios e relatórios vêm do AutoLAB real.
+Os orçamentos de demonstração dispensam Salesforce. Este arquivo é independente do
+`compose.yaml`; encerre outros ambientes que usem as mesmas portas antes de iniciar.
 
-O login devolve os CNPJs em `authorizations.companyCnpjs`, seguindo o contrato do C#.
+| Aplicação | Endereço |
+| --- | --- |
+| Portal do Cliente | http://localhost:4200 |
+| API C# | http://localhost:5125 |
+| Backend Auth2 | http://localhost:8081 |
+| Prontidão do Auth2 | http://localhost:8081/health/readiness |
 
-## Subir
+O Oracle pode levar alguns minutos no primeiro início. O Swagger fica desativado por padrão.
+
+### Usuários e acesso
+
+O seed cria a aplicação `portal-web`, seu token de integração e as seguintes contas:
+
+| Conta | Senha inicial | Acesso |
+| --- | --- | --- |
+| `lactec@lactec.com` | `Lactec!7uQ2mN9xR4pK` | Administrador do Auth2, pela API |
+| `client1@lactec.com` | `Cliente1!6vT9qL2nW8sD` | Portal do Cliente: EMPRESA DE ENERGIA / `30960572000183` |
+| `client2@lactec.com` | `Cliente2!3rK7wP5mH9zF` | Portal do Cliente: DISTRIBUIDORA DE ENERGIA / `11222333000181` |
+
+O administrador gerencia somente o Auth2, sem acesso de cliente ao portal ou permissões
+no Portal Interno. Entre pela rota `POST /api/admin/auth/login`; as operações estão no
+[guia administrativo](docs/registrar-aplicacao.md). Os clientes já nascem ativos e com
+e-mail confirmado e entram pelo Portal do Cliente.
+
+Cada cliente vê nove orçamentos de demonstração, identificados pelo prefixo `quote-`:
+
+| Conta | Números dos orçamentos |
+| --- | --- |
+| `client1@lactec.com` | `1, 3, 6, 8, 10, 12, 14, 16, 18` |
+| `client2@lactec.com` | `4, 5, 7, 9, 11, 13, 15, 17, 19` |
+
+O login devolve os CNPJs em `authorizations.companyCnpjs`. O C# filtra orçamentos,
+propostas PDF e dados do AutoLAB pelos CNPJs da conta; registros de outra empresa
+respondem 404. As propostas comerciais são geradas pelo C# com os dados do orçamento
+e o layout Lactec.
+
+Os CNPJs de demonstração são fictícios e não alcançam registros do AutoLAB real.
+Para consultar equipamentos, ensaios, relatórios e PDFs reais, vincule a conta pela
+API administrativa do Auth2 a uma empresa cujo CNPJ exista no AutoLAB. O
+[guia administrativo](docs/registrar-aplicacao.md#cadastrar-empresa-e-cliente)
+descreve como cadastrar empresas e alterar os vínculos da conta. Faça novo login no
+portal para atualizar os CNPJs no JWT.
+
+A demonstração não configura SMTP. Os clientes pré-cadastrados já podem entrar;
+confirmação de novos cadastros e recuperação de senha exigem configurar o
+[envio de e-mail](#envio-de-e-mail).
+
+### Configuração e persistência
+
+As senhas e chaves padrão são públicas e exclusivas do ambiente local. O `.env` da
+raiz permite substituir os valores do `compose.auth.yaml`:
+
+| Variável | Finalidade |
+| --- | --- |
+| `AUTH_DEMO_ADMIN_PASSWORD` | Senha inicial de `lactec@lactec.com` |
+| `AUTH_DEMO_CLIENT1_PASSWORD` | Senha inicial de `client1@lactec.com` |
+| `AUTH_DEMO_CLIENT2_PASSWORD` | Senha inicial de `client2@lactec.com` |
+| `AUTH_ORACLE_PASSWORD` | Senha administrativa do Oracle na criação do banco |
+| `AUTH_SCHEMA_OWNER_PASSWORD` | Senha do dono do esquema, usado nas migrações |
+| `AUTH_DATASOURCE_PASSWORD` | Senha da aplicação no Oracle |
+| `SQLSERVER_SA_PASSWORD` | Senha SA do SQL Server local |
+| `BACKEND_AUTH_SERVICE_TOKEN` | Token de integração compartilhado entre Auth2 e C# |
+| `SERVICE_TOKEN_EXPIRATION_SECONDS` | Validade do token de integração; padrão de 30 dias |
+| `PORTAL_JWT_SIGNING_KEY` | Chave de assinatura dos JWTs do portal |
+| `PORTAL_USE_DEMO_DATA` | `true` usa orçamentos de demonstração; `false` consulta Salesforce |
+
+Com `PORTAL_USE_DEMO_DATA=false`, configure também as credenciais `Salesforce__*` em
+`backend-portal-web/.env`; sem elas a API não inicia. Os dados laboratoriais continuam
+vindo do AutoLAB. Veja a [configuração do C#](../backend-portal-web/README.md#configuração-e-execução-em-lactec).
+
+As senhas de pessoas são armazenadas com Argon2id; o token de integração é guardado
+somente como hash. Credenciais de banco e integração permanecem nos backends.
+O seed roda em uma transação pela credencial restrita da aplicação e apenas cria
+registros ausentes: reiniciar preserva senhas, nomes, situação e vínculos existentes.
+As variáveis de senha das contas só valem na criação inicial. Tokens vencidos são
+renovados, preservando revogações manuais. O seed fica desativado por padrão no módulo
+e no Compose isolado; somente este Compose define `AUTH_DEMO_SEED_ENABLED=true`.
+Os dados de demonstração não fazem parte das migrações Flyway.
+
+Os dois bancos ficam na rede interna do Compose. Os volumes são
+`tcc-auth-demo_auth-oracle-data` e `tcc-auth-demo_auth-sqlserver-data`, separados dos
+demais ambientes. Em volumes existentes, mantenha a senha SA já usada;
+alterar `AUTH_ORACLE_PASSWORD` não muda a senha administrativa de um Oracle já criado.
+As senhas do dono do esquema e da aplicação são sincronizadas na inicialização.
+
+```bash
+docker compose -f compose.auth.yaml ps
+docker compose -f compose.auth.yaml logs -f backend-auth2 portal-api
+docker compose -f compose.auth.yaml down     # preserva os dois bancos
+docker compose -f compose.auth.yaml down -v  # apaga os dois bancos locais e os volumes do frontend
+```
+
+## Execução isolada
+
+Na pasta `backend-auth2`:
 
 ```bash
 cp .env.example .env     # e preencha as senhas e o segredo de instalacao
@@ -76,8 +163,6 @@ Estes tres descrevem **como o servico funciona e como consumi-lo**, que e o que 
 integrador precisa. O registro de construcao do modulo, com o levantamento, a apuracao
 das decisoes e as revisoes, nao mora aqui: ele e material de banca, nao documentacao de
 produto, e num repositorio publico ele vira mapa para quem quer atacar o servico.
-
-As regras de estilo, de teste e de arquitetura estao no `CLAUDE.md` deste diretorio.
 
 O `docs/openapi.json` e o contrato em formato de maquina, para quem integra e para quem gera
 cliente a partir dele. **A aplicacao publicada nao serve essa documentacao:** a interface do
