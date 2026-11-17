@@ -14,8 +14,10 @@ namespace Portal.Tests.AutoLab;
 
 public sealed class AutoLabSampleTests : IDisposable
 {
-    private static readonly VisibilityScope Energy = VisibilityScope.OfCompany("EMPRESA DE ENERGIA");
-    private static readonly VisibilityScope Competitor = VisibilityScope.OfCompany("CONCORRENTE S.A.");
+    private static readonly CompanyScope Energy = TestCompanies.ScopeOf("EMPRESA DE ENERGIA");
+    private static readonly CompanyScope Competitor = TestCompanies.ScopeOf("CONCORRENTE S.A.");
+    private static readonly CompanyScope BothCompanies = TestCompanies.ScopeOf(
+        TestCompanies.Energy, TestCompanies.Distributor);
 
     private readonly AutoLabTestDatabase _database = AutoLabTestDatabase.WithSample();
 
@@ -56,10 +58,10 @@ public sealed class AutoLabSampleTests : IDisposable
     }
 
     [Fact]
-    public async Task TheAllScopeSeesEveryCompany()
+    public async Task TheScopeOfBothCompaniesSeesBoth()
     {
         Page<SampleAnalysis> page = await LabTests().GetAnalysesAsync(
-            VisibilityScope.All, null, PageRequest.First, CancellationToken.None);
+            BothCompanies, null, PageRequest.First, CancellationToken.None);
 
         Assert.Equal(6, page.TotalCount);
         Assert.Equal(
@@ -109,7 +111,7 @@ public sealed class AutoLabSampleTests : IDisposable
     public async Task EveryReportOfTheViewMatchesALaudoOfTheTestView()
     {
         Page<LabReport> reports = await Issues().ListReportsAsync(
-            VisibilityScope.All, null, PageRequest.First, CancellationToken.None);
+            BothCompanies, null, PageRequest.First, CancellationToken.None);
         HashSet<string> laudos = [.. SampleAnalyses.Whole.Select(analysis => analysis.Identification)];
 
         Assert.Equal(11, reports.TotalCount);
@@ -120,12 +122,12 @@ public sealed class AutoLabSampleTests : IDisposable
     public async Task TheSignedPdfsOfTheSampleAreValidOnePageDocuments()
     {
         Page<LabReport> reports = await Issues().ListReportsAsync(
-            VisibilityScope.All, null, PageRequest.First, CancellationToken.None);
+            BothCompanies, null, PageRequest.First, CancellationToken.None);
 
         foreach (LabReport report in reports.Items.Where(report => report.HasSignedDocument))
         {
             SignedReportDocument document = Assert.IsType<SignedReportDocument>(await Issues()
-                .GetSignedDocumentOfReportAsync(VisibilityScope.All, report.Id, CancellationToken.None));
+                .GetSignedDocumentOfReportAsync(BothCompanies, report.Id, CancellationToken.None));
 
             using PdfDocument pdf = PdfDocument.Open(document.Content);
 
@@ -138,21 +140,22 @@ public sealed class AutoLabSampleTests : IDisposable
     public async Task TheReplacedRevisionAndTheDeletedReportAreNotServedForTheLaudo()
     {
         SignedReportDocument? revised = await Issues()
-            .GetSignedDocumentOfAsync("LACTEC-02354 R1/2026", CancellationToken.None);
+            .GetSignedDocumentOfAsync(Energy, "LACTEC-02354 R1/2026", CancellationToken.None);
         IReadOnlySet<string> signed = await Issues().GetIdentificationsWithSignedDocumentAsync(
+            Energy,
             ["LACTEC-02354 R1/2026", "LACTEC-04502/2025", "LACTEC-02465/2026", "LACTEC-02272/2026"],
             CancellationToken.None);
 
         Assert.Equal("LACTEC-02354 R1-2026_rev1.pdf", revised?.FileName);
         Assert.Equal(["LACTEC-02272/2026", "LACTEC-02354 R1/2026"], signed.Order(StringComparer.Ordinal));
-        Assert.Null(await Issues().GetSignedDocumentOfAsync("LACTEC-04502/2025", CancellationToken.None));
+        Assert.Null(await Issues().GetSignedDocumentOfAsync(Energy, "LACTEC-04502/2025", CancellationToken.None));
     }
 
     [Fact]
     public async Task TheCurrentIssueCarriesTheTitleAndTheConclusionInParagraphs()
     {
-        ReportIssue? issue = await Issues().GetCurrentIssueOfAsync("LACTEC-02272/2026", CancellationToken.None);
-        ReportIssue? withoutText = await Issues().GetCurrentIssueOfAsync("LACTEC-01502/2026", CancellationToken.None);
+        ReportIssue? issue = await Issues().GetCurrentIssueOfAsync(Energy, "LACTEC-02272/2026", CancellationToken.None);
+        ReportIssue? withoutText = await Issues().GetCurrentIssueOfAsync(Energy, "LACTEC-01502/2026", CancellationToken.None);
 
         Assert.StartsWith("Relatório de ensaio", issue?.Title, StringComparison.Ordinal);
         Assert.Equal(3, issue?.Paragraphs.Count);
@@ -164,7 +167,7 @@ public sealed class AutoLabSampleTests : IDisposable
     public async Task TheReportListingFiltersByQuoteAndByCompany()
     {
         Page<LabReport> ofQuote = await Issues().ListReportsAsync(
-            VisibilityScope.All, "2026_45496", PageRequest.First, CancellationToken.None);
+            BothCompanies, "2026_45496", PageRequest.First, CancellationToken.None);
         Page<LabReport> ofCompetitor = await Issues().ListReportsAsync(
             Competitor, null, PageRequest.First, CancellationToken.None);
         Page<LabReport> ofEnergy = await Issues().ListReportsAsync(
@@ -181,7 +184,7 @@ public sealed class AutoLabSampleTests : IDisposable
     public async Task TheReportOfAnotherCompanyIsNotDownloaded()
     {
         Page<LabReport> reports = await Issues().ListReportsAsync(
-            VisibilityScope.All, "2026_45496", PageRequest.First, CancellationToken.None);
+            BothCompanies, "2026_45496", PageRequest.First, CancellationToken.None);
 
         Assert.Null(await Issues().GetSignedDocumentOfReportAsync(
             Energy, reports.Items[0].Id, CancellationToken.None));
@@ -189,11 +192,11 @@ public sealed class AutoLabSampleTests : IDisposable
 
     private AutoLabLabTestRepository LabTests()
     {
-        return new AutoLabLabTestRepository(_database.NewContext(), new AutoLabQueryLimits());
+        return _database.LabTests();
     }
 
     private AutoLabReportIssueRepository Issues()
     {
-        return new AutoLabReportIssueRepository(_database.NewContext(), new AutoLabQueryLimits());
+        return _database.ReportIssues();
     }
 }

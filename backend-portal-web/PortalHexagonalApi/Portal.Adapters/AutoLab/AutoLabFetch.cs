@@ -51,16 +51,16 @@ internal static class AutoLabFetch
         return rows;
     }
 
-    public static async Task<List<T>> BoundedListInChunksAsync<T>(
-        IReadOnlyCollection<string> values,
+    public static async Task<List<T>> BoundedListInChunksAsync<TValue, T>(
+        IReadOnlyCollection<TValue> values,
         AutoLabQueryLimits limits,
-        Func<List<string>, int, IQueryable<T>> queryOfChunk,
+        Func<List<TValue>, int, IQueryable<T>> queryOfChunk,
         Func<string, Exception, Exception> failure,
         CancellationToken cancellationToken)
     {
         List<T> rows = [];
 
-        foreach (string[] chunk in values.Chunk(limits.MaxValuesPerInClause))
+        foreach (TValue[] chunk in values.Chunk(limits.MaxValuesPerInClause))
         {
             int remaining = limits.MaxRowsPerQuery - rows.Count;
 

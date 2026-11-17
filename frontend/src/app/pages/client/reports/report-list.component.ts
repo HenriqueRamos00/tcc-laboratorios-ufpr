@@ -95,6 +95,10 @@ export class ReportListComponent {
     );
   });
 
+  protected readonly reportEmptyDescription = computed(() =>
+    this.reportSearch().trim() ? 'Revise o termo informado na busca.' : undefined,
+  );
+
   protected readonly visibleQuotes = computed(() => {
     const list = this.quotesWithReport() ?? [];
     const term = this.quoteSearch().trim().toLowerCase();

@@ -29,7 +29,7 @@ public sealed class AutoLabLabTestRepositoryTests : IDisposable
         Assert.NotNull(search);
 
         return Repository().GetAnalysesAsync(
-            VisibilityScope.OfCompany(Tenant), search, page, CancellationToken.None);
+            TestCompanies.ScopeOf(Tenant), search, page, CancellationToken.None);
     }
 
     private async Task<string[]> KeysFoundAsync(string text)
@@ -49,7 +49,7 @@ public sealed class AutoLabLabTestRepositoryTests : IDisposable
         _database.AddTestRow("P-3", "5233", OtherTenant, new DateTime(2026, 7, 1));
 
         Page<SampleAnalysis> page = await Repository()
-            .GetAnalysesAsync(VisibilityScope.OfCompany(Tenant), null, PageRequest.First, CancellationToken.None);
+            .GetAnalysesAsync(TestCompanies.ScopeOf(Tenant), null, PageRequest.First, CancellationToken.None);
 
         Assert.Equal(["111.594/1", "571289"], page.Items.Select(item => item.EquipmentKey).Order());
         Assert.False(page.HasNext);
@@ -178,7 +178,7 @@ public sealed class AutoLabLabTestRepositoryTests : IDisposable
         _database.AddTestRow("P-3", "5233", " " + OtherTenant + " ", new DateTime(2026, 7, 1));
 
         Page<SampleAnalysis> page = await Repository()
-            .GetAnalysesAsync(VisibilityScope.OfCompany(Tenant), null, PageRequest.First, CancellationToken.None);
+            .GetAnalysesAsync(TestCompanies.ScopeOf(Tenant), null, PageRequest.First, CancellationToken.None);
 
         Assert.Equal(["111.594/1", "571289"], page.Items.Select(item => item.EquipmentKey).Order());
         Assert.DoesNotContain(page.Items, item => item.EquipmentKey == "5233");
@@ -191,7 +191,7 @@ public sealed class AutoLabLabTestRepositoryTests : IDisposable
         _database.AddTestRow("P-2", "ensaio-teste", Tenant, new DateTime(2026, 5, 1));
 
         Page<SampleAnalysis> page = await Repository()
-            .GetAnalysesAsync(VisibilityScope.OfCompany(Tenant), null, PageRequest.First, CancellationToken.None);
+            .GetAnalysesAsync(TestCompanies.ScopeOf(Tenant), null, PageRequest.First, CancellationToken.None);
 
         Assert.Equal(2, page.TotalCount);
         Assert.Equal(
@@ -209,7 +209,7 @@ public sealed class AutoLabLabTestRepositoryTests : IDisposable
         _database.AddTestRow("P-2", "ensaio-teste", Tenant, new DateTime(2026, 5, 1));
 
         Page<SampleAnalysis> history = await Repository().GetAnalysesOfEquipmentAsync(
-            VisibilityScope.OfCompany(Tenant), "ensaio-teste", PageRequest.First, CancellationToken.None);
+            TestCompanies.ScopeOf(Tenant), "ensaio-teste", PageRequest.First, CancellationToken.None);
 
         Assert.Equal(1, history.TotalCount);
         Assert.Equal(["P-2"], history.Items.Select(item => item.ProtocoloLactec));
@@ -227,11 +227,11 @@ public sealed class AutoLabLabTestRepositoryTests : IDisposable
         AutoLabLabTestRepository repository = Repository();
 
         Page<SampleAnalysis> first = await repository
-            .GetAnalysesAsync(VisibilityScope.OfCompany(Tenant), null, new PageRequest(1, 2), CancellationToken.None);
+            .GetAnalysesAsync(TestCompanies.ScopeOf(Tenant), null, new PageRequest(1, 2), CancellationToken.None);
         Page<SampleAnalysis> second = await repository
-            .GetAnalysesAsync(VisibilityScope.OfCompany(Tenant), null, new PageRequest(2, 2), CancellationToken.None);
+            .GetAnalysesAsync(TestCompanies.ScopeOf(Tenant), null, new PageRequest(2, 2), CancellationToken.None);
         Page<SampleAnalysis> third = await repository
-            .GetAnalysesAsync(VisibilityScope.OfCompany(Tenant), null, new PageRequest(3, 2), CancellationToken.None);
+            .GetAnalysesAsync(TestCompanies.ScopeOf(Tenant), null, new PageRequest(3, 2), CancellationToken.None);
 
         Assert.Equal(["C", "P-5"], first.Items.Select(item => item.EquipmentKey).Distinct().Order());
         Assert.Equal(2, first.Items.Count(item => item.EquipmentKey == "C"));
@@ -249,17 +249,23 @@ public sealed class AutoLabLabTestRepositoryTests : IDisposable
         _database.AddTestRow("P-1", "A", Tenant, new DateTime(2026, 1, 1));
         _database.AddTestRow("P-2", "B", Tenant, new DateTime(2026, 2, 1));
 
-        await Repository().GetAnalysesAsync(VisibilityScope.OfCompany(Tenant), null, new PageRequest(1, 10), CancellationToken.None);
+        await Repository().GetAnalysesAsync(TestCompanies.ScopeOf(Tenant), null, new PageRequest(1, 10), CancellationToken.None);
 
-        Assert.Equal(3, _database.Commands.Count);
+        Assert.Equal(5, _database.Commands.Count);
         Assert.All(_database.Commands, sql => Assert.Contains("WHERE", sql, StringComparison.Ordinal));
-        Assert.Contains("COUNT(*)", _database.Commands[0], StringComparison.Ordinal);
-        Assert.Contains("GROUP BY", _database.Commands[0], StringComparison.Ordinal);
-        Assert.Contains("GROUP BY", _database.Commands[1], StringComparison.Ordinal);
-        Assert.Contains("LIMIT", _database.Commands[1], StringComparison.Ordinal);
-        Assert.Contains("OFFSET", _database.Commands[1], StringComparison.Ordinal);
-        Assert.Contains(" IN (", _database.Commands[2], StringComparison.Ordinal);
-        Assert.Contains("LIMIT", _database.Commands[2], StringComparison.Ordinal);
+        Assert.Contains("\"Cliente\"", _database.Commands[0], StringComparison.Ordinal);
+        Assert.Contains("\"ProtocoloAmostra\"", _database.Commands[1], StringComparison.Ordinal);
+        Assert.All(_database.Commands.Take(2), sql =>
+            Assert.DoesNotContain("vwDadosEnsaios", sql, StringComparison.Ordinal));
+        Assert.All(_database.Commands.Skip(2), sql =>
+            Assert.Contains("\"ProtocoloLactec\" IN (", sql, StringComparison.Ordinal));
+        Assert.Contains("COUNT(*)", _database.Commands[2], StringComparison.Ordinal);
+        Assert.Contains("GROUP BY", _database.Commands[2], StringComparison.Ordinal);
+        Assert.Contains("GROUP BY", _database.Commands[3], StringComparison.Ordinal);
+        Assert.Contains("LIMIT", _database.Commands[3], StringComparison.Ordinal);
+        Assert.Contains("OFFSET", _database.Commands[3], StringComparison.Ordinal);
+        Assert.Contains(" IN (", _database.Commands[4], StringComparison.Ordinal);
+        Assert.Contains("LIMIT", _database.Commands[4], StringComparison.Ordinal);
     }
 
     [Fact]
@@ -271,7 +277,7 @@ public sealed class AutoLabLabTestRepositoryTests : IDisposable
         _database.AddTestRow("P-3", "5712890", Tenant, new DateTime(2026, 3, 1));
 
         Page<SampleAnalysis> found = await Repository()
-            .GetAnalysesOfEquipmentAsync(VisibilityScope.OfCompany(Tenant), " 571289 ", new PageRequest(1, 1), CancellationToken.None);
+            .GetAnalysesOfEquipmentAsync(TestCompanies.ScopeOf(Tenant), " 571289 ", new PageRequest(1, 1), CancellationToken.None);
 
         SampleAnalysis analysis = Assert.Single(found.Items);
         Assert.Equal(1, found.TotalCount);
@@ -285,7 +291,7 @@ public sealed class AutoLabLabTestRepositoryTests : IDisposable
         _database.AddTestRow("01439/2026-004", "  ", Tenant, new DateTime(2026, 1, 1));
 
         Page<SampleAnalysis> found = await Repository()
-            .GetAnalysesOfEquipmentAsync(VisibilityScope.OfCompany(Tenant), "01439/2026-004", new PageRequest(1, 1), CancellationToken.None);
+            .GetAnalysesOfEquipmentAsync(TestCompanies.ScopeOf(Tenant), "01439/2026-004", new PageRequest(1, 1), CancellationToken.None);
 
         Assert.Equal("01439/2026-004", Assert.Single(found.Items).EquipmentKey);
     }
@@ -301,9 +307,9 @@ public sealed class AutoLabLabTestRepositoryTests : IDisposable
         AutoLabLabTestRepository repository = Repository();
 
         Page<SampleAnalysis> first = await repository.GetAnalysesOfEquipmentAsync(
-            VisibilityScope.OfCompany(Tenant), "571289", new PageRequest(1, 2), CancellationToken.None);
+            TestCompanies.ScopeOf(Tenant), "571289", new PageRequest(1, 2), CancellationToken.None);
         Page<SampleAnalysis> second = await repository.GetAnalysesOfEquipmentAsync(
-            VisibilityScope.OfCompany(Tenant), "571289", new PageRequest(2, 2), CancellationToken.None);
+            TestCompanies.ScopeOf(Tenant), "571289", new PageRequest(2, 2), CancellationToken.None);
 
         Assert.Equal(["P-3", "P-2"], first.Items.Select(item => item.ProtocoloLactec));
         Assert.True(first.HasNext);
@@ -317,8 +323,8 @@ public sealed class AutoLabLabTestRepositoryTests : IDisposable
     {
         _database.AddTestRow("P-9", "5233", OtherTenant, new DateTime(2026, 1, 1));
 
-        Assert.Null(await Repository().GetAnalysisByProtocolAsync(VisibilityScope.OfCompany(Tenant), "P-9", CancellationToken.None));
-        Assert.NotNull(await Repository().GetAnalysisByProtocolAsync(VisibilityScope.OfCompany(OtherTenant), "P-9", CancellationToken.None));
+        Assert.Null(await Repository().GetAnalysisByProtocolAsync(TestCompanies.ScopeOf(Tenant), "P-9", CancellationToken.None));
+        Assert.NotNull(await Repository().GetAnalysisByProtocolAsync(TestCompanies.ScopeOf(OtherTenant), "P-9", CancellationToken.None));
     }
 
     [Fact]
@@ -327,10 +333,10 @@ public sealed class AutoLabLabTestRepositoryTests : IDisposable
         for (int index = 0; index < 4; index++)
             _database.AddTestRow("P-1", "571289", Tenant, new DateTime(2026, 1, 1), name: "Metano", result: "3");
 
-        AutoLabLabTestRepository repository = new(_database.NewContext(), new AutoLabQueryLimits(maxRowsPerQuery: 3));
+        AutoLabLabTestRepository repository = _database.LabTests(limits: new AutoLabQueryLimits(maxRowsPerQuery: 3));
 
         await Assert.ThrowsAsync<LabTestSourceUnavailableException>(() => repository
-            .GetAnalysesOfEquipmentAsync(VisibilityScope.OfCompany(Tenant), "571289", new PageRequest(1, 1), CancellationToken.None));
+            .GetAnalysesOfEquipmentAsync(TestCompanies.ScopeOf(Tenant), "571289", new PageRequest(1, 1), CancellationToken.None));
     }
 
     [Fact]
@@ -340,14 +346,14 @@ public sealed class AutoLabLabTestRepositoryTests : IDisposable
         AutoLabDbContext context = broken.NewContext();
         broken.Dispose();
 
-        AutoLabLabTestRepository repository = new(context, new AutoLabQueryLimits());
+        AutoLabLabTestRepository repository = broken.LabTests(context);
 
         await Assert.ThrowsAsync<LabTestSourceUnavailableException>(() => repository
-            .GetAnalysesAsync(VisibilityScope.OfCompany(Tenant), null, PageRequest.First, CancellationToken.None));
+            .GetAnalysesAsync(TestCompanies.ScopeOf(Tenant), null, PageRequest.First, CancellationToken.None));
     }
 
     private AutoLabLabTestRepository Repository()
     {
-        return new AutoLabLabTestRepository(_database.NewContext(), new AutoLabQueryLimits());
+        return _database.LabTests();
     }
 }

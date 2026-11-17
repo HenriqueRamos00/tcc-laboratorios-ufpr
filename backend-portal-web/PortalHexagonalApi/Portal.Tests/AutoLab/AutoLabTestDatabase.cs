@@ -6,6 +6,10 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Diagnostics;
 
 using Portal.Adapters.AutoLab;
+using Portal.Adapters.CompanyRecords;
+using Portal.Adapters.LabResults;
+using Portal.Adapters.Pipeline;
+using Portal.Adapters.ReportDocuments;
 
 namespace Portal.Tests.AutoLab;
 
@@ -82,6 +86,29 @@ internal sealed class AutoLabTestDatabase : IDisposable
             RazaoSocial TEXT NULL,
             Cnpj_Cpf TEXT NULL);
 
+        CREATE TABLE dbo.Cliente (
+            Oid TEXT NOT NULL PRIMARY KEY,
+            cli_cadastronacional_a TEXT COLLATE Latin1_General_CI_AS NULL,
+            GCRecord INTEGER NULL);
+
+        CREATE TABLE dbo.SolicitacaoServico (
+            Oid TEXT NOT NULL PRIMARY KEY,
+            NumeroSolicitacao TEXT COLLATE Latin1_General_CI_AS NULL,
+            OrcamentoCRM TEXT COLLATE Latin1_General_CI_AS NULL,
+            Cliente TEXT NULL,
+            GCRecord INTEGER NULL);
+
+        CREATE TABLE dbo.ProtocoloAmostra (
+            Oid TEXT NOT NULL PRIMARY KEY,
+            Identificacao TEXT COLLATE Latin1_General_CI_AS NULL,
+            GCRecord INTEGER NULL);
+
+        CREATE TABLE dbo.AmostraObjeto (
+            Oid TEXT NOT NULL PRIMARY KEY,
+            ProtocoloAmostra TEXT NULL,
+            SolicitacaoServico TEXT NULL,
+            GCRecord INTEGER NULL);
+
         CREATE TABLE dbo.FileData (
             Oid TEXT NOT NULL PRIMARY KEY,
             size INTEGER NULL,
@@ -94,6 +121,9 @@ internal sealed class AutoLabTestDatabase : IDisposable
     private static readonly string[] BinaryColumns = ["Content", "PdfLiberado"];
 
     private readonly SqliteConnection _connection;
+    private readonly Dictionary<string, Guid> _clients = new(StringComparer.Ordinal);
+    private readonly Dictionary<(string Company, string QuoteCode), Guid> _requests = [];
+    private readonly HashSet<(string Protocol, string Company)> _linkedProtocols = [];
 
     public AutoLabTestDatabase()
     {
@@ -153,7 +183,104 @@ internal sealed class AutoLabTestDatabase : IDisposable
             .AddInterceptors(new CommandRecorder(Commands));
     }
 
-    public void AddTestRow(
+    public AutoLabCompanyRecordsSource CompanyRecords(AutoLabDbContext context, AutoLabQueryLimits? limits = null)
+    {
+        return new AutoLabCompanyRecordsSource(context, limits ?? new AutoLabQueryLimits());
+    }
+
+    public AutoLabLabTestRepository LabTests(AutoLabDbContext? context = null, AutoLabQueryLimits? limits = null)
+    {
+        context ??= NewContext();
+        limits ??= new AutoLabQueryLimits();
+
+        return new AutoLabLabTestRepository(context, CompanyRecords(context, limits), limits);
+    }
+
+    public AutoLabReportIssueRepository ReportIssues(AutoLabDbContext? context = null, AutoLabQueryLimits? limits = null)
+    {
+        context ??= NewContext();
+        limits ??= new AutoLabQueryLimits();
+
+        return new AutoLabReportIssueRepository(context, CompanyRecords(context, limits), limits);
+    }
+
+    public AutoLabSituaProcessRepository Progress(AutoLabDbContext? context = null, AutoLabQueryLimits? limits = null)
+    {
+        context ??= NewContext();
+        limits ??= new AutoLabQueryLimits();
+
+        return new AutoLabSituaProcessRepository(context, CompanyRecords(context, limits), limits);
+    }
+
+    public Guid AddClient(string? storedCnpj, int? deleted = null)
+    {
+        Guid oid = Guid.NewGuid();
+
+        Insert(
+            "dbo.Cliente",
+            ("Oid", Text(oid)),
+            ("cli_cadastronacional_a", storedCnpj),
+            ("GCRecord", deleted));
+
+        return oid;
+    }
+
+    public Guid AddRequest(Guid? client, string? number = "SOL-0001", string? quoteCode = null, int? deleted = null)
+    {
+        Guid oid = Guid.NewGuid();
+
+        Insert(
+            "dbo.SolicitacaoServico",
+            ("Oid", Text(oid)),
+            ("NumeroSolicitacao", number),
+            ("OrcamentoCRM", quoteCode),
+            ("Cliente", client is null ? null : Text(client.Value)),
+            ("GCRecord", deleted));
+
+        return oid;
+    }
+
+    public void AddSample(Guid? request, string? protocol, int? sampleDeleted = null, int? protocolDeleted = null)
+    {
+        Guid protocolOid = Guid.NewGuid();
+
+        Insert(
+            "dbo.ProtocoloAmostra",
+            ("Oid", Text(protocolOid)),
+            ("Identificacao", protocol),
+            ("GCRecord", protocolDeleted));
+
+        Insert(
+            "dbo.AmostraObjeto",
+            ("Oid", Text(Guid.NewGuid())),
+            ("ProtocoloAmostra", Text(protocolOid)),
+            ("SolicitacaoServico", request is null ? null : Text(request.Value)),
+            ("GCRecord", sampleDeleted));
+    }
+
+    public Guid ClientOf(string company)
+    {
+        if (_clients.TryGetValue(company, out Guid known)) return known;
+
+        Guid oid = AddClient(TestCompanies.Masked(TestCompanies.CnpjOf(company)));
+        _clients[company] = oid;
+
+        return oid;
+    }
+
+    public Guid RequestOf(string company, string? quoteCode = null)
+    {
+        (string, string) key = (company, quoteCode ?? string.Empty);
+
+        if (_requests.TryGetValue(key, out Guid known)) return known;
+
+        Guid oid = AddRequest(ClientOf(company), $"SOL-{_requests.Count + 1:0000}", quoteCode);
+        _requests[key] = oid;
+
+        return oid;
+    }
+
+    public void AddUnlinkedTestRow(
         string protocol,
         string? serialNumber,
         string company,
@@ -174,6 +301,20 @@ internal sealed class AutoLabTestDatabase : IDisposable
             ("DataFinalAnalise", analysisEnd));
     }
 
+    public void AddTestRow(
+        string protocol,
+        string? serialNumber,
+        string company,
+        DateTime analysisEnd,
+        string identification = "LACTEC-00001/2026",
+        string name = "Hidrogênio",
+        string? result = "60")
+    {
+        AddUnlinkedTestRow(protocol, serialNumber, company, analysisEnd, identification, name, result);
+
+        if (_linkedProtocols.Add((protocol, company))) AddSample(RequestOf(company), protocol);
+    }
+
     public void AddEquipment(string? serialNumber, string? tag, string? voltage, string? manufacturer = "FABRICANTE")
     {
         Insert(
@@ -190,8 +331,16 @@ internal sealed class AutoLabTestDatabase : IDisposable
             ("TipoEquipamento", "TRANSFORMADOR"));
     }
 
-    public void AddSituaProcess(string? quoteCode, bool? received, bool? registered, int? tests, int report)
+    public void AddSituaProcess(
+        string? quoteCode,
+        bool? received,
+        bool? registered,
+        int? tests,
+        int report,
+        string? company = TestCompanies.Energy)
     {
+        if (company is not null && quoteCode is not null) RequestOf(company, quoteCode);
+
         Insert(
             "dbo.SituaProcess",
             ("OrcamentoCRM", quoteCode),
@@ -207,9 +356,28 @@ internal sealed class AutoLabTestDatabase : IDisposable
         int? revision = 0,
         int? deleted = null,
         Guid? replacedBy = null,
-        DateTime? published = null)
+        DateTime? published = null,
+        string? company = TestCompanies.Energy,
+        string? quoteCode = null,
+        bool listed = false)
     {
         Guid oid = Guid.NewGuid();
+        Guid? request = company is null ? null : RequestOf(company, quoteCode);
+
+        if (listed)
+            Insert(
+                "dbo.vwRelatoriosEnsaios",
+                ("NumeroSolicitacao", "SOL-0001"),
+                ("Oid", Text(oid)),
+                ("OrcamentoCRM", quoteCode),
+                ("IDAmostra", "AM-0001"),
+                ("Nome", "Óleos"),
+                ("PdfAssinado", signedPdf is null ? null : Text(signedPdf.Value)),
+                ("ClienteSolicitante", company),
+                ("Identificacao", identification),
+                ("SituacaoRelatorio", "Publicado"),
+                ("DataEmissao", published),
+                ("DataPublicacao", published));
 
         Insert(
             "dbo.RelatorioEmissao",
@@ -221,7 +389,24 @@ internal sealed class AutoLabTestDatabase : IDisposable
             ("Revisao", revision),
             ("RelatorioEnsaioSubstituto", replacedBy is null ? null : Text(replacedBy.Value)),
             ("DataEmissao", published),
-            ("DataPublicacao", published));
+            ("DataPublicacao", published),
+            ("Solicitacao", request is null ? null : Text(request.Value)));
+
+        return oid;
+    }
+
+    public Guid AddReportIssueOfRequest(Guid request, string identification, int? deleted = null, Guid? signedPdf = null)
+    {
+        Guid oid = Guid.NewGuid();
+
+        Insert(
+            "dbo.RelatorioEmissao",
+            ("Oid", Text(oid)),
+            ("Identificacao", identification),
+            ("PdfAssinado", signedPdf is null ? null : Text(signedPdf.Value)),
+            ("GCRecord", deleted),
+            ("Revisao", 0),
+            ("Solicitacao", Text(request)));
 
         return oid;
     }

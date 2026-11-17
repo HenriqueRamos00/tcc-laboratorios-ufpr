@@ -112,8 +112,6 @@ services:
       # credenciais Salesforce__* de backend-portal-web/.env.
       Portal__UseDemoData: ${PORTAL_USE_DEMO_DATA:-true}
       LabResults__Source: sql-server
-      LabResults__Scope: all
-      LabResults__DevelopmentTenant: ""
       EquipmentRegistry__Source: sql-server
       LaboratoryProgress__Source: sql-server
       ReportDocuments__Source: sql-server

@@ -206,7 +206,7 @@ Estas alterações pertencem a outros módulos, mas são necessárias para consu
 
 Os novos valores de source ainda não existem no código atual. A implementação precisará registrar adapters HTTP que encaminhem o Bearer da requisição atual e traduzam DTOs, paginação e falhas.
 
-No provider Spring, a autorização será aplicada pelo Java com esse Bearer. Ajustar a resolução de escopo do C# para esse caminho: ela não poderá depender da claim AutoLAB `inquilino` nem de `LabResults__DevelopmentTenant` para liberar ou filtrar dados Spring.
+No provider Spring, a autorização será aplicada pelo Java com esse Bearer. O escopo do AutoLAB no C# vem apenas da claim `companyCnpjs` do JWT do modo `lactec` e não participa desse caminho: ele não libera nem filtra dados Spring.
 
 As portas atuais do C# contêm pressupostos do AutoLAB: protocolo como identidade da análise, chave de equipamento baseada em série e ID de relatório como GUID. Generalizar esses pontos para IDs Spring sem perder a compatibilidade do modo AutoLAB. A listagem cadastral com resumo mais recente também deverá ser conciliada com `ILabTestRepository`, que hoje devolve análises paginadas por equipamento.
 

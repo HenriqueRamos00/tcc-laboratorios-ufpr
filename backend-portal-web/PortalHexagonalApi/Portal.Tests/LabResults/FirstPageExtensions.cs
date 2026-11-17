@@ -1,3 +1,4 @@
+using Portal.Tests.AutoLab;
 using Portal.Application.LabResults;
 using Portal.Application.Paging;
 using Portal.Application.Visibility;
@@ -12,7 +13,7 @@ internal static class FirstPageExtensions
         string company)
     {
         Page<EquipmentWithNameplate> page = await consultation.ListEquipmentAsync(
-            VisibilityScope.OfCompany(company), null, PageRequest.First, CancellationToken.None);
+            TestCompanies.ScopeOf(company), null, PageRequest.First, CancellationToken.None);
 
         return page.Items;
     }
@@ -22,7 +23,7 @@ internal static class FirstPageExtensions
         string company)
     {
         Page<SampleAnalysis> page = await repository.GetAnalysesAsync(
-            VisibilityScope.OfCompany(company), null, PageRequest.First, CancellationToken.None);
+            TestCompanies.ScopeOf(company), null, PageRequest.First, CancellationToken.None);
 
         return page.Items;
     }

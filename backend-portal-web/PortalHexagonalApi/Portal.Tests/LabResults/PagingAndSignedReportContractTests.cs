@@ -257,6 +257,7 @@ public sealed class PagingAndSignedReportContractTests : IClassFixture<RunningPo
         public List<string> IdentificationsAsked { get; } = [];
 
         public Task<SignedReportDocument?> GetSignedDocumentOfAsync(
+            CompanyScope scope,
             string reportIdentification,
             CancellationToken cancellationToken)
         {
@@ -268,6 +269,7 @@ public sealed class PagingAndSignedReportContractTests : IClassFixture<RunningPo
         }
 
         public Task<IReadOnlySet<string>> GetIdentificationsWithSignedDocumentAsync(
+            CompanyScope scope,
             IReadOnlyCollection<string> reportIdentifications,
             CancellationToken cancellationToken)
         {
@@ -275,6 +277,7 @@ public sealed class PagingAndSignedReportContractTests : IClassFixture<RunningPo
         }
 
         public Task<ReportIssue?> GetCurrentIssueOfAsync(
+            CompanyScope scope,
             string reportIdentification,
             CancellationToken cancellationToken)
         {
@@ -282,7 +285,7 @@ public sealed class PagingAndSignedReportContractTests : IClassFixture<RunningPo
         }
 
         public Task<Page<LabReport>> ListReportsAsync(
-            VisibilityScope scope,
+            CompanyScope scope,
             string? quoteCode,
             PageRequest page,
             CancellationToken cancellationToken)
@@ -291,7 +294,7 @@ public sealed class PagingAndSignedReportContractTests : IClassFixture<RunningPo
         }
 
         public Task<SignedReportDocument?> GetSignedDocumentOfReportAsync(
-            VisibilityScope scope,
+            CompanyScope scope,
             Guid reportId,
             CancellationToken cancellationToken)
         {

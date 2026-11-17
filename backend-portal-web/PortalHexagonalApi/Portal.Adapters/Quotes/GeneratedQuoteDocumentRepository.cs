@@ -32,10 +32,10 @@ public sealed class GeneratedQuoteDocumentRepository : IQuoteDocumentRepository
 
     public async Task<byte[]?> GetDocumentAsync(string quoteId, CancellationToken cancellationToken)
     {
-        byte[]? written = await _writtenDocuments.GetDocumentAsync(quoteId, cancellationToken);
-        if (written is not null) return written;
-
         Quote? quote = await _quotes.GetQuoteByIdAsync(quoteId, cancellationToken);
-        return quote is null ? null : QuotationPdf.Write(quote, []);
+        if (quote is null) return null;
+
+        return await _writtenDocuments.GetDocumentAsync(quoteId, cancellationToken)
+            ?? QuotationPdf.Write(quote, []);
     }
 }

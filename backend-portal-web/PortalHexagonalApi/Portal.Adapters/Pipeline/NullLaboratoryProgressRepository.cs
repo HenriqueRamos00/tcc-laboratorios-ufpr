@@ -1,4 +1,5 @@
 using Portal.Application.Pipeline;
+using Portal.Application.Visibility;
 using Portal.Domain.Pipeline;
 
 namespace Portal.Adapters.Pipeline;
@@ -20,6 +21,7 @@ namespace Portal.Adapters.Pipeline;
 public sealed class NullLaboratoryProgressRepository : ILaboratoryProgressRepository
 {
     public Task<IReadOnlyList<LaboratoryProgress>> GetProgressOfQuotesAsync(
+        CompanyScope scope,
         IReadOnlyCollection<string> quoteCodes,
         CancellationToken cancellationToken)
     {
@@ -27,6 +29,7 @@ public sealed class NullLaboratoryProgressRepository : ILaboratoryProgressReposi
     }
 
     public Task<LaboratoryProgress?> GetProgressOfQuoteAsync(
+        CompanyScope scope,
         string quoteCode,
         CancellationToken cancellationToken)
     {

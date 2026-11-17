@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Mvc;
 
+using Portal.Api.Authentication;
 using Portal.Api.LabResults;
 using Portal.Api.Nameplate;
 using Portal.Api.ReportDocuments;
@@ -23,6 +24,7 @@ namespace Portal.Api.Controllers;
 /// endereco, resolve o escopo, chama a porta condutora e traduz para o corpo que a tela le.
 /// </summary>
 [ApiController]
+[NoStore]
 [Route("api/equipments")]
 public sealed class EquipmentController : ControllerBase
 {
@@ -243,12 +245,12 @@ public sealed class EquipmentController : ControllerBase
     /// Estava copiado em cada metodo, e copia de tratamento de erro diverge em silencio,
     /// porque basta uma das copias ganhar um caso novo.
     /// </summary>
-    private async Task<IActionResult> AnswerAsync(Func<VisibilityScope, Task<IActionResult>> answer)
+    private async Task<IActionResult> AnswerAsync(Func<CompanyScope, Task<IActionResult>> answer)
     {
         if (_labResultsOptions.Source == LabResultsOptions.NotConnectedSource)
             return this.LabIntegrationPending();
 
-        VisibilityScope? scope = VisibilityScopeResolution.Resolve(User, _labResultsOptions);
+        CompanyScope? scope = CompanyScopeResolution.Resolve(User);
 
         if (scope is null) return this.TenantNotIdentified();
 

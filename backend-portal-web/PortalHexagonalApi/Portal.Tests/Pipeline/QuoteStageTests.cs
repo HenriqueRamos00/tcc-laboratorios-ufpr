@@ -1,3 +1,4 @@
+using Portal.Tests.Quotes;
 using Portal.Application.Paging;
 using Portal.Application.Pipeline;
 using Portal.Application.Pipeline.Exceptions;
@@ -190,7 +191,7 @@ public sealed class QuoteStageTests
         params Quote[] quotes)
     {
         return new QuoteService(
-            new ScriptedQuoteRepository(quotes), new ScriptedDocuments(), laboratory, new InMemoryClientDecisionRepository());
+            new ScriptedQuoteRepository(quotes), new ScriptedDocuments(), laboratory, new InMemoryClientDecisionRepository(), FixedCompanyScope.DemoCompanies);
     }
 
     private static Quote QuoteOf(string id, string code)

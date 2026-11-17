@@ -24,7 +24,7 @@ public sealed class CompanyQuoteContractTests
     // negociacao nao ha proposta escrita e o download responde 404. Sem a etapa, o registro
     // cai em qualificacao e estes testes de escopo por empresa mediriam a regra errada.
     private const string QuoteResponse = """
-        {"records":[{"Id":"quote-3","Name":"Proposta autorizada","Status":"Draft","OpportunityId":"opp-1",
+        {"records":[{"Id":"0Q0000000000003AAA","Name":"Proposta autorizada","Status":"Draft","OpportunityId":"opp-1",
         "Opportunity":{"StageName":"Negociação","Account":{"Name":"Empresa autorizada","CNPJ__c":"76436849000174"}}}]}
         """;
 
@@ -117,7 +117,7 @@ public sealed class CompanyQuoteContractTests
         using var list = await client.GetAsync("/api/quotes");
         Assert.Equal(HttpStatusCode.OK, list.StatusCode);
         Assert.Empty(JsonNode.Parse(await list.Content.ReadAsStringAsync())!.AsArray());
-        foreach (string path in new[] { "/api/quotes/quote-3", "/api/quotes/quote-3/document" })
+        foreach (string path in new[] { "/api/quotes/0Q0000000000003AAA", "/api/quotes/0Q0000000000003AAA/document" })
         {
             using var response = await client.GetAsync(path);
             Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
@@ -140,14 +140,14 @@ public sealed class CompanyQuoteContractTests
         using HttpClient client = portal.CreateClient();
         await Login(client);
 
-        foreach (string path in new[] { "/api/quotes/quote-3", "/api/quotes/quote-3/document" })
+        foreach (string path in new[] { "/api/quotes/0Q0000000000003AAA", "/api/quotes/0Q0000000000003AAA/document" })
         {
             using var response = await client.GetAsync(path);
             Assert.Equal(allowed ? HttpStatusCode.OK : HttpStatusCode.NotFound, response.StatusCode);
         }
         Assert.Equal(allowed ? 1 : 0, documents.Calls);
         Assert.Equal(2, salesforce.Queries.Count);
-        Assert.All(salesforce.Queries, query => Assert.EndsWith("WHERE Id = 'quote-3' AND Opportunity.Account.CNPJ__c = '76436849000174' LIMIT 1", query));
+        Assert.All(salesforce.Queries, query => Assert.EndsWith("WHERE Id = '0Q0000000000003AAA' AND Opportunity.Account.CNPJ__c = '76436849000174' LIMIT 1", query));
     }
 
     [Fact]
@@ -176,8 +176,8 @@ public sealed class CompanyQuoteContractTests
 
     [Theory]
     [InlineData("/api/quotes")]
-    [InlineData("/api/quotes/quote-3")]
-    [InlineData("/api/quotes/quote-3/document")]
+    [InlineData("/api/quotes/0Q0000000000003AAA")]
+    [InlineData("/api/quotes/0Q0000000000003AAA/document")]
     public async Task FalhaDoSalesforceRetorna502SemDadosDeDemonstracao(string path)
     {
         using var backend = new AuthHandler(HttpStatusCode.OK, Identity(["76436849000174"]));
@@ -222,11 +222,11 @@ public sealed class CompanyQuoteContractTests
         using HttpClient client = portal.CreateClient();
         await Login(client);
 
-        using var response = await client.GetAsync("/api/quotes/quote-1/reports?quoteCode=EAQ_2099_99999_V_1&OrcamentoCRM=2099_99999");
+        using var response = await client.GetAsync("/api/quotes/0Q0000000000001AAA/reports?quoteCode=EAQ_2099_99999_V_1&OrcamentoCRM=2099_99999");
 
         string query = Assert.Single(salesforce.Queries);
         Assert.Contains("Codigo_da_Cotacao__c", query);
-        Assert.EndsWith("WHERE Id = 'quote-1' AND Opportunity.Account.CNPJ__c = '76436849000174' LIMIT 1", query);
+        Assert.EndsWith("WHERE Id = '0Q0000000000001AAA' AND Opportunity.Account.CNPJ__c = '76436849000174' LIMIT 1", query);
         if (expected is null)
         {
             Assert.Equal(HttpStatusCode.NoContent, response.StatusCode);
@@ -238,7 +238,7 @@ public sealed class CompanyQuoteContractTests
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
         Assert.Equal(expected, Assert.Single(reports.Codes));
         JsonObject conclusion = JsonNode.Parse(await response.Content.ReadAsStringAsync())!.AsObject();
-        Assert.Equal("quote-1", (string?)conclusion["quoteId"]);
+        Assert.Equal("0Q0000000000001AAA", (string?)conclusion["quoteId"]);
         Assert.Equal("EAQ_2099_99999_V_1", (string?)conclusion["quoteCode"]);
         JsonNode report = Assert.Single(conclusion["reports"]!.AsArray())!;
         Assert.Equal(expected, (string?)report["quoteCode"]);
@@ -263,7 +263,7 @@ public sealed class CompanyQuoteContractTests
         using HttpClient client = portal.CreateClient();
         if (caso != "sem-jwt") await Login(client);
 
-        using var response = await client.GetAsync("/api/quotes/quote-1/reports");
+        using var response = await client.GetAsync("/api/quotes/0Q0000000000001AAA/reports");
 
         Assert.Equal(expected, response.StatusCode);
         Assert.Empty(reports.Codes);
@@ -276,7 +276,7 @@ public sealed class CompanyQuoteContractTests
         {
             new
             {
-                Id = "quote-1",
+                Id = "0Q0000000000001AAA",
                 Codigo_da_Cotacao__c = quotationCode,
                 Opportunity = new { Codigo_da_Oportunidade__c = "EAQ_2099_99999_V_1", StageName = "Fechado ganho" }
             }
@@ -312,7 +312,7 @@ public sealed class CompanyQuoteContractTests
         public List<string?> Codes { get; } = [];
 
         public Task<Page<LabReport>> ListReportsAsync(
-            VisibilityScope scope, string? quoteCode, PageRequest page, CancellationToken cancellationToken)
+            CompanyScope scope, string? quoteCode, PageRequest page, CancellationToken cancellationToken)
         {
             Codes.Add(quoteCode);
             LabReport report = new(Guid.Parse("19d6b0d0-c90d-4c10-80b7-702ff9f5839e"), "LACTEC-00001/2024", "SOL-2024-00001",
@@ -320,18 +320,19 @@ public sealed class CompanyQuoteContractTests
             return Task.FromResult(Page<LabReport>.Of([report], page));
         }
 
-        public Task<SignedReportDocument?> GetSignedDocumentOfAsync(string reportIdentification, CancellationToken cancellationToken) =>
+        public Task<SignedReportDocument?> GetSignedDocumentOfAsync(CompanyScope scope, string reportIdentification, CancellationToken cancellationToken) =>
             throw new InvalidOperationException("Fora do escopo deste teste.");
 
         public Task<IReadOnlySet<string>> GetIdentificationsWithSignedDocumentAsync(
+            CompanyScope scope,
             IReadOnlyCollection<string> reportIdentifications, CancellationToken cancellationToken) =>
             throw new InvalidOperationException("Fora do escopo deste teste.");
 
-        public Task<ReportIssue?> GetCurrentIssueOfAsync(string reportIdentification, CancellationToken cancellationToken) =>
+        public Task<ReportIssue?> GetCurrentIssueOfAsync(CompanyScope scope, string reportIdentification, CancellationToken cancellationToken) =>
             throw new InvalidOperationException("Fora do escopo deste teste.");
 
         public Task<SignedReportDocument?> GetSignedDocumentOfReportAsync(
-            VisibilityScope scope, Guid reportId, CancellationToken cancellationToken) =>
+            CompanyScope scope, Guid reportId, CancellationToken cancellationToken) =>
             throw new InvalidOperationException("Fora do escopo deste teste.");
     }
 

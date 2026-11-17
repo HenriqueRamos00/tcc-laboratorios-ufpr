@@ -1,3 +1,4 @@
+using Portal.Tests.AutoLab;
 using Portal.Application.LabResults;
 using Portal.Application.Paging;
 using Portal.Application.Visibility;
@@ -36,7 +37,7 @@ public sealed class InMemoryLabTestRepository : ILabTestRepository
     public List<EquipmentSearch?> SearchesAsked { get; } = [];
 
     public Task<Page<SampleAnalysis>> GetAnalysesAsync(
-        VisibilityScope scope,
+        CompanyScope scope,
         EquipmentSearch? search,
         PageRequest equipmentPage,
         CancellationToken cancellationToken)
@@ -59,7 +60,7 @@ public sealed class InMemoryLabTestRepository : ILabTestRepository
     }
 
     public Task<Page<SampleAnalysis>> GetAnalysesOfEquipmentAsync(
-        VisibilityScope scope,
+        CompanyScope scope,
         string equipmentKey,
         PageRequest reportPage,
         CancellationToken cancellationToken)
@@ -76,7 +77,7 @@ public sealed class InMemoryLabTestRepository : ILabTestRepository
     }
 
     public Task<SampleAnalysis?> GetAnalysisByProtocolAsync(
-        VisibilityScope scope,
+        CompanyScope scope,
         string protocoloLactec,
         CancellationToken cancellationToken)
     {
@@ -94,8 +95,8 @@ public sealed class InMemoryLabTestRepository : ILabTestRepository
         return text is not null && text.Contains(search.Term, StringComparison.OrdinalIgnoreCase);
     }
 
-    private IEnumerable<SampleAnalysis> In(VisibilityScope scope)
+    private IEnumerable<SampleAnalysis> In(CompanyScope scope)
     {
-        return _analyses.Where(analysis => scope.Includes(analysis.Company));
+        return _analyses.Where(analysis => scope.IncludesCompany(analysis.Company));
     }
 }

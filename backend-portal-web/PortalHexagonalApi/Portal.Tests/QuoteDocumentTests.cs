@@ -1,3 +1,4 @@
+using Portal.Tests.Quotes;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Http;
 using Portal.Adapters.Quotes;
@@ -17,7 +18,7 @@ public sealed class QuoteDocumentTests
     [Fact]
     public async Task QuoteFixtureHasRequestedCodeStatusAndTotal()
     {
-        var quotes = new FakeSalesforceQuoteRepository();
+        var quotes = new FakeSalesforceQuoteRepository(FixedCompanyScope.DemoCompanies);
 
         var quote = await quotes.GetQuoteByIdAsync("quote-3", CancellationToken.None);
 
@@ -139,8 +140,8 @@ public sealed class QuoteDocumentTests
     private static QuotesController CreateController(IQuoteDocumentRepository documents) =>
         new(
             new QuoteService(
-                new FakeSalesforceQuoteRepository(), documents, new InMemoryLaboratoryProgressRepository(),
-                new InMemoryClientDecisionRepository()),
+                new FakeSalesforceQuoteRepository(FixedCompanyScope.DemoCompanies), documents, new InMemoryLaboratoryProgressRepository(),
+                new InMemoryClientDecisionRepository(), FixedCompanyScope.DemoCompanies),
             new UnusedClientDecisionRecording(),
             new PortalOptions { DataSource = PortalOptions.LactecSource });
 
