@@ -13,6 +13,24 @@ import org.springframework.stereotype.Repository;
 
 @Repository
 public interface EquipamentoRepository extends JpaRepository<Equipamento, Long> {
+	// Limita a listagem aos equipamentos e empresas ativos que o cliente pode consultar.
+	@Query(value = """
+			select e from Equipamento e join fetch e.empresa empresa
+			where e.ativo = true and empresa.ativo = true and empresa.id in :empresaIds
+			  and (:empresaId is null or empresa.id = :empresaId)
+			  and (:busca = '' or locate(:busca, lower(e.numeroSerie)) > 0
+			       or locate(:busca, lower(e.tag)) > 0)
+			""", countQuery = """
+			select count(e) from Equipamento e
+			where e.ativo = true and e.empresa.ativo = true and e.empresa.id in :empresaIds
+			  and (:empresaId is null or e.empresa.id = :empresaId)
+			  and (:busca = '' or locate(:busca, lower(e.numeroSerie)) > 0
+			       or locate(:busca, lower(e.tag)) > 0)
+			""")
+	Page<Equipamento> listarCliente(@Param("empresaIds") List<Long> empresaIds,
+			@Param("empresaId") Long empresaId, @Param("busca") String busca, Pageable pageable);
+
+	// Busca equipamentos ativos da empresa por TAG ou número de série para seleção no ensaio.
 	@Query(value = """
 			select e from Equipamento e
 			where e.ativo = true and e.empresa.id = :empresaId
@@ -27,6 +45,7 @@ public interface EquipamentoRepository extends JpaRepository<Equipamento, Long> 
 	Page<Equipamento> pesquisarAnalisados(@Param("empresaId") Long empresaId,
 			@Param("busca") String busca, Pageable pageable);
 
+	// Pesquisa por série, TAG ou empresa e combina o texto com filtros opcionais de tipo e risco.
 	@Query("""
 			select e from Equipamento e join fetch e.empresa empresa
 			where e.ativo = true

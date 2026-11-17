@@ -24,7 +24,8 @@ import lombok.Setter;
 @Entity
 @Table(name = "relatorios_tecnicos", indexes = {
         @Index(name = "idx_relatorios_execucao", columnList = "execucao_id"),
-        @Index(name = "idx_relatorios_validacao_publicacao", columnList = "validation_status, published")
+        @Index(name = "idx_relatorios_validacao_publicacao", columnList = "validation_status, published"),
+        @Index(name = "idx_relatorios_equipamento_cliente", columnList = "validated_equipment_id, validated_company_id, validation_status, published, published_at")
 })
 @Getter
 @Setter
@@ -79,6 +80,9 @@ public class RelatorioTecnico {
 
     @Column(name = "validated_search", length = 2000)
     private String validatedSearch;
+
+    @Column(name = "validated_equipment_id")
+    private Long validatedEquipmentId;
 
     @Version
     @Column(nullable = false)

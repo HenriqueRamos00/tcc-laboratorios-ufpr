@@ -136,8 +136,8 @@ audiência, validade sem tolerância extra, identidade, fonte, serviço e papel.
 `GET /auth/me` devolve o mesmo `user` usando os claims, sem consultar o Backend Auth.
 Login, OpenAPI e preflight CORS são públicos. No modo `backend-lab`, `/auth/me`
 retorna 501 e as consultas de orçamento e relatórios encaminham o Bearer Spring à origem.
-No Compose regular, equipamentos e indicadores retornam 501 (`lab-integration-pending`)
-até a implementação dos endpoints de cliente no Spring. O OpenAPI descreve o Bearer quando `lactec`
+No Compose regular, equipamentos e indicadores consultam os endpoints de cliente Spring,
+encaminhando o Bearer de cada requisição. O OpenAPI descreve o Bearer quando `lactec`
 está ativo.
 
 No modo `backend-lab`, as rotas C# `/api/quotes`, `/api/quotes/{id}` e
@@ -167,7 +167,8 @@ O frontend utiliza o ID do orçamento nessa consulta, preservando IDs próprios 
 
 Em `compose.yaml`, o adapter Spring consulta `/api/client/reports`, os relatórios por
 orçamento e `/api/client/reports/{id}/file`. `ReportDocuments__Source=not-connected`
-desliga apenas o provider AutoLAB; os relatórios publicados Spring permanecem disponíveis.
+desliga apenas o provider AutoLAB; os documentos Spring são selecionados por
+`Portal__DataSource=backend-lab`.
 Em `compose.auth.yaml`, `ReportDocuments__Source=sql-server` seleciona os relatórios AutoLAB.
 Não há fallback entre as duas origens.
 
@@ -177,9 +178,11 @@ da fonte selecionada. IDs Spring são strings; IDs AutoLAB são GUIDs codificado
 PDF assinado do AutoLAB e não é usado para declarar assinatura digital em documentos Spring.
 O download mantém o PDF persistido, o nome do arquivo e `Cache-Control: no-store`.
 
-`LabResults__Source=not-connected` registra explicitamente a integração laboratorial
-pendente, sem validar conexão SQL. `LaboratoryProgress__Source=not-connected` mantém a
-etapa enviada pelo Spring. Os detalhes das adições futuras estão no
+`LabResults__Source=backend-lab` e `EquipmentRegistry__Source=backend-lab` usam os
+cadastros e resultados publicados pelo Spring. Históricos e séries identificam o equipamento
+pelo seu ID e consideram uma análise por execução. As datas Spring correspondem à publicação
+do laudo, no fuso America/Sao_Paulo. `LaboratoryProgress__Source=not-connected`
+mantém a etapa enviada pelo Spring. Os detalhes estão no
 [plano do Backend Lab](../backend-lab/docs/integracao-portal-cliente.md).
 
 
@@ -321,20 +324,21 @@ Execute na raiz do repositório:
 docker compose -f compose.auth.yaml up -d --build
 ```
 
-O arquivo inicia o SQL Server (bancos `backend_auth` e `portal`), Backend Auth, API C# e
-frontend. Abra http://localhost:4200. Não requer Salesforce, Backend Lab nem cadastro manual,
+O arquivo inicia Oracle com Auth2 e migrações Flyway, SQL Server (banco `portal`), API C#
+e frontend. Abra http://localhost:4200. Não requer Salesforce, Backend Lab nem cadastro manual,
 mas exige `backend-portal-web/.env` com a conexão do AutoLAB real (e a VPN do Lactec): não
 existe mais cópia local do AutoLAB.
-As senhas são iguais aos e-mails:
+As senhas locais são distintas e podem ser substituídas no `.env` da raiz:
 
-| Cliente | Empresa / CNPJ | Orçamentos | Equipamentos / laudos |
-| --- | --- | --- | --- |
-| `client1@lactec.com` | EMPRESA DE ENERGIA / `30960572000183` | `1, 3, 6, 8, 10, 12, 14, 16, 18` | 6 / 11 |
-| `client2@lactec.com` | DISTRIBUIDORA DE ENERGIA / `11222333000181` | `4, 5, 7, 9, 11, 13, 15, 17, 19` | 6 / 11 |
+| Cliente | Senha | Empresa / CNPJ | Orçamentos | Equipamentos / laudos |
+| --- | --- | --- | --- | --- |
+| `client1@lactec.com` | `Cliente1!6vT9qL2nW8sD` | EMPRESA DE ENERGIA / `30960572000183` | `1, 3, 6, 8, 10, 12, 14, 16, 18` | 6 / 11 |
+| `client2@lactec.com` | `Cliente2!3rK7wP5mH9zF` | DISTRIBUIDORA DE ENERGIA / `11222333000181` | `4, 5, 7, 9, 11, 13, 15, 17, 19` | 6 / 11 |
 
 Os IDs de orçamento usam o prefixo `quote-`. Os valores, códigos, situações e descrições
 são preservados; as empresas dos orçamentos correspondem às contas. O PDF de `quote-3`
-também usa a empresa correta. Equipamentos, laudos e relatórios aparecem de forma
+também é gerado com os dados do orçamento e o layout Lactec; o arquivo estático
+antigo foi removido. Equipamentos, laudos e relatórios aparecem de forma
 generalizada para as duas contas (`LabResults__Scope=all`): são os 6 equipamentos e
 11 laudos da massa local. Como no AutoLAB real, `vwRelatoriosEnsaios` e `SituaProcess`
 guardam o `OrcamentoCRM` na forma nua (`2026_45496`), e os orçamentos fictícios chegam a
@@ -352,27 +356,34 @@ Quando habilitado em `lactec`, lista, detalhe e PDF dos orçamentos usam o escop
 CNPJs autenticado; orçamento de outra conta retorna 404. Requisições sem JWT
 continuam retornando 401.
 
-O seed cria também `lactec@lactec.com`, com a mesma senha, para administrar somente
-o Backend Auth pelo Swagger/API. O token de integração e a chave JWT ficam nos
+O seed cria também `lactec@lactec.com`, senha `Lactec!7uQ2mN9xR4pK`, para administrar
+somente o Backend Auth2 pela API. O Swagger está desativado por padrão no Auth2.
+O token de integração e a chave JWT ficam nos
 backends. O Compose tem padrões públicos para uso local, substituíveis por
 `BACKEND_AUTH_SERVICE_TOKEN` e `PORTAL_JWT_SIGNING_KEY` no `.env` da raiz.
-O Auth recebe o mesmo token configurado no C# e mantém apenas seu hash.
+As senhas iniciais usam `AUTH_DEMO_ADMIN_PASSWORD`, `AUTH_DEMO_CLIENT1_PASSWORD` e
+`AUTH_DEMO_CLIENT2_PASSWORD`; elas não sobrescrevem contas já cadastradas.
+O Auth2 recebe o mesmo token configurado no C# e mantém apenas seu hash.
+`AUTH_ORACLE_PASSWORD`, `AUTH_SCHEMA_OWNER_PASSWORD` e `AUTH_DATASOURCE_PASSWORD`
+configuram o Oracle; `SQLSERVER_SA_PASSWORD` configura o SQL Server local.
 
-Reinícios preservam os dados e não redefinem as senhas ou permissões editadas.
-`docker compose -f compose.auth.yaml down` preserva o banco; `down -v` apaga o
-ambiente demo, permitindo recriar as contas com os padrões. O volume é separado
-dos demais Composes. Este arquivo substitui o antigo overlay de rede externa e
+Reinícios preservam as contas do Auth2 e não redefinem senhas ou permissões editadas.
+`docker compose -f compose.auth.yaml down` preserva os dois bancos; `down -v` apaga
+o Oracle, o SQL Server local (incluindo eventual banco Auth legado) e os volumes do frontend.
+Os volumes são separados dos demais Composes. Este arquivo substitui o antigo overlay de rede externa e
 não deve ser combinado com `compose.yaml`.
 
 ### Configuração e execução em lactec
 
-1. Suba o serviço independente seguindo o [README do Backend Auth](../backend-auth/README.md),
-   cadastre o primeiro administrador pelo link dos logs e entre no Swagger UI.
+1. Suba o serviço independente seguindo o [README do Backend Auth2](../backend-auth2/README.md).
+   Cadastre o primeiro administrador com o segredo de instalação e entre pela API
+   administrativa; a documentação do contrato fica em `backend-auth2/docs/openapi.json`.
 2. Crie o serviço com código `portal-web`, gere um token de serviço e crie um
-   cliente ativo vinculado a esse serviço e, opcionalmente, a empresas.
+   cliente ativo vinculado a esse serviço e, opcionalmente, a empresas. Confirme o
+   e-mail do cliente para habilitar seu login.
 3. Para usar o Salesforce real, mantenha `Portal__UseDemoData=false`, configure as
    credenciais Salesforce e exporte as variáveis abaixo no processo do C#.
-4. Com o Backend Auth já iniciado, execute `dotnet run --project PortalHexagonalApi/Portal.Api`
+4. Com o Backend Auth2 já iniciado, execute `dotnet run --project PortalHexagonalApi/Portal.Api`
    em `backend-portal-web/`. O `.env` sozinho não configura `dotnet run`.
 
 Para `dotnet run` fora do Docker, exporte as variáveis do processo:
@@ -385,8 +396,10 @@ Não há credenciais ou segredo padrão. Configuração inválida impede o start
 Os padrões públicos existem somente no Compose de demonstração independente.
 O `.env` do C# é carregado pelo Compose, não pelo `dotnet run`.
 
-Em `backend-lab`, configure somente `Portal__DataSource=backend-lab` e
-`BackendLab__BaseUrl` (no Compose da raiz, `BACKEND_LAB_BASE_URL`). Por exemplo,
+Em `backend-lab`, configure `Portal__DataSource=backend-lab`,
+`LabResults__Source=backend-lab`, `EquipmentRegistry__Source=backend-lab`,
+`LaboratoryProgress__Source=not-connected`, `ReportDocuments__Source=not-connected`
+e `BackendLab__BaseUrl` (no Compose da raiz, `BACKEND_LAB_BASE_URL`). Por exemplo,
 `http://localhost:8080` fora do Docker ou `http://backend-lab:8080` no Compose integrado.
 
 Em implantação, use HTTPS entre navegador e C# e entre C# e Backend Auth, restrinja
@@ -415,7 +428,7 @@ paginação (contagem, `LIMIT`/`OFFSET` e cursor depois do `OFFSET` 2000) e o v�
 AutoLAB pelo código da cotação. O frontend
 cobre armazenamento/restauração, envio restrito do Bearer, logout, mensagens e
 espera do login. Para um smoke real, mantenha o Backend Lab parado, use o Backend
-Auth com SQL Server, autentique pelo C#, consulte `/auth/me` e `/api/quotes` com o
+Auth2 com Oracle e AutoLAB com SQL Server, autentique pelo C#, consulte `/auth/me` e `/api/quotes` com o
 JWT e confirme 401 sem JWT e 429 após cinco senhas incorretas. Para verificar
 expiração sem esperar 15 minutos, reduza `PORTAL_JWT_EXPIRATION_SECONDS` no ambiente
 de teste e recrie a API.
@@ -503,7 +516,13 @@ ordem fixa, depois as linhas so das chaves da pagina.
 
 ### Busca de equipamentos
 
-`GET /api/equipments?search=` filtra no banco, dentro do escopo da empresa, por trecho do
+`GET /api/equipments?search=` funciona nas duas fontes. No modo Spring, a API encaminha
+o termo ao Backend Lab, que busca por trecho do número de série ou da TAG sem distinguir
+maiúsculas, respeitando as empresas autorizadas antes da contagem e da paginação. O termo
+é aparado, vazio significa sem filtro e o limite é de 100 caracteres; caracteres de
+`LIKE` são tratados como texto literal.
+
+No modo AutoLAB, a busca filtra no banco, dentro do escopo da empresa, por trecho do
 numero de serie (`vwDadosEnsaios.NumSerie`), da identificacao do laudo
 (`vwDadosEnsaios.Identificacao`) ou da TAG de placa (`Equipamentos.Tag`, ligada pelo numero
 de serie). A comparacao nao distingue maiusculas (`Latin1_General_CI_AS`), o termo e

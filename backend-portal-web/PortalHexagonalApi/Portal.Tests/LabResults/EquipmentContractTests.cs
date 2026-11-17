@@ -29,7 +29,7 @@ public sealed class EquipmentContractTests : IClassFixture<RunningPortal>
 
         Assert.NotEmpty(list);
         Assert.All(list, equipment => Assert.Equal(
-            ["company", "equipmentTag", "id", "identification",
+            ["company", "equipmentTag", "id", "identification", "location",
              "mostRecentReportDate", "nameplateKnown", "reportCount", "serialNumber",
              "tag", "type"],
             equipment!.AsObject().Select(pair => pair.Key).Order()));

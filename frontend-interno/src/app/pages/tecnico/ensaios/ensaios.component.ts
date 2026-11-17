@@ -11,7 +11,7 @@ import { FormControl, ReactiveFormsModule } from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
-import { RouterLink } from '@angular/router';
+import { ActivatedRoute, RouterLink } from '@angular/router';
 import { of, Subject } from 'rxjs';
 import {
   catchError,
@@ -43,6 +43,9 @@ import { EnsaiosService } from '@/app/services/ensaios.service';
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class EnsaiosComponent {
+  private readonly route = inject(ActivatedRoute);
+  readonly quoteId = signal<string | undefined>(undefined);
+  readonly quoteCode = signal<string | null>(null);
   private readonly service = inject(EnsaiosService);
   private readonly destroyRef = inject(DestroyRef);
   private readonly refresh$ = new Subject<void>();
@@ -55,6 +58,12 @@ export class EnsaiosComponent {
   readonly error = signal(false);
   readonly forbidden = signal(false);
   constructor() {
+    this.route.queryParamMap.pipe(takeUntilDestroyed(this.destroyRef)).subscribe((params) => {
+      this.quoteId.set(params.get('quoteId') ?? undefined);
+      this.quoteCode.set(params.get('quoteCode'));
+      this.page.set(1);
+      this.refresh$.next();
+    });
     this.search.valueChanges
       .pipe(
         startWith(''),
@@ -68,7 +77,7 @@ export class EnsaiosComponent {
               this.loading.set(true);
               this.error.set(false);
               this.forbidden.set(false);
-              return this.service.list(term, this.page(), this.pageSize).pipe(
+              return this.service.list(term, this.page(), this.pageSize, this.quoteId()).pipe(
                 tap((result) => {
                   this.items.set(result.items);
                   this.total.set(result.totalItems);

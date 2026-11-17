@@ -20,6 +20,7 @@ public sealed class EquipmentRegistryOptions
 
     public const string NotConnectedSource = "not-connected";
     public const string SqlServerSource = "sql-server";
+    public const string BackendLabSource = "backend-lab";
 
     public string? Source { get; init; }
 }

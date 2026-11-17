@@ -113,30 +113,22 @@ public sealed class SampleAnalysisTests
     }
 
     /// <summary>
-    /// Por reflexao, e nao contra uma assinatura escrita a mao: se alguem adicionar uma
-    /// sobrecarga que delega para a base com validacao mais fraca, este teste acusa que o
-    /// caso passou a existir, em vez de continuar verde sobre o construtor antigo.
+    /// Localiza o construtor AutoLAB pelo parâmetro de protocolo e mantém sua validação
+    /// coberta. O construtor Spring usa os IDs persistidos e permite protocolo ausente.
     /// </summary>
     [Fact]
-    public void EveryPublicConstructorRefusesAnEmptyProtocol()
+    public void ConstrutorAutoLabRecusaProtocoloVazio()
     {
-        ConstructorInfo[] constructors = typeof(SampleAnalysis).GetConstructors();
+        ConstructorInfo constructor = Assert.Single(typeof(SampleAnalysis).GetConstructors(), candidate =>
+            candidate.GetParameters().Any(parameter => parameter.Name == "protocoloLactec"));
+        ParameterInfo[] parameters = constructor.GetParameters();
+        object?[] arguments = [.. parameters.Select(ValidArgument)];
+        arguments[Array.FindIndex(parameters, parameter => parameter.Name == "protocoloLactec")] = string.Empty;
 
-        Assert.NotEmpty(constructors);
+        TargetInvocationException failure = Assert.Throws<TargetInvocationException>(
+            () => constructor.Invoke(arguments));
 
-        foreach (ConstructorInfo constructor in constructors)
-        {
-            ParameterInfo[] parameters = constructor.GetParameters();
-            Assert.Contains(parameters, parameter => parameter.Name == "protocoloLactec");
-
-            object?[] arguments = [.. parameters.Select(ValidArgument)];
-            arguments[Array.FindIndex(parameters, parameter => parameter.Name == "protocoloLactec")] = string.Empty;
-
-            TargetInvocationException failure = Assert.Throws<TargetInvocationException>(
-                () => constructor.Invoke(arguments));
-
-            Assert.IsType<AnalysisWithoutProtocolException>(failure.InnerException);
-        }
+        Assert.IsType<AnalysisWithoutProtocolException>(failure.InnerException);
     }
 
     private static object? ValidArgument(ParameterInfo parameter)

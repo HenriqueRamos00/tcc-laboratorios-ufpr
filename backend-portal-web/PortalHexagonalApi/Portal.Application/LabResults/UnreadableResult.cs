@@ -9,4 +9,9 @@ public sealed record UnreadableResult(
     string Code,
     string Label,
     string OriginalText,
-    string ProtocoloLactec);
+    string? ProtocoloLactec,
+    string? AnalysisId = null,
+    string? Unit = null,
+    string? Method = null,
+    string? ReferenceLimit = null,
+    string? ResultKind = null);

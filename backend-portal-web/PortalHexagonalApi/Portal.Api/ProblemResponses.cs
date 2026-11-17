@@ -271,6 +271,15 @@ internal static class ProblemResponses
             "O usuário autenticado não tem acesso a este relatório.");
     }
 
+    public static IActionResult ClientLabRequestRejected(this ControllerBase controller)
+    {
+        return controller.AsProblem(
+            StatusCodes.Status400BadRequest,
+            "client-lab-request-rejected",
+            "Consulta recusada pela fonte de resultados.",
+            "Os parâmetros da consulta não são aceitos pela fonte de resultados.");
+    }
+
     public static IActionResult ReportDocumentNotFound(this ControllerBase controller)
     {
         return controller.AsProblem(

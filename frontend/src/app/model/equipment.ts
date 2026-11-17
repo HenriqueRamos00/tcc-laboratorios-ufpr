@@ -23,6 +23,8 @@ export interface Equipment {
    * equipamento é endereçado pelo protocolo, que não é número de série.
    */
   readonly type: string | null;
+  /** Subestação informada pelo Spring; nula quando a fonte não possui localização. */
+  readonly location: string | null;
   readonly company: string;
   readonly identification: string;
   readonly reportCount: number;
@@ -87,4 +89,5 @@ export interface EquipmentReport {
   readonly analysisType: ReportAnalysisType;
   readonly status: ReportStatus;
   readonly hasSignedDocument: boolean;
+  readonly pdfAvailable?: boolean;
 }

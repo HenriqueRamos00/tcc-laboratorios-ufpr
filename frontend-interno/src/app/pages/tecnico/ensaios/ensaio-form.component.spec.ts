@@ -3,7 +3,7 @@ import { OverlayContainer } from '@angular/cdk/overlay';
 import { MatSelect, MatSelectChange } from '@angular/material/select';
 import { HttpErrorResponse } from '@angular/common/http';
 import { ComponentFixture, fakeAsync, TestBed, tick } from '@angular/core/testing';
-import { provideRouter, Router } from '@angular/router';
+import { ActivatedRoute, provideRouter, Router } from '@angular/router';
 import { of, Subject, throwError } from 'rxjs';
 import {
   MeasurementTemplate,
@@ -135,36 +135,92 @@ describe('Formulário de ensaio', () => {
     expect(service.update).not.toHaveBeenCalled();
   });
 
-  it('associa equipamento analisado na nova identificação sem salvar o ensaio', () => {
-    component.selectedQuote.set(quote);
-    component.identificationMode.set('new');
-    component.sampleChooserOpen.set(true);
-    component.analyzedEquipment.set([analyzedEquipment]);
-    component.equipmentTotal.set(1);
-    component.equipmentLoading.set(false);
-    component.form.patchValue({
-      newSampleCode: 'A-HU25-NOVA/2026',
-      newSampleDescription: 'Óleo do transformador TR-02',
-      analyzedEquipmentId: null,
-    });
+  it('recebe a nova amostra do drawer sem persistir a amostra ou o ensaio', () => {
+    prepareExistingSample();
+    const newSample = { quoteId: quote.id, code: 'A-NOVA', description: 'Óleo novo', analyzedEquipmentId: analyzedEquipment.id };
+    dialog.openLateral.and.returnValue({ afterClosed: () => of({ newSample, equipment: analyzedEquipment }) } as never);
+    component.chooseNewMode();
     fixture.detectChanges();
-
-    const search = findReferenceSearch('analyzed-equipment-search');
-    search.opened.set(true);
-    fixture.detectChanges();
-    const option = TestBed.inject(OverlayContainer).getContainerElement()
-      .querySelector<HTMLButtonElement>('#analyzed-equipment-search-panel .reference-option')!;
-    option.click();
-    fixture.detectChanges();
-
-    expect(component.form.controls.analyzedEquipmentId.value).toBe(analyzedEquipment.id);
+    expect(component.identificationMode()).toBe('new');
+    expect(component.form.controls.sampleId.value).toBeNull();
+    expect(component.form.controls.newSampleCode.value).toBe('A-NOVA');
+    expect(component.confirmedNewSampleCode()).toBe('A-NOVA');
     expect(component.currentAnalyzedEquipment()).toEqual(analyzedEquipment);
-    expect(component.equipmentSearch.value).toBe(analyzedEquipment.tag);
+    expect(component.sampleChooserOpen()).toBeFalse();
+    expect(fixture.nativeElement.querySelector('#new-sample-description')).toBeNull();
     expect(service.create).not.toHaveBeenCalled();
     expect(service.update).not.toHaveBeenCalled();
   });
 
-  it('confirma a troca de orçamento antes de descartar a identificação nova', () => {
+  it('preserva a amostra e os dados do ensaio ao cancelar o drawer', () => {
+    prepareExistingSample();
+    const before = component.form.getRawValue();
+    dialog.openLateral.and.returnValue({ afterClosed: () => of(undefined) } as never);
+    component.chooseNewMode();
+    expect(component.form.getRawValue()).toEqual(before);
+    expect(component.selectedSample?.id).toBe(sample.id);
+  });
+
+  it('seleciona o instrumento cadastrado sem substituir os já selecionados', () => {
+    const instrument = { id: '99', inventoryNumber: 'INS-99', name: 'Balança', calibrationCertificate: null, calibrationValidUntil: null };
+    component.form.controls.equipmentIds.setValue(['10']);
+    dialog.openLateral.and.returnValue({ afterClosed: () => of(instrument) } as never);
+    component.openInstrumentRegistration();
+    expect(component.form.controls.equipmentIds.value).toEqual(['10', '99']);
+    expect(component.instruments()).toContain(instrument);
+    expect(service.create).not.toHaveBeenCalled();
+  });
+
+  it('filtra instrumentos por patrimônio, nome e certificado sem diferenciar acentos', () => {
+    component.instruments.set([
+      { id: '1', inventoryNumber: 'INS-001', name: 'Balança analítica', calibrationCertificate: 'CAL-2026', calibrationValidUntil: '2026-12-31' },
+      { id: '2', inventoryNumber: 'INS-002', name: 'Cromatógrafo', calibrationCertificate: null, calibrationValidUntil: null },
+    ]);
+    fixture.detectChanges();
+
+    const host = fixture.nativeElement as HTMLElement;
+    const search = host.querySelector<HTMLInputElement>('#instrument-search')!;
+    const searchFor = (value: string) => {
+      search.value = value;
+      search.dispatchEvent(new Event('input'));
+      fixture.detectChanges();
+    };
+    searchFor('balanca');
+    expect(host.querySelectorAll('.instrument-option').length).toBe(1);
+    expect(host.querySelector('#instrument-list')?.textContent).toContain('INS-001');
+    expect(host.querySelector('#instrument-list')?.textContent).not.toContain('INS-002');
+
+    searchFor('CAL-2026');
+    expect(host.querySelectorAll('.instrument-option').length).toBe(1);
+    expect(host.querySelector('#instrument-list')?.textContent).toContain('INS-001');
+
+    searchFor('inexistente');
+    expect(host.querySelectorAll('.instrument-option').length).toBe(0);
+    expect(host.textContent).toContain('Nenhum instrumento corresponde à pesquisa.');
+  });
+
+  it('mostra a seleção como chips e permite remover um instrumento', () => {
+    component.instruments.set([
+      { id: '1', inventoryNumber: 'INS-001', name: 'Balança analítica', calibrationCertificate: null, calibrationValidUntil: null },
+      { id: '2', inventoryNumber: 'INS-002', name: 'Cromatógrafo', calibrationCertificate: null, calibrationValidUntil: null },
+    ]);
+    component.form.controls.equipmentIds.setValue(['1', '2']);
+    fixture.detectChanges();
+
+    const host = fixture.nativeElement as HTMLElement;
+    expect(host.textContent).toContain('2 instrumentos selecionados');
+    const remove = host.querySelector<HTMLButtonElement>(
+      'button[aria-label="Remover INS-001 da seleção"]',
+    )!;
+    remove.click();
+    fixture.detectChanges();
+
+    expect(component.form.controls.equipmentIds.value).toEqual(['2']);
+    expect(host.textContent).toContain('1 instrumento selecionado');
+    expect(host.querySelector('button[aria-label="Remover INS-001 da seleção"]')).toBeNull();
+  });
+
+  it('confirma a troca de orçamento antes de descartar a nova amostra', () => {
     prepareNewSample();
     const otherQuote = { ...quote, id: '99' };
     dialog.openLateral.and.returnValue({ afterClosed: () => of(otherQuote) } as never);
@@ -322,7 +378,7 @@ describe('Formulário de ensaio', () => {
   function statusAction(): HTMLButtonElement | null {
     const host = fixture.nativeElement as HTMLElement;
     return Array.from(host.querySelectorAll('button'))
-      .find((button) => button.textContent?.includes('Alterar status')) ?? null;
+      .find((button) => button.textContent?.includes('Atualizar status')) ?? null;
   }
 
   function prepareNewSample(): void {
@@ -388,13 +444,13 @@ describe('Formulário de ensaio', () => {
     }));
   });
 
-  it('exige confirmação explícita antes de enviar uma identificação nova', () => {
+  it('exige confirmação explícita antes de enviar uma amostra nova', () => {
     prepareNewSample();
     component.confirmedNewSampleCode.set(null);
     component.save();
 
     expect(service.create).not.toHaveBeenCalled();
-    expect(component.saveError()).toContain('confirme a identificação');
+    expect(component.saveError()).toContain('confirme a amostra');
   });
 
   it('bloqueia os campos durante o envio e libera após a confirmação do servidor', () => {
@@ -423,6 +479,17 @@ describe('Formulário de ensaio', () => {
         state: { testSavedConfirmation: true },
       }),
     );
+  });
+
+  it('pré-seleciona o orçamento do atalho usando uma referência elegível', () => {
+    const route = TestBed.inject(ActivatedRoute);
+    spyOn(route.snapshot.queryParamMap, 'get').and.callFake((key: string) =>
+      key === 'quoteId' ? quote.id : key === 'quoteCode' ? quote.code : null);
+    service.quotes.and.returnValue(of({ items: [quote], page: 1, pageSize: 100, totalItems: 1 }));
+    const novaFixture = TestBed.createComponent(EnsaioFormComponent);
+    expect(service.quotes).toHaveBeenCalledWith(quote.code, 1, 100);
+    expect(novaFixture.componentInstance.selectedQuote()).toEqual(quote);
+    novaFixture.destroy();
   });
 
   it('mantém a confirmação de criação após abrir a edição do ensaio salvo', () => {
@@ -487,7 +554,7 @@ describe('Formulário de ensaio', () => {
   it('atualiza a busca por referência após conflito mesmo com o termo inalterado', fakeAsync(() => {
     prepareNewSample();
     const code = component.form.controls.newSampleCode.value;
-    component.onNewSampleCodeChanged(code);
+    component.sampleSearch.setValue(code);
     tick(300);
     service.samples.calls.reset();
 

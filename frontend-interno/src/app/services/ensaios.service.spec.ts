@@ -28,6 +28,12 @@ describe('Serviço de ensaios', () => {
     expect(request.request.method).toBe('GET');
     request.flush({ items: [], page: 2, pageSize: 20, totalItems: 0 });
   });
+  it('filtra os ensaios pelo ID exato do orçamento', () => {
+    service.list('', 1, 2, '8').subscribe();
+    const request = http.expectOne((item) => item.url === '/api/tests'
+      && item.params.get('quoteId') === '8' && item.params.get('pageSize') === '2');
+    request.flush({ items: [], page: 1, pageSize: 2, totalItems: 0 });
+  });
   it('consulta amostras paginadas por pesquisa na rota própria de referências', () => {
     service.samples('8', 'TR-01', 3, 20).subscribe();
     const request = http.expectOne(

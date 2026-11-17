@@ -5,5 +5,7 @@ import java.util.List;
 import org.springframework.data.jpa.repository.JpaRepository;
 
 public interface InstrumentoLaboratorialRepository extends JpaRepository<InstrumentoLaboratorial, Long> {
+    boolean existsByNumeroPatrimonio(String numeroPatrimonio);
+
     List<InstrumentoLaboratorial> findAllByOrderByNumeroPatrimonioAsc();
 }
