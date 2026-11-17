@@ -40,6 +40,17 @@
         </span>
       </div>
 
+      <section class="flex flex-wrap items-center gap-3" aria-label="Ensaios do orçamento">
+        @if (carregandoEnsaios()) {
+          <p class="m-0 text-sm text-lactec-muted" role="status">Consultando ensaios...</p>
+        } @else if (erroEnsaios()) {
+          <p class="m-0 text-sm text-lactec-danger" role="alert">Não foi possível consultar os ensaios.</p>
+          <app-action-button label="Tentar novamente" variant="secondary" (activated)="carregarEnsaios()" />
+        } @else {
+          <span class="text-sm text-lactec-muted">{{ totalEnsaios() }} {{ totalEnsaios() === 1 ? 'ensaio vinculado' : 'ensaios vinculados' }}</span>
+        }
+      </section>
+
       <dl class="grid min-w-0 grid-cols-1 gap-x-6 gap-y-4 border-y border-lactec-line-soft py-5 sm:grid-cols-2">
         <div class="min-w-0">
           <dt class="text-xs font-medium text-lactec-muted">Nome</dt>
@@ -99,7 +110,10 @@
     }
   }
 
-  <button dialog-footer type="button" mat-dialog-close class="w-full rounded-lg bg-lactec-primary px-5 py-2.5 text-sm font-semibold text-white hover:bg-lactec-primary-dark sm:w-auto">
-    Fechar
-  </button>
+  <div dialog-footer class="flex w-full flex-col gap-3 sm:flex-row sm:justify-end">
+    <button mat-stroked-button type="button" mat-dialog-close>Fechar</button>
+    @if (orcamento() && !carregando() && !erro() && !carregandoEnsaios() && !erroEnsaios()) {
+      <app-action-button [label]="acaoEnsaio()" [icon]="totalEnsaios() === 0 ? 'add' : 'science'" [fullWidthOnMobile]="true" (activated)="abrirEnsaios()" />
+    }
+  </div>
 </app-dialog-shell>

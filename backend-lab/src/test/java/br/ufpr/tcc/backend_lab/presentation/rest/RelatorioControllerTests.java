@@ -36,6 +36,7 @@ import br.ufpr.tcc.backend_lab.domain.model.enums.StatusEnsaio;
 import br.ufpr.tcc.backend_lab.domain.model.enums.StatusValidacaoRelatorio;
 import br.ufpr.tcc.backend_lab.domain.repository.DocumentoRelatorioRepository;
 import br.ufpr.tcc.backend_lab.domain.repository.ExecucaoEnsaioRepository;
+import br.ufpr.tcc.backend_lab.domain.repository.HistoricoStatusEnsaioRepository;
 import br.ufpr.tcc.backend_lab.domain.repository.RelatorioTecnicoRepository;
 import br.ufpr.tcc.backend_lab.domain.repository.UsuarioRepository;
 import br.ufpr.tcc.backend_lab.infrastructure.security.JwtService;
@@ -78,6 +79,7 @@ class RelatorioControllerTests {
     @Autowired JdbcTemplate jdbc;
     @Autowired UsuarioRepository usuarios;
     @MockitoSpyBean ExecucaoEnsaioRepository ensaios;
+    @MockitoSpyBean HistoricoStatusEnsaioRepository historico;
     @MockitoSpyBean RelatorioTecnicoRepository relatorios;
     @MockitoSpyBean DocumentoRelatorioRepository documentos;
     @Autowired JwtService jwtService;
@@ -565,7 +567,7 @@ class RelatorioControllerTests {
     }
 
     @Test
-    @DisplayName("publica PDF validado uma vez e mantém arquivo e status técnico")
+    @DisplayName("publica PDF validado uma vez e atualiza o status técnico com histórico")
     void publicaPdfValidadoEConservaDados() throws Exception {
         ExecucaoEnsaio ensaio = criarExecucaoTemporaria(StatusEnsaio.DRAFTING_REPORT);
         MvcResult preparada = mockMvc.perform(post("/api/tests/{id}/reports/preparation", ensaio.getId())
@@ -603,8 +605,11 @@ class RelatorioControllerTests {
                 .andExpect(status().isConflict())
                 .andExpect(jsonPath("$.code").value("report-already-published"));
         assertEquals(2, relatorios.findById(reportId).orElseThrow().getVersion());
-        assertEquals(StatusEnsaio.DRAFTING_REPORT,
+        assertEquals(StatusEnsaio.REPORT_PUBLISHED,
                 ensaios.findById(ensaio.getId()).orElseThrow().getStatus());
+        assertEquals(1, jdbc.queryForObject(
+                "select count(*) from historico_status_ensaios where execucao_id = ? and status_anterior = 'drafting-report' and status_novo = 'report-published' and tecnico_id = ?",
+                Integer.class, ensaio.getId(), tecnico.getId()));
         assertNotNull(publicado.getResponse().getContentAsString());
 
         mockMvc.perform(get("/api/tests/{id}/reports", ensaio.getId()).header("Authorization", tokenTecnico))
@@ -676,6 +681,34 @@ class RelatorioControllerTests {
                 mockMvc.perform(get(CAMINHO + "/{id}/pdf", reportId)
                                 .header("Authorization", tokenTecnico))
                         .andExpect(status().isOk()).andReturn().getResponse().getContentAsByteArray());
+    }
+
+    @Test
+    @DisplayName("reverte publicação e status quando o registro do histórico falha")
+    void revertePublicacaoQuandoStatusFalha() throws Exception {
+        Long reportId = prepararEValidarRelatorioNovo();
+        Long ensaioId = relatorios.findById(reportId).orElseThrow().getExecucao().getId();
+        var anterior = ensaios.findById(ensaioId).orElseThrow();
+        var statusAnterior = anterior.getStatus();
+        long versaoAnterior = anterior.getVersion();
+        doThrow(new DataIntegrityViolationException("falha ao gravar histórico"))
+                .when(historico).saveAndFlush(any());
+
+        mockMvc.perform(post(CAMINHO + "/{id}/publication", reportId)
+                        .header("Authorization", tokenTecnico)
+                        .contentType(MediaType.APPLICATION_JSON).content("{\"version\":1}"))
+                .andExpect(status().isInternalServerError());
+
+        var relatorio = relatorios.findById(reportId).orElseThrow();
+        assertFalse(relatorio.isPublished());
+        assertEquals(null, relatorio.getPublishedAt());
+        assertEquals(1, relatorio.getVersion());
+        var ensaio = ensaios.findById(ensaioId).orElseThrow();
+        assertEquals(statusAnterior, ensaio.getStatus());
+        assertEquals(versaoAnterior, ensaio.getVersion());
+        assertEquals(0, jdbc.queryForObject(
+                "select count(*) from historico_status_ensaios where execucao_id = ?",
+                Integer.class, ensaioId));
     }
 
     @Test

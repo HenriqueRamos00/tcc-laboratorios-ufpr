@@ -1,0 +1,27 @@
+-- Credencial de uso unico enviada por e-mail, para confirmar cadastro e para recuperar
+-- senha.
+--
+-- Os dois fluxos usam o mesmo mecanismo com propositos diferentes declarados, e o
+-- proposito faz parte do que e verificado: um link de confirmacao nao pode trocar senha.
+--
+-- Guarda o digest, nunca o valor enviado, pela mesma razao dos outros tokens: quem perde o
+-- e-mail pede outro, ninguem recupera o anterior.
+CREATE TABLE ACCOUNT_CONFIRMATION (
+  ID NUMBER(19) NOT NULL,
+  CLIENT_ACCOUNT_ID NUMBER(19) NOT NULL,
+  PURPOSE VARCHAR2(20 CHAR) NOT NULL,
+  TOKEN_DIGEST RAW(32) NOT NULL,
+  CREATED_AT TIMESTAMP(6) WITH TIME ZONE NOT NULL,
+  EXPIRES_AT TIMESTAMP(6) WITH TIME ZONE NOT NULL,
+  USED_AT TIMESTAMP(6) WITH TIME ZONE,
+  CONSTRAINT PK_ACCOUNT_CONFIRMATION PRIMARY KEY (ID),
+  CONSTRAINT UK_ACCOUNT_CONFIRMATION_DIGEST UNIQUE (TOKEN_DIGEST),
+  CONSTRAINT CK_ACCOUNT_CONFIRMATION_PURPOSE
+    CHECK (PURPOSE IN ('EMAIL_CONFIRMATION', 'PASSWORD_RECOVERY')),
+  CONSTRAINT FK_ACCOUNT_CONFIRMATION_ACCOUNT FOREIGN KEY (CLIENT_ACCOUNT_ID)
+    REFERENCES CLIENT_ACCOUNT (ID)
+);
+
+CREATE INDEX IX_ACCOUNT_CONFIRMATION_ACCOUNT ON ACCOUNT_CONFIRMATION (CLIENT_ACCOUNT_ID);
+
+GRANT SELECT, INSERT, UPDATE, DELETE ON ACCOUNT_CONFIRMATION TO AUTH_READWRITE;

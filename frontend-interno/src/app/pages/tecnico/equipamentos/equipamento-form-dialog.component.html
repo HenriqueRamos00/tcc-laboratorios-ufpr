@@ -4,6 +4,11 @@
 @let typeInvalid = controls.type.touched && controls.type.invalid;
 @let substationInvalid = controls.substation.touched && controls.substation.invalid;
 @let voltageInvalid = controls.primaryVoltage.touched && controls.primaryVoltage.invalid;
+@let manufacturerInvalid = controls.manufacturer.touched && controls.manufacturer.invalid;
+@let manufactureYearInvalid = controls.manufactureYear.touched && controls.manufactureYear.invalid;
+@let powerMvaInvalid = controls.powerMva.touched && controls.powerMva.invalid;
+@let oilTypeInvalid = controls.oilType.touched && controls.oilType.invalid;
+@let oilVolumeInvalid = controls.oilVolumeLiters.touched && controls.oilVolumeLiters.invalid;
 @let ownerInvalid = controls.companyId.touched && controls.companyId.invalid;
 @let riskInvalid = controls.riskLevel.touched && controls.riskLevel.invalid;
 
@@ -16,7 +21,7 @@
     }
 
     <fieldset [disabled]="saving()" class="m-0 flex min-w-0 flex-col gap-5 border-0 p-0">
-      <legend class="sr-only">Dados do equipamento; todos os campos são obrigatórios</legend>
+      <legend class="sr-only">Dados do equipamento; os campos com asterisco são obrigatórios</legend>
       <div class="flex flex-col gap-2">
         <label for="equipamento-serial" class="text-xs font-medium tracking-wide text-lactec-ink-soft">Número de Série <span class="text-lactec-danger">*</span></label>
         <div class="input-field" [class.input-field--error]="serialInvalid">
@@ -25,6 +30,64 @@
         </div>
         @if (serialInvalid) {
           <p id="equipamento-serial-error" class="m-0 text-xs text-lactec-danger" role="alert">Informe o número de série, com até 100 caracteres.</p>
+        }
+      </div>
+
+      <div class="flex flex-col gap-2">
+        <label for="equipamento-manufacturer" class="text-xs font-medium tracking-wide text-lactec-ink-soft">Fabricante</label>
+        <div class="input-field" [class.input-field--error]="manufacturerInvalid">
+          <input id="equipamento-manufacturer" formControlName="manufacturer" class="input-field__input"
+            [attr.aria-invalid]="manufacturerInvalid" [attr.aria-describedby]="manufacturerInvalid ? 'equipamento-manufacturer-error' : null" />
+        </div>
+        @if (manufacturerInvalid) {
+          <p id="equipamento-manufacturer-error" class="m-0 text-xs text-lactec-danger" role="alert">Use até 150 caracteres.</p>
+        }
+      </div>
+
+      <div class="flex flex-col gap-2">
+        <label for="equipamento-year" class="text-xs font-medium tracking-wide text-lactec-ink-soft">Ano de fabricação</label>
+        <div class="input-field" [class.input-field--error]="manufactureYearInvalid">
+          <input id="equipamento-year" type="number" min="1" max="9999" step="1" formControlName="manufactureYear" placeholder="Ex.: 2018"
+            class="input-field__input" [attr.aria-invalid]="manufactureYearInvalid"
+            [attr.aria-describedby]="manufactureYearInvalid ? 'equipamento-year-error' : null" />
+        </div>
+        @if (manufactureYearInvalid) {
+          <p id="equipamento-year-error" class="m-0 text-xs text-lactec-danger" role="alert">Informe um ano positivo com até quatro dígitos.</p>
+        }
+      </div>
+
+      <div class="flex flex-col gap-2">
+        <label for="equipamento-power" class="text-xs font-medium tracking-wide text-lactec-ink-soft">Potência (MVA)</label>
+        <div class="input-field" [class.input-field--error]="powerMvaInvalid">
+          <input id="equipamento-power" formControlName="powerMva" inputmode="decimal" placeholder="Ex.: 25,0"
+            class="input-field__input" [attr.aria-invalid]="powerMvaInvalid"
+            [attr.aria-describedby]="powerMvaInvalid ? 'equipamento-power-error' : null" />
+        </div>
+        @if (powerMvaInvalid) {
+          <p id="equipamento-power-error" class="m-0 text-xs text-lactec-danger" role="alert">Informe uma potência positiva, com até três casas decimais.</p>
+        }
+      </div>
+
+      <div class="flex flex-col gap-2">
+        <label for="equipamento-oil-type" class="text-xs font-medium tracking-wide text-lactec-ink-soft">Tipo de óleo</label>
+        <div class="input-field" [class.input-field--error]="oilTypeInvalid">
+          <input id="equipamento-oil-type" formControlName="oilType" class="input-field__input"
+            [attr.aria-invalid]="oilTypeInvalid" [attr.aria-describedby]="oilTypeInvalid ? 'equipamento-oil-type-error' : null" />
+        </div>
+        @if (oilTypeInvalid) {
+          <p id="equipamento-oil-type-error" class="m-0 text-xs text-lactec-danger" role="alert">Use até 100 caracteres.</p>
+        }
+      </div>
+
+      <div class="flex flex-col gap-2">
+        <label for="equipamento-oil-volume" class="text-xs font-medium tracking-wide text-lactec-ink-soft">Volume de óleo (L)</label>
+        <div class="input-field" [class.input-field--error]="oilVolumeInvalid">
+          <input id="equipamento-oil-volume" formControlName="oilVolumeLiters" inputmode="decimal" placeholder="Ex.: 1200"
+            class="input-field__input" [attr.aria-invalid]="oilVolumeInvalid"
+            [attr.aria-describedby]="oilVolumeInvalid ? 'equipamento-oil-volume-error' : null" />
+        </div>
+        @if (oilVolumeInvalid) {
+          <p id="equipamento-oil-volume-error" class="m-0 text-xs text-lactec-danger" role="alert">Informe um volume não negativo, com até três casas decimais.</p>
         }
       </div>
 

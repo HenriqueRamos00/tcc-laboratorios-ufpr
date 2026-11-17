@@ -1,12 +1,9 @@
 namespace Portal.Domain.LabResults;
 
 /// <summary>
-/// A travessia de estreito para largo: a fonte entrega uma linha por item medido e a serie
-/// entrega uma leitura por analise, em ordem cronologica de data final da analise.
-///
-/// Nao existe coluna de data de coleta no AutoLAB. A ordenacao e por data final da analise,
-/// e e esse o nome usado em todo o caminho, para a tela nao prometer uma data que o
-/// laboratorio nunca registrou.
+/// A fonte entrega uma linha por item medido e a série reúne uma leitura por publicação.
+/// A data exibida mantém o significado disponível na fonte: fim da análise no AutoLAB e
+/// publicação no Backend Lab, cujo contrato não fornece uma data efetiva de conclusão.
 /// </summary>
 public sealed class AnalysisSeries
 {
@@ -74,12 +71,12 @@ public sealed class AnalysisSeries
 
         if (stranger is not null)
             throw new ArgumentException(
-                $"Analise '{stranger.ProtocoloLactec}' pertence a outro equipamento que nao '{normalizedKey}'.",
+                $"Analise '{stranger.AnalysisId}' pertence a outro equipamento que nao '{normalizedKey}'.",
                 nameof(analyses));
 
         List<SampleAnalysis> inOrder = [.. received
-            .OrderBy(analysis => analysis.AnalysisEndDate)
-            .ThenBy(analysis => analysis.ProtocoloLactec, StringComparer.Ordinal)];
+            .OrderBy(analysis => analysis.ReportDate)
+            .ThenBy(analysis => analysis.AnalysisId, StringComparer.Ordinal)];
 
         return new AnalysisSeries(
             normalizedKey,
@@ -110,9 +107,9 @@ public sealed class AnalysisSeries
             values[measurement.MeasuredItem.Code] = measurement.Value;
 
         return new SeriesReading(
-            analysis.ProtocoloLactec,
+            analysis.AnalysisId,
             analysis.Identification,
-            analysis.AnalysisEndDate,
+            analysis.ReportDate,
             values);
     }
 }

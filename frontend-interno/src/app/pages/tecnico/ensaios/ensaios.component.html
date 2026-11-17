@@ -17,10 +17,16 @@
       Consulte e mantenha execuções de análise do laboratório.
     </p>
   </div>
-  <a mat-flat-button routerLink="/tecnico/ensaios/novo"
+  <a mat-flat-button routerLink="/tecnico/ensaios/novo" [queryParams]="quoteId() ? { quoteId: quoteId(), quoteCode: quoteCode() } : {}"
     ><mat-icon>add</mat-icon>Novo ensaio</a
   >
 </header>
+@if (quoteId()) {
+  <div class="mt-4 flex flex-wrap items-center gap-3 rounded-lg bg-lactec-line-soft p-3 text-sm">
+    <span>Ensaios do orçamento {{ quoteCode() || quoteId() }}</span>
+    <a mat-button routerLink="/tecnico/ensaios">Ver todos os ensaios</a>
+  </div>
+}
 <label class="mt-6 flex max-w-2xl items-center"
   ><span class="sr-only"
     >Buscar ensaios por código, amostra, empresa ou tipo</span

@@ -14,10 +14,13 @@ public class ListarEnsaiosUseCase {
     private final ExecucaoEnsaioRepository ensaios;
     public ListarEnsaiosUseCase(ExecucaoEnsaioRepository ensaios) { this.ensaios = ensaios; }
     @Transactional(readOnly=true)
-    public EnsaioDtos.Pagina<EnsaioDtos.Resumo> executar(String busca, int pagina, int tamanho) {
+    public EnsaioDtos.Pagina<EnsaioDtos.Resumo> executar(String busca, int pagina, int tamanho, Long orcamentoId) {
         validarPagina(pagina, tamanho);
+        if (orcamentoId != null && orcamentoId < 1) {
+            throw new DadosEnsaioInvalidosException("Orçamento inválido");
+        }
         String termo = busca == null ? "" : busca.trim();
-        var resultado = ensaios.pesquisar(escaparLike(termo),
+        var resultado = ensaios.pesquisar(escaparLike(termo), orcamentoId,
                 PageRequest.of(pagina - 1, tamanho, Sort.by(Sort.Direction.DESC, "id")));
         return new EnsaioDtos.Pagina<>(resultado.getContent().stream().map(EnsaioDtos::resumo).toList(),
                 pagina, tamanho, resultado.getTotalElements());

@@ -1,4 +1,5 @@
 import { ChangeDetectionStrategy, Component, input, output } from '@angular/core';
+import { RouterLink } from '@angular/router';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 
@@ -19,7 +20,7 @@ import { ActionButtonComponent } from '@shared/components/action-button/action-b
 @Component({
   selector: 'app-report-detail',
   standalone: true,
-  imports: [ActionButtonComponent, MatButtonModule, MatIconModule],
+  imports: [RouterLink, ActionButtonComponent, MatButtonModule, MatIconModule],
   templateUrl: './report-detail.component.html',
   styleUrl: './report-detail.component.css',
   changeDetection: ChangeDetectionStrategy.OnPush,

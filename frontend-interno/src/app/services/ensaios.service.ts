@@ -4,6 +4,7 @@ import { Observable } from 'rxjs';
 import { API_URL } from '@/app/environment/env';
 import {
   InstrumentReference,
+  InstrumentRequest,
   MeasurementTemplate,
   Page,
   QuoteReference,
@@ -27,9 +28,10 @@ import {
 export class EnsaiosService {
   private readonly http = inject(HttpClient);
   private readonly endpoint = `${API_URL}/tests`;
-  list(search: string, page = 1, pageSize = 20): Observable<Page<TestSummary>> {
+  list(search: string, page = 1, pageSize = 20, quoteId?: string): Observable<Page<TestSummary>> {
     let params = new HttpParams().set('page', page).set('pageSize', pageSize);
     if (search.trim()) params = params.set('search', search.trim());
+    if (quoteId) params = params.set('quoteId', quoteId);
     return this.http.get<Page<TestSummary>>(this.endpoint, { params });
   }
   get(id: string): Observable<TestDetail> {
@@ -113,6 +115,9 @@ export class EnsaiosService {
     return this.http.get<TechnicianReference[]>(
       `${this.endpoint}/references/technicians`,
     );
+  }
+  createInstrument(request: InstrumentRequest): Observable<InstrumentReference> {
+    return this.http.post<InstrumentReference>(`${this.endpoint}/references/instruments`, request);
   }
   instruments(): Observable<InstrumentReference[]> {
     return this.http.get<InstrumentReference[]>(

@@ -8,10 +8,11 @@ import { EmpresaEquipamento, EquipamentosService } from '@/app/services/equipame
 import { EquipamentoFormDialogComponent } from './equipamento-form-dialog.component';
 
 describe('Formulário de equipamento', () => {
-  const fields: EquipamentoRequest = {
+  const fields = {
     serialNumber: '00099001', tag: 'TR-C10', type: 'TRANSFORMADOR', substation: 'SE Norte',
-    primaryVoltage: '13.8', companyId: '3', riskLevel: 'SAUDAVEL',
-  };
+    primaryVoltage: '13.8', manufacturer: 'WEG', manufactureYear: 2018, powerMva: '25.5',
+    oilType: 'Mineral', oilVolumeLiters: '1200', companyId: '3', riskLevel: 'SAUDAVEL',
+  } satisfies EquipamentoRequest;
   const empresa: EmpresaEquipamento = { id: '3', legalName: 'UFPR', cnpj: '04368898000106', status: 'ACTIVE' };
   const equipamento: Equipamento = { id: 12, ...fields, owner: 'UFPR' };
   let service: jasmine.SpyObj<EquipamentosService>;
@@ -40,10 +41,17 @@ describe('Formulário de equipamento', () => {
   it('começa vazio e exige todos os sete campos', () => {
     const fixture = createComponent();
     const component = fixture.componentInstance;
-    expect(Object.values(component.form.getRawValue()).every((value) => value === '')).toBeTrue();
+    const initialValues = component.form.getRawValue();
+    expect(Object.entries(initialValues).filter(([field]) => field !== 'manufactureYear')
+      .every(([, value]) => value === '')).toBeTrue();
+    expect(initialValues.manufactureYear).toBeNull();
     component.save();
     expect(component.form.invalid).toBeTrue();
-    expect(Object.values(component.form.controls).every((control) => control.invalid && control.touched)).toBeTrue();
+    const requiredFields = ['serialNumber', 'tag', 'type', 'substation', 'primaryVoltage', 'companyId', 'riskLevel'] as const;
+    expect(requiredFields.every((field) => component.form.controls[field].invalid
+      && component.form.controls[field].touched)).toBeTrue();
+    expect(['manufacturer', 'manufactureYear', 'powerMva', 'oilType', 'oilVolumeLiters']
+      .every((field) => component.form.get(field)?.valid)).toBeTrue();
     expect(service.create).not.toHaveBeenCalled();
   });
 
@@ -87,9 +95,9 @@ describe('Formulário de equipamento', () => {
     const saved = equipamento;
     service.create.and.returnValue(of(saved));
     const component = createComponent().componentInstance;
-    component.form.setValue({ ...fields, serialNumber: ' 00099001 ', tag: ' TR-C10 ', substation: ' SE Norte ', primaryVoltage: ' 13,8 ' });
+    component.form.setValue({ ...fields, serialNumber: ' 00099001 ', tag: ' TR-C10 ', substation: ' SE Norte ', primaryVoltage: ' 13,8 ', powerMva: '25,5', oilVolumeLiters: '1200,00' });
     component.save();
-    expect(service.create).toHaveBeenCalledOnceWith(fields);
+    expect(service.create).toHaveBeenCalledOnceWith({ ...fields, powerMva: '25.5', oilVolumeLiters: '1200.00' });
     expect(dialogRef.close).toHaveBeenCalledOnceWith(saved);
   });
 
@@ -102,6 +110,39 @@ describe('Formulário de equipamento', () => {
     expect(service.update).toHaveBeenCalledOnceWith(12, { ...fields, tag: 'TR-B08', riskLevel: 'ATENCAO' });
     expect(service.create).not.toHaveBeenCalled();
     expect(dialogRef.close).toHaveBeenCalledOnceWith(updated);
+  });
+
+  it('permite cadastrar sem dados de placa adicionais e envia ausências como null', () => {
+    service.create.and.returnValue(of(equipamento));
+    const component = createComponent().componentInstance;
+    component.form.patchValue(fields);
+    component.form.patchValue({ manufacturer: ' ', manufactureYear: null, powerMva: '', oilType: '', oilVolumeLiters: ' ' });
+    component.save();
+    expect(service.create).toHaveBeenCalledOnceWith({
+      ...fields, manufacturer: null, manufactureYear: null, powerMva: null, oilType: null, oilVolumeLiters: null,
+    });
+  });
+
+  it('recusa potência não positiva, volume negativo e ano inválido sem perder os valores informados', () => {
+    const component = createComponent().componentInstance;
+    component.form.patchValue(fields);
+    for (const value of ['0', '-1', '1.0001', '1e3']) {
+      component.form.controls.powerMva.setValue(value);
+      expect(component.form.controls.powerMva.invalid).withContext(value).toBeTrue();
+    }
+    component.form.controls.powerMva.setValue('25,5');
+    expect(component.form.controls.powerMva.valid).toBeTrue();
+    component.form.controls.oilVolumeLiters.setValue('-1');
+    expect(component.form.controls.oilVolumeLiters.invalid).toBeTrue();
+    component.form.controls.oilVolumeLiters.setValue('0');
+    expect(component.form.controls.oilVolumeLiters.valid).toBeTrue();
+    for (const value of [0, -1, 2018.5, 10000]) {
+      component.form.controls.manufactureYear.setValue(value);
+      expect(component.form.controls.manufactureYear.invalid).withContext(String(value)).toBeTrue();
+    }
+    component.save();
+    expect(service.create).not.toHaveBeenCalled();
+    expect(component.form.controls.manufactureYear.value).toBe(10000);
   });
 
   for (const editing of [false, true]) {
@@ -144,6 +185,34 @@ describe('Formulário de equipamento', () => {
     pending.next(equipamento);
     pending.complete();
     expect(dialogRef.close).toHaveBeenCalledOnceWith(equipamento);
+  });
+
+  it('mantém metadados adicionais opcionais nulos e valida seus limites', () => {
+    const component = createComponent().componentInstance;
+    component.form.patchValue(fields);
+    component.form.patchValue({
+      manufacturer: ' ', manufactureYear: null, powerMva: '', oilType: ' ', oilVolumeLiters: '',
+    });
+    expect(component.form.valid).toBeTrue();
+    component.form.patchValue({
+      manufactureYear: 0, powerMva: '0', oilVolumeLiters: '-1',
+    });
+    expect(component.form.controls.manufactureYear.invalid).toBeTrue();
+    expect(component.form.controls.powerMva.invalid).toBeTrue();
+    expect(component.form.controls.oilVolumeLiters.invalid).toBeTrue();
+    component.form.patchValue({ manufactureYear: 2020, powerMva: '25,250', oilVolumeLiters: '0' });
+    expect(component.form.controls.manufactureYear.valid).toBeTrue();
+    expect(component.form.controls.powerMva.valid).toBeTrue();
+    expect(component.form.controls.oilVolumeLiters.valid).toBeTrue();
+    component.form.setValue({
+      ...fields, manufacturer: ' ', manufactureYear: null, powerMva: '', oilType: ' ', oilVolumeLiters: '',
+    });
+    service.create.and.returnValue(of({ ...equipamento, manufacturer: null, manufactureYear: null,
+      powerMva: null, oilType: null, oilVolumeLiters: null }));
+    component.save();
+    expect(service.create).toHaveBeenCalledOnceWith({
+      ...fields, manufacturer: null, manufactureYear: null, powerMva: null, oilType: null, oilVolumeLiters: null,
+    });
   });
 
   it('mostra razão social e CNPJ e envia somente o identificador da empresa escolhida', () => {

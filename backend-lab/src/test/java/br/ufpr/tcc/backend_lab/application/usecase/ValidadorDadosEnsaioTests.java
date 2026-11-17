@@ -6,7 +6,6 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import br.ufpr.tcc.backend_lab.application.dto.request.EnsaioRequest;
 import br.ufpr.tcc.backend_lab.application.validation.ValidadorDadosEnsaio;
 import br.ufpr.tcc.backend_lab.domain.exception.DadosEnsaioInvalidosException;
-import java.time.LocalDate;
 import java.util.List;
 import org.junit.jupiter.api.Test;
 

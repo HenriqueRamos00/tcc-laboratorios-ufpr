@@ -58,10 +58,10 @@ services:
       ASPNETCORE_URLS: http://+:8080
       Portal__DataSource: backend-lab
       BackendLab__BaseUrl: ${BACKEND_LAB_BASE_URL:-http://backend-lab:8080}
-      LabResults__Source: not-connected
+      LabResults__Source: backend-lab
       LabResults__Scope: ""
       LabResults__DevelopmentTenant: ""
-      EquipmentRegistry__Source: not-connected
+      EquipmentRegistry__Source: backend-lab
       LaboratoryProgress__Source: not-connected
       ReportDocuments__Source: not-connected
     ports:

@@ -42,6 +42,21 @@ public class Equipamento {
 	@Column(nullable = false, precision = 9, scale = 3)
 	private BigDecimal tensaoPrimaria;
 
+	@Column(length = 150)
+	private String fabricante;
+
+	@Column(name = "ano_fabricacao")
+	private Integer anoFabricacao;
+
+	@Column(name = "potencia_mva", precision = 12, scale = 3)
+	private BigDecimal potenciaMva;
+
+	@Column(name = "tipo_oleo", length = 100)
+	private String tipoOleo;
+
+	@Column(name = "volume_oleo_litros", precision = 12, scale = 3)
+	private BigDecimal volumeOleoLitros;
+
 	@ManyToOne(optional = false, fetch = FetchType.LAZY)
 	@JoinColumn(name = "empresa_id", nullable = false)
 	private Empresa empresa;
