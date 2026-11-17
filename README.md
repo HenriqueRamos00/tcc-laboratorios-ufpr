@@ -27,7 +27,8 @@ http://localhost:8081/health/readiness; o Swagger fica desativado por padrão.
 
 O seed cria o serviço `portal-web` e seu token de integração automaticamente. O portal
 autentica no Auth, emite JWT e filtra orçamentos e propostas PDF pelo CNPJ da conta.
-Equipamentos e análises do AutoLAB usam o escopo global explícito do demo (`LabResults__Scope=all`).
+Equipamentos, análises, relatórios e PDFs do AutoLAB seguem o mesmo CNPJ: cada conta vê apenas
+os registros da própria empresa, e o que é de outra empresa responde 404.
 As medidas e séries laboratoriais existentes são preservadas. O administrador não
 tem acesso de cliente ao portal. Os clientes já nascem ativos e com e-mail confirmado.
 O demo sobe sem SMTP; confirmação de novos cadastros e recuperação por e-mail exigem
@@ -98,8 +99,7 @@ aguardam os endpoints de cliente do Spring: suas rotas retornam 501 com o códig
 [Integração do Portal do Cliente](backend-lab/docs/integracao-portal-cliente.md).
 O `compose.auth.yaml` seleciona Backend Auth2 com Oracle, orçamentos demonstrativos e fontes AutoLAB
 SQL Server. Os dois arquivos configuram seus providers independentemente do `.env` compartilhado.
-No stack Auth, a conexão AutoLAB de `backend-portal-web/.env` prevalece sobre os padrões
-do banco demo local; a massa local é usada quando não há essa configuração.
+No stack Auth, a conexão AutoLAB vem de `backend-portal-web/.env`, que é obrigatório.
 
 Na execução local, a API Spring é publicada em `127.0.0.1:8080` por padrão. `APP_BIND_ADDRESS` configura a interface de publicação; use `0.0.0.0` quando um Portal Interno em Compose separado acessar a API por `host.docker.internal`. O Compose integrado usa a rede Docker e dispensa esse ajuste. No navegador, o Portal Interno usa a origem da própria aplicação e seu proxy `/api`. Em implantação, disponibilize esse proxy por HTTPS e mantenha o PostgreSQL na rede privada.
 
@@ -155,7 +155,7 @@ docker compose up -d --build --renew-anon-volumes frontend frontend-interno
 
 O ADMIN mantém empresas e clientes em `/admin/empresas` e `/admin/clientes` no Portal Interno, que acessa diretamente a API Spring. O cadastro de cliente define a senha inicial e os vínculos com uma ou mais empresas ativas. O Spring armazena hashes BCrypt, aplica as regras de cadastro e preserva o histórico ao desativar registros.
 
-O Backend Lab também oferece autenticação de clientes em `POST /api/auth/login`, consulta de orçamentos em `/api/client/quotes` e download dos respectivos documentos. Com `Portal__DataSource=backend-lab`, o C# adapta o login em `POST /auth/login` e preserva o token Spring. Com `Portal__DataSource=lactec`, autentica no Backend Auth com um token de serviço restrito a `portal-web`, emite JWT próprio (15 minutos) e protege `/api/**` e `/auth/me`. As fontes são exclusivas e não há fallback. Angular guarda o JWT em localStorage, envia Bearer para o C# e restaura o perfil. Em `lactec`, os orçamentos são filtrados pelos CNPJs das empresas no JWT, incluindo detalhe e PDF; clientes sem empresas recebem lista vazia. `Portal__UseDemoData=true` seleciona apenas os orçamentos fictícios. Em `compose.yaml`, os relatórios publicados vêm do Spring; equipamentos e indicadores ainda estão indisponíveis. Em `compose.auth.yaml`, equipamentos, ensaios e relatórios vêm do AutoLAB real configurado em `backend-portal-web/.env`, exibidos de forma generalizada (`LabResults__Scope=all`), e as decisões do cliente ficam no banco `portal` do mesmo SQL Server.
+O Backend Lab também oferece autenticação de clientes em `POST /api/auth/login`, consulta de orçamentos em `/api/client/quotes` e download dos respectivos documentos. Com `Portal__DataSource=backend-lab`, o C# adapta o login em `POST /auth/login` e preserva o token Spring. Com `Portal__DataSource=lactec`, autentica no Backend Auth com um token de serviço restrito a `portal-web`, emite JWT próprio (15 minutos) e protege `/api/**` e `/auth/me`. As fontes são exclusivas e não há fallback. Angular guarda o JWT em localStorage, envia Bearer para o C# e restaura o perfil. Em `lactec`, os orçamentos são filtrados pelos CNPJs das empresas no JWT, incluindo detalhe e PDF; clientes sem empresas recebem lista vazia. `Portal__UseDemoData=true` seleciona apenas os orçamentos fictícios. Em `compose.yaml`, os relatórios publicados vêm do Spring; equipamentos e indicadores ainda estão indisponíveis. Em `compose.auth.yaml`, equipamentos, ensaios e relatórios vêm do AutoLAB real configurado em `backend-portal-web/.env`, filtrados pelos CNPJs das empresas no JWT como os orçamentos, e as decisões do cliente ficam no banco `portal` do mesmo SQL Server.
 
 Para testar o Portal do Cliente com Backend Auth2, use `docker compose -f compose.auth.yaml up -d --build`. Para integração com o Salesforce real, siga a [configuração do C#](backend-portal-web/README.md#configuração-e-execução-em-lactec) e mantenha `Portal__UseDemoData=false`.
 

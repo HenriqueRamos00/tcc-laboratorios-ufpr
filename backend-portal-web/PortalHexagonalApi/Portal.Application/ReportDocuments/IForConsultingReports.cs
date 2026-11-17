@@ -6,13 +6,13 @@ namespace Portal.Application.ReportDocuments;
 public interface IForConsultingReports
 {
     Task<Page<LabReport>> ListReportsAsync(
-        VisibilityScope scope,
+        CompanyScope scope,
         string? quoteCode,
         PageRequest page,
         CancellationToken cancellationToken);
 
     Task<SignedReportDocument?> GetSignedDocumentAsync(
-        VisibilityScope scope,
+        CompanyScope scope,
         Guid reportId,
         CancellationToken cancellationToken);
 }

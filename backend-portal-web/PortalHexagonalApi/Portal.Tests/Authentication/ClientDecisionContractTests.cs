@@ -100,6 +100,31 @@ public sealed class ClientDecisionContractTests
     }
 
     [Fact]
+    public async Task NenhumaDecisaoAlcancaOrcamentoDeOutraEmpresa()
+    {
+        InMemoryClientDecisionRepository store = new();
+        using var backend = new AuthHandler(HttpStatusCode.OK, Identity());
+        using var portal = PortalWith(backend, store);
+        using HttpClient client = await LoggedInAsync(portal);
+        byte[] pdf = "%PDF-1.4 ordem"u8.ToArray();
+
+        using var acceptance = await client.PostAsJsonAsync("/api/quotes/quote-5/acceptance", Terms());
+        using var purchaseOrder = await client.PostAsync("/api/quotes/quote-5/purchase-order", FileForm("oc.pdf", pdf));
+        using var shipment = await client.PostAsync("/api/quotes/quote-5/sample-shipment", null);
+        using var rejection = await client.PostAsJsonAsync("/api/quotes/quote-5/rejection", new { justification = "nao e minha" });
+        using var inexistent = await client.PostAsync("/api/quotes/quote-inexistente/sample-shipment", null);
+
+        Assert.All([acceptance, purchaseOrder, shipment, rejection], response =>
+            Assert.Equal(HttpStatusCode.NotFound, response.StatusCode));
+        string foreign = await shipment.Content.ReadAsStringAsync();
+        string missing = await inexistent.Content.ReadAsStringAsync();
+        Assert.Equal(
+            System.Text.RegularExpressions.Regex.Replace(missing, "\"traceId\":\"[^\"]*\"", ""),
+            System.Text.RegularExpressions.Regex.Replace(foreign, "\"traceId\":\"[^\"]*\"", ""));
+        Assert.Empty(store.Recorded);
+    }
+
+    [Fact]
     public async Task SemBancoDoPortalConfiguradoAGravacaoRespondeQueNaoEstaDisponivel()
     {
         using var backend = new AuthHandler(HttpStatusCode.OK, Identity());

@@ -1,4 +1,6 @@
 using Portal.Adapters.AutoLab;
+using Portal.Application.CompanyRecords;
+using Portal.Application.CompanyRecords.Exceptions;
 using Portal.Application.LabResults;
 using Portal.Application.LabResults.Exceptions;
 using Portal.Application.Paging;
@@ -7,19 +9,30 @@ using Portal.Domain.LabResults;
 
 namespace Portal.Adapters.LabResults;
 
+/// <summary>
+/// Le os ensaios de <c>vwDadosEnsaios</c> somente pelos protocolos que
+/// <see cref="ICompanyRecordsSource"/> entregou para o escopo. O nome da empresa na linha
+/// (<c>EmpresaTrafo</c>) e texto de exibicao e nao participa de filtro nenhum. Sem protocolo
+/// autorizado a view nem e consultada.
+/// </summary>
 public sealed class AutoLabLabTestRepository : ILabTestRepository
 {
     private readonly AutoLabDbContext _database;
+    private readonly ICompanyRecordsSource _companyRecords;
     private readonly AutoLabQueryLimits _limits;
 
-    public AutoLabLabTestRepository(AutoLabDbContext database, AutoLabQueryLimits limits)
+    public AutoLabLabTestRepository(
+        AutoLabDbContext database,
+        ICompanyRecordsSource companyRecords,
+        AutoLabQueryLimits limits)
     {
         _database = database;
+        _companyRecords = companyRecords;
         _limits = limits;
     }
 
     public async Task<Page<SampleAnalysis>> GetAnalysesAsync(
-        VisibilityScope scope,
+        CompanyScope scope,
         EquipmentSearch? search,
         PageRequest equipmentPage,
         CancellationToken cancellationToken)
@@ -27,8 +40,12 @@ public sealed class AutoLabLabTestRepository : ILabTestRepository
         ArgumentNullException.ThrowIfNull(scope);
         ArgumentNullException.ThrowIfNull(equipmentPage);
 
+        List<string> authorized = await AuthorizedProtocolsAsync(scope, cancellationToken);
+
+        if (authorized.Count == 0) return Page<SampleAnalysis>.Empty(equipmentPage);
+
         Page<string> keys = await AutoLabFetch.GuardAsync(
-            () => AutoLabQueries.EquipmentKeys(_database, scope, search)
+            () => AutoLabQueries.EquipmentKeys(_database, authorized, search)
                 .ToPageAsync(equipmentPage, cancellationToken),
             Unavailable);
 
@@ -36,7 +53,7 @@ public sealed class AutoLabLabTestRepository : ILabTestRepository
 
         List<VwDadosEnsaiosRecord> rows = await AutoLabFetch.BoundedListAsync(
             AutoLabQueries.RowsOfEquipmentKeys(
-                _database, scope, [.. keys.Items], _limits.MaxRowsPerQuery + 1),
+                _database, authorized, [.. keys.Items], _limits.MaxRowsPerQuery + 1),
             _limits.MaxRowsPerQuery,
             Unavailable,
             cancellationToken);
@@ -44,12 +61,12 @@ public sealed class AutoLabLabTestRepository : ILabTestRepository
         HashSet<string> onThePage = new(keys.Items.Select(key => key.Trim()), StringComparer.Ordinal);
 
         return keys.WithItems<SampleAnalysis>(
-            [.. AnalysesIn(rows, scope)
+            [.. AnalysesIn(rows, authorized)
                 .Where(analysis => onThePage.Contains(analysis.EquipmentKey))]);
     }
 
     public async Task<Page<SampleAnalysis>> GetAnalysesOfEquipmentAsync(
-        VisibilityScope scope,
+        CompanyScope scope,
         string equipmentKey,
         PageRequest reportPage,
         CancellationToken cancellationToken)
@@ -59,31 +76,40 @@ public sealed class AutoLabLabTestRepository : ILabTestRepository
 
         if (string.IsNullOrWhiteSpace(equipmentKey)) return Page<SampleAnalysis>.Empty(reportPage);
 
+        List<string> authorized = await AuthorizedProtocolsAsync(scope, cancellationToken);
+
+        if (authorized.Count == 0) return Page<SampleAnalysis>.Empty(reportPage);
+
         string wantedKey = equipmentKey.Trim();
 
         Page<string> protocols = await AutoLabFetch.GuardAsync(
-            () => AutoLabQueries.ProtocolsOfEquipment(_database, scope, wantedKey)
+            () => AutoLabQueries.ProtocolsOfEquipment(_database, authorized, wantedKey)
                 .ToPageAsync(reportPage, cancellationToken),
             Unavailable);
 
         if (protocols.Items.Count == 0) return protocols.WithItems<SampleAnalysis>([]);
 
+        HashSet<string> onThePage = new(protocols.Items.Select(protocol => protocol.Trim()), StringComparer.Ordinal);
+        List<string> authorizedOnThePage = [.. authorized.Where(protocol => onThePage.Contains(protocol.Trim()))];
+
+        if (authorizedOnThePage.Count == 0) return protocols.WithItems<SampleAnalysis>([]);
+
         List<VwDadosEnsaiosRecord> rows = await AutoLabFetch.BoundedListAsync(
             AutoLabQueries.RowsOfProtocols(
-                _database, scope, [.. protocols.Items], _limits.MaxRowsPerQuery + 1),
+                _database, authorizedOnThePage, [.. protocols.Items], _limits.MaxRowsPerQuery + 1),
             _limits.MaxRowsPerQuery,
             Unavailable,
             cancellationToken);
 
         return protocols.WithItems<SampleAnalysis>(
-            [.. AnalysesIn(rows, scope)
+            [.. AnalysesIn(rows, authorizedOnThePage)
                 .Where(analysis => string.Equals(analysis.EquipmentKey, wantedKey, StringComparison.Ordinal))
                 .OrderByDescending(analysis => analysis.AnalysisEndDate)
                 .ThenBy(analysis => analysis.ProtocoloLactec, StringComparer.Ordinal)]);
     }
 
     public async Task<SampleAnalysis?> GetAnalysisByProtocolAsync(
-        VisibilityScope scope,
+        CompanyScope scope,
         string protocoloLactec,
         CancellationToken cancellationToken)
     {
@@ -93,14 +119,19 @@ public sealed class AutoLabLabTestRepository : ILabTestRepository
 
         string wantedProtocol = protocoloLactec.Trim();
 
+        List<string> authorized = [.. (await AuthorizedProtocolsAsync(scope, cancellationToken))
+            .Where(protocol => string.Equals(protocol.Trim(), wantedProtocol, StringComparison.Ordinal))];
+
+        if (authorized.Count == 0) return null;
+
         List<VwDadosEnsaiosRecord> rows = await AutoLabFetch.BoundedListAsync(
             AutoLabQueries.RowsOfProtocol(
-                _database, scope, wantedProtocol, _limits.MaxRowsPerQuery + 1),
+                _database, authorized, wantedProtocol, _limits.MaxRowsPerQuery + 1),
             _limits.MaxRowsPerQuery,
             Unavailable,
             cancellationToken);
 
-        return AnalysesIn(rows, scope)
+        return AnalysesIn(rows, authorized)
             .FirstOrDefault(analysis => string.Equals(
                 analysis.ProtocoloLactec, wantedProtocol, StringComparison.Ordinal));
     }
@@ -133,12 +164,34 @@ public sealed class AutoLabLabTestRepository : ILabTestRepository
             measurements);
     }
 
+    /// <summary>
+    /// A linha que voltou do banco e conferida de novo contra os protocolos autorizados, com
+    /// comparacao ordinal. O <c>IN</c> do banco segue a collation da coluna; esta conferencia
+    /// nao, e linha que nao passa por ela nao vira analise.
+    /// </summary>
     private static IEnumerable<SampleAnalysis> AnalysesIn(
         IEnumerable<VwDadosEnsaiosRecord> rows,
-        VisibilityScope scope)
+        IEnumerable<string> authorizedProtocols)
     {
-        return BuildAnalyses(rows.Where(row => scope.Includes(row.EmpresaTrafo)))
-            .Where(analysis => scope.Includes(analysis.Company));
+        HashSet<string> authorized = new(
+            authorizedProtocols.Select(protocol => protocol.Trim()), StringComparer.Ordinal);
+
+        return BuildAnalyses(rows.Where(row => row.ProtocoloLactec is string protocol
+            && authorized.Contains(protocol.Trim())));
+    }
+
+    private async Task<List<string>> AuthorizedProtocolsAsync(
+        CompanyScope scope,
+        CancellationToken cancellationToken)
+    {
+        try
+        {
+            return [.. await _companyRecords.GetProtocolsAsync(scope, cancellationToken)];
+        }
+        catch (CompanyRecordsSourceUnavailableException exception)
+        {
+            throw Unavailable(exception.Message, exception);
+        }
     }
 
     private static LabTestSourceUnavailableException Unavailable(string message, Exception cause)

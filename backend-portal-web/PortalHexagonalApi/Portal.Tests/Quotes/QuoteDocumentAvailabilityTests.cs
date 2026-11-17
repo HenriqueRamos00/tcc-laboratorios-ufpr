@@ -73,8 +73,8 @@ public sealed class QuoteDocumentAvailabilityTests
 
     private static QuoteService ServiceWith(IQuoteDocumentRepository documents) =>
         new(
-            new FakeSalesforceQuoteRepository(), documents, new InMemoryLaboratoryProgressRepository(),
-            new InMemoryClientDecisionRepository());
+            new FakeSalesforceQuoteRepository(FixedCompanyScope.DemoCompanies), documents, new InMemoryLaboratoryProgressRepository(),
+            new InMemoryClientDecisionRepository(), FixedCompanyScope.DemoCompanies);
 
     private sealed class CountingDocuments : IQuoteDocumentRepository
     {

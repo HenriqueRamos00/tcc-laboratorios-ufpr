@@ -1,5 +1,6 @@
 using Portal.Application.Paging;
 using Portal.Application.Pipeline;
+using Portal.Application.Visibility;
 using Portal.Domain.Pipeline;
 using Portal.Domain.Quotes;
 
@@ -23,18 +24,28 @@ public sealed class QuoteService : IQuoteUseCase
     private readonly IQuoteDocumentRepository _documents;
     private readonly ILaboratoryProgressRepository _laboratoryProgress;
     private readonly IClientDecisionRepository _decisions;
+    private readonly IQuoteCompanyScope _companyScope;
 
     public QuoteService(
         IQuoteRepository quoteRepository,
         IQuoteDocumentRepository documents,
         ILaboratoryProgressRepository laboratoryProgress,
-        IClientDecisionRepository decisions)
+        IClientDecisionRepository decisions,
+        IQuoteCompanyScope companyScope)
     {
         _quoteRepository = quoteRepository;
         _documents = documents;
         _laboratoryProgress = laboratoryProgress;
         _decisions = decisions;
+        _companyScope = companyScope;
     }
+
+    /// <summary>
+    /// A etapa do laboratorio e pedida com as mesmas empresas que filtraram o orcamento. O
+    /// codigo da cotacao sozinho nao basta: ele e digitado no sistema comercial, e a fonte do
+    /// laboratorio so responde pelos codigos das solicitacoes dessas empresas.
+    /// </summary>
+    private CompanyScope LaboratoryScope => CompanyScope.OfCnpjs(_companyScope.CompanyCnpjs);
 
     public async Task<Page<QuoteWithLaboratoryStage>> GetQuotesAsync(
         PageRequest page,
@@ -55,7 +66,7 @@ public sealed class QuoteService : IQuoteUseCase
 
         IReadOnlyList<LaboratoryProgress> progress = keys.Length == 0
             ? []
-            : await _laboratoryProgress.GetProgressOfQuotesAsync(keys, cancellationToken);
+            : await _laboratoryProgress.GetProgressOfQuotesAsync(LaboratoryScope, keys, cancellationToken);
 
         IReadOnlyList<ClientDecision> decisions = await _decisions.GetSummariesOfQuotesAsync(
             [.. quotes.Items.Select(quote => quote.Id).Distinct(StringComparer.Ordinal)], cancellationToken);
@@ -81,7 +92,7 @@ public sealed class QuoteService : IQuoteUseCase
             [quote.Id], cancellationToken);
 
         LaboratoryProgress? progress = quote.LaboratoryKey is { } key
-            ? await _laboratoryProgress.GetProgressOfQuoteAsync(key.Value, cancellationToken)
+            ? await _laboratoryProgress.GetProgressOfQuoteAsync(LaboratoryScope, key.Value, cancellationToken)
             : null;
 
         return new QuoteWithLaboratoryStage(quote, progress?.Stage, LatestOf(decisions, quote.Id));

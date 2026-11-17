@@ -9,6 +9,7 @@ import {
   EQUIPAMENTOS,
   RELATORIOS,
   SITUA_PROCESS,
+  SOLICITACOES_SEM_RELATORIO,
   TEXTOS_POR_TIPO,
 } from './massa-autolab.mjs';
 
@@ -147,8 +148,6 @@ function emissoes() {
         },
         solicitacao: {
           Oid: guid(`RelatorioEmissao:${chave}`),
-          NumeroSolicitacao: relatorio.numeroSolicitacao,
-          OrcamentoCRM: relatorio.orcamentoCRM,
           IDAmostra: `AM-${analise.protocoloLactec}`,
           Nome: 'Óleos',
           ClienteSolicitante: analise.empresaTrafo,
@@ -165,9 +164,9 @@ function emissoes() {
 
 function linhaDaView(emissao) {
   return {
-    NumeroSolicitacao: emissao.solicitacao.NumeroSolicitacao,
+    NumeroSolicitacao: emissao.relatorio.numeroSolicitacao,
     Oid: emissao.registro.Oid,
-    OrcamentoCRM: emissao.solicitacao.OrcamentoCRM,
+    OrcamentoCRM: emissao.relatorio.orcamentoCRM,
     IDAmostra: emissao.solicitacao.IDAmostra,
     Nome: emissao.solicitacao.Nome,
     PdfAssinado: emissao.registro.PdfAssinado,
@@ -204,6 +203,56 @@ const arquivos = todasAsEmissoes.map((emissao) => emissao.arquivo).filter(Boolea
 const viewDeRelatorios = todasAsEmissoes.filter((emissao) => emissao.registro.GCRecord === null).map(linhaDaView);
 const clientes = CLIENTES.map((cliente) => ({ Oid: guid(`Cliente:${cliente.Sigla}`), ...cliente }));
 
+function oidDoCliente(nome) {
+  const cliente = clientes.find((candidato) => candidato.Nome === nome);
+
+  if (!cliente) throw new Error(`Empresa sem cadastro em Cliente: ${nome}`);
+
+  return cliente.Oid;
+}
+
+const cadastroDeClientes = clientes.map((cliente) => ({
+  Oid: cliente.Oid,
+  cli_cadastronacional_a: cliente.Cnpj_Cpf,
+  GCRecord: null,
+}));
+
+const solicitacoesDeServico = [
+  ...RELATORIOS.map((relatorio) => ({
+    Oid: guid(`Solicitacao:${relatorio.numeroSolicitacao}`),
+    NumeroSolicitacao: relatorio.numeroSolicitacao,
+    OrcamentoCRM: relatorio.orcamentoCRM,
+    Cliente: oidDoCliente(analiseDoRelatorio(relatorio).empresaTrafo),
+    GCRecord: null,
+  })),
+  ...SOLICITACOES_SEM_RELATORIO.map((solicitacao) => ({
+    Oid: guid(`Solicitacao:${solicitacao.numeroSolicitacao}`),
+    NumeroSolicitacao: solicitacao.numeroSolicitacao,
+    OrcamentoCRM: solicitacao.orcamentoCRM,
+    Cliente: oidDoCliente(solicitacao.cliente),
+    GCRecord: null,
+  })),
+];
+
+const protocolosDeAmostra = ANALISES.map((analise) => ({
+  Oid: guid(`ProtocoloAmostra:${analise.protocoloLactec}`),
+  Identificacao: analise.protocoloLactec,
+  GCRecord: null,
+}));
+
+const amostras = RELATORIOS.map((relatorio) => {
+  const analise = analiseDoRelatorio(relatorio);
+
+  return {
+    Oid: guid(`AmostraObjeto:${analise.protocoloLactec}`),
+    ProtocoloAmostra: guid(`ProtocoloAmostra:${analise.protocoloLactec}`),
+    SolicitacaoServico: guid(`Solicitacao:${relatorio.numeroSolicitacao}`),
+    GCRecord: null,
+  };
+});
+
+if (amostras.length !== ANALISES.length) throw new Error('Ha laudo sem relatorio: o protocolo ficaria sem cliente.');
+
 const json = {
   'dbo.vwDadosEnsaios': linhasJson(dadosEnsaios),
   'dbo.Equipamentos': linhasJson(EQUIPAMENTOS),
@@ -212,6 +261,10 @@ const json = {
   'dbo.RelatorioEmissao': linhasJson(registros),
   'dbo.vwRelatoriosEnsaios': linhasJson(viewDeRelatorios),
   'dbo.dCliente': linhasJson(clientes),
+  'dbo.Cliente': linhasJson(cadastroDeClientes),
+  'dbo.SolicitacaoServico': linhasJson(solicitacoesDeServico),
+  'dbo.ProtocoloAmostra': linhasJson(protocolosDeAmostra),
+  'dbo.AmostraObjeto': linhasJson(amostras),
 };
 
 writeFileSync(SAIDA_JSON, `${JSON.stringify(json, null, 2)}\n`, 'utf8');

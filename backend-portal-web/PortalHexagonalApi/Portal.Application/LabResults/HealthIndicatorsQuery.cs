@@ -7,6 +7,6 @@ namespace Portal.Application.LabResults;
 /// visao geral nao e feita de uma analise so.
 /// </summary>
 public sealed record HealthIndicatorsQuery(
-    VisibilityScope Scope,
+    CompanyScope Scope,
     string EquipmentKey,
     string? SelectedProtocoloLactec);

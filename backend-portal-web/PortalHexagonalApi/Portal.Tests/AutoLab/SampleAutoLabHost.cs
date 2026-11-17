@@ -35,7 +35,6 @@ internal static class SampleAutoLabHost
         builder.UseSetting("AutoLab:Database", "autolab");
         builder.UseSetting("AutoLab:User", "usuario_de_teste");
         builder.UseSetting("AutoLab:Password", "senha-de-teste");
-        builder.UseSetting("LabResults:Scope", "all");
 
         return builder;
     }

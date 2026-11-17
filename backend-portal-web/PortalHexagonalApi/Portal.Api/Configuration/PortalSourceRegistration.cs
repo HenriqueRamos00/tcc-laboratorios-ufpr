@@ -25,11 +25,12 @@ public static class PortalSourceRegistration
             throw new InvalidOperationException("Configuração 'Portal:DataSource' não definida.");
 
         services.AddSingleton(portal);
+        services.AddHttpContextAccessor();
+        services.AddScoped<IQuoteCompanyScope, AuthenticatedQuoteCompanyScope>();
 
         switch (portal.DataSource)
         {
             case PortalOptions.BackendLabSource:
-                services.AddHttpContextAccessor();
                 services.AddTransient<SpringBearerForwardingHandler>();
                 services.AddScoped<SpringQuoteAuthenticationFilter>();
                 services.Configure<MvcOptions>(options => options.Filters.AddService<SpringQuoteAuthenticationFilter>());
@@ -68,8 +69,6 @@ public static class PortalSourceRegistration
                 return services;
 
             case PortalOptions.LactecSource:
-                services.AddHttpContextAccessor();
-                services.AddScoped<IQuoteCompanyScope, AuthenticatedQuoteCompanyScope>();
                 // A proposta escrita a mao continua valendo; o orcamento sem arquivo recebe a pagina
                 // gerada a partir dele mesmo, para o botao de baixar nunca cair no vazio na demonstracao.
                 services.AddScoped<IQuoteDocumentRepository>(provider =>

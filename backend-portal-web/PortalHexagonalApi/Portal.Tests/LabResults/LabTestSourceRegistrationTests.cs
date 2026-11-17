@@ -50,24 +50,9 @@ public sealed class LabTestSourceRegistrationTests
         Assert.Throws<OptionsValidationException>(() => AutoLabSettings.ResolveInScope<ILabTestRepository>(services));
     }
 
-    [Theory]
-    [InlineData(null)]
-    [InlineData("")]
-    [InlineData("todos")]
-    public void MissingOrUnknownScopeBringsStartupDown(string? scope)
-    {
-        Dictionary<string, string?> values = AutoLabSettings.Complete("LabResults:Source");
-        values["LabResults:Scope"] = scope;
-
-        InvalidOperationException failure = Assert.Throws<InvalidOperationException>(() => new ServiceCollection()
-            .AddLabTestRepository(AutoLabSettings.Configuration(values)));
-
-        Assert.Contains("LabResults:Scope", failure.Message, StringComparison.Ordinal);
-    }
-
     private static IServiceCollection Register(string? source)
     {
-        Dictionary<string, string?> values = new() { ["LabResults:Scope"] = "all" };
+        Dictionary<string, string?> values = [];
 
         if (source is not null) values["LabResults:Source"] = source;
 

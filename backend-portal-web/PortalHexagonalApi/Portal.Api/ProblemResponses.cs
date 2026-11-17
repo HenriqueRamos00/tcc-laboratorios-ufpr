@@ -94,8 +94,8 @@ internal static class ProblemResponses
         return controller.AsProblem(
             StatusCodes.Status401Unauthorized,
             "tenant-not-identified",
-            "Inquilino nao identificado.",
-            "A requisicao nao diz por qual empresa se pergunta.");
+            "Sessao nao identificada.",
+            "A requisicao nao traz a sessao do cliente que diz por quais empresas se pergunta.");
     }
 
     /// <summary>
@@ -190,13 +190,13 @@ internal static class ProblemResponses
             "O orcamento existe, mas o documento dele nao pode ser lido.");
     }
 
-    public static IActionResult QuoteRequestRefused(this ControllerBase controller, string detail)
+    public static IActionResult QuoteRequestRefused(this ControllerBase controller)
     {
         return controller.AsProblem(
             StatusCodes.Status400BadRequest,
             "quote-request-refused",
             "Consulta de orcamento recusada.",
-            detail);
+            "A consulta de orcamento nao pode ser atendida como foi pedida.");
     }
 
     public static IActionResult InvalidClientDecision(this ControllerBase controller, string detail)

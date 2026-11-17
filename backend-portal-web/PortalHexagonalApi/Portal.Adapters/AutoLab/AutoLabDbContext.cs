@@ -6,6 +6,13 @@ public sealed class AutoLabDbContext : DbContext
 {
     public const string Schema = "dbo";
 
+    /// <summary>
+    /// O nivel de compatibilidade do banco do AutoLAB em producao. Abaixo de 130 o SQL Server
+    /// nao tem OPENJSON, que o EF usaria para listas grandes; declarado, o EF escreve a lista
+    /// dentro do IN.
+    /// </summary>
+    public const int SqlServerCompatibilityLevel = 120;
+
     public AutoLabDbContext(DbContextOptions<AutoLabDbContext> options)
         : base(options)
     {
@@ -22,6 +29,14 @@ public sealed class AutoLabDbContext : DbContext
     public DbSet<RelatorioEmissaoRecord> RelatorioEmissao => Set<RelatorioEmissaoRecord>();
 
     public DbSet<FileDataRecord> FileData => Set<FileDataRecord>();
+
+    public DbSet<ClienteRecord> Clientes => Set<ClienteRecord>();
+
+    public DbSet<SolicitacaoServicoRecord> SolicitacoesServico => Set<SolicitacaoServicoRecord>();
+
+    public DbSet<AmostraObjetoRecord> AmostrasObjeto => Set<AmostraObjetoRecord>();
+
+    public DbSet<ProtocoloAmostraRecord> ProtocolosAmostra => Set<ProtocoloAmostraRecord>();
 
     public override int SaveChanges(bool acceptAllChangesOnSuccess)
     {
@@ -78,19 +93,12 @@ public sealed class AutoLabDbContext : DbContext
         modelBuilder.Entity<VwRelatoriosEnsaiosRecord>(view =>
         {
             view.HasNoKey().ToView("vwRelatoriosEnsaios", Schema);
-            view.Property(row => row.NumeroSolicitacao).HasColumnName("NumeroSolicitacao").HasMaxLength(15);
             view.Property(row => row.Oid).HasColumnName("Oid");
-            view.Property(row => row.OrcamentoCRM).HasColumnName("OrcamentoCRM").HasMaxLength(100);
             view.Property(row => row.IDAmostra).HasColumnName("IDAmostra");
             view.Property(row => row.Nome).HasColumnName("Nome").HasMaxLength(42).IsUnicode(false);
-            view.Property(row => row.PdfAssinado).HasColumnName("PdfAssinado");
             view.Property(row => row.ClienteSolicitante).HasColumnName("ClienteSolicitante").HasMaxLength(250);
-            view.Property(row => row.Identificacao).HasColumnName("Identificacao").HasMaxLength(100);
             view.Property(row => row.DataFinalProgramadaCliente).HasColumnName("DataFinalProgramadaCliente");
             view.Property(row => row.SituacaoRelatorio).HasColumnName("SituacaoRelatorio").HasMaxLength(11).IsUnicode(false);
-            view.Property(row => row.DataEmissao).HasColumnName("DataEmissao");
-            view.Property(row => row.DataPublicacao).HasColumnName("DataPublicacao");
-            view.Property(row => row.DiasIntervalo).HasColumnName("DiasIntervalo");
         });
 
         modelBuilder.Entity<RelatorioEmissaoRecord>(table =>
@@ -107,6 +115,7 @@ public sealed class AutoLabDbContext : DbContext
             table.Property(row => row.DataPublicacao).HasColumnName("DataPublicacao");
             table.Property(row => row.TituloRelatorio).HasColumnName("TituloRelatorio").HasMaxLength(250);
             table.Property(row => row.Conclusao).HasColumnName("Conclusao");
+            table.Property(row => row.Solicitacao).HasColumnName("Solicitacao");
         });
 
         modelBuilder.Entity<FileDataRecord>(table =>
@@ -116,6 +125,45 @@ public sealed class AutoLabDbContext : DbContext
             table.Property(row => row.Oid).HasColumnName("Oid").ValueGeneratedNever();
             table.Property(row => row.FileName).HasColumnName("FileName").HasMaxLength(260);
             table.Property(row => row.Content).HasColumnName("Content");
+            table.Property(row => row.GCRecord).HasColumnName("GCRecord");
+        });
+
+        modelBuilder.Entity<ClienteRecord>(table =>
+        {
+            table.ToTable("Cliente", Schema);
+            table.HasKey(row => row.Oid);
+            table.Property(row => row.Oid).HasColumnName("Oid").ValueGeneratedNever();
+            table.Property(row => row.CadastroNacional).HasColumnName("cli_cadastronacional_a").HasMaxLength(30);
+            table.Property(row => row.GCRecord).HasColumnName("GCRecord");
+        });
+
+        modelBuilder.Entity<SolicitacaoServicoRecord>(table =>
+        {
+            table.ToTable("SolicitacaoServico", Schema);
+            table.HasKey(row => row.Oid);
+            table.Property(row => row.Oid).HasColumnName("Oid").ValueGeneratedNever();
+            table.Property(row => row.NumeroSolicitacao).HasColumnName("NumeroSolicitacao").HasMaxLength(15);
+            table.Property(row => row.OrcamentoCRM).HasColumnName("OrcamentoCRM");
+            table.Property(row => row.Cliente).HasColumnName("Cliente");
+            table.Property(row => row.GCRecord).HasColumnName("GCRecord");
+        });
+
+        modelBuilder.Entity<AmostraObjetoRecord>(table =>
+        {
+            table.ToTable("AmostraObjeto", Schema);
+            table.HasKey(row => row.Oid);
+            table.Property(row => row.Oid).HasColumnName("Oid").ValueGeneratedNever();
+            table.Property(row => row.ProtocoloAmostra).HasColumnName("ProtocoloAmostra");
+            table.Property(row => row.SolicitacaoServico).HasColumnName("SolicitacaoServico");
+            table.Property(row => row.GCRecord).HasColumnName("GCRecord");
+        });
+
+        modelBuilder.Entity<ProtocoloAmostraRecord>(table =>
+        {
+            table.ToTable("ProtocoloAmostra", Schema);
+            table.HasKey(row => row.Oid);
+            table.Property(row => row.Oid).HasColumnName("Oid").ValueGeneratedNever();
+            table.Property(row => row.Identificacao).HasColumnName("Identificacao").HasMaxLength(100);
             table.Property(row => row.GCRecord).HasColumnName("GCRecord");
         });
     }

@@ -80,7 +80,6 @@ public sealed class SpringEquipmentContractTests
             builder.UseSetting("EquipmentRegistry:Source", "backend-lab");
             builder.UseSetting("LaboratoryProgress:Source", "not-connected");
             builder.UseSetting("ReportDocuments:Source", "not-connected");
-            builder.UseSetting("LabResults:Scope", "");
             builder.UseSetting("AutoLab:Server", "");
             builder.ConfigureTestServices(services =>
                 services.AddHttpClient<IClientLabResultsRepository, BackendLabClientLabResultsRepository>()

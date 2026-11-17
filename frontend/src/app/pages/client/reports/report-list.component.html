@@ -68,7 +68,7 @@
         data-tour="relatorios-tabela"
         class="mt-4"
         caption="Laudos publicados, com solicitação, amostra, laboratório, situação e data de publicação."
-        emptyDescription="Revise o ID informado na busca."
+        [emptyDescription]="reportEmptyDescription()"
         [reports]="visibleReports()"
         [total]="reportTotal()"
         [loading]="reportsLoading()"

@@ -38,15 +38,17 @@ public sealed class AutoLabSignedReportDocumentTests : IDisposable
         _database.AddReportIssue(Identification, currentFile, revision: 1, published: new DateTime(2026, 2, 1));
 
         SignedReportDocument? document = await Repository()
-            .GetSignedDocumentOfAsync(Identification, CancellationToken.None);
+            .GetSignedDocumentOfAsync(TestCompanies.ScopeOf(Tenant), Identification, CancellationToken.None);
 
         Assert.NotNull(document);
         Assert.Equal("laudo-r1.pdf", document.FileName);
         Assert.Equal(CurrentPdf, document.Content);
 
-        string sql = Assert.Single(_database.Commands);
-        Assert.DoesNotContain("PdfLiberado", sql, StringComparison.Ordinal);
-        Assert.Contains("LIMIT 1", sql, StringComparison.Ordinal);
+        string sql = Assert.Single(
+            _database.Commands, command => command.Contains("\"Content\"", StringComparison.Ordinal));
+        Assert.Contains("\"Oid\" = ", sql, StringComparison.Ordinal);
+        Assert.All(_database.Commands, command =>
+            Assert.DoesNotContain("PdfLiberado", command, StringComparison.Ordinal));
     }
 
     [Fact]
@@ -57,7 +59,7 @@ public sealed class AutoLabSignedReportDocumentTests : IDisposable
         _database.AddReportIssue(Identification, file, revision: 0);
 
         SignedReportDocument? document = await Repository()
-            .GetSignedDocumentOfAsync(Identification, CancellationToken.None);
+            .GetSignedDocumentOfAsync(TestCompanies.ScopeOf(Tenant), Identification, CancellationToken.None);
 
         Assert.Equal(pdf, document?.Content);
     }
@@ -71,7 +73,7 @@ public sealed class AutoLabSignedReportDocumentTests : IDisposable
         _database.AddReportIssue(Identification, file, revision: 0);
 
         await Assert.ThrowsAsync<ReportDocumentSourceUnavailableException>(() => Repository()
-            .GetSignedDocumentOfAsync(Identification, CancellationToken.None));
+            .GetSignedDocumentOfAsync(TestCompanies.ScopeOf(Tenant), Identification, CancellationToken.None));
     }
 
     [Fact]
@@ -101,7 +103,7 @@ public sealed class AutoLabSignedReportDocumentTests : IDisposable
         _database.AddReportIssue(Identification, liveFile, revision: 1);
 
         SignedReportDocument? document = await Repository()
-            .GetSignedDocumentOfAsync(Identification, CancellationToken.None);
+            .GetSignedDocumentOfAsync(TestCompanies.ScopeOf(Tenant), Identification, CancellationToken.None);
 
         Assert.Equal("vigente.pdf", document?.FileName);
     }
@@ -112,7 +114,7 @@ public sealed class AutoLabSignedReportDocumentTests : IDisposable
         Guid deletedFile = _database.AddFile("apagado.pdf", CurrentPdf, deleted: 7);
         _database.AddReportIssue(Identification, deletedFile);
 
-        Assert.Null(await Repository().GetSignedDocumentOfAsync(Identification, CancellationToken.None));
+        Assert.Null(await Repository().GetSignedDocumentOfAsync(TestCompanies.ScopeOf(Tenant), Identification, CancellationToken.None));
     }
 
     [Fact]
@@ -120,7 +122,7 @@ public sealed class AutoLabSignedReportDocumentTests : IDisposable
     {
         _database.AddReportIssue(Identification, signedPdf: null);
 
-        Assert.Null(await Repository().GetSignedDocumentOfAsync(Identification, CancellationToken.None));
+        Assert.Null(await Repository().GetSignedDocumentOfAsync(TestCompanies.ScopeOf(Tenant), Identification, CancellationToken.None));
     }
 
     [Fact]
@@ -129,7 +131,7 @@ public sealed class AutoLabSignedReportDocumentTests : IDisposable
         SeedReportOf(Tenant, "01417/2026-001", "571289");
 
         SignedReportDocument? document = await Download()
-            .GetSignedReportAsync(VisibilityScope.OfCompany(Tenant), "571289", "01417/2026-001", CancellationToken.None);
+            .GetSignedReportAsync(TestCompanies.ScopeOf(Tenant), "571289", "01417/2026-001", CancellationToken.None);
 
         Assert.Equal(CurrentPdf, document?.Content);
     }
@@ -140,7 +142,7 @@ public sealed class AutoLabSignedReportDocumentTests : IDisposable
         SeedReportOf(OtherTenant, "01417/2026-001", "571289");
 
         Assert.Null(await Download()
-            .GetSignedReportAsync(VisibilityScope.OfCompany(Tenant), "571289", "01417/2026-001", CancellationToken.None));
+            .GetSignedReportAsync(TestCompanies.ScopeOf(Tenant), "571289", "01417/2026-001", CancellationToken.None));
     }
 
     [Fact]
@@ -149,7 +151,7 @@ public sealed class AutoLabSignedReportDocumentTests : IDisposable
         SeedReportOf(Tenant, "01417/2026-001", "571289");
 
         Assert.Null(await Download()
-            .GetSignedReportAsync(VisibilityScope.OfCompany(Tenant), "111.594/1", "01417/2026-001", CancellationToken.None));
+            .GetSignedReportAsync(TestCompanies.ScopeOf(Tenant), "111.594/1", "01417/2026-001", CancellationToken.None));
     }
 
     [Fact]
@@ -157,7 +159,7 @@ public sealed class AutoLabSignedReportDocumentTests : IDisposable
     {
         SeedReportOf(OtherTenant, "01417/2026-001", "571289");
 
-        await Download().GetSignedReportAsync(VisibilityScope.OfCompany(Tenant), "571289", "01417/2026-001", CancellationToken.None);
+        await Download().GetSignedReportAsync(TestCompanies.ScopeOf(Tenant), "571289", "01417/2026-001", CancellationToken.None);
 
         Assert.DoesNotContain(_database.Commands, sql => sql.Contains("FileData", StringComparison.Ordinal));
     }
@@ -166,7 +168,7 @@ public sealed class AutoLabSignedReportDocumentTests : IDisposable
     {
         _database.AddTestRow(protocol, serialNumber, company, new DateTime(2026, 6, 23), identification: Identification);
         Guid file = _database.AddFile("laudo.pdf", CurrentPdf);
-        _database.AddReportIssue(Identification, file, revision: 0);
+        _database.AddReportIssue(Identification, file, revision: 0, company: company);
     }
 
     private SignedReportDownload Download()
@@ -174,8 +176,8 @@ public sealed class AutoLabSignedReportDocumentTests : IDisposable
         AutoLabDbContext context = _database.NewContext();
 
         return new SignedReportDownload(
-            new AutoLabLabTestRepository(context, new AutoLabQueryLimits()),
-            new AutoLabReportIssueRepository(context, new AutoLabQueryLimits()));
+            _database.LabTests(context),
+            _database.ReportIssues(context));
     }
 
     private static byte[] CompressedAsAutoLab(byte[] content)
@@ -195,6 +197,6 @@ public sealed class AutoLabSignedReportDocumentTests : IDisposable
 
     private AutoLabReportIssueRepository Repository()
     {
-        return new AutoLabReportIssueRepository(_database.NewContext(), new AutoLabQueryLimits());
+        return _database.ReportIssues();
     }
 }

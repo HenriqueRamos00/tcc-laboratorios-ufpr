@@ -8,6 +8,7 @@ using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.AspNetCore.TestHost;
 using Microsoft.Extensions.DependencyInjection;
 
+using Portal.Application.Visibility;
 using Portal.Application.Paging;
 using Portal.Application.Pipeline;
 using Portal.Application.Pipeline.Exceptions;
@@ -32,6 +33,8 @@ public sealed class QuoteStageContractTests
 {
     private const string LaboratoryQuoteCode = "EAQ_2026_45494_V_1";
     private const string CommercialQuoteCode = "EAQ_2026_45482_V_1";
+    private const string LaboratoryCompanyCnpj = "11222333000181";
+    private const string AnotherCompanyCnpj = "30960572000183";
 
     [Fact]
     public async Task TheQuoteBodyKeepsEveryFieldTheScreenAlreadyReads()
@@ -154,14 +157,35 @@ public sealed class QuoteStageContractTests
         Assert.DoesNotContain("servidor interno fora do ar", body, StringComparison.Ordinal);
     }
 
+    /// <summary>
+    /// O orcamento deste teste chega de um duble que nao filtra empresa, como chegaria um
+    /// orcamento cujo codigo de cotacao foi digitado igual ao da solicitacao de outro cliente.
+    /// A etapa do laboratorio nao acompanha: o AutoLAB so responde pelos codigos das
+    /// solicitacoes das empresas do token.
+    /// </summary>
+    [Fact]
+    public async Task TheLaboratoryStageOfAnotherCompanysRequestIsNotServed()
+    {
+        using var portal = PortalWithQuotes("sql-server", cnpj: AnotherCompanyCnpj);
+        using HttpClient client = portal.CreateClient();
+        await Login(client);
+
+        JsonNode listed = await FirstQuote(client);
+        JsonNode detail = JsonNode.Parse(await client.GetStringAsync("/api/quotes/quote-lab"))!;
+
+        Assert.Null((string?)listed["laboratoryStage"]);
+        Assert.Null((string?)detail["laboratoryStage"]);
+    }
+
     private static WebApplicationFactory<Program> PortalWithQuotes(
         string? source,
-        ILaboratoryProgressRepository? laboratory = null)
+        ILaboratoryProgressRepository? laboratory = null,
+        string cnpj = LaboratoryCompanyCnpj)
     {
         // A chave viaja sempre, e a cadeia vazia e o que diz "fonte nao configurada". Omitir a
         // chave deixaria o appsettings de desenvolvimento responder pelo teste.
         AuthPortal portal = new(
-            new AuthHandler(HttpStatusCode.OK, Identity()),
+            new AuthHandler(HttpStatusCode.OK, Identity(cnpj)),
             "LaboratoryProgress:Source",
             source ?? string.Empty);
 
@@ -191,14 +215,14 @@ public sealed class QuoteStageContractTests
         return quotes.Single(quote => (string?)quote!["code"] == LaboratoryQuoteCode)!;
     }
 
-    private static string Identity() => JsonSerializer.Serialize(new
+    private static string Identity(string cnpj = LaboratoryCompanyCnpj) => JsonSerializer.Serialize(new
     {
         id = "42",
         name = "Cliente",
         email = "client@example.test",
         role = "CLIENTE",
         serviceCode = "portal-web",
-        authorizations = new { companyCnpjs = new[] { "76436849000174" } }
+        authorizations = new { companyCnpjs = new[] { cnpj } }
     });
 
     private static async Task Login(HttpClient client)
@@ -262,6 +286,7 @@ public sealed class QuoteStageContractTests
     private sealed class FailingLaboratory : ILaboratoryProgressRepository
     {
         public Task<IReadOnlyList<LaboratoryProgress>> GetProgressOfQuotesAsync(
+            CompanyScope scope,
             IReadOnlyCollection<string> quoteCodes,
             CancellationToken cancellationToken)
         {
@@ -269,6 +294,7 @@ public sealed class QuoteStageContractTests
         }
 
         public Task<LaboratoryProgress?> GetProgressOfQuoteAsync(
+            CompanyScope scope,
             string quoteCode,
             CancellationToken cancellationToken)
         {

@@ -19,7 +19,7 @@ public sealed class DemoPortalContractTests
     [Theory]
     [InlineData(FakeSalesforceQuoteRepository.EnergyCnpj, FakeSalesforceQuoteRepository.EnergyName)]
     [InlineData(FakeSalesforceQuoteRepository.DistributorCnpj, FakeSalesforceQuoteRepository.DistributorName)]
-    public async Task EachClientSeesOnlyItsQuotesAndTheWholeAutoLabSample(string cnpj, string company)
+    public async Task EachClientSeesOnlyItsQuotesAndItsOwnAutoLabRecords(string cnpj, string company)
     {
         using var backend = new AuthHandler(HttpStatusCode.OK, Identity(cnpj));
         using var portal = new AuthPortal(backend, "Portal:UseDemoData", "true");
@@ -44,11 +44,10 @@ public sealed class DemoPortalContractTests
         Assert.StartsWith("%PDF-", Encoding.Latin1.GetString(documentBytes, 0, 5));
         Assert.Contains(company, PdfText.OfWholeDocument(documentBytes));
 
+        bool energy = cnpj == FakeSalesforceQuoteRepository.EnergyCnpj;
         JsonArray equipment = (await client.GetFromJsonAsync<JsonArray>("/api/equipments"))!;
-        Assert.Equal(6, equipment.Count);
-        Assert.Equal(
-            [FakeSalesforceQuoteRepository.DistributorName, FakeSalesforceQuoteRepository.EnergyName],
-            equipment.Select(item => (string)item!["company"]!).Distinct().Order(StringComparer.Ordinal));
+        Assert.Equal(energy ? 4 : 2, equipment.Count);
+        Assert.All(equipment, item => Assert.Equal(company, (string?)item!["company"]));
         int totalReports = 0;
         foreach (JsonNode? item in equipment)
         {
@@ -62,9 +61,10 @@ public sealed class DemoPortalContractTests
             using var report = await client.GetAsync($"/api/equipments/{id}/health/reports/{(string)reports[0]!["id"]!}");
             Assert.Equal(HttpStatusCode.OK, report.StatusCode);
         }
-        Assert.Equal(11, totalReports);
+        Assert.Equal(energy ? 9 : 2, totalReports);
         JsonArray allReports = (await client.GetFromJsonAsync<JsonArray>("/api/reports"))!;
-        Assert.Equal(11, allReports.Count);
+        Assert.Equal(energy ? 9 : 2, allReports.Count);
+        Assert.All(allReports, report => Assert.Equal(company, (string?)report!["client"]));
         // O AutoLAB guarda a forma nua (2026_45496); o orcamento de demonstracao publica o codigo
         // da cotacao (EAQ_2026_45496_V_1). O vinculo e a chave de laboratorio, e nao o texto inteiro.
         int linked = 0;

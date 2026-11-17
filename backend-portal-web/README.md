@@ -95,7 +95,7 @@ a inicialização. As configurações da fonte inativa são ignoradas. No modo `
 os orçamentos são consultados no Salesforce com os CNPJs autorizados no JWT.
 Com `Portal__UseDemoData=true`, o C# usa `FakeSalesforceQuoteRepository` para os
 orçamentos. A opção não afeta equipamentos, ensaios nem relatórios no modo Auth, que vêm do
-AutoLAB com o escopo de `LabResults__Scope` (ver [Escopo de visibilidade](#escopo-de-visibilidade)).
+AutoLAB filtrados pelos mesmos CNPJs do JWT (ver [Escopo de visibilidade](#escopo-de-visibilidade)).
 
 `POST /auth/login` é público e recebe `{ "email": "...", "password": "..." }`.
 O controller chama `ILoginUseCase` → `LoginService` → `IClientAuthenticator`.
@@ -330,20 +330,18 @@ mas exige `backend-portal-web/.env` com a conexão do AutoLAB real (e a VPN do L
 existe mais cópia local do AutoLAB.
 As senhas locais são distintas e podem ser substituídas no `.env` da raiz:
 
-| Cliente | Senha | Empresa / CNPJ | Orçamentos | Equipamentos / laudos |
-| --- | --- | --- | --- | --- |
-| `client1@lactec.com` | `Cliente1!6vT9qL2nW8sD` | EMPRESA DE ENERGIA / `30960572000183` | `1, 3, 6, 8, 10, 12, 14, 16, 18` | 6 / 11 |
-| `client2@lactec.com` | `Cliente2!3rK7wP5mH9zF` | DISTRIBUIDORA DE ENERGIA / `11222333000181` | `4, 5, 7, 9, 11, 13, 15, 17, 19` | 6 / 11 |
+| Cliente | Senha | Empresa / CNPJ | Orçamentos |
+| --- | --- | --- | --- |
+| `client1@lactec.com` | `Cliente1!6vT9qL2nW8sD` | EMPRESA DE ENERGIA / `30960572000183` | `1, 3, 6, 8, 10, 12, 14, 16, 18` |
+| `client2@lactec.com` | `Cliente2!3rK7wP5mH9zF` | DISTRIBUIDORA DE ENERGIA / `11222333000181` | `4, 5, 7, 9, 11, 13, 15, 17, 19` |
 
 Os IDs de orçamento usam o prefixo `quote-`. Os valores, códigos, situações e descrições
 são preservados; as empresas dos orçamentos correspondem às contas. O PDF de `quote-3`
-também é gerado com os dados do orçamento e o layout Lactec; o arquivo estático
-antigo foi removido. Equipamentos, laudos e relatórios aparecem de forma
-generalizada para as duas contas (`LabResults__Scope=all`): são os 6 equipamentos e
-11 laudos da massa local. Como no AutoLAB real, `vwRelatoriosEnsaios` e `SituaProcess`
-guardam o `OrcamentoCRM` na forma nua (`2026_45496`), e os orçamentos fictícios chegam a
-ele pela chave do código da cotação (`EAQ_2026_45496_V_1`), então a etapa do laboratório e
-os relatórios aparecem nos orçamentos locais.
+também usa a empresa correta. Equipamentos, laudos e relatórios vêm do AutoLAB real e
+seguem o CNPJ da conta: os CNPJs das contas de demonstração são fictícios e não alcançam
+registro nenhum. Para ver dados reais, vincule a conta, pela API administrativa do Auth2, a
+uma empresa cujo CNPJ exista no AutoLAB. O identificador de um registro de outra empresa
+responde 404, igual ao de um registro inexistente.
 
 Para usar o Salesforce real no lugar dos orçamentos de demonstração, defina
 `PORTAL_USE_DEMO_DATA=false` no `.env` da raiz e as credenciais `Salesforce__*` em
@@ -546,17 +544,24 @@ consulta so, com `IN` das identificacoes. O antigo `reportUrl` saiu do contrato.
 
 ### Relatorios (`vwRelatoriosEnsaios`)
 
-`GET /api/reports?quoteCode=` lista `vwRelatoriosEnsaios` (filtro opcional por
-`OrcamentoCRM` exato, na forma nua que o AutoLAB guarda, por exemplo `2026_45493`; é o
-mesmo valor que cada relatório devolve em `quoteCode`, e não o `code` do orçamento),
-ordenado por `DataPublicacao` desc, `DataEmissao` desc e `Oid`.
+`GET /api/reports?quoteCode=` lista as emissões de `RelatorioEmissao` das solicitações das
+empresas do token (filtro opcional por `OrcamentoCRM` exato, na forma nua que o AutoLAB
+guarda, por exemplo `2026_45493`; é o mesmo valor que cada relatório devolve em
+`quoteCode`, e não o `code` do orçamento; o filtro só estreita o que o token já permite),
+ordenado por `DataPublicacao` desc, `DataEmissao` desc e `Oid`. `Identificacao`,
+`DataEmissao`, `DataPublicacao` e `PdfAssinado` vêm de `RelatorioEmissao`; `NumeroSolicitacao`
+e `OrcamentoCRM`, de `SolicitacaoServico`; `vwRelatoriosEnsaios` só entrega as colunas
+baratas (`IDAmostra`, `Nome`, `ClienteSolicitante`, `DataFinalProgramadaCliente`,
+`SituacaoRelatorio`), uma emissão por vez pelo `Oid`. A view nunca é filtrada por lista
+nem tem `Identificacao`/`DataPublicacao` lidas: em produção essas duas colunas custam
+cerca de 18 ms por linha.
 Cada item: `id` (o `Oid`, opaco), `identification`, `requestNumber`, `quoteCode`,
 `sampleId` (`IDAmostra`, a amostra), `laboratory` (`Nome`, o laboratorio), `client`,
 `status`, `scheduledDate`, `issueDate`, `publicationDate` (datas `yyyy-MM-dd` ou `null`) e
 `hasSignedDocument` (`PdfAssinado` preenchido). `sampleName` so e preenchido no modo
 Spring, onde o relatorio publicado traz o nome da amostra. `GET /api/reports/{id}/document` segue `Oid` → `PdfAssinado` → `FileData`
-(`GCRecord` nulo) dentro do escopo; sem PDF responde 404. No escopo `company`, a empresa e
-comparada com `ClienteSolicitante`.
+(`GCRecord` nulo) somente entre as emissões das empresas do token; sem PDF, com `Oid`
+desconhecido ou com `Oid` de outra empresa a resposta é o mesmo 404.
 
 ### Indicadores: tensao nominal e texto do relatorio
 
@@ -569,26 +574,67 @@ classificacao, metodo e limite continuam podendo vir `null`/`-`.
 
 ### Escopo de visibilidade
 
-`LabResults__Scope` e obrigatorio:
+Os dados do AutoLAB e os orçamentos são visíveis somente para as empresas da sessão. O
+escopo é a claim `companyCnpjs` do JWT que a própria API emitiu e validou, e não existe
+outra origem: query string, corpo, rota, cabeçalho e configuração não o alteram
+(`CompanyScopeResolution` só recebe o `ClaimsPrincipal`). Não há escopo "todas as
+empresas".
 
-- `all` (padrao do ambiente local): nenhuma consulta filtra empresa; todos os registros
-  aparecem para qualquer usuario autenticado.
-- `company`: filtra `vwDadosEnsaios.EmpresaTrafo` (e `ClienteSolicitante` nos relatorios)
-  pela claim `inquilino` ou, na falta dela, por `LabResults__DevelopmentTenant`; sem
-  nenhuma das duas responde 401.
+- Sem sessão válida: 401.
+- Sessão sem CNPJ, ou com qualquer valor da claim fora do formato de CNPJ: escopo vazio.
+  Listas respondem 200 vazias e todo identificador responde 404. Um valor malformado
+  fecha o escopo inteiro; ele não é descartado para aproveitar os demais.
+- Identificador desconhecido e identificador de outra empresa respondem o mesmo 404, com
+  o mesmo corpo.
+- Falha da fonte responde 502; nunca vira lista vazia nem escopo maior.
+- As respostas de equipamentos, indicadores, relatórios e orçamentos saem com
+  `Cache-Control: no-store`, e o CNPJ não é devolvido em corpo, cabeçalho ou log (nas
+  consultas ele viaja como parâmetro).
 
-Caminho futuro do filtro por CNPJ (a autenticacao esta sendo refeita): claim
-`companyCnpjs` do JWT → `dbo.dCliente.Cnpj_Cpf` (colunas `Oid`, `Sigla`, `Nome`,
-`RazaoSocial`, `Cnpj_Cpf`) → ligacao ainda a investigar com `RelatorioEmissao.Solicitacao`,
-`vwRelatoriosEnsaios.ClienteSolicitante` ou `vwDadosEnsaios.EmpresaTrafo`. Casar por nome
-nao serve: dos 56 `EmpresaTrafo` distintos de uma amostra, so 2 casam com `dCliente.Nome` e
-1 com `RazaoSocial`.
+Caminho do CNPJ até o registro no AutoLAB (só tabelas, `GCRecord` nulo em todas):
 
-**Risco no AutoLAB real:** em `all`, a listagem de equipamentos agrupa a view
-`vwDadosEnsaios` inteira (`EmpresaTrafo` e `nvarchar(max)` sem indice, e nao ha filtro
-seletivo), e `GET /api/reports` sem `quoteCode` ordena `vwRelatoriosEnsaios` inteira. Uma
-consulta de levantamento que ordenou a view sem filtro levou 25,6 s em producao. Use
-`all` so no banco local ate existir o filtro por CNPJ.
+| Passo | Origem | Ligação |
+| --- | --- | --- |
+| Empresa | `dbo.Cliente` | `cli_cadastronacional_a` sem `.`, `/`, `-` e espaços = CNPJ do token (o AutoLAB guarda o CNPJ com máscara) |
+| Solicitação | `dbo.SolicitacaoServico` | `Cliente` → `Cliente.Oid` (`NumeroSolicitacao` não é chave: há números repetidos) |
+| Protocolo | `dbo.AmostraObjeto` + `dbo.ProtocoloAmostra` | `AmostraObjeto.SolicitacaoServico` → solicitação; `AmostraObjeto.ProtocoloAmostra` → `ProtocoloAmostra.Identificacao` = `vwDadosEnsaios.ProtocoloLactec` |
+| Relatório | `dbo.RelatorioEmissao` | `Solicitacao` → `SolicitacaoServico.Oid`; `Oid` = `vwRelatoriosEnsaios.Oid` |
+| Etapa | `dbo.SolicitacaoServico` | `OrcamentoCRM` da solicitação = `SituaProcess.OrcamentoCRM` |
+
+Os clientes são resolvidos primeiro, numa consulta pequena, e conferidos de novo na
+aplicação com a mesma normalização. Depois as views são lidas pelas chaves que saíram
+desse caminho: `vwDadosEnsaios` por `ProtocoloLactec IN (...)`, `vwRelatoriosEnsaios` por
+`Oid = ...`, `SituaProcess` pelos códigos de orçamento das solicitações da empresa.
+`EmpresaTrafo` e `ClienteSolicitante` são texto de exibição e não filtram nada. O cadastro
+`Equipamentos` não tem empresa e só é consultado com as séries que os ensaios da empresa
+revelaram.
+
+Onde isso mora no código:
+
+- Porta `Portal.Application/CompanyRecords/ICompanyRecordsSource`: protocolos, emissões de
+  relatório e códigos de orçamento das empresas de um `CompanyScope`.
+- Único adaptador `Portal.Adapters/CompanyRecords/AutoLabCompanyRecordsSource` (EF Core
+  LINQ, consultas em `AutoLabQueries`: `ClientsOfCnpjs`, `ProtocolsOfClients`,
+  `ReportsOfClients`, `QuoteCodesOfClients`), registrado por requisição em
+  `AddAutoLabDatabase`.
+- `AutoLabLabTestRepository`, `AutoLabReportIssueRepository` e
+  `AutoLabSituaProcessRepository` perguntam a essa porta antes de qualquer leitura e
+  recebem o `CompanyScope` na assinatura de toda operação.
+
+**Troca por uma view do portal.** Quando existir uma view construída a partir dessa
+consulta (por exemplo `dbo.vwPortalEnsaios` e `dbo.vwPortalRelatorios`, com a coluna
+`Cnpj` já sem máscara), a mudança fica em um adaptador: mapear a view no
+`AutoLabDbContext` e escrever outra implementação de `ICompanyRecordsSource` em que cada
+método é um `SELECT ... FROM dbo.vwPortal... WHERE Cnpj IN (...)` (em LINQ,
+`database.PortalEnsaios.Where(row => cnpjs.Contains(row.Cnpj)).Select(row => row.ProtocoloLactec).Distinct()`),
+e trocar o registro em `AutoLabDatabaseRegistration`. Controllers, aplicação e os demais
+adaptadores não mudam, e a suíte de isolamento (`Portal.Tests/Security`,
+`Portal.Tests/CompanyRecords`) continua valendo como está.
+
+Orçamentos (Salesforce): toda consulta SOQL leva `Opportunity.Account.CNPJ__c` igual aos
+CNPJs do token, na lista, na contagem e no detalhe; o `Id` da rota só segue para o
+Salesforce quando tem a forma de um Id do Salesforce. Documento, relatórios do orçamento
+e etapa do laboratório partem sempre do orçamento já autorizado.
 
 ### Banco do portal (decisões do cliente)
 

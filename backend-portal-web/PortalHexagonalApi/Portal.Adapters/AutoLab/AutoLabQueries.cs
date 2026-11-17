@@ -1,7 +1,7 @@
 using Microsoft.EntityFrameworkCore;
 
+using Portal.Application.CompanyRecords;
 using Portal.Application.LabResults;
-using Portal.Application.Visibility;
 
 namespace Portal.Adapters.AutoLab;
 
@@ -11,14 +11,96 @@ public static class AutoLabQueries
 
     public const string CaseInsensitiveCollation = "Latin1_General_CI_AS";
 
+    public static IQueryable<ClienteRow> ClientsOfCnpjs(
+        AutoLabDbContext database,
+        List<string> cnpjs,
+        int rowLimit)
+    {
+        return database.Clientes
+            .Where(client => client.GCRecord == null
+                && cnpjs.Contains(client.CadastroNacional!
+                    .Replace(".", "")
+                    .Replace("/", "")
+                    .Replace("-", "")
+                    .Replace(" ", "")))
+            .OrderBy(client => client.Oid)
+            .Select(client => new ClienteRow(client.Oid, client.CadastroNacional))
+            .Take(rowLimit);
+    }
+
+    public static IQueryable<string> ProtocolsOfClients(
+        AutoLabDbContext database,
+        List<Guid?> clientIds,
+        int rowLimit)
+    {
+        return database.SolicitacoesServico
+            .Where(request => request.GCRecord == null && clientIds.Contains(request.Cliente))
+            .Join(
+                database.AmostrasObjeto.Where(sample => sample.GCRecord == null),
+                request => (Guid?)request.Oid,
+                sample => sample.SolicitacaoServico,
+                (request, sample) => sample.ProtocoloAmostra)
+            .Join(
+                database.ProtocolosAmostra.Where(protocol => protocol.GCRecord == null
+                    && protocol.Identificacao != null),
+                protocolId => protocolId,
+                protocol => (Guid?)protocol.Oid,
+                (protocolId, protocol) => protocol.Identificacao!)
+            .Distinct()
+            .OrderBy(identification => identification)
+            .Take(rowLimit);
+    }
+
+    public static IQueryable<CompanyReportRow> ReportsOfClients(
+        AutoLabDbContext database,
+        List<Guid?> clientIds,
+        int rowLimit)
+    {
+        return database.RelatorioEmissao
+            .Where(report => report.GCRecord == null)
+            .Join(
+                database.SolicitacoesServico.Where(request => request.GCRecord == null
+                    && clientIds.Contains(request.Cliente)),
+                report => report.Solicitacao,
+                request => (Guid?)request.Oid,
+                (report, request) => new { Report = report, Request = request })
+            .OrderBy(found => found.Report.Oid)
+            .Take(rowLimit)
+            .Select(found => new CompanyReportRow(
+                found.Report.Oid,
+                found.Report.Identificacao,
+                found.Request.NumeroSolicitacao,
+                found.Request.OrcamentoCRM,
+                found.Report.DataEmissao,
+                found.Report.DataPublicacao,
+                found.Report.Revisao,
+                found.Report.RelatorioEnsaioSubstituto != null,
+                found.Report.PdfAssinado));
+    }
+
+    public static IQueryable<string> QuoteCodesOfClients(
+        AutoLabDbContext database,
+        List<Guid?> clientIds,
+        int rowLimit)
+    {
+        return database.SolicitacoesServico
+            .Where(request => request.GCRecord == null
+                && clientIds.Contains(request.Cliente)
+                && request.OrcamentoCRM != null)
+            .Select(request => request.OrcamentoCRM!)
+            .Distinct()
+            .OrderBy(code => code)
+            .Take(rowLimit);
+    }
+
     public static IQueryable<string> EquipmentKeys(
         AutoLabDbContext database,
-        VisibilityScope scope,
+        List<string> authorizedProtocols,
         EquipmentSearch? search)
     {
         IQueryable<MarkedTestRow> rows = search is null
-            ? TestRowsIn(database, scope).Select(row => new MarkedTestRow { Row = row, Matches = 1 })
-            : RowsMarkedBySearch(database, TestRowsIn(database, scope), LikePattern.Containing(search.Term));
+            ? TestRowsOf(database, authorizedProtocols).Select(row => new MarkedTestRow { Row = row, Matches = 1 })
+            : RowsMarkedBySearch(database, TestRowsOf(database, authorizedProtocols), LikePattern.Containing(search.Term));
 
         IQueryable<IGrouping<string, MarkedTestRow>> equipment = rows
             .GroupBy(marked => string.IsNullOrWhiteSpace(marked.Row.NumSerie)
@@ -42,11 +124,11 @@ public static class AutoLabQueries
 
     public static IQueryable<VwDadosEnsaiosRecord> RowsOfEquipmentKeys(
         AutoLabDbContext database,
-        VisibilityScope scope,
+        List<string> authorizedProtocols,
         List<string> equipmentKeys,
         int rowLimit)
     {
-        return TestRowsIn(database, scope)
+        return TestRowsOf(database, authorizedProtocols)
             .Where(row => ((equipmentKeys.Contains(row.NumSerie!) || row.NumSerie!.StartsWith(" "))
                     && equipmentKeys.Contains(EF.Functions.Collate(row.NumSerie!.Trim(), OrdinalCollation)))
                 || ((equipmentKeys.Contains(row.ProtocoloLactec!) || row.ProtocoloLactec!.StartsWith(" "))
@@ -57,10 +139,10 @@ public static class AutoLabQueries
 
     public static IQueryable<string> ProtocolsOfEquipment(
         AutoLabDbContext database,
-        VisibilityScope scope,
+        List<string> authorizedProtocols,
         string equipmentKey)
     {
-        return TestRowsIn(database, scope)
+        return TestRowsOf(database, authorizedProtocols)
             .Where(row => (((row.NumSerie == equipmentKey || row.NumSerie!.StartsWith(" "))
                         && EF.Functions.Collate(row.NumSerie!.Trim(), OrdinalCollation) == equipmentKey)
                     || ((row.ProtocoloLactec == equipmentKey || row.ProtocoloLactec!.StartsWith(" "))
@@ -79,11 +161,11 @@ public static class AutoLabQueries
 
     public static IQueryable<VwDadosEnsaiosRecord> RowsOfProtocols(
         AutoLabDbContext database,
-        VisibilityScope scope,
+        List<string> authorizedProtocols,
         List<string> protocols,
         int rowLimit)
     {
-        return TestRowsIn(database, scope)
+        return TestRowsOf(database, authorizedProtocols)
             .Where(row => (protocols.Contains(row.ProtocoloLactec!) || row.ProtocoloLactec!.StartsWith(" "))
                 && protocols.Contains(EF.Functions.Collate(row.ProtocoloLactec!.Trim(), OrdinalCollation)))
             .OrderBy(row => row.ProtocoloLactec)
@@ -92,11 +174,11 @@ public static class AutoLabQueries
 
     public static IQueryable<VwDadosEnsaiosRecord> RowsOfProtocol(
         AutoLabDbContext database,
-        VisibilityScope scope,
+        List<string> authorizedProtocols,
         string protocol,
         int rowLimit)
     {
-        return TestRowsIn(database, scope)
+        return TestRowsOf(database, authorizedProtocols)
             .Where(row => (row.ProtocoloLactec == protocol || row.ProtocoloLactec!.StartsWith(" "))
                 && EF.Functions.Collate(row.ProtocoloLactec!.Trim(), OrdinalCollation) == protocol)
             .OrderBy(row => row.Name)
@@ -126,94 +208,60 @@ public static class AutoLabQueries
             .Take(rowLimit);
     }
 
-    public static IQueryable<SignedDocumentRow> SignedDocumentOf(
+    public static IQueryable<ReportViewRow> ReportViewRowOf(
         AutoLabDbContext database,
-        string reportIdentification)
+        Guid reportId)
     {
-        IQueryable<Guid?> currentSignedPdf = SignedIssues(database)
-            .Where(report => report.Identificacao == reportIdentification)
-            .OrderBy(report => report.RelatorioEnsaioSubstituto != null)
-            .ThenByDescending(report => report.Revisao)
-            .ThenByDescending(report => report.DataPublicacao)
-            .ThenByDescending(report => report.DataEmissao)
-            .ThenBy(report => report.Oid)
-            .Select(report => report.PdfAssinado)
+        return database.RelatoriosEnsaios
+            .Where(report => report.Oid == reportId)
+            .Select(report => new ReportViewRow(
+                report.IDAmostra,
+                report.Nome,
+                report.ClienteSolicitante,
+                report.DataFinalProgramadaCliente,
+                report.SituacaoRelatorio))
             .Take(1);
-
-        return LiveFilesAmong(database, currentSignedPdf);
     }
 
-    public static IQueryable<string> IdentificationsWithSignedDocument(
+    public static IQueryable<ReportIssueRow> IssueTextOf(
         AutoLabDbContext database,
-        List<string> reportIdentifications,
-        int rowLimit)
-    {
-        return SignedIssues(database)
-            .Where(report => reportIdentifications.Contains(report.Identificacao!))
-            .Select(report => report.Identificacao!)
-            .Distinct()
-            .OrderBy(identification => identification)
-            .Take(rowLimit);
-    }
-
-    public static IQueryable<ReportIssueRow> CurrentIssueOf(
-        AutoLabDbContext database,
-        string reportIdentification)
+        Guid reportId)
     {
         return database.RelatorioEmissao
-            .Where(report => report.Identificacao == reportIdentification && report.GCRecord == null)
-            .OrderBy(report => report.RelatorioEnsaioSubstituto != null)
-            .ThenByDescending(report => report.Revisao)
-            .ThenByDescending(report => report.DataPublicacao)
-            .ThenByDescending(report => report.DataEmissao)
-            .ThenBy(report => report.Oid)
+            .Where(report => report.Oid == reportId && report.GCRecord == null)
             .Select(report => new ReportIssueRow(report.TituloRelatorio, report.Conclusao))
             .Take(1);
     }
 
-    public static IQueryable<VwRelatoriosEnsaiosRecord> Reports(
+    public static IQueryable<Guid> LiveFilesAmong(
         AutoLabDbContext database,
-        VisibilityScope scope,
-        string? quoteCode)
+        List<Guid> fileIds,
+        int rowLimit)
     {
-        IQueryable<VwRelatoriosEnsaiosRecord> reports = database.RelatoriosEnsaios;
-
-        if (scope.Company is string company)
-            reports = reports.Where(report => report.ClienteSolicitante == company);
-
-        if (quoteCode is not null)
-            reports = reports.Where(report => report.OrcamentoCRM == quoteCode);
-
-        return reports
-            .OrderByDescending(report => report.DataPublicacao)
-            .ThenByDescending(report => report.DataEmissao)
-            .ThenBy(report => report.Oid);
+        return database.FileData
+            .Where(file => file.GCRecord == null && fileIds.Contains(file.Oid))
+            .Select(file => file.Oid)
+            .OrderBy(fileId => fileId)
+            .Take(rowLimit);
     }
 
-    public static IQueryable<SignedDocumentRow> SignedDocumentOfReport(
+    public static IQueryable<SignedDocumentRow> LiveFileOf(
         AutoLabDbContext database,
-        VisibilityScope scope,
-        Guid reportId)
+        Guid fileId)
     {
-        IQueryable<VwRelatoriosEnsaiosRecord> reports = database.RelatoriosEnsaios
-            .Where(report => report.Oid == reportId);
-
-        if (scope.Company is string company)
-            reports = reports.Where(report => report.ClienteSolicitante == company);
-
-        return LiveFilesAmong(
-            database,
-            reports.Where(report => report.PdfAssinado != null).Select(report => report.PdfAssinado).Take(1));
+        return database.FileData
+            .Where(file => file.GCRecord == null && file.Oid == fileId)
+            .Select(file => new SignedDocumentRow(file.FileName, file.Content))
+            .Take(1);
     }
 
-    private static IQueryable<VwDadosEnsaiosRecord> TestRowsIn(AutoLabDbContext database, VisibilityScope scope)
+    private static IQueryable<VwDadosEnsaiosRecord> TestRowsOf(
+        AutoLabDbContext database,
+        List<string> authorizedProtocols)
     {
-        ArgumentNullException.ThrowIfNull(scope);
+        ArgumentNullException.ThrowIfNull(authorizedProtocols);
 
-        return scope.Company is string company
-            ? database.DadosEnsaios.Where(row =>
-                EF.Functions.Collate(row.EmpresaTrafo!.Trim(), CaseInsensitiveCollation) == company)
-            : database.DadosEnsaios;
+        return database.DadosEnsaios.Where(row => authorizedProtocols.Contains(row.ProtocoloLactec!));
     }
 
     private static IQueryable<MarkedTestRow> RowsMarkedBySearch(
@@ -258,23 +306,5 @@ public static class AutoLabQueries
         public required VwDadosEnsaiosRecord Row { get; init; }
 
         public required int Matches { get; init; }
-    }
-
-    private static IQueryable<RelatorioEmissaoRecord> SignedIssues(AutoLabDbContext database)
-    {
-        return database.RelatorioEmissao
-            .Where(report => report.GCRecord == null
-                && report.PdfAssinado != null
-                && database.FileData.Any(file => file.GCRecord == null && (Guid?)file.Oid == report.PdfAssinado));
-    }
-
-    private static IQueryable<SignedDocumentRow> LiveFilesAmong(
-        AutoLabDbContext database,
-        IQueryable<Guid?> fileIds)
-    {
-        return database.FileData
-            .Where(file => file.GCRecord == null && fileIds.Contains((Guid?)file.Oid))
-            .Select(file => new SignedDocumentRow(file.FileName, file.Content))
-            .Take(1);
     }
 }

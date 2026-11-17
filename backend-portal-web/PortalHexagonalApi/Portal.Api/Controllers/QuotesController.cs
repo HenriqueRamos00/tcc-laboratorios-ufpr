@@ -23,6 +23,7 @@ namespace Portal.Api.Controllers;
 /// <see cref="ProblemResponses"/>, que e o mesmo das demais rotas.
 /// </summary>
 [ApiController]
+[NoStore]
 [Route("api/quotes")]
 public sealed class QuotesController : ControllerBase
 {
@@ -235,9 +236,9 @@ public sealed class QuotesController : ControllerBase
         {
             return failure.Connected ? this.ClientDecisionStoreUnavailable() : this.ClientDecisionsNotAvailable();
         }
-        catch (InvalidOperationException failure)
+        catch (InvalidOperationException)
         {
-            return this.QuoteRequestRefused(failure.Message);
+            return this.QuoteRequestRefused();
         }
         catch (QuoteDocumentUnavailableException)
         {

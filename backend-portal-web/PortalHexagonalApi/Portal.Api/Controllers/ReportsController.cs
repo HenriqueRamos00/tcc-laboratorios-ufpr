@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Mvc;
 
+using Portal.Api.Authentication;
 using Portal.Api.Configuration;
 using Portal.Api.LabResults;
 using Portal.Api.ReportDocuments;
@@ -18,12 +19,12 @@ using SpringReports = Portal.Application.Reports;
 namespace Portal.Api.Controllers;
 
 [ApiController]
+[NoStore]
 [Route("api/reports")]
 public sealed class ReportsController(
     IForConsultingReports autoLabReports,
     SpringReports.IForConsultingReports springReports,
     IQuoteRepository quotes,
-    LabResultsOptions labResults,
     ReportDocumentsOptions documents,
     PortalOptions portal) : ControllerBase
 {
@@ -170,9 +171,9 @@ public sealed class ReportsController(
         return null;
     }
 
-    private Task<IActionResult> AnswerAutoLabAsync(Func<VisibilityScope, Task<IActionResult>> answer)
+    private Task<IActionResult> AnswerAutoLabAsync(Func<CompanyScope, Task<IActionResult>> answer)
     {
-        VisibilityScope? scope = VisibilityScopeResolution.Resolve(User, labResults);
+        CompanyScope? scope = CompanyScopeResolution.Resolve(User);
         return scope is null ? Task.FromResult(this.TenantNotIdentified()) : AnswerAsync(() => answer(scope));
     }
 

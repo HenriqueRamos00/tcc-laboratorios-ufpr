@@ -1,3 +1,4 @@
+using Portal.Tests.AutoLab;
 using Portal.Application.LabResults;
 using Portal.Application.Nameplate;
 using Portal.Application.Paging;
@@ -62,7 +63,7 @@ public sealed class LabResultsConsultationTests
         LabResultsConsultation service = Consultation(source);
 
         EquipmentWithNameplate? found = await service.GetEquipmentAsync(
-            VisibilityScope.OfCompany(Tenant), "571289", CancellationToken.None);
+            TestCompanies.ScopeOf(Tenant), "571289", CancellationToken.None);
 
         Assert.NotNull(found);
         Assert.Equal("571289", found.Equipment.EquipmentKey);
@@ -82,7 +83,7 @@ public sealed class LabResultsConsultationTests
         LabResultsConsultation service = Consultation(source);
 
         EquipmentWithNameplate? found = await service.GetEquipmentAsync(
-            VisibilityScope.OfCompany(Tenant), "571289", CancellationToken.None);
+            TestCompanies.ScopeOf(Tenant), "571289", CancellationToken.None);
 
         Assert.NotNull(found);
         Assert.Equal(3, found.ReportCount);
@@ -97,7 +98,7 @@ public sealed class LabResultsConsultationTests
 
         LabResultsConsultation service = Consultation(source);
 
-        Assert.Null(await service.GetEquipmentAsync(VisibilityScope.OfCompany(Tenant), "111.594/1", CancellationToken.None));
+        Assert.Null(await service.GetEquipmentAsync(TestCompanies.ScopeOf(Tenant), "111.594/1", CancellationToken.None));
         Assert.Empty(await service.FirstPageOfEquipmentAsync(Tenant));
     }
 
@@ -183,20 +184,28 @@ public sealed class LabResultsConsultationTests
     }
 
     [Fact]
-    public void ACompanyScopeWithoutCompanyIsRefused()
-    {
-        Assert.Throws<ArgumentException>(() => VisibilityScope.OfCompany("   "));
-    }
-
-    [Fact]
-    public async Task TheAllScopeSeesTheAnalysesOfEveryCompany()
+    public async Task TheEmptyScopeSeesNoAnalysis()
     {
         InMemoryLabTestRepository source = new(
             AnalysisOf("01417/2026-001", "571289"),
             AnalysisOf("01563/2026-018", "5233", company: OtherTenant));
 
         Page<EquipmentWithNameplate> page = await Consultation(source)
-            .ListEquipmentAsync(VisibilityScope.All, null, PageRequest.First, CancellationToken.None);
+            .ListEquipmentAsync(CompanyScope.None, null, PageRequest.First, CancellationToken.None);
+
+        Assert.Empty(page.Items);
+        Assert.Equal(0, page.TotalCount);
+    }
+
+    [Fact]
+    public async Task TheScopeOfTwoCompaniesSeesTheAnalysesOfBoth()
+    {
+        InMemoryLabTestRepository source = new(
+            AnalysisOf("01417/2026-001", "571289"),
+            AnalysisOf("01563/2026-018", "5233", company: OtherTenant));
+
+        Page<EquipmentWithNameplate> page = await Consultation(source)
+            .ListEquipmentAsync(TestCompanies.ScopeOf(Tenant, OtherTenant), null, PageRequest.First, CancellationToken.None);
 
         Assert.Equal(2, page.Items.Count);
     }
@@ -212,7 +221,7 @@ public sealed class LabResultsConsultationTests
         Assert.True(EquipmentSearch.TryCreate(" 5712 ", out EquipmentSearch? search));
 
         Page<EquipmentWithNameplate> page = await Consultation(source).ListEquipmentAsync(
-            VisibilityScope.OfCompany(Tenant), search, PageRequest.First, CancellationToken.None);
+            TestCompanies.ScopeOf(Tenant), search, PageRequest.First, CancellationToken.None);
 
         Assert.Equal("5712", Assert.Single(source.SearchesAsked)?.Term);
         Assert.Equal(1, page.TotalCount);
@@ -237,7 +246,7 @@ public sealed class LabResultsConsultationTests
 
     private static HealthIndicatorsQuery Query(string equipmentKey, string? selected = null)
     {
-        return new HealthIndicatorsQuery(VisibilityScope.OfCompany(Tenant), equipmentKey, selected);
+        return new HealthIndicatorsQuery(TestCompanies.ScopeOf(Tenant), equipmentKey, selected);
     }
 
     private static SampleAnalysis AnalysisOf(
@@ -267,7 +276,7 @@ public sealed class LabResultsConsultationTests
         }
 
         public Task<Page<SampleAnalysis>> GetAnalysesAsync(
-            VisibilityScope scope,
+            CompanyScope scope,
             EquipmentSearch? search,
             PageRequest equipmentPage,
             CancellationToken cancellationToken)
@@ -276,7 +285,7 @@ public sealed class LabResultsConsultationTests
         }
 
         public Task<Page<SampleAnalysis>> GetAnalysesOfEquipmentAsync(
-            VisibilityScope scope,
+            CompanyScope scope,
             string equipmentKey,
             PageRequest reportPage,
             CancellationToken cancellationToken)
@@ -285,7 +294,7 @@ public sealed class LabResultsConsultationTests
         }
 
         public async Task<SampleAnalysis?> GetAnalysisByProtocolAsync(
-            VisibilityScope scope,
+            CompanyScope scope,
             string protocoloLactec,
             CancellationToken cancellationToken)
         {

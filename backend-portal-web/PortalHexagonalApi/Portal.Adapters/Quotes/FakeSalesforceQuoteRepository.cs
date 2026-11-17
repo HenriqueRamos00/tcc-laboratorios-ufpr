@@ -10,7 +10,7 @@ namespace Portal.Adapters.Quotes;
 /// <c>Codigo_da_Cotacao__c</c>; a chave de laboratorio sai dele (<c>2026_45482</c>) e casa com
 /// o <c>OrcamentoCRM</c> da massa local do AutoLAB.
 /// </summary>
-public sealed class FakeSalesforceQuoteRepository(IQuoteCompanyScope? companyScope = null) : IQuoteRepository
+public sealed class FakeSalesforceQuoteRepository(IQuoteCompanyScope companyScope) : IQuoteRepository
 {
     public const string EnergyCnpj = "30960572000183";
     public const string DistributorCnpj = "11222333000181";
@@ -356,8 +356,8 @@ public sealed class FakeSalesforceQuoteRepository(IQuoteCompanyScope? companySco
         return Task.FromResult(quote);
     }
 
-    private bool IsVisible(FakeQuote quote) => companyScope is null
-        || companyScope.CompanyCnpjs.Contains(quote.CompanyCnpj, StringComparer.Ordinal);
+    private bool IsVisible(FakeQuote quote) =>
+        companyScope.CompanyCnpjs.Contains(quote.CompanyCnpj, StringComparer.Ordinal);
 
     private sealed record FakeQuote(string Id, string CompanyCnpj, Quote Quote);
 }

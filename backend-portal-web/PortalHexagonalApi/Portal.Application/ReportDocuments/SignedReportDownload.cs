@@ -18,7 +18,7 @@ public sealed class SignedReportDownload : IForDownloadingSignedReports
     }
 
     public async Task<SignedReportDocument?> GetSignedReportAsync(
-        VisibilityScope scope,
+        CompanyScope scope,
         string equipmentKey,
         string protocoloLactec,
         CancellationToken cancellationToken)
@@ -37,6 +37,6 @@ public sealed class SignedReportDownload : IForDownloadingSignedReports
             return null;
 
         return await _reportIssues
-            .GetSignedDocumentOfAsync(analysis.Identification, cancellationToken);
+            .GetSignedDocumentOfAsync(scope, analysis.Identification, cancellationToken);
     }
 }

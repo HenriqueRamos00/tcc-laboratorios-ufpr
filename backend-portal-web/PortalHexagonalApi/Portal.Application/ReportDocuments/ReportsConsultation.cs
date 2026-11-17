@@ -13,7 +13,7 @@ public sealed class ReportsConsultation : IForConsultingReports
     }
 
     public Task<Page<LabReport>> ListReportsAsync(
-        VisibilityScope scope,
+        CompanyScope scope,
         string? quoteCode,
         PageRequest page,
         CancellationToken cancellationToken)
@@ -29,7 +29,7 @@ public sealed class ReportsConsultation : IForConsultingReports
     }
 
     public Task<SignedReportDocument?> GetSignedDocumentAsync(
-        VisibilityScope scope,
+        CompanyScope scope,
         Guid reportId,
         CancellationToken cancellationToken)
     {
