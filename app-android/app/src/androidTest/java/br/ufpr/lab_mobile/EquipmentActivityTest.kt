@@ -56,10 +56,10 @@ class EquipmentActivityTest {
 
     @Before
     fun installResponses() {
-        context.getSharedPreferences(LoginActivity.SESSION_PREFERENCES, 0).edit().clear().commit()
+        TestSession.clear(context)
         oldRetrofit = retrofitField.get(null)
         oldBaseUrl = baseUrlField.get(null)
-        val client = OkHttpClient.Builder().addInterceptor { chain ->
+        val client = OkHttpClient.Builder().addInterceptor(TestSession.interceptor(context)).addInterceptor { chain ->
             requests.add(chain.request())
             responseGate?.await(10, TimeUnit.SECONDS)
             if (offline) throw IOException("Offline test")
@@ -75,7 +75,7 @@ class EquipmentActivityTest {
         scenario?.close()
         retrofitField.set(null, oldRetrofit)
         baseUrlField.set(null, oldBaseUrl)
-        context.getSharedPreferences(LoginActivity.SESSION_PREFERENCES, 0).edit().clear().commit()
+        TestSession.clear(context)
     }
 
     @Test
@@ -85,7 +85,7 @@ class EquipmentActivityTest {
         await("loading visible") { check { it.findViewById<View>(R.id.loading)?.visibility == View.VISIBLE } }
         responseGate!!.countDown()
         awaitItems(3)
-        assertEquals("Bearer equipment-session", requests.single().header("Authorization"))
+        assertEquals("Bearer ${context.portalApplication.sessions.current!!.token}", requests.single().header("Authorization"))
         assertEquals("/api/equipments", requests.single().url.encodedPath)
         onActivity { activity ->
             val card = list(activity).findViewHolderForAdapterPosition(1)!!.itemView
@@ -166,15 +166,11 @@ class EquipmentActivityTest {
     }
 
     @Test
-    fun unauthorizedClearsSessionShowsExistingMessageAndDisablesRetry() {
-        context.getSharedPreferences(LoginActivity.SESSION_PREFERENCES, 0).edit()
-            .putString(LoginActivity.ACCESS_TOKEN, "equipment-session").commit()
+    fun unauthorizedClearsSessionAndReturnsToLogin() {
         status = 401
         launch()
-        awaitState(R.string.session_expired)
-        awaitItems(0)
-        assertNull(context.getSharedPreferences(LoginActivity.SESSION_PREFERENCES, 0).getString(LoginActivity.ACCESS_TOKEN, null))
-        onActivity { assertEquals(View.GONE, it.findViewById<View>(R.id.retry).visibility) }
+        await("Login shown after unauthorized response") { TestSession.loginVisible() }
+        assertNull(context.portalApplication.sessions.current)
     }
 
     @Test
@@ -288,7 +284,7 @@ class EquipmentActivityTest {
 
     private fun launch(token: String? = "equipment-session") {
         val intent = Intent(context, EquipmentActivity::class.java)
-        token?.let { intent.putExtra(LoginActivity.EXTRA_ACCESS_TOKEN, it) }
+        TestSession.start(context, token)
         scenario = ActivityScenario.launch(intent)
     }
 

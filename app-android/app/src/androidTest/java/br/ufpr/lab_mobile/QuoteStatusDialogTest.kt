@@ -33,6 +33,7 @@ import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
+import org.junit.Assert.assertNull
 import org.junit.runner.RunWith
 import java.io.File
 import java.io.IOException
@@ -63,7 +64,7 @@ class QuoteStatusDialogTest {
         previousRetrofit = retrofitField.get(null)
         previousBaseUrl = baseUrlField.get(null)
         val baseUrl = context.getString(R.string.api_base_url)
-        val testClient = OkHttpClient.Builder().addInterceptor(Interceptor { chain ->
+        val testClient = OkHttpClient.Builder().addInterceptor(TestSession.interceptor(context)).addInterceptor(Interceptor { chain ->
             val request = chain.request()
             val isDetail = request.url.encodedPath == "/api/quotes/$QUOTE_ID"
             if (isDetail) {
@@ -157,7 +158,7 @@ class QuoteStatusDialogTest {
         awaitContent()
         assertEquals(1, detailRequests.size)
         assertTrue(checkUi { it.supportFragmentManager.fragments.count { fragment -> fragment is QuoteStatusDialogFragment } == 1 })
-        assertEquals("Bearer device-test-token /api/quotes/$QUOTE_ID", detailRequests.single())
+        assertEquals("Bearer ${context.portalApplication.sessions.current!!.token} /api/quotes/$QUOTE_ID", detailRequests.single())
         scenario!!.recreate()
         awaitContent()
         assertEquals(2, detailRequests.size)
@@ -190,14 +191,16 @@ class QuoteStatusDialogTest {
     @Test
     fun notFoundAndExpiredSessionHideContentAndRetry() {
         launchList()
-        listOf(404 to R.string.quote_status_not_found, 401 to R.string.session_expired).forEach { (code, message) ->
-            detailCode.set(code)
-            openStatus()
-            awaitUi("HTTP $code state") { dialog(it)?.findViewById<TextView>(R.id.stateMessage)?.text.toString() == context.getString(message) }
-            assertTrue(checkUi { dialog(it)!!.findViewById<View>(R.id.statusContent).visibility == View.GONE })
-            assertTrue(checkUi { dialog(it)!!.findViewById<View>(R.id.retryButton).visibility == View.GONE })
-            closeStatus()
-        }
+        detailCode.set(404)
+        openStatus()
+        awaitUi("HTTP 404 state") { dialog(it)?.findViewById<TextView>(R.id.stateMessage)?.text.toString() == context.getString(R.string.quote_status_not_found) }
+        assertTrue(checkUi { dialog(it)!!.findViewById<View>(R.id.statusContent).visibility == View.GONE })
+        assertTrue(checkUi { dialog(it)!!.findViewById<View>(R.id.retryButton).visibility == View.GONE })
+        closeStatus()
+        detailCode.set(401)
+        openStatus()
+        awaitCondition("Expired session returns to Login") { TestSession.loginVisible() }
+        assertNull(context.portalApplication.sessions.current)
     }
 
     @Test
@@ -342,7 +345,7 @@ class QuoteStatusDialogTest {
     }
 
     private fun launchList() {
-        scenario = ActivityScenario.launch(Intent(context, QuotesActivity::class.java).putExtra(LoginActivity.EXTRA_ACCESS_TOKEN, "device-test-token"))
+        scenario = ActivityScenario.launch(Intent(context, QuotesActivity::class.java).also { TestSession.start(context, "device-test-token") })
         scenario!!.onActivity { it.window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON) }
         awaitList()
     }
