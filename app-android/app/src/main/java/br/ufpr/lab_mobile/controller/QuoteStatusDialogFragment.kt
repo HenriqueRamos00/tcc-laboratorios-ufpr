@@ -1,7 +1,6 @@
 package br.ufpr.lab_mobile.controller
 
 import android.app.Dialog
-import android.content.Context
 import android.content.DialogInterface
 import android.content.res.ColorStateList
 import android.graphics.Typeface
@@ -12,6 +11,7 @@ import androidx.core.view.isVisible
 import androidx.fragment.app.DialogFragment
 import androidx.lifecycle.lifecycleScope
 import br.ufpr.lab_mobile.R
+import br.ufpr.lab_mobile.portalApplication
 import br.ufpr.lab_mobile.databinding.DialogQuoteStatusBinding
 import br.ufpr.lab_mobile.model.Quote
 import br.ufpr.lab_mobile.model.QuoteStage
@@ -41,8 +41,7 @@ class QuoteStatusDialogFragment : DialogFragment() {
         binding = viewBinding
         viewBinding.retryButton.setOnClickListener { loadQuote() }
         viewBinding.viewPdf.setOnClickListener {
-            QuoteDetailsActivity.open(requireContext(), arguments?.getString(ARG_QUOTE_ID),
-                requireActivity().intent.getStringExtra(LoginActivity.EXTRA_ACCESS_TOKEN))
+            QuoteDetailsActivity.open(requireContext(), arguments?.getString(ARG_QUOTE_ID))
         }
         viewBinding.acceptQuote.setOnClickListener { currentQuote?.let { QuoteDecisionDialogFragment.show(childFragmentManager, it, false) } }
         viewBinding.rejectQuote.setOnClickListener { currentQuote?.let { QuoteDecisionDialogFragment.show(childFragmentManager, it, true) } }
@@ -77,10 +76,7 @@ class QuoteStatusDialogFragment : DialogFragment() {
             showError(R.string.quote_status_invalid_id, retryable = false)
             return
         }
-        val token = requireActivity().intent.getStringExtra(LoginActivity.EXTRA_ACCESS_TOKEN)
-            ?: requireContext().getSharedPreferences(LoginActivity.SESSION_PREFERENCES, Context.MODE_PRIVATE)
-                .getString(LoginActivity.ACCESS_TOKEN, null)
-        if (token.isNullOrBlank()) {
+        if (requireContext().portalApplication.sessions.current == null) {
             showError(R.string.session_expired, retryable = false)
             return
         }
@@ -93,7 +89,7 @@ class QuoteStatusDialogFragment : DialogFragment() {
         // on dismissal/destruction rather than retaining work beyond the custom view.
         requestJob = lifecycleScope.launch {
             try {
-                val quote = withContext(Dispatchers.IO) { service.getQuote(token, quoteId) }
+                val quote = withContext(Dispatchers.IO) { service.getQuote(quoteId) }
                 if (binding !== views) return@launch
                 views.loading.isVisible = false
                 renderQuote(quote, views)
@@ -102,7 +98,7 @@ class QuoteStatusDialogFragment : DialogFragment() {
                 throw error
             } catch (error: HttpException) {
                 when (error.code()) {
-                    401 -> { LoginActivity.clearSession(requireContext()); showError(R.string.session_expired, retryable = false) }
+                    401 -> showError(if (requireContext().portalApplication.sessions.current == null) R.string.session_expired else R.string.quote_status_loading_error, retryable = false)
                     404 -> showError(R.string.quote_status_not_found, retryable = false)
                     else -> showError(R.string.quote_status_loading_error, retryable = true)
                 }
@@ -199,9 +195,8 @@ class QuoteStatusDialogFragment : DialogFragment() {
         val views = binding ?: return
         val quote = currentQuote ?: return
         val result = QuoteSimulations.get(arguments?.getString(ARG_QUOTE_ID))
-        val token = requireActivity().intent.getStringExtra(LoginActivity.EXTRA_ACCESS_TOKEN)
-            ?: requireContext().getSharedPreferences(LoginActivity.SESSION_PREFERENCES, Context.MODE_PRIVATE).getString(LoginActivity.ACCESS_TOKEN, null)
-        val eligible = QuoteSimulations.isSessionActive(token) && QuoteStatusRules.canDecide(quote.stage, quote.status) && result == null
+        val sessionId = requireContext().portalApplication.sessions.current?.id
+        val eligible = QuoteSimulations.isSessionActive(sessionId) && QuoteStatusRules.canDecide(quote.stage, quote.status) && result == null
         views.acceptQuote.isVisible = eligible
         views.rejectQuote.isVisible = eligible
     }

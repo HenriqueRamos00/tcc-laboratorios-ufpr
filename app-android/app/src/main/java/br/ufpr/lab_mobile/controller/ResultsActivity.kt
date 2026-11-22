@@ -1,9 +1,7 @@
 package br.ufpr.lab_mobile.controller
 
-import android.content.Intent
 import android.os.Bundle
 import androidx.activity.enableEdgeToEdge
-import androidx.appcompat.app.AppCompatActivity
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowInsetsCompat
 import androidx.core.view.isVisible
@@ -14,20 +12,13 @@ import br.ufpr.lab_mobile.model.DemoLabReport
 import br.ufpr.lab_mobile.model.DemoLabReports
 import com.google.android.material.snackbar.Snackbar
 
-class ResultsActivity : AppCompatActivity() {
+class ResultsActivity : PortalActivity() {
     private lateinit var binding: ActivityResultsBinding
     private var portalDrawer: PortalDrawer? = null
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        val token = intent.getStringExtra(LoginActivity.EXTRA_ACCESS_TOKEN)
-            ?: getSharedPreferences(LoginActivity.SESSION_PREFERENCES, MODE_PRIVATE)
-                .getString(LoginActivity.ACCESS_TOKEN, null)
-        if (token.isNullOrBlank()) {
-            startActivity(Intent(this, LoginActivity::class.java))
-            finish()
-            return
-        }
+        if (!hasSession) return
         enableEdgeToEdge()
         binding = ActivityResultsBinding.inflate(layoutInflater)
         setContentView(binding.root)
@@ -36,7 +27,7 @@ class ResultsActivity : AppCompatActivity() {
             view.setPadding(bars.left, bars.top, bars.right, bars.bottom)
             insets
         }
-        portalDrawer = PortalDrawer(this, token, PortalDestination.REPORTS)
+        portalDrawer = PortalDrawer(this, PortalDestination.REPORTS)
         // shortcut: standalone demonstration, replace this source when HU 4 API integration lands.
         renderReports(DemoLabReports.reports)
     }

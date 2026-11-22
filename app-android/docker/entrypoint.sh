@@ -36,6 +36,14 @@ if [ -n "${ADB_DEVICE:-}" ]; then
     done
     if [ -n "${connected}" ]; then
         echo "[entrypoint] adb conectado em ${ADB_DEVICE}"
+        if [ "${ADB_REVERSE_PORT:-5125}" != "0" ]; then
+            api_port="${ADB_REVERSE_PORT:-5125}"
+            if adb -s "${ADB_DEVICE}" reverse "tcp:${api_port}" "tcp:${api_port}"; then
+                echo "[entrypoint] API localhost:${api_port} encaminhada para o aparelho"
+            else
+                echo "[entrypoint] aviso: refaca adb reverse antes de usar a API local" >&2
+            fi
+        fi
     else
         echo "[entrypoint] aviso: nao foi possivel conectar em ${ADB_DEVICE}" >&2
     fi

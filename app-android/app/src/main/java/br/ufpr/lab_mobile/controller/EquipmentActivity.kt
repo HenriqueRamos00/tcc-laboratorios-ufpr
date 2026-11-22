@@ -1,13 +1,11 @@
 package br.ufpr.lab_mobile.controller
 
-import android.content.Intent
 import android.os.Bundle
 import android.os.Parcelable
 import android.view.ViewGroup
 import android.view.inputmethod.EditorInfo
 import android.view.inputmethod.InputMethodManager
 import androidx.activity.enableEdgeToEdge
-import androidx.appcompat.app.AppCompatActivity
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowInsetsCompat
 import androidx.core.view.isVisible
@@ -31,11 +29,10 @@ import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
 import retrofit2.HttpException
 
-class EquipmentActivity : AppCompatActivity() {
+class EquipmentActivity : PortalActivity() {
     private lateinit var binding: ActivityEquipmentBinding
     private lateinit var header: EquipmentListHeaderBinding
     private lateinit var service: EquipmentService
-    private lateinit var token: String
     private var portalDrawer: PortalDrawer? = null
     private var loadedEquipment: List<Equipment>? = null
     private var requestJob: Job? = null
@@ -46,15 +43,7 @@ class EquipmentActivity : AppCompatActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        val sessionToken = intent.getStringExtra(LoginActivity.EXTRA_ACCESS_TOKEN)
-            ?: getSharedPreferences(LoginActivity.SESSION_PREFERENCES, MODE_PRIVATE)
-                .getString(LoginActivity.ACCESS_TOKEN, null)
-        if (sessionToken.isNullOrBlank()) {
-            startActivity(Intent(this, LoginActivity::class.java))
-            finish()
-            return
-        }
-        token = sessionToken
+        if (!hasSession) return
         enableEdgeToEdge()
         binding = ActivityEquipmentBinding.inflate(layoutInflater)
         setContentView(binding.root)
@@ -64,7 +53,7 @@ class EquipmentActivity : AppCompatActivity() {
             view.setPadding(bars.left, bars.top, bars.right, maxOf(bars.bottom, keyboard.bottom))
             insets
         }
-        portalDrawer = PortalDrawer(this, token, PortalDestination.EQUIPMENT)
+        portalDrawer = PortalDrawer(this, PortalDestination.EQUIPMENT)
         service = EquipmentService(
             RetrofitProvider.retrofit(getString(R.string.api_base_url)).create(EquipmentApiService::class.java),
         )
@@ -115,15 +104,14 @@ class EquipmentActivity : AppCompatActivity() {
         header.retry.isVisible = false
         requestJob = lifecycleScope.launch {
             try {
-                loadedEquipment = service.getEquipment(token)
+                loadedEquipment = service.getEquipment()
                 filterLoadedEquipment()
                 savedListPosition?.let { binding.equipmentList.layoutManager?.onRestoreInstanceState(it) }
                 savedListPosition = null
             } catch (error: CancellationException) {
                 throw error
             } catch (error: HttpException) {
-                if (error.code() == 401) LoginActivity.clearSession(this@EquipmentActivity)
-                showState(if (error.code() == 401) R.string.session_expired else R.string.equipment_loading_error, error.code() != 401)
+                showState(if (error.code() == 401 && sessions.current == null) R.string.session_expired else R.string.equipment_loading_error, error.code() != 401)
             } catch (_: Exception) {
                 showState(R.string.equipment_loading_error, retry = true)
             }

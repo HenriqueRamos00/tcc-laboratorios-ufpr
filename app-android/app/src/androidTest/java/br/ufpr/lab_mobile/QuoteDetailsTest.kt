@@ -69,9 +69,9 @@ class QuoteDetailsTest {
             }
             pdf = ByteArrayOutputStream().use { output -> document.writeTo(output); output.toByteArray() }
         } finally { document.close() }
-        val client = OkHttpClient.Builder().addInterceptor(Interceptor { chain ->
+        val client = OkHttpClient.Builder().addInterceptor(TestSession.interceptor(context)).addInterceptor(Interceptor { chain ->
             val request = chain.request()
-            assertEquals("Bearer test-session", request.header("Authorization"))
+            assertEquals("Bearer ${context.portalApplication.sessions.current!!.token}", request.header("Authorization"))
             if (request.method != "GET") forbiddenRequests.incrementAndGet()
             val isPdf = request.url.encodedPath.endsWith("/document")
             if (isPdf) {
@@ -150,9 +150,11 @@ class QuoteDetailsTest {
         retry()
         awaitPage(1)
         documentCode = 401
-        scenario!!.recreate()
-        awaitMessage(R.string.session_expired)
-        assertTrue(check { it.findViewById<View>(R.id.acceptQuote).visibility == View.GONE && it.findViewById<View>(R.id.rejectQuote).visibility == View.GONE })
+        // ActivityScenario.recreate waits for RESUMED, but this recreation must finish
+        // the protected Activity and clear its task when the API rejects the session.
+        scenario!!.onActivity { it.recreate() }
+        await("PDF unauthorized response returns to Login") { TestSession.loginVisible() }
+        assertNull(context.portalApplication.sessions.current)
         assertFalse(QuoteSimulations.confirm("quote-test", "PendingAcceptance", SimulatedDecision.ACCEPTED, null))
     }
 
@@ -283,7 +285,7 @@ class QuoteDetailsTest {
     private fun launch() {
         scenario = ActivityScenario.launch(Intent(context, QuoteDetailsActivity::class.java)
             .putExtra(QuoteDetailsActivity.EXTRA_QUOTE_ID, "quote-test")
-            .putExtra(LoginActivity.EXTRA_ACCESS_TOKEN, "test-session"))
+            .also { TestSession.start(context, "test-session") })
     }
     private fun retry() = scenario!!.onActivity { it.findViewById<View>(R.id.pdfRetryButton).performClick() }
     private fun openDecision(rejecting: Boolean) {

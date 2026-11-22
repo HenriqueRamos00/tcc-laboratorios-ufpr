@@ -49,7 +49,7 @@ class PortalResponsiveTest {
     fun useOfflineQuotes() {
         oldRetrofit = retrofitField.get(null)
         oldBaseUrl = baseUrlField.get(null)
-        val client = OkHttpClient.Builder().addInterceptor(Interceptor { chain ->
+        val client = OkHttpClient.Builder().addInterceptor(TestSession.interceptor(context)).addInterceptor(Interceptor { chain ->
             Response.Builder().request(chain.request()).protocol(Protocol.HTTP_1_1).code(200)
                 .message("Instrumented response").body("[]".toResponseBody()).build()
         }).build()
@@ -61,7 +61,7 @@ class PortalResponsiveTest {
         scenario?.close()
         retrofitField.set(null, oldRetrofit)
         baseUrlField.set(null, oldBaseUrl)
-        context.getSharedPreferences(LoginActivity.SESSION_PREFERENCES, 0).edit().clear().commit()
+        TestSession.clear(context)
     }
 
     @Test
@@ -159,13 +159,13 @@ class PortalResponsiveTest {
 
     private fun launchQuotes() {
         scenario = ActivityScenario.launch<QuotesActivity>(
-            Intent(context, QuotesActivity::class.java).putExtra(LoginActivity.EXTRA_ACCESS_TOKEN, "responsive-test-session"),
+            Intent(context, QuotesActivity::class.java).also { TestSession.start(context, "responsive-test-session") },
         )
     }
 
     private fun launchResults() {
         scenario = ActivityScenario.launch<ResultsActivity>(
-            Intent(context, ResultsActivity::class.java).putExtra(LoginActivity.EXTRA_ACCESS_TOKEN, "responsive-test-session"),
+            Intent(context, ResultsActivity::class.java).also { TestSession.start(context, "responsive-test-session") },
         )
     }
 
