@@ -17,7 +17,8 @@ public sealed class BackendLabClientDecisionRecording(
         if (request is not BackendLabClientDecisionRequest backendLabRequest)
             return new ClientDecisionResult(ClientDecisionOutcome.NotAllowed);
 
-        if (request.Kind is not (ClientDecisionKind.Acceptance or ClientDecisionKind.PurchaseOrder))
+        if (request.Kind is not (
+            ClientDecisionKind.Acceptance or ClientDecisionKind.PurchaseOrder or ClientDecisionKind.Rejection))
             return new ClientDecisionResult(ClientDecisionOutcome.NotAllowed);
 
         if (request.Kind == ClientDecisionKind.Acceptance && request.Terms is null)

@@ -218,10 +218,10 @@ public sealed class QuotesController : ControllerBase
         Func<ClientDecisionRequest> buildBackendLab,
         CancellationToken cancellationToken)
     {
-        bool isBackendLabAcceptance = _portal.DataSource == PortalOptions.BackendLabSource
-            && kind is ClientDecisionKind.Acceptance or ClientDecisionKind.PurchaseOrder;
+        bool isBackendLabDecision = _portal.DataSource == PortalOptions.BackendLabSource
+            && kind is ClientDecisionKind.Acceptance or ClientDecisionKind.PurchaseOrder or ClientDecisionKind.Rejection;
         bool isLactecDecision = _portal.DataSource == PortalOptions.LactecSource;
-        if (!isBackendLabAcceptance && !isLactecDecision)
+        if (!isBackendLabDecision && !isLactecDecision)
             return Task.FromResult(this.ClientDecisionsNotAvailable());
 
         ClientDecisionRequest request;

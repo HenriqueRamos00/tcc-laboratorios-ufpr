@@ -34,11 +34,11 @@ public sealed class SpringClientDecisionSubmission(HttpClient httpClient) : ICli
         }
         catch (HttpRequestException failure)
         {
-            throw new QuoteSourceUnavailableException("O registro do aceite no Spring falhou.", failure);
+            throw new QuoteSourceUnavailableException("O registro da decisão do cliente no Spring falhou.", failure);
         }
         catch (IOException failure)
         {
-            throw new QuoteSourceUnavailableException("O registro do aceite no Spring falhou.", failure);
+            throw new QuoteSourceUnavailableException("O registro da decisão do cliente no Spring falhou.", failure);
         }
 
         using (response)
@@ -59,7 +59,7 @@ public sealed class SpringClientDecisionSubmission(HttpClient httpClient) : ICli
 
             cancellationToken.ThrowIfCancellationRequested();
             if (!response.IsSuccessStatusCode)
-                throw new QuoteSourceUnavailableException("O Spring recusou o registro do aceite.");
+                throw new QuoteSourceUnavailableException("O Spring recusou o registro da decisão do cliente.");
         }
 
         return ClientDecisionOutcome.Recorded;
@@ -75,7 +75,22 @@ public sealed class SpringClientDecisionSubmission(HttpClient httpClient) : ICli
                 AcceptanceRequest(escapedId, request.Terms),
             ClientDecisionKind.PurchaseOrder when request.PurchaseOrder is not null =>
                 PurchaseOrderRequest(escapedId, request.PurchaseOrder),
-            _ => throw new ClientDecisionRequestRejectedException("A forma de aceite não foi informada corretamente.")
+            ClientDecisionKind.Rejection => RejectionRequest(escapedId, request.Justification),
+            _ => throw new ClientDecisionRequestRejectedException("A decisão do cliente não foi informada corretamente.")
+        };
+    }
+
+    private static HttpRequestMessage RejectionRequest(string quoteId, string? justification)
+    {
+        if (justification?.Length > FieldLimits.Justification)
+        {
+            throw new ClientDecisionRequestRejectedException(
+                $"A justificativa da recusa aceita até {FieldLimits.Justification} caracteres.");
+        }
+
+        return new HttpRequestMessage(HttpMethod.Post, $"api/client/quotes/{quoteId}/rejection")
+        {
+            Content = JsonContent.Create(new { justification }, options: JsonOptions)
         };
     }
 
@@ -164,6 +179,6 @@ public sealed class SpringClientDecisionSubmission(HttpClient httpClient) : ICli
             // A resposta de erro pode não conter o envelope JSON usado pelo Spring.
         }
 
-        return "O Spring não aceitou os dados enviados para o aceite.";
+        return "O Spring não aceitou os dados enviados para a decisão do cliente.";
     }
 }

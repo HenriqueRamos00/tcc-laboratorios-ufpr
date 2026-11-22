@@ -37,21 +37,47 @@ public sealed class BackendLabQuoteDecisionControllerTests
     }
 
     [Fact]
-    public async Task RecusaPermaneceIndisponivelNoModoBackendLab()
+    public async Task RecusaBackendLabEncaminhaJustificativaSemAutorLactec()
     {
-        int calls = 0;
-        QuotesController controller = Controller(new Recording(_ =>
+        ClientDecisionRequest? submitted = null;
+        QuotesController controller = Controller(new Recording(request =>
         {
-            calls++;
-            return new ClientDecisionResult(ClientDecisionOutcome.Recorded);
+            submitted = request;
+            return new ClientDecisionResult(
+                ClientDecisionOutcome.Recorded,
+                Receipt: new ClientDecisionReceipt(Guid.NewGuid(), request.Kind, DateTimeOffset.UtcNow));
         }));
         controller.ControllerContext = ContextWithBearer("token-spring");
 
         IActionResult action = await controller.RecordRejection("42", new RejectionRequest("Motivo"), CancellationToken.None);
 
         ObjectResult response = Assert.IsType<ObjectResult>(action);
-        Assert.Equal(StatusCodes.Status501NotImplemented, response.StatusCode);
-        Assert.Equal(0, calls);
+        Assert.Equal(StatusCodes.Status201Created, response.StatusCode);
+        Assert.IsType<ClientDecisionResponse>(response.Value);
+        BackendLabClientDecisionRequest request = Assert.IsType<BackendLabClientDecisionRequest>(submitted);
+        Assert.Equal(ClientDecisionKind.Rejection, request.Kind);
+        Assert.Equal("Motivo", request.Justification);
+    }
+
+    [Fact]
+    public async Task RecusaBackendLabAceitaJustificativaAusente()
+    {
+        ClientDecisionRequest? submitted = null;
+        QuotesController controller = Controller(new Recording(request =>
+        {
+            submitted = request;
+            return new ClientDecisionResult(
+                ClientDecisionOutcome.Recorded,
+                Receipt: new ClientDecisionReceipt(Guid.NewGuid(), request.Kind, DateTimeOffset.UtcNow));
+        }));
+
+        IActionResult action = await controller.RecordRejection("42", null, CancellationToken.None);
+
+        ObjectResult response = Assert.IsType<ObjectResult>(action);
+        Assert.Equal(StatusCodes.Status201Created, response.StatusCode);
+        BackendLabClientDecisionRequest request = Assert.IsType<BackendLabClientDecisionRequest>(submitted);
+        Assert.Equal(ClientDecisionKind.Rejection, request.Kind);
+        Assert.Equal(string.Empty, request.Justification);
     }
 
     private static QuotesController Controller(IForRecordingClientDecisions decisions) =>

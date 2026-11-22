@@ -58,6 +58,23 @@ public sealed class BackendLabClientDecisionRecordingTests
         Assert.Null(submission.QuoteId);
     }
 
+    [Fact]
+    public async Task RecusaEncaminhaJustificativaOpcionalAoSpring()
+    {
+        Submission submission = new(ClientDecisionOutcome.Recorded);
+        BackendLabClientDecisionRecording recording = new(submission, TimeProvider.System);
+
+        ClientDecisionResult result = await recording.RecordAsync(
+            "42",
+            new BackendLabClientDecisionRequest(ClientDecisionKind.Rejection, Justification: "Motivo"),
+            CancellationToken.None);
+
+        Assert.Equal(ClientDecisionOutcome.Recorded, result.Outcome);
+        Assert.Equal("42", submission.QuoteId);
+        Assert.Equal(ClientDecisionKind.Rejection, submission.Request?.Kind);
+        Assert.Equal("Motivo", submission.Request?.Justification);
+    }
+
     private sealed class Submission(ClientDecisionOutcome outcome) : IClientDecisionSubmission
     {
         public string? QuoteId { get; private set; }

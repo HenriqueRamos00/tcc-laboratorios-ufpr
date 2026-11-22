@@ -92,6 +92,89 @@ public sealed class SpringClientDecisionSubmissionTests
         Assert.Equal(content, fileBytes);
     }
 
+    [Fact]
+    public async Task EnviaRecusaComoJsonComJustificativaEEncaminhaOBearer()
+    {
+        string? sentPath = null;
+        string? sentAuthorization = null;
+        string? sentBody = null;
+        ResponseHandler server = new(async (request, _) =>
+        {
+            sentPath = request.RequestUri?.ToString();
+            sentAuthorization = request.Headers.Authorization?.ToString();
+            sentBody = await request.Content!.ReadAsStringAsync();
+            return new HttpResponseMessage(HttpStatusCode.OK);
+        });
+        using HttpClient client = Client(server, "token-client");
+        SpringClientDecisionSubmission submission = new(client);
+
+        ClientDecisionOutcome result = await submission.SubmitAsync(
+            "42",
+            new BackendLabClientDecisionRequest(ClientDecisionKind.Rejection, Justification: "Motivo da recusa"),
+            CancellationToken.None);
+
+        Assert.Equal(ClientDecisionOutcome.Recorded, result);
+        Assert.Equal("https://spring.test/api/client/quotes/42/rejection", sentPath);
+        Assert.Equal("Bearer token-client", sentAuthorization);
+        using JsonDocument body = JsonDocument.Parse(sentBody!);
+        Assert.Equal("Motivo da recusa", body.RootElement.GetProperty("justification").GetString());
+    }
+
+    [Fact]
+    public async Task EnviaRecusaSemJustificativa()
+    {
+        string? sentBody = null;
+        using HttpClient client = Client(new ResponseHandler(async (request, _) =>
+        {
+            sentBody = await request.Content!.ReadAsStringAsync();
+            return new HttpResponseMessage(HttpStatusCode.OK);
+        }), "token-client");
+        SpringClientDecisionSubmission submission = new(client);
+
+        ClientDecisionOutcome result = await submission.SubmitAsync(
+            "42", new BackendLabClientDecisionRequest(ClientDecisionKind.Rejection), CancellationToken.None);
+
+        Assert.Equal(ClientDecisionOutcome.Recorded, result);
+        using JsonDocument body = JsonDocument.Parse(sentBody!);
+        Assert.Equal(JsonValueKind.Null, body.RootElement.GetProperty("justification").ValueKind);
+    }
+
+    [Fact]
+    public async Task EnviaRecusaComJustificativaNoLimiteDeMilCaracteres()
+    {
+        string justification = new('a', FieldLimits.Justification);
+        string? sentBody = null;
+        using HttpClient client = Client(new ResponseHandler(async (request, _) =>
+        {
+            sentBody = await request.Content!.ReadAsStringAsync();
+            return new HttpResponseMessage(HttpStatusCode.OK);
+        }), "token-client");
+        SpringClientDecisionSubmission submission = new(client);
+
+        ClientDecisionOutcome result = await submission.SubmitAsync(
+            "42", new BackendLabClientDecisionRequest(ClientDecisionKind.Rejection, Justification: justification),
+            CancellationToken.None);
+
+        Assert.Equal(ClientDecisionOutcome.Recorded, result);
+        using JsonDocument body = JsonDocument.Parse(sentBody!);
+        Assert.Equal(justification, body.RootElement.GetProperty("justification").GetString());
+    }
+
+    [Fact]
+    public async Task RecusaNaoEnviaJustificativaAcimaDoLimiteDeMilCaracteres()
+    {
+        using HttpClient client = Client(new ResponseHandler((_, _) =>
+            throw new InvalidOperationException("Não deve chamar o Spring.")), "token-client");
+        SpringClientDecisionSubmission submission = new(client);
+
+        await Assert.ThrowsAsync<ClientDecisionRequestRejectedException>(() => submission.SubmitAsync(
+            "42",
+            new BackendLabClientDecisionRequest(
+                ClientDecisionKind.Rejection,
+                Justification: new string('a', FieldLimits.Justification + 1)),
+            CancellationToken.None));
+    }
+
     [Theory]
     [InlineData(HttpStatusCode.Unauthorized, ClientDecisionOutcome.Recorded)]
     [InlineData(HttpStatusCode.Forbidden, ClientDecisionOutcome.Recorded)]
