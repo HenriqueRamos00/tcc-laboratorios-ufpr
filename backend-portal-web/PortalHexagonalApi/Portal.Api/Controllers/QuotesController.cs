@@ -27,9 +27,14 @@ namespace Portal.Api.Controllers;
 [Route("api/quotes")]
 public sealed class QuotesController : ControllerBase
 {
-    public const int MaxPurchaseOrderBytes = 10 * 1024 * 1024;
+    public const int MaxPurchaseOrderBytes = 50 * 1024 * 1024;
 
-    private static readonly byte[] PdfSignature = "%PDF-"u8.ToArray();
+    private static readonly (string Extension, byte[] Signature)[] PurchaseOrderFormats =
+    [
+        (".pdf", "%PDF-"u8.ToArray()),
+        (".doc", [0xD0, 0xCF, 0x11, 0xE0, 0xA1, 0xB1, 0x1A, 0xE1]),
+        (".docx", [(byte)'P', (byte)'K', 0x03, 0x04])
+    ];
 
     private readonly IQuoteUseCase _quoteUseCase;
     private readonly IForRecordingClientDecisions _decisions;
@@ -122,7 +127,12 @@ public sealed class QuotesController : ControllerBase
         if (!request.TryToTerms(out AcceptanceTerms terms, out string problem))
             return Task.FromResult(this.InvalidClientDecision(problem));
 
-        return RecordAsync(id, author => new ClientDecisionRequest(ClientDecisionKind.Acceptance, author, Terms: terms), cancellationToken);
+        return RecordAsync(
+            id,
+            ClientDecisionKind.Acceptance,
+            author => new LactecClientDecisionRequest(ClientDecisionKind.Acceptance, author, Terms: terms),
+            () => new BackendLabClientDecisionRequest(ClientDecisionKind.Acceptance, Terms: terms),
+            cancellationToken);
     }
 
     [HttpPost("{id}/purchase-order")]
@@ -147,17 +157,23 @@ public sealed class QuotesController : ControllerBase
             content = buffer.ToArray();
         }
 
-        if (!content.AsSpan().StartsWith(PdfSignature))
-            return this.InvalidClientDecision("A ordem de compra precisa ser um arquivo PDF.");
-
-        string fileName = Path.GetFileName(file.FileName.Trim());
+        string originalFileName = file.FileName.Trim();
+        int lastSeparator = Math.Max(originalFileName.LastIndexOf('/'), originalFileName.LastIndexOf('\\'));
+        string fileName = originalFileName[(lastSeparator + 1)..];
         if (fileName.Length is 0 or > 255) fileName = "ordem-de-compra.pdf";
+
+        if (!PurchaseOrderFormats.Any(format =>
+                fileName.EndsWith(format.Extension, StringComparison.OrdinalIgnoreCase)
+                && content.AsSpan().StartsWith(format.Signature)))
+            return this.InvalidClientDecision("A ordem de compra precisa ser um arquivo PDF, DOC ou DOCX válido.");
 
         PurchaseOrderFile purchaseOrder = new(fileName, content);
 
         return await RecordAsync(
             id,
-            author => new ClientDecisionRequest(ClientDecisionKind.PurchaseOrder, author, PurchaseOrder: purchaseOrder),
+            ClientDecisionKind.PurchaseOrder,
+            author => new LactecClientDecisionRequest(ClientDecisionKind.PurchaseOrder, author, PurchaseOrder: purchaseOrder),
+            () => new BackendLabClientDecisionRequest(ClientDecisionKind.PurchaseOrder, PurchaseOrder: purchaseOrder),
             cancellationToken);
     }
 
@@ -167,7 +183,12 @@ public sealed class QuotesController : ControllerBase
     [ProducesResponseType<ProblemDetails>(StatusCodes.Status409Conflict)]
     public Task<IActionResult> RecordSampleShipment(string id, CancellationToken cancellationToken)
     {
-        return RecordAsync(id, author => new ClientDecisionRequest(ClientDecisionKind.SampleShipment, author), cancellationToken);
+        return RecordAsync(
+            id,
+            ClientDecisionKind.SampleShipment,
+            author => new LactecClientDecisionRequest(ClientDecisionKind.SampleShipment, author),
+            () => new BackendLabClientDecisionRequest(ClientDecisionKind.SampleShipment),
+            cancellationToken);
     }
 
     [HttpPost("{id}/rejection")]
@@ -184,29 +205,43 @@ public sealed class QuotesController : ControllerBase
 
         return RecordAsync(
             id,
-            author => new ClientDecisionRequest(ClientDecisionKind.Rejection, author, Justification: justification),
+            ClientDecisionKind.Rejection,
+            author => new LactecClientDecisionRequest(ClientDecisionKind.Rejection, author, Justification: justification),
+            () => new BackendLabClientDecisionRequest(ClientDecisionKind.Rejection, Justification: justification),
             cancellationToken);
     }
 
     private Task<IActionResult> RecordAsync(
         string id,
-        Func<ClientDecisionAuthor, ClientDecisionRequest> build,
+        ClientDecisionKind kind,
+        Func<ClientDecisionAuthor, ClientDecisionRequest> buildLactec,
+        Func<ClientDecisionRequest> buildBackendLab,
         CancellationToken cancellationToken)
     {
-        if (_portal.DataSource != PortalOptions.LactecSource)
+        bool isBackendLabAcceptance = _portal.DataSource == PortalOptions.BackendLabSource
+            && kind is ClientDecisionKind.Acceptance or ClientDecisionKind.PurchaseOrder;
+        bool isLactecDecision = _portal.DataSource == PortalOptions.LactecSource;
+        if (!isBackendLabAcceptance && !isLactecDecision)
             return Task.FromResult(this.ClientDecisionsNotAvailable());
 
-        var user = PortalJwtService.ReadUser(User);
-        ClientDecisionAuthor author = new(user.Id, user.Name, user.Email);
+        ClientDecisionRequest request;
+        if (isLactecDecision)
+        {
+            var user = PortalJwtService.ReadUser(User);
+            ClientDecisionAuthor author = new(user.Id, user.Name, user.Email);
+            request = buildLactec(author);
+        }
+        else
+            request = buildBackendLab();
 
         return AnswerAsync(async () =>
         {
-            ClientDecisionResult result = await _decisions.RecordAsync(id, build(author), cancellationToken);
+            ClientDecisionResult result = await _decisions.RecordAsync(id, request, cancellationToken);
 
             return result.Outcome switch
             {
                 ClientDecisionOutcome.Recorded => StatusCode(
-                    StatusCodes.Status201Created, ClientDecisionResponse.From(result.Decision)),
+                    StatusCodes.Status201Created, ClientDecisionResponse.From(result)),
                 ClientDecisionOutcome.QuoteNotFound => this.QuoteNotFound(),
                 _ => this.ClientDecisionNotAllowed()
             };
@@ -235,6 +270,10 @@ public sealed class QuotesController : ControllerBase
         catch (ClientDecisionStoreUnavailableException failure)
         {
             return failure.Connected ? this.ClientDecisionStoreUnavailable() : this.ClientDecisionsNotAvailable();
+        }
+        catch (ClientDecisionRequestRejectedException failure)
+        {
+            return this.InvalidClientDecision(failure.Message);
         }
         catch (InvalidOperationException)
         {

@@ -22,6 +22,8 @@ public sealed class ClientDecisionRecording : IForRecordingClientDecisions
         CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(request);
+        if (request is not LactecClientDecisionRequest lactecRequest)
+            throw new ArgumentException("A gravação Lactec exige um pedido com autor autenticado.", nameof(request));
 
         QuoteWithLaboratoryStage? found = await _quotes.GetQuoteByIdAsync(quoteId, cancellationToken);
 
@@ -43,7 +45,7 @@ public sealed class ClientDecisionRecording : IForRecordingClientDecisions
             found.Quote.Id,
             found.Quote.Code,
             request.Kind,
-            request.Author,
+            lactecRequest.Author,
             _time.GetUtcNow(),
             request.Terms,
             request.PurchaseOrder,
