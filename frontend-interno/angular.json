@@ -37,6 +37,7 @@
             ],
             "styles": [
               "src/theme.scss",
+              "node_modules/driver.js/dist/driver.css",
               "src/styles.css"
             ],
             "scripts": []
@@ -101,6 +102,7 @@
             ],
             "styles": [
               "src/theme.scss",
+              "node_modules/driver.js/dist/driver.css",
               "src/styles.css"
             ],
             "scripts": [],

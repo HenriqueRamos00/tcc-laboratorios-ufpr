@@ -34,7 +34,7 @@
     </div>
   </section>
 } @else {
-  <header class="flex flex-wrap items-start justify-between gap-4">
+  <header data-tour="pagina-cabecalho" class="flex flex-wrap items-start justify-between gap-4">
     <div class="min-w-0">
       <h1 class="m-0 flex flex-wrap items-center gap-x-3 gap-y-2 text-2xl font-semibold text-lactec-ink md:text-3xl">
         <span>Atualizar status do ensaio</span>
@@ -52,7 +52,7 @@
     </div>
   </header>
 
-  <section class="mt-6 rounded-2xl border border-lactec-line bg-white p-5 md:p-6" aria-labelledby="test-summary-heading">
+  <section data-tour="ensaio-status-resumo" class="mt-6 rounded-2xl border border-lactec-line bg-white p-5 md:p-6" aria-labelledby="test-summary-heading">
     <div class="flex flex-wrap items-start justify-between gap-4">
       <div class="min-w-0">
         <h2 id="test-summary-heading" class="m-0 text-lg font-semibold text-lactec-ink">Dados do ensaio</h2>
@@ -92,7 +92,7 @@
     </dl>
   </section>
 
-  <section class="mt-5 rounded-2xl border border-lactec-line bg-white p-5 md:p-6" aria-labelledby="status-flow-heading">
+  <section data-tour="ensaio-status-fluxo" class="mt-5 rounded-2xl border border-lactec-line bg-white p-5 md:p-6" aria-labelledby="status-flow-heading">
     <div>
       <h2 id="status-flow-heading" class="m-0 text-lg font-semibold text-lactec-ink">Fluxo de status</h2>
     <p class="mb-0 mt-1 text-sm text-lactec-muted">O progresso mostra o status salvo. Escolha uma nova etapa e aplique a alteração quando estiver pronto.</p>
@@ -120,7 +120,7 @@
     }
 
     @if (detail()!.status === 'drafting-report') {
-      <section class="mt-5 rounded-xl border border-lactec-line-soft bg-lactec-line-soft/40 p-4" aria-labelledby="test-reports-heading">
+      <section data-tour="ensaio-status-documento" class="mt-5 rounded-xl border border-lactec-line-soft bg-lactec-line-soft/40 p-4" aria-labelledby="test-reports-heading">
         <div class="report-preparation__header">
           <div class="report-preparation__copy">
             <h3 id="test-reports-heading" class="m-0 text-base font-semibold text-lactec-ink">Relatório técnico</h3>
@@ -268,7 +268,7 @@
     }
   </section>
 
-  <section class="mt-5 rounded-2xl border border-lactec-line bg-white p-5 md:p-6" aria-labelledby="history-heading">
+  <section data-tour="ensaio-status-historico" class="mt-5 rounded-2xl border border-lactec-line bg-white p-5 md:p-6" aria-labelledby="history-heading">
     <div class="flex flex-wrap items-center justify-between gap-3">
       <div>
         <h2 id="history-heading" class="m-0 text-lg font-semibold text-lactec-ink">Histórico de status</h2>

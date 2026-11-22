@@ -1,11 +1,12 @@
 <section class="mx-auto flex w-full min-w-0 max-w-7xl flex-col">
   <app-page-header
+    data-tour="pagina-cabecalho"
     [breadcrumbs]="breadcrumbs"
     title="Pesquisar Orçamentos"
     subtitle="Localize uma proposta e consulte os dados técnicos disponíveis."
   />
 
-  <section class="mt-6 grid min-w-0 grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-[minmax(0,1fr)_minmax(10rem,auto)_minmax(10rem,auto)_minmax(12rem,auto)] xl:items-end" aria-label="Filtros de orçamentos técnicos">
+  <section data-tour="pagina-filtros" class="mt-6 grid min-w-0 grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-[minmax(0,1fr)_minmax(10rem,auto)_minmax(10rem,auto)_minmax(12rem,auto)] xl:items-end" aria-label="Filtros de orçamentos técnicos">
     <app-search-field
       class="min-w-0 sm:col-span-2 xl:col-span-1"
       [value]="searchControl.value"
@@ -72,6 +73,7 @@
     </div>
   } @else if (!intervaloDatasInvalido() && erro()) {
     <app-empty-state
+      data-tour="pagina-resultados"
       class="mt-6"
       icon="cloud_off"
       tom="erro"
@@ -84,13 +86,14 @@
     </app-empty-state>
   } @else if (!intervaloDatasInvalido() && !orcamentos().length) {
     <app-empty-state
+      data-tour="pagina-resultados"
       class="mt-6"
       icon="search_off"
       title="Nenhum orçamento encontrado"
       descricao="Altere a busca ou os filtros e tente novamente."
     />
   } @else if (!intervaloDatasInvalido()) {
-    <section class="mt-6 min-w-0 overflow-hidden rounded-2xl border border-lactec-line bg-lactec-paper" aria-label="Resultados da pesquisa de orçamentos técnicos">
+    <section data-tour="pagina-resultados" class="mt-6 min-w-0 overflow-hidden rounded-2xl border border-lactec-line bg-lactec-paper" aria-label="Resultados da pesquisa de orçamentos técnicos">
       <div class="overflow-x-auto focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-lactec-primary" tabindex="0" role="region" aria-label="Tabela de orçamentos técnicos; role horizontalmente para ver todas as colunas">
         <table class="w-full min-w-[820px] table-auto border-collapse text-sm">
           <caption class="sr-only">Orçamentos técnicos com proposta, nome, empresa, data de criação, status técnico e ação para abrir detalhes.</caption>
@@ -145,6 +148,7 @@
   @if (totalItems() > 0 && !intervaloDatasInvalido()) {
     <div class="mt-3 min-w-0 overflow-hidden rounded-xl border border-lactec-line bg-lactec-paper">
       <mat-paginator
+        data-tour="pagina-paginacao"
         [length]="totalItems()"
         [pageIndex]="pageIndex()"
         [pageSize]="pageSize()"

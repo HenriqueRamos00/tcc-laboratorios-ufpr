@@ -1,11 +1,12 @@
 <section class="reports-page mx-auto flex w-full max-w-[1440px] flex-col gap-6">
   <app-page-header
+    data-tour="pagina-cabecalho"
     [title]="pageTitle"
     subtitle="Consulte e valide os documentos técnicos dos ensaios."
     [breadcrumbs]="[{ label: 'Painel técnico', route: '/tecnico' }, { label: breadcrumbLabel }]"
   />
 
-  <section class="reports-filters" aria-label="Filtros de relatórios">
+  <section data-tour="pagina-filtros" class="reports-filters" aria-label="Filtros de relatórios">
     <app-search-field
       [value]="search.value"
       placeholder="Nº de registro, amostra, cliente ou tipo..."
@@ -39,7 +40,7 @@
   </section>
 
   <section class="reports-workspace" aria-label="Lista e detalhe de relatórios">
-    <aside class="reports-list-panel" aria-label="Lista de relatórios">
+    <aside data-tour="pagina-resultados" class="reports-list-panel" aria-label="Lista de relatórios">
       <div class="reports-list-heading">
         <div>
           <p class="reports-overline">Documentos técnicos</p>
@@ -114,7 +115,7 @@
         </div>
 
         @if (hasMoreThanOnePage()) {
-          <nav class="reports-pagination" aria-label="Paginação dos relatórios">
+          <nav data-tour="pagina-paginacao" class="reports-pagination" aria-label="Paginação dos relatórios">
             <button
               mat-icon-button
               type="button"
@@ -169,6 +170,7 @@
         </div>
       } @else {
         <app-report-detail
+          data-tour="relatorio-detalhe"
           [report]="detail()!"
           [saving]="saving()"
           [validationConflict]="validationConflict()"
