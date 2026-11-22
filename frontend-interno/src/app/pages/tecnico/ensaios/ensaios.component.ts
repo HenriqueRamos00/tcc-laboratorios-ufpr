@@ -28,6 +28,7 @@ import {
   processStatusLabel,
 } from '@/app/model/ensaio-presentation';
 import { EnsaiosService } from '@/app/services/ensaios.service';
+import { ActionButtonComponent } from '@shared/components/action-button/action-button.component';
 
 @Component({
   selector: 'app-ensaios',
@@ -38,6 +39,7 @@ import { EnsaiosService } from '@/app/services/ensaios.service';
     MatIconModule,
     MatProgressSpinnerModule,
     RouterLink,
+    ActionButtonComponent,
   ],
   templateUrl: './ensaios.component.html',
   changeDetection: ChangeDetectionStrategy.OnPush,

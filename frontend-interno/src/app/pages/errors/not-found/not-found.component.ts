@@ -1,11 +1,10 @@
 import { ChangeDetectionStrategy, Component } from '@angular/core';
-import { MatButtonModule } from '@angular/material/button';
-import { RouterLink } from '@angular/router';
+import { ActionButtonComponent } from '@shared/components/action-button/action-button.component';
 
 @Component({
   selector: 'app-not-found',
   standalone: true,
-  imports: [RouterLink, MatButtonModule],
+  imports: [ActionButtonComponent],
   template: `
     <main class="min-h-svh grid place-items-center bg-lactec-surface px-6">
       <div class="text-center max-w-md">
@@ -14,7 +13,7 @@ import { RouterLink } from '@angular/router';
           Página não encontrada
         </h1>
         <p class="text-lactec-muted text-sm m-0">O endereço acessado não existe ou foi movido.</p>
-        <a mat-flat-button routerLink="/" class="mt-6">Voltar ao início</a>
+        <app-action-button label="Voltar ao início" routerLink="/" class="mt-6" />
       </div>
     </main>
   `,

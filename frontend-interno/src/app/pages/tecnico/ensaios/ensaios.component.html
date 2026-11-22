@@ -17,9 +17,12 @@
       Consulte e mantenha execuções de análise do laboratório.
     </p>
   </div>
-  <a mat-flat-button routerLink="/tecnico/ensaios/novo" [queryParams]="quoteId() ? { quoteId: quoteId(), quoteCode: quoteCode() } : {}"
-    ><mat-icon>add</mat-icon>Novo ensaio</a
-  >
+  <app-action-button
+    label="Novo ensaio"
+    icon="add"
+    routerLink="/tecnico/ensaios/novo"
+    [queryParams]="quoteId() ? { quoteId: quoteId(), quoteCode: quoteCode() } : {}"
+  />
 </header>
 @if (quoteId()) {
   <div class="mt-4 flex flex-wrap items-center gap-3 rounded-lg bg-lactec-line-soft p-3 text-sm">
@@ -69,7 +72,11 @@
     <p class="text-sm text-lactec-muted">
       Ajuste a busca ou cadastre uma nova execução.
     </p>
-    <a mat-stroked-button routerLink="/tecnico/ensaios/novo">Cadastrar ensaio</a>
+    <app-action-button
+      label="Cadastrar ensaio"
+      variant="secondary"
+      routerLink="/tecnico/ensaios/novo"
+    />
   </section>
 } @else {
   <div
@@ -109,18 +116,20 @@
               <td class="px-4 py-3">{{ statusLabel(item.status) }}</td>
               <td class="px-4 py-2">
                 <div class="flex flex-wrap items-center gap-1">
-                  <a
-                    mat-button
+                  <app-action-button
+                    label="Acompanhar"
+                    icon="timeline"
+                    variant="text"
                     [routerLink]="['/tecnico/ensaios', item.id, 'status']"
-                    [attr.aria-label]="'Acompanhar status do ensaio ' + item.code"
-                    ><mat-icon>timeline</mat-icon>Acompanhar</a
-                  >
-                  <a
-                    mat-button
+                    [ariaLabel]="'Acompanhar status do ensaio ' + item.code"
+                  />
+                  <app-action-button
+                    label="Editar"
+                    icon="edit"
+                    variant="text"
                     [routerLink]="['/tecnico/ensaios', item.id, 'editar']"
-                    [attr.aria-label]="'Editar ensaio ' + item.code"
-                    ><mat-icon>edit</mat-icon>Editar</a
-                  >
+                    [ariaLabel]="'Editar ensaio ' + item.code"
+                  />
                 </div>
               </td>
             </tr>

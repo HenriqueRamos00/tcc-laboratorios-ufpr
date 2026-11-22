@@ -156,15 +156,14 @@
                     </span>
                   </td>
                   <td class="px-5 py-4 sm:px-6">
-                    <a mat-stroked-button
+                    <app-action-button
+                      label="Abrir laudo"
+                      icon="visibility"
+                      variant="secondary"
                       [routerLink]="['/tecnico/relatorios', laudo.id]"
-                      [attr.aria-label]="'Abrir laudo ' + laudo.id"
-                      class="whitespace-nowrap">
-                      <span class="inline-flex items-center gap-2">
-                        <mat-icon class="icone-20" aria-hidden="true">visibility</mat-icon>
-                        <span>Abrir laudo</span>
-                      </span>
-                    </a>
+                      [ariaLabel]="'Abrir laudo ' + laudo.id"
+                      class="whitespace-nowrap"
+                    />
                   </td>
                 </tr>
               }

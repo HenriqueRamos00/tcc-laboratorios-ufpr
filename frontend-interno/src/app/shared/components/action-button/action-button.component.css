@@ -14,6 +14,11 @@
   line-height: 1.25;
 }
 
+.action-button--unavailable {
+  cursor: not-allowed;
+  opacity: 0.55;
+}
+
 .action-button__content {
   display: inline-flex;
   min-width: 0;
