@@ -85,8 +85,8 @@ class QuoteDetailsServiceTest {
         }
 
         override suspend fun getQuotes(
-            search: String?,
-            status: String?,
+            page: Int,
+            pageSize: Int,
         ): Response<JsonElement> = error("Unexpected list request")
     }
 }

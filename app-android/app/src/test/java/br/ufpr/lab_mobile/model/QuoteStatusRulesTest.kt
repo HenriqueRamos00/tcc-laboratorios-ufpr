@@ -18,7 +18,6 @@ class QuoteStatusRulesTest {
             "Recebido" to QuoteStage.RECEIVED,
             "Protocolado" to QuoteStage.REGISTERED,
             "Em execução" to QuoteStage.RUNNING,
-            "Incompleto" to QuoteStage.INCOMPLETE,
             "Completo" to QuoteStage.COMPLETE,
             "Validado" to QuoteStage.VALIDATED,
             "Finalizado" to QuoteStage.FINISHED,
@@ -28,7 +27,7 @@ class QuoteStatusRulesTest {
         val keys = listOf(
             "qualificacao", "analise-da-area", "elaborando-proposta", "negociacao",
             "aprovado-pelo-cliente", "aguardando-amostra", "recebido", "protocolado",
-            "em-execucao", "incompleto", "completo", "validado", "finalizado",
+            "em-execucao", "completo", "validado", "finalizado",
             "elaborando-relatorio", "relatorio-publicado",
         )
 
@@ -55,7 +54,7 @@ class QuoteStatusRulesTest {
     }
 
     @Test
-    fun terminalStageOrStatusOverridesProgressAndIncompleteIsNotTerminal() {
+    fun terminalStageOrStatusOverridesProgress() {
         assertEquals(
             ResolvedQuoteStatus.Terminal(TerminalQuoteStatus.CANCELLED),
             QuoteStatusRules.resolve("Finalizado", "Cancelado"),
@@ -68,20 +67,25 @@ class QuoteStatusRulesTest {
             ResolvedQuoteStatus.Terminal(TerminalQuoteStatus.REFUSED),
             QuoteStatusRules.resolve("Recusado", "Incompleto"),
         )
-        assertEquals(QuoteStage.INCOMPLETE, progress("Incompleto"))
         assertEquals(QuoteStage.COMPLETE, progress("Completo"))
     }
 
     @Test
-    fun decisionEligibilityDependsOnlyOnNormalizedPendingAcceptanceStatus() {
-        val stages = listOf(null) + QuoteStage.entries.map { it.key } + listOf("future-stage")
-        stages.forEach { stage ->
-            assertTrue(QuoteStatusRules.canDecide(stage, "Pendente de Aceite"))
-            assertTrue(QuoteStatusRules.canDecide(stage, "  PENDINGACCEPTANCE\u00a0"))
+    fun decisionRequiresPendingAcceptanceAndEffectiveNegotiationStage() {
+        QuoteStage.entries.forEach { stage ->
+            assertEquals(stage == QuoteStage.NEGOTIATION,
+                QuoteStatusRules.canDecide(quote(stage.key, status = "Pendente de Aceite")))
+            assertEquals(stage >= QuoteStage.NEGOTIATION,
+                QuoteStatusRules.hasProposal(QuoteStatusRules.resolve(quote(stage.key))))
         }
+        assertTrue(QuoteStatusRules.canDecide(quote("Em negociação", status = "  PENDINGACCEPTANCE\u00a0")))
         listOf(null, "", " ", "Pending", "InProgress", "Accepted", "Refused", "Unknown").forEach { status ->
-            assertFalse("stage should not make status eligible: $status", QuoteStatusRules.canDecide("qualificacao", status))
+            assertFalse(QuoteStatusRules.canDecide(quote("Em negociação", status = status)))
         }
+        listOf("acceptance", "purchase-order", "sample-shipment", "rejection").forEach { decision ->
+            assertFalse(QuoteStatusRules.canDecide(quote("Em negociação", decision = decision, status = "PendingAcceptance")))
+        }
+        assertFalse(QuoteStatusRules.canDecide(quote("Em negociação", laboratoryStage = "relatorio-publicado", status = "PendingAcceptance")))
     }
 
     @Test
@@ -108,34 +112,21 @@ class QuoteStatusRulesTest {
         assertEquals(QuotePhase.PROPOSAL, QuoteStatusRules.phase(QuoteStage.QUALIFICATION))
         assertEquals(QuotePhase.PROPOSAL, QuoteStatusRules.phase(QuoteStage.NEGOTIATION))
         assertEquals(QuotePhase.TECHNICAL, QuoteStatusRules.phase(QuoteStage.RECEIVED))
-        assertEquals(QuotePhase.TECHNICAL, QuoteStatusRules.phase(QuoteStage.INCOMPLETE))
+        assertEquals(QuotePhase.TECHNICAL, QuoteStatusRules.phase(QuoteStage.RUNNING))
         assertEquals(QuotePhase.LABORATORY, QuoteStatusRules.phase(QuoteStage.COMPLETE))
         assertEquals(QuotePhase.LABORATORY, QuoteStatusRules.phase(QuoteStage.PUBLISHED))
     }
 
     @Test
-    fun everyWindowHasThreeOrderedStepsWithinItsSelectedPhaseAndOneActiveStep() {
+    fun everyWindowHasThreeConsecutiveStepsAndOneActiveStep() {
         QuoteStage.entries.forEach { stage ->
             val window = QuoteStatusRules.window(stage)
-            val phase = QuoteStatusRules.phase(stage)
             assertEquals(3, window.size)
-            val visibleSteps = window.filterNotNull()
-            assertTrue(visibleSteps.size in 2..3)
-            assertEquals(visibleSteps.map { it.stage.ordinal }.sorted(), visibleSteps.map { it.stage.ordinal })
-            assertTrue(visibleSteps.all { it.stage.ordinal in phase.first..phase.last })
-            assertEquals(stage, window[1]?.stage)
-            assertEquals(QuoteStepState.ACTIVE, window[1]?.state)
-            assertEquals(
-                if (stage.ordinal > phase.first) QuoteStage.entries[stage.ordinal - 1] else null,
-                window[0]?.stage,
-            )
-            assertEquals(
-                if (stage.ordinal < phase.last) QuoteStage.entries[stage.ordinal + 1] else null,
-                window[2]?.stage,
-            )
-            visibleSteps.forEach { step ->
+            assertTrue(window.zipWithNext().all { (previous, next) -> next.stage.ordinal == previous.stage.ordinal + 1 })
+            assertEquals(stage, window.single { it.state == QuoteStepState.ACTIVE }.stage)
+            window.forEach { step ->
                 val expected = when {
-                    step.stage.ordinal < stage.ordinal -> QuoteStepState.COMPLETED
+                    step.stage < stage -> QuoteStepState.COMPLETED
                     step.stage == stage -> QuoteStepState.ACTIVE
                     else -> QuoteStepState.PENDING
                 }
@@ -146,25 +137,20 @@ class QuoteStatusRulesTest {
 
     @Test
     fun phaseStartMiddleAndEndWindowsAreExplicit() {
-        assertWindow(QuoteStage.QUALIFICATION, null, QuoteStage.QUALIFICATION, QuoteStage.AREA_ANALYSIS)
+        assertWindow(QuoteStage.QUALIFICATION, QuoteStage.QUALIFICATION, QuoteStage.AREA_ANALYSIS, QuoteStage.DRAFTING)
         assertWindow(QuoteStage.NEGOTIATION, QuoteStage.DRAFTING, QuoteStage.NEGOTIATION, QuoteStage.APPROVED)
         assertWindow(QuoteStage.AWAITING_SAMPLE, QuoteStage.APPROVED, QuoteStage.AWAITING_SAMPLE, QuoteStage.RECEIVED)
 
-        assertWindow(QuoteStage.RECEIVED, null, QuoteStage.RECEIVED, QuoteStage.REGISTERED)
-        assertWindow(QuoteStage.RUNNING, QuoteStage.REGISTERED, QuoteStage.RUNNING, QuoteStage.INCOMPLETE)
-        assertWindow(QuoteStage.INCOMPLETE, QuoteStage.RUNNING, QuoteStage.INCOMPLETE, QuoteStage.COMPLETE)
+        assertWindow(QuoteStage.RECEIVED, QuoteStage.AWAITING_SAMPLE, QuoteStage.RECEIVED, QuoteStage.REGISTERED)
+        assertWindow(QuoteStage.RUNNING, QuoteStage.REGISTERED, QuoteStage.RUNNING, QuoteStage.COMPLETE)
 
-        assertWindow(QuoteStage.COMPLETE, null, QuoteStage.COMPLETE, QuoteStage.VALIDATED)
+        assertWindow(QuoteStage.COMPLETE, QuoteStage.RUNNING, QuoteStage.COMPLETE, QuoteStage.VALIDATED)
         assertWindow(QuoteStage.FINISHED, QuoteStage.VALIDATED, QuoteStage.FINISHED, QuoteStage.DRAFTING_REPORT)
-        assertWindow(QuoteStage.PUBLISHED, QuoteStage.DRAFTING_REPORT, QuoteStage.PUBLISHED, null)
+        assertWindow(QuoteStage.PUBLISHED, QuoteStage.FINISHED, QuoteStage.DRAFTING_REPORT, QuoteStage.PUBLISHED)
     }
 
     @Test
     fun realStageCombinesCommercialLaboratoryAndClientDecision() {
-        fun quote(stage: String?, laboratoryStage: String? = null, decision: String? = null, status: String? = null) =
-            Quote("q", "Q", null, status, stage, null, null, null, null, null, null,
-                laboratoryStage = laboratoryStage,
-                clientDecision = decision?.let { ClientDecision("d", it, null) })
         fun progress(stage: QuoteStage) = ResolvedQuoteStatus.Progress(stage)
 
         // Sem laboratório nem decisão, vale a etapa comercial, como antes.
@@ -193,8 +179,13 @@ class QuoteStatusRulesTest {
         assertEquals(ResolvedQuoteStatus.Missing, QuoteStatusRules.resolve(quote(null)))
     }
 
-    private fun assertWindow(stage: QuoteStage, vararg expected: QuoteStage?) {
-        assertEquals(expected.toList(), QuoteStatusRules.window(stage).map { it?.stage })
+    private fun quote(stage: String?, laboratoryStage: String? = null, decision: String? = null, status: String? = null) =
+        Quote("q", "Q", null, status, stage, null, null, null, null, null, null,
+            laboratoryStage = laboratoryStage,
+            clientDecision = decision?.let { ClientDecision("d", it, null) })
+
+    private fun assertWindow(stage: QuoteStage, vararg expected: QuoteStage) {
+        assertEquals(expected.toList(), QuoteStatusRules.window(stage).map { it.stage })
     }
 
     private fun progress(value: String): QuoteStage =

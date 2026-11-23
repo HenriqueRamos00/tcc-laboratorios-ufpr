@@ -20,6 +20,7 @@ import br.ufpr.lab_mobile.adapter.formatQuotePrice
 import br.ufpr.lab_mobile.databinding.ActivityQuoteDetailsBinding
 import br.ufpr.lab_mobile.model.Quote
 import br.ufpr.lab_mobile.model.QuoteStatusRules
+import br.ufpr.lab_mobile.model.displayText
 import br.ufpr.lab_mobile.service.InvalidQuoteDocumentException
 import br.ufpr.lab_mobile.service.QuoteApiService
 import br.ufpr.lab_mobile.service.QuoteService
@@ -125,6 +126,9 @@ class QuoteDetailsActivity : PortalActivity() {
         pdfJob?.cancel()
         renderJob?.cancel()
         resetDocument()
+        binding.pdfLoading.isVisible = false
+        binding.pdfMessage.isVisible = false
+        binding.pdfRetryButton.isVisible = false
         quote = null
         binding.detailsContent.isVisible = false
         binding.stateMessage.isVisible = false
@@ -142,9 +146,12 @@ class QuoteDetailsActivity : PortalActivity() {
                 binding.clientName.text = getString(R.string.quote_client, result.companyName ?: "—")
                 binding.description.text = result.description ?: "—"
                 binding.totalPrice.text = getString(R.string.quote_total, formatQuotePrice(result.totalPrice))
-                binding.serverStatus.text = getString(R.string.quote_status_current, result.status ?: getString(R.string.quote_status_unavailable))
+                val status = QuoteStatusRules.resolve(result)
+                binding.serverStatus.text = getString(R.string.quote_status_current, status.displayText(resources))
                 renderDecisionActions()
-                loadDocument()
+                val hasProposal = QuoteStatusRules.hasProposal(status)
+                binding.proposalDocument.isVisible = hasProposal
+                if (hasProposal) loadDocument()
             } catch (error: CancellationException) { throw error
             } catch (error: HttpException) {
                 showError(when (error.code()) { 401 -> if (sessions.current == null) R.string.session_expired else R.string.quote_details_error; 404 -> R.string.quote_status_not_found; else -> R.string.quote_details_error }, error.code() !in listOf(401,404))
@@ -154,7 +161,7 @@ class QuoteDetailsActivity : PortalActivity() {
 
     private fun renderDecisionActions() {
         val eligible = sessions.current != null &&
-            quote?.let { QuoteStatusRules.canDecide(it.stage, it.status) } == true
+            quote?.let(QuoteStatusRules::canDecide) == true
         binding.acceptQuote.isVisible = eligible
         binding.rejectQuote.isVisible = eligible
     }

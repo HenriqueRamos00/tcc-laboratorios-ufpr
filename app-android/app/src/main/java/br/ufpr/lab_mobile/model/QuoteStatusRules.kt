@@ -15,7 +15,6 @@ enum class QuoteStage(val key: String, val labelRes: Int, val iconRes: Int) {
     RECEIVED("recebido", R.string.quote_stage_received, R.drawable.ic_quote_inbox),
     REGISTERED("protocolado", R.string.quote_stage_registered, R.drawable.ic_quote_assignment_turned_in),
     RUNNING("em-execucao", R.string.quote_stage_running, R.drawable.ic_quote_science),
-    INCOMPLETE("incompleto", R.string.quote_stage_incomplete, R.drawable.ic_quote_warning_amber),
     COMPLETE("completo", R.string.quote_stage_complete, R.drawable.ic_quote_done_all),
     VALIDATED("validado", R.string.quote_stage_validated, R.drawable.ic_quote_autorenew),
     FINISHED("finalizado", R.string.quote_stage_finished, R.drawable.ic_quote_task_alt),
@@ -23,10 +22,10 @@ enum class QuoteStage(val key: String, val labelRes: Int, val iconRes: Int) {
     PUBLISHED("relatorio-publicado", R.string.quote_stage_published, R.drawable.ic_quote_cloud_done),
 }
 
-enum class QuotePhase(val titleRes: Int, val first: Int, val last: Int) {
-    PROPOSAL(R.string.quote_status_phase_proposal, 0, 6),
-    TECHNICAL(R.string.quote_status_phase_technical, 6, 10),
-    LABORATORY(R.string.quote_status_phase_laboratory, 10, 14),
+enum class QuotePhase(val titleRes: Int, val first: QuoteStage) {
+    PROPOSAL(R.string.quote_status_phase_proposal, QuoteStage.QUALIFICATION),
+    TECHNICAL(R.string.quote_status_phase_technical, QuoteStage.RECEIVED),
+    LABORATORY(R.string.quote_status_phase_laboratory, QuoteStage.COMPLETE),
 }
 
 enum class TerminalQuoteStatus(val labelRes: Int) {
@@ -71,7 +70,6 @@ object QuoteStatusRules {
         "fechado ganho" to QuoteStage.RECEIVED,
         "protocolado" to QuoteStage.REGISTERED,
         "em execução" to QuoteStage.RUNNING,
-        "incompleto" to QuoteStage.INCOMPLETE,
         "completo" to QuoteStage.COMPLETE,
         "validado" to QuoteStage.VALIDATED,
         "finalizado" to QuoteStage.FINISHED,
@@ -131,22 +129,27 @@ object QuoteStatusRules {
     }
 
     fun phase(stage: QuoteStage): QuotePhase =
-        QuotePhase.entries.last { stage.ordinal in it.first..it.last }
+        QuotePhase.entries.last { stage >= it.first }
 
-    @Suppress("UNUSED_PARAMETER")
-    fun canDecide(stage: String?, status: String?): Boolean =
-        normalize(status.orEmpty()) in setOf("pendente de aceite", "pendingacceptance")
+    fun hasProposal(status: ResolvedQuoteStatus): Boolean = when (status) {
+        is ResolvedQuoteStatus.Progress -> status.stage >= QuoteStage.NEGOTIATION
+        is ResolvedQuoteStatus.Terminal -> true
+        else -> false
+    }
 
-    fun window(stage: QuoteStage): List<QuoteProgressStep?> {
-        val phase = phase(stage)
-        // Empty neighbor slots retain the current step in the center at phase edges.
-        return (stage.ordinal - 1..stage.ordinal + 1).map { index ->
-            if (index !in phase.first..phase.last) return@map null
+    fun canDecide(quote: Quote): Boolean =
+        resolve(quote) == ResolvedQuoteStatus.Progress(QuoteStage.NEGOTIATION) &&
+            normalize(quote.status.orEmpty()) in setOf("pendente de aceite", "pendingacceptance")
+
+    fun window(stage: QuoteStage): List<QuoteProgressStep> {
+        val windowSize = 3
+        val start = (stage.ordinal - 1).coerceIn(0, QuoteStage.entries.size - windowSize)
+        return QuoteStage.entries.subList(start, start + windowSize).map { step ->
             QuoteProgressStep(
-                QuoteStage.entries[index],
+                step,
                 when {
-                    index < stage.ordinal -> QuoteStepState.COMPLETED
-                    index == stage.ordinal -> QuoteStepState.ACTIVE
+                    step < stage -> QuoteStepState.COMPLETED
+                    step == stage -> QuoteStepState.ACTIVE
                     else -> QuoteStepState.PENDING
                 },
             )

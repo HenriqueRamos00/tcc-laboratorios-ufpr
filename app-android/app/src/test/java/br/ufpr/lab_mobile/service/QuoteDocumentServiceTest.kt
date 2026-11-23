@@ -143,8 +143,8 @@ class QuoteDocumentServiceTest {
             error("Unexpected quote request")
 
         override suspend fun getQuotes(
-            search: String?,
-            status: String?,
+            page: Int,
+            pageSize: Int,
         ): Response<JsonElement> = error("Unexpected list request")
     }
 

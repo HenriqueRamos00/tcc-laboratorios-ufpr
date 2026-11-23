@@ -205,7 +205,6 @@
     <string name="quote_stage_received">Recebido</string>
     <string name="quote_stage_registered">Protocolado</string>
     <string name="quote_stage_running">Em execução</string>
-    <string name="quote_stage_incomplete">Incompleto</string>
     <string name="quote_stage_complete">Completo</string>
     <string name="quote_stage_validated">Validado</string>
     <string name="quote_stage_finished">Finalizado</string>

@@ -4,6 +4,7 @@ import android.content.res.ColorStateList
 import android.view.LayoutInflater
 import android.view.ViewGroup
 import androidx.core.content.ContextCompat
+import androidx.core.view.isVisible
 import androidx.recyclerview.widget.RecyclerView
 import br.ufpr.lab_mobile.R
 import br.ufpr.lab_mobile.databinding.ItemQuoteBinding
@@ -21,6 +22,7 @@ import java.util.Locale
 class QuoteAdapter(
     private val onViewQuote: (Quote) -> Unit,
     private val onViewStatus: (Quote) -> Unit,
+    private val onViewReports: (Quote) -> Unit,
 ) : RecyclerView.Adapter<QuoteAdapter.QuoteViewHolder>() {
     private val quotes = mutableListOf<Quote>()
 
@@ -65,8 +67,11 @@ class QuoteAdapter(
                     },
                 ),
             )
+            viewQuote.isVisible = QuoteStatusRules.hasProposal(resolvedStatus)
             viewQuote.setOnClickListener { onViewQuote(quote) }
-            viewStatus.setOnClickListener { onViewStatus(quote) }
+            val published = resolvedStatus == ResolvedQuoteStatus.Progress(QuoteStage.PUBLISHED)
+            viewStatus.setText(if (published) R.string.reported_quote_view else R.string.quote_view_status)
+            viewStatus.setOnClickListener { if (published) onViewReports(quote) else onViewStatus(quote) }
         }
     }
 }

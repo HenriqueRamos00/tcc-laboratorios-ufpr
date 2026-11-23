@@ -55,7 +55,7 @@ class QuoteDetailsTest {
     @Volatile private var offline = false
     @Volatile private var block = false
     @Volatile private var status: String? = "Pendente de Aceite"
-    @Volatile private var stage: String? = "Qualificação"
+    @Volatile private var stage: String? = "Em negociação"
     private val documentRequests = AtomicInteger()
     private val blocked = AtomicInteger()
     private val cancelled = AtomicInteger()
@@ -272,14 +272,28 @@ class QuoteDetailsTest {
     }
 
     @Test
-    fun decisionVisibilityDependsOnlyOnPendingStatusAtAnyStage() {
+    fun decisionVisibilityRequiresNegotiationAndPendingAcceptance() {
         launch()
-        listOf(null, "Etapa futura", "Finalizado", "Qualificação", "Negociação").forEach { value ->
-            stage = value
-            scenario!!.recreate()
-            awaitPage(1)
-            assertTrue(check { it.findViewById<View>(R.id.acceptQuote).visibility == View.VISIBLE && it.findViewById<View>(R.id.rejectQuote).visibility == View.VISIBLE })
-        }
+        awaitPage(1)
+        assertTrue(check { it.findViewById<View>(R.id.acceptQuote).isShown && it.findViewById<View>(R.id.rejectQuote).isShown })
+
+        val previousDocumentRequests = documentRequests.get()
+        stage = "Em análise pela área"
+        scenario!!.recreate()
+        await("Detalhes da solicitação em análise") { check { it.findViewById<View>(R.id.detailsContent).isShown } }
+        assertTrue(check {
+            !it.findViewById<View>(R.id.acceptQuote).isShown &&
+                !it.findViewById<View>(R.id.rejectQuote).isShown &&
+                !it.findViewById<View>(R.id.proposalDocument).isShown
+        })
+        assertEquals(previousDocumentRequests, documentRequests.get())
+
+        stage = "Finalizado"
+        scenario!!.recreate()
+        awaitPage(1)
+        assertTrue(check {
+            !it.findViewById<View>(R.id.acceptQuote).isShown && !it.findViewById<View>(R.id.rejectQuote).isShown
+        })
         stage = "Negociação"
         listOf(null, "Em Andamento", "Aceito", "Unknown").forEach { value ->
             status = value

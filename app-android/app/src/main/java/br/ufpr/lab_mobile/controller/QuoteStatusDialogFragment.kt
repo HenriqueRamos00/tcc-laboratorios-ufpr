@@ -143,6 +143,7 @@ class QuoteStatusDialogFragment : DialogFragment() {
             else -> Unit
         }
         views.currentStatus.text = getString(R.string.quote_status_current, resolved.displayText(resources))
+        views.viewPdf.isVisible = QuoteStatusRules.hasProposal(resolved)
         val name = quote.externalContactName?.trim().orEmpty()
         val email = quote.externalContactEmail?.trim().orEmpty()
         views.externalContactGroup.isVisible = name.isNotEmpty() || email.isNotEmpty()
@@ -157,7 +158,7 @@ class QuoteStatusDialogFragment : DialogFragment() {
         val views = binding ?: return
         val quote = currentQuote ?: return
         val sessionId = requireContext().portalApplication.sessions.current?.id
-        val eligible = sessionId != null && QuoteStatusRules.canDecide(quote.stage, quote.status)
+        val eligible = sessionId != null && QuoteStatusRules.canDecide(quote)
         views.acceptQuote.isVisible = eligible
         views.rejectQuote.isVisible = eligible
     }

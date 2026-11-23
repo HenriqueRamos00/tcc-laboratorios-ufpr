@@ -12,14 +12,12 @@ import br.ufpr.lab_mobile.model.QuoteStatusRules
 import br.ufpr.lab_mobile.model.QuoteStepState
 
 /**
- * Desenha a janela de três etapas (anterior, atual e próxima) em volta de [stage].
+ * Desenha a janela de três etapas da linha completa em volta de [stage].
  * Usado pelo diálogo de status e pela tela de relatórios do orçamento.
  */
 internal fun bindQuoteProgress(context: Context, views: List<ItemQuoteStatusStepBinding>, stage: QuoteStage) {
     val steps = QuoteStatusRules.window(stage)
     views.zip(steps).forEachIndexed { index, (view, step) ->
-        view.root.visibility = if (step == null) View.INVISIBLE else View.VISIBLE
-        if (step == null) return@forEachIndexed
         val label = context.getString(step.stage.labelRes)
         val state = context.getString(step.state.labelRes)
         view.label.text = label

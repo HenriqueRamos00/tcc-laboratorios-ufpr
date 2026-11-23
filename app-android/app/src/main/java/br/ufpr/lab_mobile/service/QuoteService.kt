@@ -1,11 +1,13 @@
 package br.ufpr.lab_mobile.service
 
 import br.ufpr.lab_mobile.model.Quote
+import br.ufpr.lab_mobile.model.QuoteStage
 import br.ufpr.lab_mobile.model.QuoteStatusRules
+import br.ufpr.lab_mobile.model.ResolvedQuoteStatus
+import br.ufpr.lab_mobile.model.TerminalQuoteStatus
 import com.google.gson.Gson
 import com.google.gson.JsonElement
 import com.google.gson.reflect.TypeToken
-import java.text.Normalizer
 import retrofit2.HttpException
 import retrofit2.Response
 import retrofit2.http.GET
@@ -29,8 +31,8 @@ interface QuoteApiService {
 
     @GET("api/quotes")
     suspend fun getQuotes(
-        @Query("search") search: String?,
-        @Query("status") status: String?,
+        @Query("page") page: Int,
+        @Query("pageSize") pageSize: Int,
     ): Response<JsonElement>
 }
 
@@ -48,11 +50,24 @@ class QuoteService(private val api: QuoteApiService) {
     }
 
     suspend fun getQuotes(search: String?, status: String?): List<Quote> {
-        val response = api.getQuotes(search, status)
-        if (!response.isSuccessful) throw HttpException(response)
-        return parseQuotes(response.body())
+        val quotes = mutableListOf<Quote>()
+        var page = 1
+        while (true) {
+            val response = api.getQuotes(page, PAGE_SIZE)
+            if (!response.isSuccessful) throw HttpException(response)
+            val items = parseQuotes(response.body())
+            quotes += items
+            val total = response.headers()["X-Total-Count"]?.toIntOrNull()
+            if (total == null || items.isEmpty() || page * PAGE_SIZE >= total) break
+            page++
+        }
+        return quotes
             .filter { matchesSearch(it, search) }
             .filter { matchesStatus(it, status) }
+    }
+
+    private companion object {
+        const val PAGE_SIZE = 200
     }
 }
 
@@ -77,19 +92,16 @@ internal fun matchesSearch(quote: Quote, search: String?): Boolean {
 
 internal fun matchesStatus(quote: Quote, status: String?): Boolean {
     if (status.isNullOrBlank()) return true
-    if (status == "PendingAcceptance") return QuoteStatusRules.canDecide(quote.stage, quote.status)
-    val value = normalize("${quote.status.orEmpty()} ${quote.stage.orEmpty()}")
-    val acceptedTerms = when (status) {
-        "PendingAcceptance" -> listOf("pending acceptance", "pendente de aceite")
-        "InProgress" -> listOf("in progress", "em andamento")
-        "Finished" -> listOf("finished", "finalizado", "relatorio publicado")
-        "Refused" -> listOf("refused", "recusado")
-        "Cancelled" -> listOf("cancelled", "canceled", "cancelado")
-        else -> listOf(status)
+    return when (val resolved = QuoteStatusRules.resolve(quote)) {
+        is ResolvedQuoteStatus.Progress -> status == when (resolved.stage) {
+            in QuoteStage.QUALIFICATION..QuoteStage.NEGOTIATION -> "PendingAcceptance"
+            QuoteStage.PUBLISHED -> "Finished"
+            else -> "InProgress"
+        }
+        is ResolvedQuoteStatus.Terminal -> status == when (resolved.status) {
+            TerminalQuoteStatus.CANCELLED -> "Cancelled"
+            TerminalQuoteStatus.REFUSED -> "Refused"
+        }
+        else -> false
     }
-    return acceptedTerms.any { normalize(it) in value }
 }
-
-private fun normalize(value: String) = Normalizer.normalize(value, Normalizer.Form.NFD)
-    .replace(Regex("\\p{M}+"), "")
-    .lowercase()
