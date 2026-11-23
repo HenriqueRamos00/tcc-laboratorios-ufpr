@@ -8,10 +8,10 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
 import androidx.lifecycle.lifecycleScope
 import br.ufpr.lab_mobile.R
+import br.ufpr.lab_mobile.model.EquipmentReport
 import br.ufpr.lab_mobile.model.Report
 import br.ufpr.lab_mobile.portalApplication
 import br.ufpr.lab_mobile.service.InvalidPdfException
-import br.ufpr.lab_mobile.service.ReportService
 import java.io.File
 import java.io.IOException
 import kotlinx.coroutines.CancellationException
@@ -24,7 +24,8 @@ import retrofit2.HttpException
  * Baixa o PDF de um laudo e salva no local que o cliente escolher.
  *
  * 1. O cliente toca em "Baixar relatório" e o seletor do Android pergunta onde salvar.
- * 2. O PDF é baixado para um arquivo temporário e validado ([ReportService.downloadReport]).
+ * 2. O PDF é baixado para um arquivo temporário e validado por [downloadReport], que cada tela
+ *    aponta para a sua rota da API.
  * 3. Só então o conteúdo é copiado para o destino; assim um PDF inválido nunca chega à pasta do cliente.
  *
  * Precisa ser criado no onCreate da tela, porque registra o seletor de arquivos
@@ -32,7 +33,7 @@ import retrofit2.HttpException
  */
 internal class ReportDownloader(
     private val activity: AppCompatActivity,
-    private val service: ReportService,
+    private val downloadReport: suspend (reportId: String, destination: File) -> Unit,
     private val onDownloadingChanged: (reportId: String?) -> Unit,
 ) {
     /** Laudo escolhido enquanto o seletor está aberto. */
@@ -49,11 +50,14 @@ internal class ReportDownloader(
         if (uri != null && reportId != null) download(reportId, uri)
     }
 
-    fun start(report: Report) {
-        val reportId = report.id?.takeIf(String::isNotBlank) ?: return
-        if (downloadingId != null || !report.canDownload) return
+    fun start(report: Report) = start(report.id, report.fileName, report.canDownload)
+
+    fun start(report: EquipmentReport) = start(report.id, report.fileName, report.canDownload)
+
+    private fun start(reportId: String?, fileName: String, canDownload: Boolean) {
+        if (reportId.isNullOrBlank() || downloadingId != null || !canDownload) return
         pendingReportId = reportId
-        chooseDestination.launch(report.fileName)
+        chooseDestination.launch(fileName)
     }
 
     fun saveState(outState: Bundle) {
@@ -78,7 +82,7 @@ internal class ReportDownloader(
             try {
                 val file = File.createTempFile("report-", ".pdf", activity.cacheDir)
                 temporary = file
-                service.downloadReport(reportId, file)
+                downloadReport(reportId, file)
                 withContext(Dispatchers.IO) { copy(file, target) }
                 Toast.makeText(activity, R.string.report_download_success, Toast.LENGTH_SHORT).show()
                 setDownloading(null, null)

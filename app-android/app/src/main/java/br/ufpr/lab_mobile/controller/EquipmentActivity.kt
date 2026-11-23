@@ -23,7 +23,6 @@ import br.ufpr.lab_mobile.model.filterEquipment
 import br.ufpr.lab_mobile.service.EquipmentApiService
 import br.ufpr.lab_mobile.service.EquipmentService
 import br.ufpr.lab_mobile.service.RetrofitProvider
-import com.google.android.material.snackbar.Snackbar
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
@@ -37,9 +36,7 @@ class EquipmentActivity : PortalActivity() {
     private var loadedEquipment: List<Equipment>? = null
     private var requestJob: Job? = null
     private var savedListPosition: Parcelable? = null
-    private val equipmentAdapter = EquipmentAdapter {
-        Snackbar.make(binding.equipmentRoot, R.string.equipment_details_soon, Snackbar.LENGTH_LONG).show()
-    }
+    private val equipmentAdapter = EquipmentAdapter { EquipmentDetailsActivity.open(this, it.id) }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)

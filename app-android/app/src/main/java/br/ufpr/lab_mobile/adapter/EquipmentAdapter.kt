@@ -31,7 +31,7 @@ class EquipmentAdapter(private val onViewEquipment: (Equipment) -> Unit) :
             fun String?.display() = this?.takeIf(String::isNotBlank)
                 ?: root.context.getString(R.string.equipment_not_informed)
             serialNumber.text = equipment.serialNumber.display()
-            tag.text = equipment.tag.display()
+            tag.text = equipment.displayTag.display()
             equipmentType.text = equipment.type.display()
             location.text = equipment.location.display()
             viewEquipment.contentDescription = root.context.getString(

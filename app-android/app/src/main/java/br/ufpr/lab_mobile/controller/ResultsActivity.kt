@@ -77,7 +77,7 @@ class ResultsActivity : PortalActivity() {
         reportService = ReportService(retrofit.create(ReportApiService::class.java))
         quoteService = QuoteService(retrofit.create(QuoteApiService::class.java))
         reportList = ReportListView(binding.reportsList) { report -> downloader.start(report) }
-        downloader = ReportDownloader(this, reportService) { reportId -> reportList.setDownloading(reportId) }
+        downloader = ReportDownloader(this, reportService::downloadReport) { reportId -> reportList.setDownloading(reportId) }
         downloader.restoreState(savedInstanceState)
 
         tab = savedInstanceState?.getString(STATE_TAB)?.let(Tab::valueOf) ?: Tab.REPORTS
