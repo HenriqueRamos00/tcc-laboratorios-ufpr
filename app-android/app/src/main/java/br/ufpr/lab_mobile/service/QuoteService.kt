@@ -14,15 +14,6 @@ import retrofit2.http.Query
 import retrofit2.http.Streaming
 import okhttp3.ResponseBody
 import java.io.File
-import java.io.IOException
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.CoroutineStart
-import kotlinx.coroutines.awaitCancellation
-import kotlinx.coroutines.coroutineScope
-import kotlinx.coroutines.currentCoroutineContext
-import kotlinx.coroutines.ensureActive
-import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
 
 interface QuoteApiService {
     @Streaming
@@ -46,53 +37,7 @@ interface QuoteApiService {
 class QuoteService(private val api: QuoteApiService) {
     suspend fun downloadDocument(id: String, destination: File) {
         require(id.isNotBlank()) { "Quote ID must not be blank" }
-        var complete = false
-        try {
-            val response = api.getDocument(id.trim())
-            if (!response.isSuccessful) {
-                response.errorBody()?.close()
-                throw HttpException(response)
-            }
-            val body = response.body() ?: throw InvalidQuoteDocumentException()
-            body.use {
-                val mediaType = body.contentType()
-                if (mediaType?.type != "application" || mediaType.subtype != "pdf") throw InvalidQuoteDocumentException()
-                // Closing the body unblocks a pending socket read when the screen is abandoned.
-                coroutineScope {
-                    val closer = launch(start = CoroutineStart.UNDISPATCHED) {
-                        try { awaitCancellation() } finally { body.close() }
-                    }
-                    try {
-                        withContext(Dispatchers.IO) {
-                            body.byteStream().use { input ->
-                                destination.outputStream().use { output ->
-                                    val buffer = ByteArray(8192)
-                                    var total = 0L
-                                    while (true) {
-                                        currentCoroutineContext().ensureActive()
-                                        val count = input.read(buffer)
-                                        if (count < 0) break
-                                        total += count
-                                        if (total > 32L * 1024 * 1024) throw InvalidQuoteDocumentException()
-                                        output.write(buffer, 0, count)
-                                    }
-                                }
-                            }
-                            destination.inputStream().use { input ->
-                                val header = ByteArray(5)
-                                if (input.read(header) != 5 || !header.contentEquals("%PDF-".toByteArray())) {
-                                    throw InvalidQuoteDocumentException()
-                                }
-                            }
-                        }
-                    } finally { closer.cancel() }
-                }
-            }
-            currentCoroutineContext().ensureActive()
-            complete = true
-        } finally {
-            if (!complete) destination.delete()
-        }
+        downloadPdf(destination) { api.getDocument(id.trim()) }
     }
 
     suspend fun getQuote(id: String): Quote {
@@ -110,8 +55,6 @@ class QuoteService(private val api: QuoteApiService) {
             .filter { matchesStatus(it, status) }
     }
 }
-
-class InvalidQuoteDocumentException : IOException("Invalid quote PDF")
 
 private val quoteListType = object : TypeToken<List<Quote>>() {}.type
 

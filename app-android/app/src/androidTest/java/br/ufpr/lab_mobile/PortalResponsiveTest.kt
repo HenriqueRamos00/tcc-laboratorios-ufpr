@@ -51,7 +51,7 @@ class PortalResponsiveTest {
         oldBaseUrl = baseUrlField.get(null)
         val client = OkHttpClient.Builder().addInterceptor(TestSession.interceptor(context)).addInterceptor(Interceptor { chain ->
             Response.Builder().request(chain.request()).protocol(Protocol.HTTP_1_1).code(200)
-                .message("Instrumented response").body("[]".toResponseBody()).build()
+                .message("Instrumented response").body(ReportFixtures.body(chain.request()).toResponseBody()).build()
         }).build()
         retrofitField.set(null, RetrofitProvider.retrofit(context.getString(R.string.api_base_url)).newBuilder().client(client).build())
     }
@@ -85,14 +85,15 @@ class PortalResponsiveTest {
                 originalRequestedOrientation = activity.requestedOrientation
             }
             assertPortalChrome(R.id.resultsRoot, R.id.navReports)
+            await("both reports loaded from the API") { checkActive { it.findViewById<ViewGroup>(R.id.reportsList).childCount == 2 } }
             onActive { activity ->
                 assertTrue(activity.findViewById<View>(R.id.resultsScroll) is androidx.core.widget.NestedScrollView)
                 assertMinimumTarget(activity, R.id.menuButton)
                 val first = activity.findViewById<ViewGroup>(R.id.reportsList).getChildAt(0)
                 val second = activity.findViewById<ViewGroup>(R.id.reportsList).getChildAt(1)
-                assertEquals(context.getString(R.string.demo_report_download, "LACTEC-00307/2026"),
+                assertEquals(context.getString(R.string.report_download_accessibility, "LACTEC-00307/2026"),
                     first.findViewById<View>(R.id.downloadReport).contentDescription)
-                assertEquals(context.getString(R.string.demo_report_download, "LACTEC-00308/2026"),
+                assertEquals(context.getString(R.string.report_download_accessibility, "LACTEC-00308/2026"),
                     second.findViewById<View>(R.id.downloadReport).contentDescription)
                 assertMinimumTarget(first, R.id.downloadReport)
                 assertMinimumTarget(second, R.id.downloadReport)
@@ -217,7 +218,7 @@ class PortalResponsiveTest {
         val rows = activity.findViewById<ViewGroup>(R.id.reportsList)
         assertEquals(2, rows.childCount)
         val last = rows.getChildAt(1)
-        val date = last.findViewById<TextView>(R.id.reportDate)
+        val date = last.findViewById<TextView>(R.id.publishedOn)
         assertTrue("publication date keeps a visible text line", date.lineCount >= 1 && date.height >= date.lineHeight)
         assertTrue("download target stays at least 48dp", targetSize(last.findViewById(R.id.downloadReport), 48))
     }
@@ -226,7 +227,8 @@ class PortalResponsiveTest {
         var visible = false
         onActive { activity ->
             val scroll = activity.findViewById<NestedScrollView>(R.id.resultsScroll)
-            val last = activity.findViewById<ViewGroup>(R.id.reportsList).getChildAt(1)
+            // After recreation the list reloads from the API, so the row may not exist yet.
+            val last = activity.findViewById<ViewGroup>(R.id.reportsList).getChildAt(1) ?: return@onActive
             val download = last.findViewById<View>(R.id.downloadReport)
             val viewport = Rect()
             val visibleTarget = Rect()

@@ -159,6 +159,40 @@ class QuoteStatusRulesTest {
         assertWindow(QuoteStage.PUBLISHED, QuoteStage.DRAFTING_REPORT, QuoteStage.PUBLISHED, null)
     }
 
+    @Test
+    fun realStageCombinesCommercialLaboratoryAndClientDecision() {
+        fun quote(stage: String?, laboratoryStage: String? = null, decision: String? = null, status: String? = null) =
+            Quote("q", "Q", null, status, stage, null, null, null, null, null, null,
+                laboratoryStage = laboratoryStage,
+                clientDecision = decision?.let { ClientDecision("d", it, null) })
+        fun progress(stage: QuoteStage) = ResolvedQuoteStatus.Progress(stage)
+
+        // Sem laboratório nem decisão, vale a etapa comercial, como antes.
+        assertEquals(progress(QuoteStage.NEGOTIATION), QuoteStatusRules.resolve(quote("Em negociação")))
+        // O laboratório segue depois do aceite e vence quando está à frente.
+        assertEquals(progress(QuoteStage.PUBLISHED),
+            QuoteStatusRules.resolve(quote("Aprovado pelo cliente", laboratoryStage = "relatorio-publicado")))
+        assertEquals(progress(QuoteStage.RUNNING),
+            QuoteStatusRules.resolve(quote("Fechado ganho", laboratoryStage = "em-execucao")))
+        // Etapa do laboratório atrasada ou desconhecida não faz o orçamento voltar.
+        assertEquals(progress(QuoteStage.RUNNING),
+            QuoteStatusRules.resolve(quote("Em execução", laboratoryStage = "protocolado")))
+        assertEquals(progress(QuoteStage.RECEIVED),
+            QuoteStatusRules.resolve(quote("Recebido", laboratoryStage = "etapa-futura")))
+        // A decisão do cliente adianta o comercial.
+        assertEquals(progress(QuoteStage.APPROVED), QuoteStatusRules.resolve(quote("Em negociação", decision = "acceptance")))
+        assertEquals(progress(QuoteStage.APPROVED), QuoteStatusRules.resolve(quote("Em negociação", decision = "purchase-order")))
+        assertEquals(progress(QuoteStage.AWAITING_SAMPLE), QuoteStatusRules.resolve(quote("Em negociação", decision = "sample-shipment")))
+        // Recusa do cliente e encerramento comercial vencem qualquer andamento.
+        assertEquals(ResolvedQuoteStatus.Terminal(TerminalQuoteStatus.REFUSED),
+            QuoteStatusRules.resolve(quote("Em negociação", decision = "rejection")))
+        assertEquals(ResolvedQuoteStatus.Terminal(TerminalQuoteStatus.CANCELLED),
+            QuoteStatusRules.resolve(quote("Cancelado", laboratoryStage = "relatorio-publicado")))
+        // Etapa comercial ausente: o laboratório ainda informa o andamento.
+        assertEquals(progress(QuoteStage.FINISHED), QuoteStatusRules.resolve(quote(null, laboratoryStage = "finalizado")))
+        assertEquals(ResolvedQuoteStatus.Missing, QuoteStatusRules.resolve(quote(null)))
+    }
+
     private fun assertWindow(stage: QuoteStage, vararg expected: QuoteStage?) {
         assertEquals(expected.toList(), QuoteStatusRules.window(stage).map { it?.stage })
     }

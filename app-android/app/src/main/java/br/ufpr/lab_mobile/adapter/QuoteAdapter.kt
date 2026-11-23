@@ -49,7 +49,7 @@ class QuoteAdapter(
             contact.text = quote.externalContactName?.takeIf(String::isNotBlank)
                 ?: quote.externalContactEmail.valueOrPlaceholder()
             price.text = formatQuotePrice(quote.totalPrice)
-            val resolvedStatus = QuoteStatusRules.resolve(quote.stage, quote.status)
+            val resolvedStatus = QuoteStatusRules.resolve(quote)
             status.text = resolvedStatus.displayText(root.resources)
             status.backgroundTintList = ColorStateList.valueOf(
                 ContextCompat.getColor(

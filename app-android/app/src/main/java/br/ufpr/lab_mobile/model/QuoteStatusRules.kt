@@ -99,6 +99,37 @@ object QuoteStatusRules {
             ?: ResolvedQuoteStatus.Unknown(stage.orEmpty())
     }
 
+    // Cada decisão do cliente garante ao menos esta situação, mesmo antes de o comercial atualizar.
+    private val decisions = mapOf(
+        "acceptance" to ResolvedQuoteStatus.Progress(QuoteStage.APPROVED),
+        "purchase-order" to ResolvedQuoteStatus.Progress(QuoteStage.APPROVED),
+        "sample-shipment" to ResolvedQuoteStatus.Progress(QuoteStage.AWAITING_SAMPLE),
+        "rejection" to ResolvedQuoteStatus.Terminal(TerminalQuoteStatus.REFUSED),
+    )
+
+    /**
+     * Situação real do orçamento, igual à do portal web. Três fontes são combinadas:
+     * 1. a etapa comercial ([Quote.stage]); se ela encerrou o orçamento, nada mais importa;
+     * 2. a etapa do laboratório ([Quote.laboratoryStage]), que segue depois do aceite;
+     * 3. a decisão do cliente ([Quote.clientDecision]); uma recusa encerra o orçamento.
+     * Entre as etapas em andamento, vence a mais avançada.
+     */
+    fun resolve(quote: Quote): ResolvedQuoteStatus {
+        val commercial = resolve(quote.stage, quote.status)
+        if (commercial is ResolvedQuoteStatus.Terminal) return commercial
+
+        val decided = decisions[quote.clientDecision?.kind?.trim()?.lowercase(Locale.ROOT)]
+        if (decided is ResolvedQuoteStatus.Terminal) return decided
+
+        val laboratory = quote.laboratoryStage?.let { stages[normalize(it)] }
+        val mostAdvanced = listOfNotNull(
+            (commercial as? ResolvedQuoteStatus.Progress)?.stage,
+            laboratory,
+            (decided as? ResolvedQuoteStatus.Progress)?.stage,
+        ).maxByOrNull { it.ordinal }
+        return mostAdvanced?.let(ResolvedQuoteStatus::Progress) ?: commercial
+    }
+
     fun phase(stage: QuoteStage): QuotePhase =
         QuotePhase.entries.last { stage.ordinal in it.first..it.last }
 
