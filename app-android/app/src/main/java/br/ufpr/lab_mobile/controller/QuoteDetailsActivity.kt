@@ -19,7 +19,6 @@ import br.ufpr.lab_mobile.R
 import br.ufpr.lab_mobile.adapter.formatQuotePrice
 import br.ufpr.lab_mobile.databinding.ActivityQuoteDetailsBinding
 import br.ufpr.lab_mobile.model.Quote
-import br.ufpr.lab_mobile.model.QuoteSimulations
 import br.ufpr.lab_mobile.model.QuoteStatusRules
 import br.ufpr.lab_mobile.service.InvalidQuoteDocumentException
 import br.ufpr.lab_mobile.service.QuoteApiService
@@ -110,10 +109,14 @@ class QuoteDetailsActivity : PortalActivity() {
         binding.downloadPdf.setOnClickListener {
             exportDocument.launch("orcamento-${quote?.code.orEmpty().replace(Regex("[^a-zA-Z0-9_-]"), "_")}.pdf")
         }
-        binding.acceptQuote.setOnClickListener { quote?.let { QuoteDecisionDialogFragment.show(supportFragmentManager, it, false) } }
-        binding.rejectQuote.setOnClickListener { quote?.let { QuoteDecisionDialogFragment.show(supportFragmentManager, it, true) } }
-        supportFragmentManager.setFragmentResultListener(QuoteDecisionDialogFragment.RESULT, this) { _, _ -> renderSimulation() }
-        service = QuoteService(RetrofitProvider.retrofit(getString(R.string.api_base_url)).create(QuoteApiService::class.java))
+        binding.acceptQuote.setOnClickListener { quote?.let { showQuoteAcceptanceOptions(this, supportFragmentManager, it) } }
+        binding.rejectQuote.setOnClickListener { quote?.let { QuoteDecisionDialogFragment.show(supportFragmentManager, it) } }
+        supportFragmentManager.setFragmentResultListener(QuoteDecisionDialogFragment.RESULT, this) { _, result ->
+            if (result.getBoolean(QuoteDecisionDialogFragment.REJECTED)) finish()
+            else loadQuote()
+        }
+        val retrofit = RetrofitProvider.retrofit(getString(R.string.api_base_url))
+        service = QuoteService(retrofit.create(QuoteApiService::class.java))
         loadQuote()
     }
 
@@ -140,7 +143,7 @@ class QuoteDetailsActivity : PortalActivity() {
                 binding.description.text = result.description ?: "—"
                 binding.totalPrice.text = getString(R.string.quote_total, formatQuotePrice(result.totalPrice))
                 binding.serverStatus.text = getString(R.string.quote_status_current, result.status ?: getString(R.string.quote_status_unavailable))
-                renderSimulation()
+                renderDecisionActions()
                 loadDocument()
             } catch (error: CancellationException) { throw error
             } catch (error: HttpException) {
@@ -149,10 +152,9 @@ class QuoteDetailsActivity : PortalActivity() {
         }
     }
 
-    private fun renderSimulation() {
-        val result = QuoteSimulations.get(quoteId)
-        val eligible = QuoteSimulations.isSessionActive(sessions.current?.id) &&
-            quote?.let { QuoteStatusRules.canDecide(it.stage, it.status) } == true && result == null
+    private fun renderDecisionActions() {
+        val eligible = sessions.current != null &&
+            quote?.let { QuoteStatusRules.canDecide(it.stage, it.status) } == true
         binding.acceptQuote.isVisible = eligible
         binding.rejectQuote.isVisible = eligible
     }

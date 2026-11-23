@@ -2,7 +2,6 @@ package br.ufpr.lab_mobile
 
 import android.app.Application
 import android.content.Context
-import br.ufpr.lab_mobile.model.QuoteSimulations
 import br.ufpr.lab_mobile.service.LoginApiService
 import br.ufpr.lab_mobile.service.RetrofitProvider
 import br.ufpr.lab_mobile.session.EncryptedSessionStorage
@@ -24,7 +23,7 @@ class PortalApplication : Application() {
         sessions = SessionManager(root, EncryptedSessionStorage(this), object : SessionApi {
             override fun refresh(token: String) = loginApi.refresh("Bearer $token").execute()
             override fun me(token: String) = loginApi.me("Bearer $token").execute()
-        }, onSessionEnded = QuoteSimulations::clear)
+        })
         RetrofitProvider.initialize(root, sessions)
     }
 }

@@ -27,8 +27,7 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_marginTop="16dp"
-            android:hint="@string/quote_rejection_reason"
-            android:visibility="gone">
+            android:hint="@string/quote_rejection_reason">
 
             <com.google.android.material.textfield.TextInputEditText
                 android:id="@+id/reason"
@@ -41,22 +40,32 @@
         </com.google.android.material.textfield.TextInputLayout>
 
         <TextView
-            android:id="@+id/simulationNotice"
+            android:id="@+id/decisionStatus"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
+            android:accessibilityLiveRegion="polite"
             android:layout_marginTop="12dp"
             android:fontFamily="@font/inter"
-            android:text="@string/quote_simulation_notice"
-            android:textColor="@color/lactec_muted"
-            android:textSize="14sp" />
+            android:textColor="@color/quote_action_reject"
+            android:textSize="14sp"
+            android:visibility="gone" />
+
+        <ProgressBar
+            android:id="@+id/decisionLoading"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_gravity="center_horizontal"
+            android:layout_marginTop="16dp"
+            android:indeterminateTint="@color/lactec_primary"
+            android:visibility="gone" />
 
         <com.google.android.material.button.MaterialButton
             android:id="@+id/confirmDecision"
             android:layout_width="match_parent"
             android:layout_height="wrap_content" android:minHeight="52dp"
             android:layout_marginTop="20dp"
-            android:backgroundTint="@color/lactec_primary"
-            android:text="@string/quote_confirm_accept_action"
+            android:backgroundTint="@color/quote_action_reject"
+            android:text="@string/quote_confirm_reject_action"
             android:textColor="@color/white" />
 
         <com.google.android.material.button.MaterialButton

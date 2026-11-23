@@ -55,7 +55,7 @@ class QuotesActivity : PortalActivity() {
         )
         portalDrawer = PortalDrawer(this, PortalDestination.QUOTES)
         supportFragmentManager.setFragmentResultListener(QuoteDecisionDialogFragment.RESULT, this) { _, _ ->
-            quoteAdapter.notifyDataSetChanged()
+            loadQuotes()
         }
 
         binding.quotesList.apply {
@@ -78,7 +78,6 @@ class QuotesActivity : PortalActivity() {
             override fun onNothingSelected(parent: AdapterView<*>?) = Unit
         }
         binding.search.doAfterTextChanged { scheduleLoad() }
-        loadQuotes()
     }
 
     override fun onSaveInstanceState(outState: Bundle) {
@@ -148,7 +147,7 @@ class QuotesActivity : PortalActivity() {
     override fun onResume() {
         super.onResume()
         portalDrawer?.onResume()
-        quoteAdapter.notifyDataSetChanged()
+        if (::binding.isInitialized && sessions.current != null) loadQuotes()
     }
 
     private fun showQuoteStatus(quoteId: String?) {

@@ -9,7 +9,6 @@ import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.repeatOnLifecycle
 import br.ufpr.lab_mobile.R
 import br.ufpr.lab_mobile.portalApplication
-import br.ufpr.lab_mobile.model.QuoteSimulations
 import java.io.IOException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
@@ -29,7 +28,6 @@ abstract class PortalActivity : AppCompatActivity() {
         val initial = sessions.current
         if (initial == null) { returnToLogin(); return }
         hasSession = true
-        QuoteSimulations.startSession(initial.id)
         lifecycleScope.launch {
             repeatOnLifecycle(Lifecycle.State.STARTED) {
                 launch {

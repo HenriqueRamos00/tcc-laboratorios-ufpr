@@ -20,7 +20,6 @@ import br.ufpr.lab_mobile.controller.QuoteStatusDialogFragment
 import br.ufpr.lab_mobile.controller.QuotesActivity
 import br.ufpr.lab_mobile.controller.QuoteDecisionDialogFragment
 import br.ufpr.lab_mobile.controller.QuoteDetailsActivity
-import br.ufpr.lab_mobile.model.QuoteSimulations
 import br.ufpr.lab_mobile.service.RetrofitProvider
 import okhttp3.Interceptor
 import okhttp3.MediaType.Companion.toMediaType
@@ -60,7 +59,6 @@ class QuoteStatusDialogTest {
 
     @Before
     fun installTestOnlyApi() {
-        QuoteSimulations.clear()
         previousRetrofit = retrofitField.get(null)
         previousBaseUrl = baseUrlField.get(null)
         val baseUrl = context.getString(R.string.api_base_url)
@@ -81,8 +79,11 @@ class QuoteStatusDialogTest {
                     }
                 }
             }
-            val code = if (isDetail) detailCode.get() else 200
-            val payload = if (isDetail) quoteJson() else "[${quoteJson()}]"
+            val rejecting = request.method == "POST" && request.url.encodedPath.endsWith("/rejection")
+            if (rejecting) { status = "Refused"; stage = "Recusado" }
+            val code = if (rejecting) 201 else if (isDetail) detailCode.get() else 200
+            val payload = if (rejecting) """{"id":"receipt","kind":3,"recordedAt":"2026-11-22T12:00:00Z"}"""
+                else if (isDetail) quoteJson() else "[${quoteJson()}]"
             Response.Builder().request(request).protocol(Protocol.HTTP_1_1)
                 .code(code).message("Instrumented test response")
                 .body(payload.toResponseBody("application/json".toMediaType())).build()
@@ -97,33 +98,26 @@ class QuoteStatusDialogTest {
         scenario?.close()
         retrofitField.set(null, previousRetrofit)
         baseUrlField.set(null, previousBaseUrl)
-        QuoteSimulations.clear()
     }
 
     @Test
-    fun pendingStatusAllowsSimulationWithoutChangingListOrDialogStatus() {
+    fun recusaAtualizaListaPeloServidorEFechaDialogo() {
         status = "Pendente de Aceite"
         stage = "Qualificação"
         launchList()
         openStatus()
         awaitContent()
-        assertTrue(checkUi { dialog(it)!!.findViewById<View>(R.id.acceptQuote).visibility == View.VISIBLE })
-        scenario!!.onActivity { dialog(it)!!.findViewById<View>(R.id.acceptQuote).performClick() }
-        awaitUi("Simulation confirmation shown") { fragment(it)!!.childFragmentManager.fragments.any { child -> child is QuoteDecisionDialogFragment } }
+        scenario!!.onActivity { dialog(it)!!.findViewById<View>(R.id.rejectQuote).performClick() }
+        awaitUi("Confirmação de recusa") { fragment(it)!!.childFragmentManager.fragments.any { child -> child is QuoteDecisionDialogFragment } }
         scenario!!.onActivity { activity ->
             val confirmation = fragment(activity)!!.childFragmentManager.fragments.filterIsInstance<QuoteDecisionDialogFragment>().single().dialog!!
             confirmation.findViewById<View>(R.id.confirmDecision).performClick()
         }
-        awaitUi("Simulation preserves the card status") { activity ->
-            dialog(activity)!!.findViewById<View>(R.id.acceptQuote).visibility == View.GONE &&
-                activity.findViewById<RecyclerView>(R.id.quotesList).findViewHolderForAdapterPosition(0)!!.itemView
-                    .findViewById<TextView>(R.id.status).text.toString() == context.getString(R.string.quote_stage_qualification)
+        awaitUi("Lista atualizada com recusa") { activity ->
+            fragment(activity) == null && activity.findViewById<RecyclerView>(R.id.quotesList)
+                .findViewHolderForAdapterPosition(0)?.itemView?.findViewById<TextView>(R.id.status)
+                ?.text.toString() == context.getString(R.string.quote_status_refused)
         }
-        assertTrue(checkUi { dialog(it)!!.findViewById<View>(R.id.acceptQuote).visibility == View.GONE && dialog(it)!!.findViewById<View>(R.id.rejectQuote).visibility == View.GONE })
-        assertTrue(checkUi { dialog(it)!!.findViewById<TextView>(R.id.currentStatus).text.toString().contains("Qualificação") })
-        scenario!!.recreate()
-        awaitContent()
-        assertTrue(checkUi { dialog(it)!!.findViewById<TextView>(R.id.currentStatus).text.toString().contains("Qualificação") })
     }
 
     @Test

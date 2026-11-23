@@ -91,3 +91,21 @@ o arquivo automaticamente quando o `sdk.dir` nao existe dentro do container.
 
 Emulador nao roda aqui: esta maquina e Windows 10, que nao oferece virtualizacao aninhada ao
 WSL2, entao nao existe `/dev/kvm`. Dai o uso de aparelho fisico.
+
+## Aceite e recusa de orçamento
+
+O Android usa a mesma API C# do Portal do Cliente, com o Bearer da sessão atual.
+A fonte `backend-lab` ou `lactec` é selecionada no servidor. Não há configuração de fonte no app.
+
+- Termo: `POST /api/quotes/{id}/acceptance`, JSON com `billing` e `approval`.
+- Ordem de compra: `POST /api/quotes/{id}/purchase-order`, multipart com a parte `file`.
+  Aceita PDF, DOC e DOCX até 50 MiB; a assinatura do arquivo é conferida pela API.
+- Recusa: `POST /api/quotes/{id}/rejection`, justificativa opcional de até 1000 caracteres.
+
+O termo apresenta os campos obrigatórios do contrato atual e a autorização para envio de resultados
+por e-mail. Usa o endereço de cobrança, sem endereço separado para entrega de relatórios.
+O formulário usa um diálogo com rolagem e o seletor de arquivos nativo do Android.
+
+O envio só ocorre após confirmação. A requisição permanece em andamento durante a rotação,
+sem reenvio automático, e falhas preservam os dados para nova tentativa. Após aceite, o app
+consulta novamente os detalhes; após recusa, retorna à lista, que é recarregada do servidor.
