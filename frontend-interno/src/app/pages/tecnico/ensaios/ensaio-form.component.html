@@ -1,4 +1,5 @@
 <app-page-header
+  data-tour="pagina-cabecalho"
   [title]="editId() ? 'Editar ensaio' : 'Novo ensaio'"
   subtitle="Registre os dados da análise e seus resultados."
   [breadcrumbs]="[
@@ -59,7 +60,7 @@
 
     <section class="ensaio-section" aria-labelledby="context-heading">
       <h2 id="context-heading" class="section-title">Orçamento e amostra</h2>
-      <div class="quote-summary">
+      <div class="quote-summary" data-tour="ensaio-form-orcamento">
         <div class="min-w-0">
           <span class="field-caption">Orçamento</span>
           @if (selectedQuote(); as quote) {
@@ -72,7 +73,7 @@
         </button>
       </div>
 
-      <div class="mt-6" [attr.aria-busy]="sampleLoading()">
+      <div class="mt-6" data-tour="ensaio-form-amostra" [attr.aria-busy]="sampleLoading()">
         <div class="mb-3 flex flex-wrap items-center justify-between gap-2">
           <h3 class="m-0 text-base font-semibold">Identificação da amostra</h3>
           @if (selectedQuote() && (!identificationMode() || sampleChooserOpen())) {
@@ -112,18 +113,18 @@
     <section class="ensaio-section" aria-labelledby="analysis-heading">
       <h2 id="analysis-heading" class="section-title">Dados do ensaio</h2>
       <div class="grid min-w-0 grid-cols-1 gap-4 md:grid-cols-2">
-        <label class="grid min-w-0 gap-1 text-sm font-medium">
+        <label data-tour="ensaio-form-tipo" class="grid min-w-0 gap-1 text-sm font-medium">
           Tipo de análise
           <input id="analysis-type-name" formControlName="type" maxlength="200" class="h-11 min-w-0 w-full rounded-lg border border-lactec-line px-3" [attr.aria-invalid]="form.controls.type.invalid && form.controls.type.touched" aria-describedby="type-error" />
           @if (form.controls.type.invalid && form.controls.type.touched) { <small id="type-error" class="font-normal text-red-700">Informe um tipo com até 200 caracteres.</small> }
         </label>
-        <label class="grid min-w-0 gap-1 text-sm font-medium">
+        <label data-tour="ensaio-form-formato" class="grid min-w-0 gap-1 text-sm font-medium">
           <span id="result-format-label">Formato dos resultados</span>
           <mat-select aria-labelledby="result-format-label" formControlName="analysisType" class="h-11 min-w-0 w-full rounded-lg border border-lactec-line bg-white px-3" (selectionChange)="changeAnalysisType($event.value)">
             @for (type of analysisTypes; track type.label) { <mat-option [value]="type.value">{{ type.label }}</mat-option> }
           </mat-select>
         </label>
-        <label class="grid min-w-0 gap-1 text-sm font-medium">
+        <label data-tour="ensaio-form-metodo-norma" class="grid min-w-0 gap-1 text-sm font-medium">
           Método
           <input id="analysis-method" formControlName="method" maxlength="255" class="h-11 min-w-0 w-full rounded-lg border border-lactec-line px-3" [attr.aria-invalid]="form.controls.method.invalid && form.controls.method.touched" aria-describedby="method-error" />
           @if (form.controls.method.invalid && form.controls.method.touched) { <small id="method-error" class="font-normal text-red-700">Informe o método com até 255 caracteres.</small> }
@@ -133,12 +134,12 @@
           <input id="analysis-standard" formControlName="standard" maxlength="255" class="h-11 min-w-0 w-full rounded-lg border border-lactec-line px-3" [attr.aria-invalid]="form.controls.standard.invalid && form.controls.standard.touched" aria-describedby="standard-error" />
           @if (form.controls.standard.invalid && form.controls.standard.touched) { <small id="standard-error" class="font-normal text-red-700">Informe a norma com até 255 caracteres.</small> }
         </label>
-        <label class="grid min-w-0 gap-1 text-sm font-medium">
+        <label data-tour="ensaio-form-agendamento" class="grid min-w-0 gap-1 text-sm font-medium">
           Data de agendamento
           <input id="scheduled-date" type="date" formControlName="scheduledDate" class="h-11 min-w-0 w-full rounded-lg border border-lactec-line px-3" [attr.aria-invalid]="form.controls.scheduledDate.invalid && form.controls.scheduledDate.touched" aria-describedby="scheduled-date-error" />
           @if (form.controls.scheduledDate.invalid && form.controls.scheduledDate.touched) { <small id="scheduled-date-error" class="font-normal text-red-700">Informe uma data de agendamento válida.</small> }
         </label>
-        <label class="grid min-w-0 gap-1 text-sm font-medium">
+        <label data-tour="ensaio-form-responsavel" class="grid min-w-0 gap-1 text-sm font-medium">
           <span id="responsible-label">Responsável</span>
           <mat-select aria-labelledby="responsible-label" id="responsible-id" formControlName="responsibleId" class="h-11 min-w-0 w-full rounded-lg border border-lactec-line bg-white px-3" [attr.aria-invalid]="form.controls.responsibleId.invalid && form.controls.responsibleId.touched" aria-describedby="responsible-error">
             <mat-option value="">Selecione um técnico</mat-option>
@@ -151,7 +152,7 @@
           @if (form.controls.responsibleId.invalid && form.controls.responsibleId.touched) { <small id="responsible-error" class="font-normal text-red-700">Selecione um responsável.</small> }
         </label>
 
-        <div class="grid min-w-0 gap-2 text-sm font-medium md:col-span-2" [attr.aria-busy]="instrumentsLoading()">
+        <div data-tour="ensaio-form-instrumentos" class="grid min-w-0 gap-2 text-sm font-medium md:col-span-2" [attr.aria-busy]="instrumentsLoading()">
           <div class="flex flex-wrap items-center justify-between gap-2">
             <span>Instrumentos laboratoriais utilizados <span class="font-normal text-lactec-muted">(opcional)</span></span>
             <button mat-stroked-button type="button" [disabled]="formLocked || instrumentsLoading() || instrumentsError()" (click)="openInstrumentRegistration()">
@@ -206,7 +207,7 @@
           }
         </div>
 
-        <label class="grid min-w-0 gap-1 text-sm font-medium">
+        <label data-tour="ensaio-form-classificacao" class="grid min-w-0 gap-1 text-sm font-medium">
           <span id="classification-label">Classificação da análise</span>
           <mat-select aria-labelledby="classification-label" placeholder="Não classificada" formControlName="analysisClassification" class="h-11 min-w-0 w-full rounded-lg border border-lactec-line bg-white px-3">
             @for (item of classifications; track item.label) { <mat-option [value]="item.value">{{ item.label }}</mat-option> }
@@ -223,7 +224,7 @@
     </section>
 
     <section class="ensaio-section">
-      <div class="flex flex-wrap items-center justify-between gap-3">
+      <div data-tour="ensaio-form-medicoes" class="flex flex-wrap items-center justify-between gap-3">
         <div>
           <h2 class="m-0 text-lg font-semibold">Resultados {{ form.controls.analysisType.value === "chromatography" ? "cromatográficos" : form.controls.analysisType.value === "physical-chemical" ? "físico-químicos" : "da análise" }}</h2>
           <p class="mt-1 text-sm text-lactec-muted">Informe os valores e o tipo de resultado de cada medição.</p>
@@ -284,13 +285,13 @@
         </fieldset>
       }
 
-      <label class="mt-6 grid min-w-0 gap-2 text-sm font-medium">Texto técnico do laudo - rascunho
+      <label data-tour="ensaio-form-rascunho" class="mt-6 grid min-w-0 gap-2 text-sm font-medium">Texto técnico do laudo - rascunho
         <textarea id="report-text" formControlName="reportText" rows="5" maxlength="10000" [attr.aria-invalid]="form.controls.reportText.invalid && form.controls.reportText.touched" aria-describedby="report-text-error" class="w-full resize-y rounded-lg border border-lactec-line p-3" placeholder="Registre observações técnicas ainda não publicadas."></textarea>
         <span id="report-text-error" class="font-normal text-lactec-muted">{{ form.controls.reportText.invalid ? "O texto aceita até 10000 caracteres." : "Salvar mantém este texto como rascunho e não gera nem disponibiliza PDF ao cliente." }}</span>
       </label>
     </section>
 
-    <footer class="ensaio-actions" aria-label="Ações do ensaio">
+    <footer data-tour="ensaio-form-acoes" class="ensaio-actions" aria-label="Ações do ensaio">
       <button mat-button type="button" (click)="cancel()" [disabled]="saving()">Cancelar</button>
       <div class="ensaio-actions__primary">
       @if (editId()) {

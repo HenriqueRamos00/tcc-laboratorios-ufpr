@@ -1,3 +1,27 @@
+.shell-primary-nav {
+  scrollbar-color: rgba(200, 219, 223, 0.42) transparent;
+  scrollbar-width: thin;
+}
+
+.shell-primary-nav::-webkit-scrollbar {
+  width: 0.5rem;
+}
+
+.shell-primary-nav::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.shell-primary-nav::-webkit-scrollbar-thumb {
+  border: 0.125rem solid transparent;
+  border-radius: 999px;
+  background: rgba(200, 219, 223, 0.42);
+  background-clip: content-box;
+}
+
+.shell-primary-nav::-webkit-scrollbar-thumb:hover {
+  background-color: rgba(200, 219, 223, 0.68);
+}
+
 .shell-back {
   display: inline-flex;
   align-items: center;
