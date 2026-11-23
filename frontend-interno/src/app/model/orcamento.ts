@@ -26,6 +26,54 @@ export interface OrcamentoDetalhe extends Orcamento {
   readonly laboratoryName: string | null;
   readonly scope: string | null;
   readonly items: readonly OrcamentoItem[];
+  readonly clientDecision?: DecisaoClienteInterna | null;
+}
+
+export interface DecisaoClienteInterna {
+  readonly acceptance: AceiteClienteInterno | null;
+  readonly rejection: RecusaClienteInterna | null;
+}
+
+export interface AceiteClienteInterno {
+  readonly method: string;
+  readonly acceptedAt: string;
+  readonly terms: TermoAceiteCliente | null;
+  readonly hasPurchaseOrder: boolean;
+}
+
+export interface RecusaClienteInterna {
+  readonly refusedAt: string;
+  readonly justification: string | null;
+}
+
+export interface TermoAceiteCliente {
+  readonly billing: DadosCobrancaTermoAceite;
+  readonly approval: DadosAprovacaoTermoAceite;
+}
+
+export interface DadosCobrancaTermoAceite {
+  readonly company: string;
+  readonly cnpj: string;
+  readonly stateRegistration: string | null;
+  readonly street: string;
+  readonly city: string;
+  readonly state: string;
+  readonly district: string | null;
+  readonly postalCode: string;
+  readonly contact: string | null;
+  readonly phone: string | null;
+  readonly fax: string | null;
+  readonly invoiceEmails: string | null;
+}
+
+export interface DadosAprovacaoTermoAceite {
+  readonly requesterName: string;
+  readonly responsibleName: string;
+  readonly jobTitle: string;
+  readonly department: string | null;
+  readonly date: string;
+  readonly allowsResultsByEmail: boolean;
+  readonly resultsEmail: string | null;
 }
 
 export interface OrcamentoRequest {

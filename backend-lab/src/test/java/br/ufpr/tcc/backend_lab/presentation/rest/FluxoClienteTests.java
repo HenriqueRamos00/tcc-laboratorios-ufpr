@@ -26,6 +26,7 @@ import br.ufpr.tcc.backend_lab.application.dto.request.CreateEmpresaRequest;
 import br.ufpr.tcc.backend_lab.application.dto.request.LoginRequest;
 import br.ufpr.tcc.backend_lab.application.dto.request.OrcamentoItemRequest;
 import br.ufpr.tcc.backend_lab.application.dto.request.OrcamentoRequest;
+import br.ufpr.tcc.backend_lab.application.dto.request.RecusaOrcamentoRequest;
 import br.ufpr.tcc.backend_lab.application.dto.request.UpdateClienteRequest;
 import br.ufpr.tcc.backend_lab.application.dto.response.CadastroStatus;
 import br.ufpr.tcc.backend_lab.application.usecase.ChangeClienteStatusUseCase;
@@ -47,6 +48,7 @@ import br.ufpr.tcc.backend_lab.domain.model.entity.Equipamento;
 import br.ufpr.tcc.backend_lab.domain.model.entity.DocumentoOrcamento;
 import br.ufpr.tcc.backend_lab.domain.model.entity.MedicaoEnsaio;
 import br.ufpr.tcc.backend_lab.domain.model.entity.RelatorioTecnico;
+import br.ufpr.tcc.backend_lab.domain.model.entity.RecusaOrcamento;
 import br.ufpr.tcc.backend_lab.domain.model.entity.Empresa;
 import br.ufpr.tcc.backend_lab.domain.model.entity.Orcamento;
 import br.ufpr.tcc.backend_lab.domain.model.entity.PerfilUsuario;
@@ -66,6 +68,7 @@ import br.ufpr.tcc.backend_lab.domain.repository.EmpresaRepository;
 import br.ufpr.tcc.backend_lab.domain.repository.EquipamentoRepository;
 import br.ufpr.tcc.backend_lab.domain.repository.OrcamentoRepository;
 import br.ufpr.tcc.backend_lab.domain.repository.RelatorioTecnicoRepository;
+import br.ufpr.tcc.backend_lab.domain.repository.RecusaOrcamentoRepository;
 import br.ufpr.tcc.backend_lab.domain.repository.UsuarioRepository;
 import br.ufpr.tcc.backend_lab.infrastructure.security.JwtService;
 
@@ -108,6 +111,7 @@ class FluxoClienteTests {
     @Autowired AmostraRepository amostras;
     @Autowired ExecucaoEnsaioRepository ensaios;
     @Autowired RelatorioTecnicoRepository relatorios;
+    @Autowired RecusaOrcamentoRepository recusas;
     @MockitoSpyBean DocumentoRelatorioRepository documentosRelatorios;
     @Autowired DocumentoOrcamentoRepository documentos;
     @Autowired CreateEmpresaUseCase criarEmpresa;
@@ -142,6 +146,35 @@ class FluxoClienteTests {
         tokenClienteA = "Bearer " + loginCliente.execute(credenciais).accessToken();
         administrador = usuario(PerfilUsuario.ADMIN, "admin-fluxo@example.test");
         tecnico = usuario(PerfilUsuario.TECNICO, "tecnico-fluxo@example.test");
+    }
+
+    @Test
+    void clienteConsegueRecusarComJustificativaDeMilCaracteres() throws Exception {
+        String justificativa = "x".repeat(1000);
+        RecusaOrcamentoRequest request = new RecusaOrcamentoRequest(justificativa);
+
+        mockMvc.perform(post("/api/client/quotes/{id}/rejection", orcamentoA.getId())
+                        .header("Authorization", tokenClienteA)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.stage").value("Fechado recusado Lactec"));
+
+        RecusaOrcamento salva = recusas.findById(orcamentoA.getId()).orElseThrow();
+        assertEquals(justificativa, salva.getJustification());
+    }
+
+    @Test
+    void recusaOrcamentoRejeitaJustificativaAcimaDeMilCaracteres() throws Exception {
+        RecusaOrcamentoRequest request = new RecusaOrcamentoRequest("x".repeat(1001));
+
+        mockMvc.perform(post("/api/client/quotes/{id}/rejection", orcamentoA.getId())
+                        .header("Authorization", tokenClienteA)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isBadRequest());
+
+        assertTrue(recusas.findById(orcamentoA.getId()).isEmpty());
     }
 
     @Test

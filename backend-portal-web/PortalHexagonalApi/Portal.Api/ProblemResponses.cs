@@ -223,7 +223,7 @@ internal static class ProblemResponses
             StatusCodes.Status501NotImplemented,
             "client-decisions-not-available",
             "Registro de decisoes indisponivel.",
-            "Este ambiente nao tem banco do portal configurado ou nao usa o login do cliente Lactec.");
+            "Esta forma de decisao nao esta disponivel neste ambiente.");
     }
 
     public static IActionResult ClientDecisionStoreUnavailable(this ControllerBase controller)
