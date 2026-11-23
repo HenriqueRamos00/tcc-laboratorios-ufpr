@@ -19,7 +19,6 @@ import br.ufpr.lab_mobile.model.QuoteStatusRules
 import br.ufpr.lab_mobile.model.QuoteStepState
 import br.ufpr.lab_mobile.model.ResolvedQuoteStatus
 import br.ufpr.lab_mobile.model.displayText
-import br.ufpr.lab_mobile.model.QuoteSimulations
 import br.ufpr.lab_mobile.service.QuoteApiService
 import br.ufpr.lab_mobile.service.QuoteService
 import br.ufpr.lab_mobile.service.RetrofitProvider
@@ -43,11 +42,12 @@ class QuoteStatusDialogFragment : DialogFragment() {
         viewBinding.viewPdf.setOnClickListener {
             QuoteDetailsActivity.open(requireContext(), arguments?.getString(ARG_QUOTE_ID))
         }
-        viewBinding.acceptQuote.setOnClickListener { currentQuote?.let { QuoteDecisionDialogFragment.show(childFragmentManager, it, false) } }
-        viewBinding.rejectQuote.setOnClickListener { currentQuote?.let { QuoteDecisionDialogFragment.show(childFragmentManager, it, true) } }
-        childFragmentManager.setFragmentResultListener(QuoteDecisionDialogFragment.RESULT, this) { _, _ ->
-            renderSimulation()
-            parentFragmentManager.setFragmentResult(QuoteDecisionDialogFragment.RESULT, Bundle())
+        viewBinding.acceptQuote.setOnClickListener { currentQuote?.let { showQuoteAcceptanceOptions(requireContext(), childFragmentManager, it) } }
+        viewBinding.rejectQuote.setOnClickListener { currentQuote?.let { QuoteDecisionDialogFragment.show(childFragmentManager, it) } }
+        childFragmentManager.setFragmentResultListener(QuoteDecisionDialogFragment.RESULT, this) { _, result ->
+            parentFragmentManager.setFragmentResult(QuoteDecisionDialogFragment.RESULT, result)
+            if (result.getBoolean(QuoteDecisionDialogFragment.REJECTED)) dismiss()
+            else loadQuote()
         }
         return MaterialAlertDialogBuilder(requireContext())
             .setTitle(R.string.quote_status_title)
@@ -58,8 +58,7 @@ class QuoteStatusDialogFragment : DialogFragment() {
 
     override fun onStart() {
         super.onStart()
-        if (requestJob == null) loadQuote()
-        else renderSimulation()
+        loadQuote()
     }
 
     private fun loadQuote() {
@@ -188,15 +187,14 @@ class QuoteStatusDialogFragment : DialogFragment() {
         views.externalContactName.isVisible = name.isNotEmpty()
         views.externalContactEmail.text = email
         views.externalContactEmail.isVisible = email.isNotEmpty()
-        renderSimulation()
+        renderDecisionActions()
     }
 
-    private fun renderSimulation() {
+    private fun renderDecisionActions() {
         val views = binding ?: return
         val quote = currentQuote ?: return
-        val result = QuoteSimulations.get(arguments?.getString(ARG_QUOTE_ID))
         val sessionId = requireContext().portalApplication.sessions.current?.id
-        val eligible = QuoteSimulations.isSessionActive(sessionId) && QuoteStatusRules.canDecide(quote.stage, quote.status) && result == null
+        val eligible = sessionId != null && QuoteStatusRules.canDecide(quote.stage, quote.status)
         views.acceptQuote.isVisible = eligible
         views.rejectQuote.isVisible = eligible
     }

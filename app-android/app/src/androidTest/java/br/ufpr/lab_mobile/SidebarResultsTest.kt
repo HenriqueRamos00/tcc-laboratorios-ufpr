@@ -20,7 +20,6 @@ import br.ufpr.lab_mobile.controller.LoginActivity
 import br.ufpr.lab_mobile.controller.EquipmentActivity
 import br.ufpr.lab_mobile.controller.QuotesActivity
 import br.ufpr.lab_mobile.controller.ResultsActivity
-import br.ufpr.lab_mobile.model.QuoteSimulations
 import br.ufpr.lab_mobile.service.RetrofitProvider
 import okhttp3.Interceptor
 import okhttp3.OkHttpClient
@@ -45,7 +44,6 @@ class SidebarResultsTest {
 
     @Before
     fun installOfflineQuotesResponse() {
-        QuoteSimulations.clear()
         oldRetrofit = retrofitField.get(null)
         oldBaseUrl = baseUrlField.get(null)
         val client = OkHttpClient.Builder().addInterceptor(TestSession.interceptor(context)).addInterceptor(Interceptor { chain ->
@@ -60,7 +58,6 @@ class SidebarResultsTest {
         scenario?.close()
         retrofitField.set(null, oldRetrofit)
         baseUrlField.set(null, oldBaseUrl)
-        QuoteSimulations.clear()
         TestSession.clear(context)
     }
 
@@ -195,15 +192,13 @@ class SidebarResultsTest {
     }
 
     @Test
-    fun logoutClearsSavedAndSimulationSessionsAndMissingSessionOpensLogin() {
+    fun logoutEncerraSessaoEVoltaAoLogin() {
         launchResults()
-        val sessionId = context.portalApplication.sessions.current!!.id
-        assertTrue(QuoteSimulations.isSessionActive(sessionId))
+        assertNotNull(context.portalApplication.sessions.current)
         openDrawer(R.id.navReports)
         onActive { it.findViewById<View>(R.id.logoutButton).performClick() }
         await("login shown after logout") { activeActivity() is LoginActivity }
         assertNull(context.portalApplication.sessions.current)
-        assertFalse(QuoteSimulations.isSessionActive(sessionId))
         scenario?.close()
         scenario = null
         launchResults(token = null)
