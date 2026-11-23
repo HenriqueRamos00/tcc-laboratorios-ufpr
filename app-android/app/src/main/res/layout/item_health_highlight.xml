@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Um resultado em destaque. A largura e as margens vêm da linha (ver showHighlights). -->
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:background="@drawable/bg_quote_card"
+    android:orientation="vertical"
+    android:padding="14dp"
+    android:screenReaderFocusable="true">
+
+    <TextView
+        android:id="@+id/name"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:fontFamily="@font/inter"
+        android:textColor="@color/lactec_muted"
+        android:textSize="12sp"
+        tools:text="Total de Gases Combustíveis" />
+
+    <TextView
+        android:id="@+id/value"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="4dp"
+        android:fontFamily="@font/instrument_sans"
+        android:textColor="@color/lactec_ink"
+        android:textSize="20sp"
+        android:textStyle="bold"
+        tools:text="361 ppm" />
+
+    <TextView
+        android:id="@+id/variation"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="4dp"
+        android:fontFamily="@font/inter"
+        android:textColor="@color/lactec_muted"
+        android:textSize="12sp"
+        tools:text="+42 desde 10/11/2025" />
+</LinearLayout>

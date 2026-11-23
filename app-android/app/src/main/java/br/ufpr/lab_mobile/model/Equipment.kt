@@ -48,18 +48,19 @@ data class EquipmentReport(
     /** A fonte nova informa [pdfAvailable]; a antiga só sabe se há documento assinado. */
     val canDownload: Boolean get() = !id.isNullOrBlank() && (pdfAvailable ?: hasSignedDocument)
 
-    /** Data do relatório, ou `null` quando a fonte não tem: a API então envia a data mínima do C#. */
-    val knownDate: String? get() = date?.trim()?.takeIf { it.isNotEmpty() && !it.startsWith(MISSING_DATE) }
+    /** Data do relatório, ou `null` quando a fonte não tem. */
+    val knownDate: String? get() = knownDate(date)
 
     /** Nome sugerido para o arquivo salvo, sem caracteres que o sistema de arquivos recusa. */
     val fileName: String
         get() = listOfNotNull("relatorio", analysisType?.trim()?.takeIf(String::isNotEmpty), knownDate)
             .joinToString("-").replace(Regex("[^\\w.-]+"), "-") + ".pdf"
-
-    private companion object {
-        const val MISSING_DATE = "0001-01-01"
-    }
 }
+
+private const val MISSING_DATE = "0001-01-01"
+
+/** Quando a fonte não tem a data, a API envia a data mínima do C#, que não pode ser mostrada. */
+internal fun knownDate(date: String?): String? = date?.trim()?.takeIf { it.isNotEmpty() && !it.startsWith(MISSING_DATE) }
 
 /**
  * A TAG que o cadastro conhece ou, na falta dela, o nome que a API dá ao equipamento, como no

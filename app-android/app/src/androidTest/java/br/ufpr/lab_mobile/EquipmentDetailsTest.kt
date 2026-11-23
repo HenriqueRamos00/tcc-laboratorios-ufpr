@@ -14,6 +14,7 @@ import androidx.test.core.app.ActivityScenario
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
 import br.ufpr.lab_mobile.controller.EquipmentDetailsActivity
+import br.ufpr.lab_mobile.controller.HealthIndicatorsActivity
 import br.ufpr.lab_mobile.service.RetrofitProvider
 import java.io.File
 import java.util.concurrent.ConcurrentLinkedQueue
@@ -116,6 +117,17 @@ class EquipmentDetailsTest {
             assertEquals("the minimum date is not shown", "Não informado", text(third, R.id.reportDate))
             assertEquals("Outros ensaios", text(third, R.id.analysisType))
         }
+    }
+
+    @Test
+    fun healthButtonOpensTheIndicatorsWithTheSameName() {
+        val opened = OpenedHealth()
+        instrumentation.addMonitor(opened)
+        launch()
+        awaitReports(3)
+        onActivity { it.findViewById<View>(R.id.viewHealth).performClick() }
+        await("indicators opened") { opened.extras.toList() == listOf("RVE" to "TR-A") }
+        instrumentation.removeMonitor(opened)
     }
 
     @Test
@@ -326,6 +338,17 @@ class EquipmentDetailsTest {
     private fun shell(command: String): String = android.os.ParcelFileDescriptor.AutoCloseInputStream(
         instrumentation.uiAutomation.executeShellCommand(command),
     ).use { it.readBytes().toString(Charsets.UTF_8) }
+
+    /** Records the indicators intents and keeps the detail on screen. */
+    private class OpenedHealth : Instrumentation.ActivityMonitor() {
+        val extras = ConcurrentLinkedQueue<Pair<String?, String?>>()
+        override fun onStartActivity(intent: Intent): Instrumentation.ActivityResult? {
+            if (intent.component?.className != HealthIndicatorsActivity::class.java.name) return null
+            extras.add(intent.getStringExtra(HealthIndicatorsActivity.EXTRA_EQUIPMENT_ID) to
+                intent.getStringExtra(HealthIndicatorsActivity.EXTRA_EQUIPMENT_NAME))
+            return Instrumentation.ActivityResult(Activity.RESULT_CANCELED, null)
+        }
+    }
 
     /** Answers the system file picker with a file of the test, recording the suggested name. */
     private class PickerAnswer(private val target: Uri) : Instrumentation.ActivityMonitor() {

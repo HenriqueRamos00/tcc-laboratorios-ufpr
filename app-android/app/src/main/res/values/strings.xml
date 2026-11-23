@@ -147,6 +147,37 @@
     <string name="equipment_report_download_accessibility">Baixar o relatório. %1$s, data: %2$s</string>
     <string name="equipment_report_pdf_unavailable_accessibility">PDF indisponível. %1$s, data: %2$s</string>
 
+    <!-- Indicadores de saúde: resumo da página "Indicadores de Saúde" do portal web. -->
+    <string name="health_open">Ver Indicadores de Saúde</string>
+    <string name="health_title">Indicadores de Saúde</string>
+    <string name="health_loading">Carregando indicadores…</string>
+    <string name="health_error">Não foi possível carregar os indicadores. Verifique sua conexão e tente novamente.</string>
+    <string name="health_empty">Nenhum ensaio registrado para este equipamento. Assim que o laboratório publicar a primeira análise, ela aparece aqui.</string>
+    <string name="health_tabs_description">Tipo de ensaio</string>
+    <string name="health_tab_gases">Gases</string>
+    <string name="health_tab_oil">Físico-químico</string>
+    <string name="health_no_gases">Este equipamento não tem análise cromatográfica.</string>
+    <string name="health_no_oil">Este equipamento não tem análise físico-química.</string>
+    <string name="health_report_title">Parecer do laboratório</string>
+    <string name="health_analysis_date">Análise mais recente: %1$s</string>
+    <string name="health_report_missing">O laboratório não informou a conclusão desta análise.</string>
+    <string name="health_report_expand">Ler parecer completo</string>
+    <string name="health_report_collapse">Mostrar menos</string>
+    <string name="health_classification_normal">Normal</string>
+    <string name="health_classification_alert">Alerta</string>
+    <string name="health_classification_non_compliant">Não conforme</string>
+    <string name="health_highlights_title">Destaques</string>
+    <string name="health_results_title">Todos os resultados</string>
+    <string name="health_not_detected">Não detectado</string>
+    <string name="health_not_performed">Não realizado</string>
+    <string name="health_limit">Limite: %1$s</string>
+    <string name="health_method">Método: %1$s</string>
+    <string name="health_variation">%1$s desde %2$s</string>
+    <string name="health_unchanged">Sem mudança desde %1$s</string>
+    <string name="health_replaced">Antes: %1$s (%2$s)</string>
+    <string name="health_previous_analysis">a análise anterior</string>
+    <string name="health_web_notice">O diagnóstico completo, com os métodos por gases dissolvidos, está no portal web.</string>
+
     <!-- Relatórios (menu): espelha a página "Relatórios" do portal web. -->
     <string name="results_title">Relatórios</string>
     <string name="results_subtitle">Busque entre todos os laudos publicados ou pelo orçamento que os gerou.</string>
