@@ -23,9 +23,17 @@ public record OrcamentoDetalheInternoResponse(
         BigDecimal totalPrice,
         OffsetDateTime createdDate,
         boolean hasDocument,
-        List<OrcamentoItemResponse> items) {
+        List<OrcamentoItemResponse> items,
+        DecisaoClienteInternaResponse clientDecision) {
     public static OrcamentoDetalheInternoResponse from(
             Orcamento orcamento, boolean hasDocument) {
+        return from(orcamento, hasDocument, null);
+    }
+
+    public static OrcamentoDetalheInternoResponse from(
+            Orcamento orcamento,
+            boolean hasDocument,
+            DecisaoClienteInternaResponse clientDecision) {
         var empresa = orcamento.getEmpresa();
         return new OrcamentoDetalheInternoResponse(
                 orcamento.getId().toString(),
@@ -48,6 +56,7 @@ public record OrcamentoDetalheInternoResponse(
                 orcamento.getTotalPrice(),
                 orcamento.getCreatedDate(),
                 hasDocument,
-                orcamento.getItems().stream().map(OrcamentoItemResponse::from).toList());
+                orcamento.getItems().stream().map(OrcamentoItemResponse::from).toList(),
+                clientDecision);
     }
 }

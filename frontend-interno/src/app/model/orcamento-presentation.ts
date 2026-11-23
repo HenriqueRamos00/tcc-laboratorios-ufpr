@@ -37,3 +37,14 @@ export function classeStatusOrcamento(status: string): string {
     ? CLASSES_STATUS_ORCAMENTO[status as StatusOrcamento]
     : CLASSE_STATUS_DESCONHECIDO;
 }
+
+export function rotuloFormaAceiteOrcamento(method: string): string {
+  switch (method) {
+    case 'TERMO_DE_ACEITE':
+      return 'Termo de aceite';
+    case 'ORDEM_DE_COMPRA':
+      return 'Ordem de compra';
+    default:
+      return method;
+  }
+}

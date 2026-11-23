@@ -1,5 +1,6 @@
 package br.ufpr.tcc.backend_lab.infrastructure.config;
 
+import java.io.IOException;
 import java.util.List;
 import javax.sql.DataSource;
 
@@ -29,9 +30,11 @@ public class DemoSeedRunner implements ApplicationRunner {
     private static final String DEMO_EXECUTION_SEED_VERSION = "development-technical-executions-v1";
     private static final String HU25_SEED_VERSION = "hu25-ensaios-v1";
     private static final String CLIENT_PIPELINE_SEED_VERSION = "development-client-pipeline-v1";
+    private static final String CLIENT_DECISION_SEED_VERSION = "development-client-decisions-v1";
     private static final String QUOTE_PROTOCOL_SEED_VERSION = "development-quote-protocol-v2";
     private static final String REPORT_SEED_VERSION = "development-reports-hu27-v2";
     private static final String CLIENT_PIPELINE_QUOTE_PREFIX = "DEMO-PIPE-2026-%";
+    private static final String CLIENT_PURCHASE_ORDER_QUOTE_CODE = "DEMO-PIPE-2026-005";
     private static final String EMAIL_TECNICO_DEMO = "demo.tecnico.helena@example.test";
     private static final List<String> ETAPAS_SEM_PROPOSTA =
             List.of("Qualificação", "Em análise pela área", "Elaborando proposta");
@@ -93,6 +96,13 @@ public class DemoSeedRunner implements ApplicationRunner {
                     .execute(dataSource);
             inserirPdfsDasPropostasDemonstrativas();
             jdbc.update("INSERT INTO demo_seed_runs (seed_key) VALUES (?)", CLIENT_PIPELINE_SEED_VERSION);
+        }
+        if (!seedVersionExists(CLIENT_DECISION_SEED_VERSION)) {
+            new ResourceDatabasePopulator(
+                            new ClassPathResource("database/demo-client-decision-seed.sql"))
+                    .execute(dataSource);
+            inserirOrdemCompraDemonstrativaSeAusente();
+            jdbc.update("INSERT INTO demo_seed_runs (seed_key) VALUES (?)", CLIENT_DECISION_SEED_VERSION);
         }
         if (!seedVersionExists(QUOTE_PROTOCOL_SEED_VERSION)) {
             new ResourceDatabasePopulator(new ClassPathResource("database/demo-quote-protocol-seed.sql"))
@@ -181,6 +191,35 @@ public class DemoSeedRunner implements ApplicationRunner {
                         quoteId,
                         pdf);
             }
+        }
+    }
+
+    private void inserirOrdemCompraDemonstrativaSeAusente() throws IOException {
+        List<Long> aceiteIds = jdbc.query(
+                "SELECT a.orcamento_id FROM aceites_orcamentos a "
+                        + "JOIN orcamentos o ON o.id = a.orcamento_id "
+                        + "WHERE o.code = ? AND a.method = 'ORDEM_DE_COMPRA'",
+                (resultSet, rowNum) -> resultSet.getLong("orcamento_id"),
+                CLIENT_PURCHASE_ORDER_QUOTE_CODE);
+        if (aceiteIds.isEmpty()) {
+            return;
+        }
+
+        Long aceiteId = aceiteIds.get(0);
+        Integer quantidade = jdbc.queryForObject(
+                "SELECT COUNT(*) FROM ordens_compra_orcamentos WHERE aceite_id = ?",
+                Integer.class,
+                aceiteId);
+        if (quantidade != null && quantidade == 0) {
+            byte[] pdf = new ClassPathResource("database/demo-purchase-order.pdf")
+                    .getContentAsByteArray();
+            jdbc.update(
+                    "INSERT INTO ordens_compra_orcamentos (aceite_id, file_name, content_type, content) "
+                            + "VALUES (?, ?, ?, ?)",
+                    aceiteId,
+                    "ordem-compra-demo-2026-005.pdf",
+                    "application/pdf",
+                    pdf);
         }
     }
 

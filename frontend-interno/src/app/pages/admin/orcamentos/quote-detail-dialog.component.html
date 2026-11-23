@@ -96,6 +96,91 @@
           </div>
         </dl>
 
+        @if (detalhe.status === 'Refused') {
+          <section class="rounded-xl border border-lactec-danger-border bg-lactec-danger-bg p-4" aria-labelledby="quote-rejection-title">
+            <h3 id="quote-rejection-title" class="m-0 text-sm font-semibold text-lactec-danger-ink">Motivo da recusa</h3>
+            @if (detalhe.clientDecision?.rejection; as recusa) {
+              <p class="mt-2 mb-0 break-words whitespace-pre-line text-sm text-lactec-danger-ink [overflow-wrap:anywhere]">
+                {{ recusa.justification || 'O cliente não informou uma justificativa.' }}
+              </p>
+            } @else {
+              <p class="mt-2 mb-0 text-sm text-lactec-danger-ink">Os dados da recusa não estão disponíveis.</p>
+            }
+          </section>
+        }
+
+        @if (detalhe.clientDecision?.acceptance; as aceite) {
+          <section class="rounded-xl border border-lactec-line bg-lactec-paper p-4" aria-labelledby="quote-acceptance-title">
+            <div class="flex flex-wrap items-start justify-between gap-2">
+              <div>
+                <h3 id="quote-acceptance-title" class="m-0 text-sm font-semibold text-lactec-ink">Aceite do cliente</h3>
+                <p class="mt-1 mb-0 text-sm text-lactec-muted">{{ rotuloFormaAceite(aceite.method) }}</p>
+              </div>
+              <p class="m-0 text-sm text-lactec-muted">{{ aceite.acceptedAt | date: 'dd/MM/yyyy HH:mm' }}</p>
+            </div>
+
+            @if (aceite.terms; as termo) {
+              <details class="mt-4 rounded-lg border border-lactec-line-soft bg-lactec-surface">
+                <summary class="cursor-pointer px-3 py-2.5 text-sm font-semibold text-lactec-primary-dark">
+                  Ver dados do termo preenchido
+                </summary>
+                <div class="space-y-5 border-t border-lactec-line-soft p-3">
+                  <section aria-labelledby="quote-acceptance-billing-title">
+                    <h4 id="quote-acceptance-billing-title" class="m-0 text-sm font-semibold text-lactec-ink">Cobrança</h4>
+                    <dl class="mt-3 grid grid-cols-1 gap-x-5 gap-y-3 text-sm sm:grid-cols-2">
+                      <div><dt class="text-xs text-lactec-muted">Empresa</dt><dd class="mt-1 mb-0 break-words text-lactec-ink-soft [overflow-wrap:anywhere]">{{ termo.billing.company }}</dd></div>
+                      <div><dt class="text-xs text-lactec-muted">CNPJ</dt><dd class="mt-1 mb-0 break-words text-lactec-ink-soft [overflow-wrap:anywhere]">{{ termo.billing.cnpj }}</dd></div>
+                      <div><dt class="text-xs text-lactec-muted">Inscrição estadual</dt><dd class="mt-1 mb-0 break-words text-lactec-ink-soft [overflow-wrap:anywhere]">{{ termo.billing.stateRegistration || 'Não informada' }}</dd></div>
+                      <div><dt class="text-xs text-lactec-muted">Endereço</dt><dd class="mt-1 mb-0 break-words text-lactec-ink-soft [overflow-wrap:anywhere]">{{ termo.billing.street }}</dd></div>
+                      <div><dt class="text-xs text-lactec-muted">Cidade / estado</dt><dd class="mt-1 mb-0 break-words text-lactec-ink-soft [overflow-wrap:anywhere]">{{ termo.billing.city }} / {{ termo.billing.state }}</dd></div>
+                      <div><dt class="text-xs text-lactec-muted">Bairro</dt><dd class="mt-1 mb-0 break-words text-lactec-ink-soft [overflow-wrap:anywhere]">{{ termo.billing.district || 'Não informado' }}</dd></div>
+                      <div><dt class="text-xs text-lactec-muted">CEP</dt><dd class="mt-1 mb-0 break-words text-lactec-ink-soft [overflow-wrap:anywhere]">{{ termo.billing.postalCode }}</dd></div>
+                      <div><dt class="text-xs text-lactec-muted">Contato</dt><dd class="mt-1 mb-0 break-words text-lactec-ink-soft [overflow-wrap:anywhere]">{{ termo.billing.contact || 'Não informado' }}</dd></div>
+                      <div><dt class="text-xs text-lactec-muted">Telefone</dt><dd class="mt-1 mb-0 break-words text-lactec-ink-soft [overflow-wrap:anywhere]">{{ termo.billing.phone || 'Não informado' }}</dd></div>
+                      <div><dt class="text-xs text-lactec-muted">Fax</dt><dd class="mt-1 mb-0 break-words text-lactec-ink-soft [overflow-wrap:anywhere]">{{ termo.billing.fax || 'Não informado' }}</dd></div>
+                      <div class="sm:col-span-2"><dt class="text-xs text-lactec-muted">E-mails para nota fiscal</dt><dd class="mt-1 mb-0 break-words text-lactec-ink-soft [overflow-wrap:anywhere]">{{ termo.billing.invoiceEmails || 'Não informados' }}</dd></div>
+                    </dl>
+                  </section>
+
+                  <section aria-labelledby="quote-acceptance-approval-title">
+                    <h4 id="quote-acceptance-approval-title" class="m-0 text-sm font-semibold text-lactec-ink">Aprovação</h4>
+                    <dl class="mt-3 grid grid-cols-1 gap-x-5 gap-y-3 text-sm sm:grid-cols-2">
+                      <div><dt class="text-xs text-lactec-muted">Solicitante</dt><dd class="mt-1 mb-0 break-words text-lactec-ink-soft [overflow-wrap:anywhere]">{{ termo.approval.requesterName }}</dd></div>
+                      <div><dt class="text-xs text-lactec-muted">Responsável</dt><dd class="mt-1 mb-0 break-words text-lactec-ink-soft [overflow-wrap:anywhere]">{{ termo.approval.responsibleName }}</dd></div>
+                      <div><dt class="text-xs text-lactec-muted">Cargo</dt><dd class="mt-1 mb-0 break-words text-lactec-ink-soft [overflow-wrap:anywhere]">{{ termo.approval.jobTitle }}</dd></div>
+                      <div><dt class="text-xs text-lactec-muted">Departamento</dt><dd class="mt-1 mb-0 break-words text-lactec-ink-soft [overflow-wrap:anywhere]">{{ termo.approval.department || 'Não informado' }}</dd></div>
+                      <div><dt class="text-xs text-lactec-muted">Data da aprovação</dt><dd class="mt-1 mb-0 text-lactec-ink-soft">{{ termo.approval.date | date: 'dd/MM/yyyy' }}</dd></div>
+                      <div><dt class="text-xs text-lactec-muted">Envio de resultados por e-mail</dt><dd class="mt-1 mb-0 text-lactec-ink-soft">{{ termo.approval.allowsResultsByEmail ? 'Autorizado' : 'Não autorizado' }}</dd></div>
+                      <div class="sm:col-span-2"><dt class="text-xs text-lactec-muted">E-mail para resultados</dt><dd class="mt-1 mb-0 break-words text-lactec-ink-soft [overflow-wrap:anywhere]">{{ termo.approval.resultsEmail || 'Não informado' }}</dd></div>
+                    </dl>
+                  </section>
+                </div>
+              </details>
+            } @else if (aceite.method === 'ORDEM_DE_COMPRA') {
+              @if (aceite.hasPurchaseOrder) {
+                <div class="mt-4 rounded-lg border border-lactec-line-soft bg-lactec-surface p-3">
+                  <p class="m-0 text-sm text-lactec-ink-soft">
+                    O cliente enviou uma ordem de compra. O PDF abre em outra aba; arquivos DOC e DOCX são baixados.
+                  </p>
+                  <button
+                    type="button"
+                    class="mt-3 rounded-lg border border-lactec-line px-4 py-2 text-sm font-semibold text-lactec-primary-dark hover:bg-lactec-line-soft disabled:cursor-wait disabled:opacity-60"
+                    [disabled]="carregandoOrdemCompra()"
+                    (click)="abrirOrdemCompra()"
+                  >
+                    {{ carregandoOrdemCompra() ? 'Abrindo arquivo...' : 'Abrir ordem de compra' }}
+                  </button>
+                  @if (erroOrdemCompra(); as mensagem) {
+                    <p class="mt-2 mb-0 text-sm text-lactec-danger-ink" role="alert">{{ mensagem }}</p>
+                  }
+                </div>
+              } @else {
+                <p class="mt-3 mb-0 text-sm text-lactec-muted">O cliente aceitou por ordem de compra, mas o arquivo não está disponível.</p>
+              }
+            }
+          </section>
+        }
+
         <section class="space-y-3" aria-labelledby="quote-items-title">
           <h3 id="quote-items-title" class="display m-0 min-w-0 break-words text-base font-semibold text-lactec-ink [overflow-wrap:anywhere]">Itens do orçamento</h3>
           @if (detalhe.items.length) {
