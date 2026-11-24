@@ -123,7 +123,7 @@ class QuotePurchaseOrderDialogFragment : DialogFragment() {
 
         fun show(manager: FragmentManager, quote: Quote) {
             val id = quote.id?.trim().orEmpty()
-            if (id.isBlank() || !QuoteStatusRules.canDecide(quote.stage, quote.status) ||
+            if (id.isBlank() || !QuoteStatusRules.canDecide(quote) ||
                 manager.isStateSaved || manager.findFragmentByTag(TAG) != null) return
             QuotePurchaseOrderDialogFragment().apply {
                 arguments = Bundle().apply { putString(ARG_ID, id) }

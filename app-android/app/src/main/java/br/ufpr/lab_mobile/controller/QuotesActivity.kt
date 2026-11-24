@@ -31,6 +31,7 @@ class QuotesActivity : PortalActivity() {
     private val quoteAdapter = QuoteAdapter(
         onViewQuote = { quote -> QuoteDetailsActivity.open(this, quote.id) },
         onViewStatus = { quote -> showQuoteStatus(quote.id) },
+        onViewReports = { quote -> QuoteReportsActivity.open(this, quote.id) },
     )
     private var debounceJob: Job? = null
     private var requestJob: Job? = null

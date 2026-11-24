@@ -20,6 +20,7 @@ import br.ufpr.lab_mobile.controller.QuoteStatusDialogFragment
 import br.ufpr.lab_mobile.controller.QuotesActivity
 import br.ufpr.lab_mobile.controller.QuoteDecisionDialogFragment
 import br.ufpr.lab_mobile.controller.QuoteDetailsActivity
+import br.ufpr.lab_mobile.controller.QuoteReportsActivity
 import br.ufpr.lab_mobile.service.RetrofitProvider
 import okhttp3.Interceptor
 import okhttp3.MediaType.Companion.toMediaType
@@ -56,6 +57,7 @@ class QuoteStatusDialogTest {
     @Volatile private var blockDetails = false
     @Volatile private var stage: String? = "Em negociação"
     @Volatile private var status = "Em Andamento"
+    @Volatile private var laboratoryStage: String? = null
 
     @Before
     fun installTestOnlyApi() {
@@ -65,6 +67,7 @@ class QuoteStatusDialogTest {
         val testClient = OkHttpClient.Builder().addInterceptor(TestSession.interceptor(context)).addInterceptor(Interceptor { chain ->
             val request = chain.request()
             val isDetail = request.url.encodedPath == "/api/quotes/$QUOTE_ID"
+            val isReports = request.url.encodedPath == "/api/quotes/$QUOTE_ID/reports"
             if (isDetail) {
                 detailRequests.add("${request.header("Authorization")} ${request.url.encodedPath}")
                 if (blockDetails) {
@@ -81,9 +84,9 @@ class QuoteStatusDialogTest {
             }
             val rejecting = request.method == "POST" && request.url.encodedPath.endsWith("/rejection")
             if (rejecting) { status = "Refused"; stage = "Recusado" }
-            val code = if (rejecting) 201 else if (isDetail) detailCode.get() else 200
+            val code = if (rejecting) 201 else if (isDetail) detailCode.get() else if (isReports) 204 else 200
             val payload = if (rejecting) """{"id":"receipt","kind":3,"recordedAt":"2026-11-22T12:00:00Z"}"""
-                else if (isDetail) quoteJson() else "[${quoteJson()}]"
+                else if (isDetail) quoteJson() else if (isReports) "" else "[${quoteJson()}]"
             Response.Builder().request(request).protocol(Protocol.HTTP_1_1)
                 .code(code).message("Instrumented test response")
                 .body(payload.toResponseBody("application/json".toMediaType())).build()
@@ -103,7 +106,7 @@ class QuoteStatusDialogTest {
     @Test
     fun recusaAtualizaListaPeloServidorEFechaDialogo() {
         status = "Pendente de Aceite"
-        stage = "Qualificação"
+        stage = "Em negociação"
         launchList()
         openStatus()
         awaitContent()
@@ -137,7 +140,24 @@ class QuoteStatusDialogTest {
     }
 
     @Test
+    fun publishedLaboratoryStageOpensReportsFromQuoteList() {
+        laboratoryStage = "relatorio-publicado"
+        launchList()
+        assertTrue(checkUi { (statusButton(it) as TextView).text == context.getString(R.string.reported_quote_view) })
+        val monitor = instrumentation.addMonitor(QuoteReportsActivity::class.java.name, null, false)
+        try {
+            scenario!!.onActivity { statusButton(it)!!.performClick() }
+            val reports = instrumentation.waitForMonitorWithTimeout(monitor, TIMEOUT_MS)
+            assertTrue(reports is QuoteReportsActivity)
+            assertEquals(QUOTE_ID, reports.intent.getStringExtra(QuoteReportsActivity.EXTRA_QUOTE_ID))
+            instrumentation.runOnMainSync { reports.finish() }
+            assertTrue(checkUi { fragment(it) == null })
+        } finally { instrumentation.removeMonitor(monitor) }
+    }
+
+    @Test
     fun openingRepeatedTapsRecreationAndBackPreserveQuoteAndFilters() {
+        stage = "Em execução"
         launchList()
         scenario!!.onActivity { activity ->
             activity.findViewById<TextView>(R.id.search).text = "EAQ-DEVICE"
@@ -261,7 +281,7 @@ class QuoteStatusDialogTest {
     }
 
     @Test
-    fun backendBusinessStatusesDoNotOverrideStageLabelsAndCurrentStepIsCentered() {
+    fun backendBusinessStatusesDoNotOverrideStageLabelsAndActiveStep() {
         listOf(
             Triple("Pendente de Aceite", "Qualificação", R.string.quote_stage_qualification),
             Triple("Em Andamento", "Negociação", R.string.quote_stage_negotiation),
@@ -282,10 +302,8 @@ class QuoteStatusDialogTest {
             awaitContent()
             assertTrue(checkUi { activity ->
                 val dialog = dialog(activity)!!
-                val center = dialog.findViewById<View>(R.id.stepTwo)
-                val row = dialog.findViewById<View>(R.id.progressSteps)
-                center.findViewById<TextView>(R.id.label).text.toString() == expected &&
-                    kotlin.math.abs(center.left + center.width / 2f - row.width / 2f) <= 1f &&
+                val activeStep = if (backendStage == "Qualificação") R.id.stepOne else R.id.stepTwo
+                dialog.findViewById<View>(activeStep).findViewById<TextView>(R.id.label).text.toString() == expected &&
                     dialog.findViewById<TextView>(R.id.currentStatus).text.toString() == context.getString(R.string.quote_status_current, expected)
             })
             listOf("Atual", "Pendente", "Concluída", "Enviar e-mail").forEach { removedCopy ->
@@ -295,9 +313,6 @@ class QuoteStatusDialogTest {
                     matches.filterIsInstance<TextView>().none { it.isShown && it.text.toString() == removedCopy }
                 })
             }
-            if (backendStage == "Qualificação") {
-                assertTrue(checkUi { dialog(it)!!.findViewById<View>(R.id.stepOne).visibility == View.INVISIBLE })
-            }
             closeStatus()
         }
     }
@@ -305,9 +320,20 @@ class QuoteStatusDialogTest {
     @Test
     fun threeStepsWrapWithoutTruncationAndExposeAccessibleStates() {
         stage = "Em análise pela área"
+        status = "PendingAcceptance"
         launchList()
+        assertTrue(checkUi {
+            it.findViewById<RecyclerView>(R.id.quotesList).findViewHolderForAdapterPosition(0)
+                ?.itemView?.findViewById<View>(R.id.viewQuote)?.visibility == View.GONE
+        })
         openStatus()
         awaitContent()
+        assertTrue(checkUi { activity ->
+            val dialog = dialog(activity)!!
+            listOf(R.id.viewPdf, R.id.rejectQuote, R.id.acceptQuote).all { id ->
+                dialog.findViewById<View>(id).visibility == View.GONE
+            }
+        })
         awaitUi("Step labels laid out") { dialog(it)!!.findViewById<View>(R.id.stepThree).findViewById<TextView>(R.id.label).layout != null }
         assertTrue(checkUi { activity ->
             val dialog = dialog(activity)!!
@@ -383,7 +409,8 @@ class QuoteStatusDialogTest {
 
     private fun quoteJson(): String {
         val stageJson = stage?.let { "\"$it\"" } ?: "null"
-        return """{"id":"$QUOTE_ID","code":"EAQ-DEVICE","description":"Verificação instrumentada","status":"$status","stage":$stageJson,"externalContactName":"Contato de teste","externalContactEmail":"contato@example.invalid"}"""
+        val laboratoryStageJson = laboratoryStage?.let { "\"$it\"" } ?: "null"
+        return """{"id":"$QUOTE_ID","code":"EAQ-DEVICE","description":"Verificação instrumentada","status":"$status","stage":$stageJson,"laboratoryStage":$laboratoryStageJson,"externalContactName":"Contato de teste","externalContactEmail":"contato@example.invalid"}"""
     }
 
     private companion object {

@@ -12,4 +12,16 @@ data class Quote(
     val externalContactEmail: String?,
     val totalPrice: Double?,
     val createdDate: String?,
+    val protocol: String? = null,
+    // Etapa informada pelo laboratório (ex.: "em-execucao", "relatorio-publicado"). O comercial
+    // para de avançar depois do aceite, então só este campo mostra o andamento das análises.
+    val laboratoryStage: String? = null,
+    val clientDecision: ClientDecision? = null,
+)
+
+/** Última decisão registrada pelo cliente no portal (aceite, ordem de compra, envio de amostra ou recusa). */
+data class ClientDecision(
+    val id: String?,
+    val kind: String?,
+    val recordedAt: String?,
 )

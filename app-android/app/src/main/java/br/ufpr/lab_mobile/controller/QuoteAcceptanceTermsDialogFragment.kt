@@ -208,7 +208,7 @@ class QuoteAcceptanceTermsDialogFragment : DialogFragment() {
 
         fun show(manager: FragmentManager, quote: Quote) {
             val id = quote.id?.trim().orEmpty()
-            if (id.isBlank() || !QuoteStatusRules.canDecide(quote.stage, quote.status) ||
+            if (id.isBlank() || !QuoteStatusRules.canDecide(quote) ||
                 manager.isStateSaved || manager.findFragmentByTag(TAG) != null
             ) return
             QuoteAcceptanceTermsDialogFragment().apply {
