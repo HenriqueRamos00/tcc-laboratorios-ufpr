@@ -68,7 +68,7 @@ class QuoteReportsActivity : PortalActivity() {
         quoteService = QuoteService(retrofit.create(QuoteApiService::class.java))
         reportService = ReportService(retrofit.create(ReportApiService::class.java))
         reportList = ReportListView(binding.reportsList) { report -> downloader.start(report) }
-        downloader = ReportDownloader(this, reportService) { reportId -> reportList.setDownloading(reportId) }
+        downloader = ReportDownloader(this, reportService::downloadReport) { reportId -> reportList.setDownloading(reportId) }
         downloader.restoreState(savedInstanceState)
 
         binding.search.setText(savedInstanceState?.getString(STATE_SEARCH).orEmpty())

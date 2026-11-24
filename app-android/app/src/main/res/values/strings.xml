@@ -113,12 +113,40 @@
     <string name="equipment_location">Localização</string>
     <string name="equipment_view">Ver Equipamento</string>
     <string name="equipment_view_accessibility">Ver Equipamento. Número de Série: %1$s. TAG: %2$s.</string>
-    <string name="equipment_details_soon">Detalhes do equipamento em breve.</string>
     <string name="equipment_not_informed">Não informado</string>
     <string name="equipment_loading">Carregando equipamentos…</string>
     <string name="equipment_empty">Nenhum equipamento encontrado.</string>
     <string name="equipment_no_matches">Nenhum equipamento corresponde à busca.</string>
     <string name="equipment_loading_error">Não foi possível carregar os equipamentos. Verifique sua conexão e tente novamente.</string>
+    <!-- Detalhe de um equipamento: espelha a página "Detalhes do Equipamento" do portal web. -->
+    <string name="equipment_details_title">Detalhes do Equipamento</string>
+    <string name="equipment_details_loading">Carregando equipamento…</string>
+    <string name="equipment_details_error">Não foi possível carregar o equipamento. Verifique sua conexão e tente novamente.</string>
+    <string name="equipment_details_not_found">Este equipamento não foi encontrado ou não está disponível para a sua conta.</string>
+    <string name="equipment_details_unavailable">A consulta de equipamentos ainda não está disponível neste ambiente.</string>
+    <string name="equipment_identification_title">Identificação</string>
+    <string name="equipment_nameplate_unknown">O cadastro de equipamentos do laboratório não tem este número de série, então os dados de placa não aparecem aqui.</string>
+    <string name="equipment_oil_type">Tipo do Óleo</string>
+    <string name="equipment_company">Empresa</string>
+    <string name="equipment_voltage">Tensão</string>
+    <string name="equipment_power">Potência</string>
+    <string name="equipment_manufacturer">Fabricante</string>
+    <string name="equipment_manufacturing_year">Ano de Fabricação</string>
+    <string name="equipment_oil_volume">Volume de Óleo</string>
+    <string name="equipment_history_title">Histórico de Relatórios</string>
+    <string name="equipment_history_title_count">Histórico de Relatórios (%1$d)</string>
+    <string name="equipment_history_loading">Carregando histórico…</string>
+    <string name="equipment_history_empty">Não há histórico de análises disponível para este equipamento.</string>
+    <string name="equipment_history_error">Não foi possível carregar o histórico de relatórios. Tente novamente em instantes.</string>
+    <string name="equipment_analysis_physical_chemical">Análise Físico-Química</string>
+    <string name="equipment_analysis_chromatography">Cromatografia</string>
+    <string name="equipment_analysis_other">Outros ensaios</string>
+    <string name="equipment_report_completed">Concluído</string>
+    <string name="equipment_report_in_progress">Em andamento</string>
+    <string name="equipment_report_date_accessibility">Data do relatório: %1$s</string>
+    <string name="equipment_report_download_accessibility">Baixar o relatório. %1$s, data: %2$s</string>
+    <string name="equipment_report_pdf_unavailable_accessibility">PDF indisponível. %1$s, data: %2$s</string>
+
     <!-- Relatórios (menu): espelha a página "Relatórios" do portal web. -->
     <string name="results_title">Relatórios</string>
     <string name="results_subtitle">Busque entre todos os laudos publicados ou pelo orçamento que os gerou.</string>
