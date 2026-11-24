@@ -16,7 +16,7 @@ export const routes: Routes = [
         path: '',
         loadComponent: () =>
           import('./pages/login/login.component').then((module) => module.LoginComponent),
-        title: 'Entrar | Administração Auth2',
+        title: 'Acessar - Administração Auth2 Lactec',
       },
     ],
   },
@@ -31,7 +31,7 @@ export const routes: Routes = [
         path: '',
         loadComponent: () =>
           import('./pages/admin/overview.component').then((module) => module.OverviewComponent),
-        title: 'Visão geral | Administração Auth2',
+        title: 'Visão geral - Administração Auth2 Lactec',
       },
     ],
   },

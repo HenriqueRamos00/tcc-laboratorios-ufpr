@@ -1,49 +1,120 @@
-<form
-  [formGroup]="form"
-  (ngSubmit)="submit()"
-  [attr.aria-busy]="submitting()"
-  class="flex flex-col gap-2"
-  novalidate
->
-  <h1 class="mb-5 font-display text-3xl font-semibold tracking-tight text-lactec-nav">Entrar</h1>
+@let emailCtrl = form.controls.email;
+@let passwordCtrl = form.controls.password;
+@let emailInvalid = emailCtrl.touched && emailCtrl.invalid;
+@let passwordInvalid = passwordCtrl.touched && passwordCtrl.invalid;
 
-  <mat-form-field appearance="outline">
-    <mat-label>E-mail</mat-label>
-    <input
-      matInput
-      type="email"
-      autocomplete="username"
-      formControlName="email"
-      [readonly]="submitting()"
-    >
-    <mat-error>Informe um e-mail válido.</mat-error>
-  </mat-form-field>
+<div class="min-h-svh grid grid-cols-1 grid-rows-[auto_1fr] md:grid-rows-none md:grid-cols-2 bg-lactec-paper">
+  <section class="min-w-0 bg-lactec-nav bg-login-glow text-white grid place-items-center px-6 py-10 md:p-10">
+    <div class="text-center max-w-sm flex flex-col items-center gap-4 md:gap-6">
+      <app-logo [size]="36" />
+      <h2 class="display text-2xl md:text-3xl font-semibold tracking-tight leading-tight m-0">
+        Administração Auth2
+      </h2>
+      <p class="hidden md:block text-sm leading-relaxed text-white/70 max-w-xs m-0">
+        Acesso administrativo ao serviço de autenticação
+      </p>
+    </div>
+  </section>
 
-  <mat-form-field appearance="outline">
-    <mat-label>Senha</mat-label>
-    <input
-      matInput
-      type="password"
-      autocomplete="current-password"
-      formControlName="password"
-      [readonly]="submitting()"
+  <section class="min-w-0 grid grid-cols-1 grid-rows-[1fr_auto] gap-6 p-6 md:p-10 bg-lactec-paper">
+    <form
+      [formGroup]="form"
+      (ngSubmit)="submit()"
+      [attr.aria-busy]="submitting()"
+      novalidate
+      class="self-center justify-self-center min-w-0 w-full max-w-sm flex flex-col gap-5"
     >
-    <mat-error>
-      @if (form.controls.password.hasError('maxlength')) {
-        Use até 72 caracteres.
-      } @else {
-        Informe sua senha.
+      <div>
+        <p class="m-0 text-xs font-semibold uppercase tracking-[0.16em] text-lactec-primary-dark">
+          Área restrita
+        </p>
+        <h3 class="display text-2xl md:text-3xl font-semibold text-lactec-nav tracking-tight m-0 mt-2">
+          Acessar
+        </h3>
+      </div>
+
+      <div class="flex flex-col gap-2">
+        <label for="login-email" class="text-xs font-medium text-lactec-ink-soft tracking-wide">
+          E-mail <span class="text-lactec-danger">*</span>
+        </label>
+        <div class="input-field" [class.input-field--error]="emailInvalid">
+          <mat-icon class="input-field__icon" aria-hidden="true">mail_outline</mat-icon>
+          <input
+            id="login-email"
+            type="email"
+            formControlName="email"
+            autocomplete="username"
+            inputmode="email"
+            placeholder="seu@email.com"
+            class="input-field__input"
+            [readonly]="submitting()"
+            [attr.aria-invalid]="emailInvalid"
+            aria-describedby="login-email-error"
+          />
+        </div>
+        @if (emailInvalid) {
+          <p id="login-email-error" class="text-xs text-lactec-danger m-0" role="alert">
+            Informe um e-mail válido.
+          </p>
+        }
+      </div>
+
+      <div class="flex flex-col gap-2">
+        <label for="login-password" class="text-xs font-medium text-lactec-ink-soft tracking-wide">
+          Senha <span class="text-lactec-danger">*</span>
+        </label>
+        <div class="input-field" [class.input-field--error]="passwordInvalid">
+          <mat-icon class="input-field__icon" aria-hidden="true">lock_outline</mat-icon>
+          <input
+            id="login-password"
+            [type]="showPassword() ? 'text' : 'password'"
+            formControlName="password"
+            autocomplete="current-password"
+            placeholder="Digite sua senha"
+            class="input-field__input"
+            [readonly]="submitting()"
+            [attr.aria-invalid]="passwordInvalid"
+            aria-describedby="login-password-error"
+          />
+          <button
+            type="button"
+            (click)="togglePassword()"
+            class="input-field__suffix"
+            [attr.aria-label]="showPassword() ? 'Ocultar senha' : 'Mostrar senha'"
+          >
+            <mat-icon>{{ showPassword() ? 'visibility' : 'visibility_off' }}</mat-icon>
+          </button>
+        </div>
+        @if (passwordInvalid) {
+          <p id="login-password-error" class="text-xs text-lactec-danger m-0" role="alert">
+            {{ passwordCtrl.hasError('maxlength') ? 'Use até 72 caracteres.' : 'Informe sua senha.' }}
+          </p>
+        }
+      </div>
+
+      <button mat-flat-button type="submit" [disabled]="submitting()" class="w-full h-11">
+        <span>{{ submitting() ? 'Acessando…' : 'Acessar' }}</span>
+        @if (!submitting()) {
+          <mat-icon iconPositionEnd>arrow_forward</mat-icon>
+        }
+      </button>
+
+      @if (errorMessage(); as message) {
+        <div
+          class="mt-2 flex gap-3 items-start px-4 py-4 rounded-xl bg-lactec-danger-bg text-lactec-danger-ink border border-lactec-danger-border text-sm leading-snug"
+          role="alert"
+        >
+          <mat-icon class="text-lactec-danger-ink shrink-0">error_outline</mat-icon>
+          <span>{{ message }}</span>
+        </div>
       }
-    </mat-error>
-  </mat-form-field>
+    </form>
 
-  @if (errorMessage(); as message) {
-    <p class="rounded-lg bg-lactec-danger-bg px-4 py-3 text-sm text-lactec-danger-ink" role="alert">
-      {{ message }}
-    </p>
-  }
-
-  <button mat-flat-button type="submit" [disabled]="submitting()">
-    {{ submitting() ? 'Entrando…' : 'Entrar' }}
-  </button>
-</form>
+    <footer class="text-center text-lactec-muted text-xs flex flex-col items-center gap-2">
+      <span>Precisa de ajuda? Entre em contato com o suporte.</span>
+      <small class="text-xs tracking-widest text-lactec-faint uppercase">
+        © 2026 LACTEC LABORATORY FRAMEWORK. ALL RIGHTS RESERVED.
+      </small>
+    </footer>
+  </section>
+</div>

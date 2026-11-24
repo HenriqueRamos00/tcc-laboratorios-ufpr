@@ -1,28 +1,238 @@
 @import 'tailwindcss';
 
+/* Paleta Lactec: fonte única das cores da aplicação.
+   `static` garante que todas as variáveis sejam emitidas em :root mesmo quando
+   nenhuma classe utilitária as usa, porque src/theme.scss (tema do Angular
+   Material) as referencia por var(). */
 @theme static {
+  /* Marca */
   --color-lactec-primary: #18A5B8;
+  --color-lactec-primary-dark: #0E8A9C;
+  --color-lactec-on-primary: #FFFFFF;
   --color-lactec-nav: #0F4C5C;
+  --color-lactec-nav-dark: #0B3D4A;
+  --color-lactec-nav-hover: #163F4A;
+  --color-lactec-on-nav: #C8DBDF;
+
+  /* Superfícies e texto */
   --color-lactec-ink: #0B2230;
+  --color-lactec-ink-soft: #274251;
   --color-lactec-muted: #5D7480;
   --color-lactec-line: #E4E8EA;
+  --color-lactec-line-soft: #EEF1F2;
   --color-lactec-surface: #F5F6F3;
   --color-lactec-paper: #FFFFFF;
+
+  /* Feedback */
+  --color-lactec-success: #2E9E6A;
+  --color-lactec-success-soft: #3FAE6B;
+  --color-lactec-danger: #D9534F;
+  --color-lactec-warning: #E5A53B;
+  --color-lactec-warning-soft: #E5B23B;
+
   --color-lactec-danger-bg: #FBE7E5;
   --color-lactec-danger-ink: #8E2A24;
+  --color-lactec-danger-border: #F3C8C3;
+
+  /* Detalhes */
+  --color-lactec-divider: #B8C2C7;
+  --color-lactec-faint: #94A4AB;
 
   --font-display: 'Instrument Sans', system-ui, sans-serif;
   --font-sans: Inter, system-ui, sans-serif;
+  --font-mono: 'JetBrains Mono', ui-monospace, monospace;
 
   --breakpoint-sm: 480px;
   --breakpoint-md: 768px;
+  --breakpoint-lg: 1024px;
+  --breakpoint-xl: 1280px;
+  --breakpoint-2xl: 1440px;
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  height: 100%;
+  margin: 0;
+  padding: 0;
 }
 
 body {
-  margin: 0;
   background: var(--color-lactec-surface);
   color: var(--color-lactec-ink);
-  font-family: var(--font-sans);
+  font-family: 'Inter', system-ui, sans-serif;
+  font-size: 14px;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+::selection {
+  background: rgba(24, 165, 184, 0.22);
+  color: var(--color-lactec-ink);
+}
+
+.display {
+  font-family: 'Instrument Sans', system-ui, sans-serif;
+  letter-spacing: -0.01em;
+}
+
+.shell-main {
+  scrollbar-gutter: stable;
+}
+
+mat-sidenav-content.mat-drawer-content {
+  overflow: hidden;
+}
+
+/* O Material declara `box-sizing: border-box`, `overflow-y: auto` e uma borda de
+   1px no HOST da gaveta, em regras sem camada. As utilitárias do Tailwind vivem
+   dentro de `@layer utilities`, e regra sem camada vence camada nomeada
+   independente de especificidade: `border-0` e `overflow-x-hidden` escritos na
+   classe do `mat-sidenav` nunca chegaram a valer. O efeito media-se na tela: dos
+   80px do menu recolhido sobravam 64 de espaço útil, 1 comido pela borda e ~15
+   pela barra de rolagem que nasce dentro da própria largura. O cabeçalho não
+   cabia, e o que vazava virava a rolagem horizontal que o usuário via.
+
+   As duas regras abaixo devolvem os 16px em vez de orçá-los. Elas são declaradas
+   fora de camada, como as do Material, e ganham por especificidade. A rolagem
+   vertical continua existindo onde ela pertence, no `<nav>` de dentro. */
+mat-sidenav.mat-drawer {
+  overflow: hidden;
+}
+
+mat-sidenav.mat-drawer-side {
+  border-right-width: 0;
+}
+
+/* Rede de segurança, não conserto: o container interno também vem com
+   `overflow: auto` do Material, então um rótulo que não coubesse reporia a barra
+   horizontal dentro do menu. A rolagem vertical continua no `<nav>`, que é onde
+   ela pertence. */
+mat-sidenav .mat-drawer-inner-container {
+  overflow-x: hidden;
+}
+
+/* Tamanhos de ícone do Material. O componente fixa 24px em width, height e
+   font-size; para mudar isso sem `!important` basta subir a especificidade com
+   elemento + classe. O line-height entra junto porque a caixa tem overflow
+   hidden: sem ele o glifo é empurrado para fora. */
+mat-icon.icone-16 {
+  font-size: 16px;
+  line-height: 16px;
+  width: 16px;
+  height: 16px;
+}
+
+mat-icon.icone-20 {
+  font-size: 20px;
+  line-height: 20px;
+  width: 20px;
+  height: 20px;
+}
+
+mat-icon.icone-36 {
+  font-size: 36px;
+  line-height: 36px;
+  width: 36px;
+  height: 36px;
+}
+
+.mono {
+  font-family: 'JetBrains Mono', ui-monospace, monospace;
+}
+
+.input-field {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  height: 44px;
+  padding: 0 12px;
+  background: var(--color-lactec-paper);
+  border: 1px solid var(--color-lactec-line);
+  border-radius: 8px;
+  transition:
+    border-color 120ms ease,
+    box-shadow 120ms ease;
+}
+.input-field:hover {
+  border-color: #C9D1D5;
+}
+.input-field:focus-within {
+  border-color: var(--color-lactec-primary);
+  box-shadow: 0 0 0 4px rgba(24, 165, 184, 0.12);
+}
+.input-field--error,
+.input-field--error:hover {
+  border-color: var(--color-lactec-danger);
+}
+.input-field--error:focus-within {
+  border-color: var(--color-lactec-danger);
+  box-shadow: 0 0 0 4px rgba(217, 83, 79, 0.14);
+}
+.input-field__icon {
+  flex: none;
+  color: var(--color-lactec-muted);
+  font-size: 20px;
+  width: 20px;
+  height: 20px;
+  line-height: 20px;
+}
+.input-field:focus-within .input-field__icon {
+  color: var(--color-lactec-primary-dark);
+}
+.input-field--error .input-field__icon {
+  color: var(--color-lactec-danger);
+}
+.input-field__input {
+  flex: 1 1 auto;
+  min-width: 0;
+  height: 100%;
+  background: transparent;
+  border: 0;
+  outline: 0;
+  padding: 0 0 0 6px;
+  font: inherit;
+  font-size: 14px;
+  color: var(--color-lactec-ink);
+  caret-color: var(--color-lactec-primary);
+}
+.input-field__input::placeholder {
+  color: rgba(93, 116, 128, 0.55);
+}
+.input-field__suffix {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  margin-right: -6px;
+  background: transparent;
+  border: 0;
+  border-radius: 6px;
+  color: var(--color-lactec-muted);
+  cursor: pointer;
+  transition:
+    background-color 120ms ease,
+    color 120ms ease;
+}
+.input-field__suffix:hover {
+  background: var(--color-lactec-line-soft);
+  color: var(--color-lactec-ink-soft);
+}
+.input-field__suffix:focus-visible {
+  outline: 2px solid var(--color-lactec-primary);
+  outline-offset: 2px;
 }
 
 .bg-login-glow {

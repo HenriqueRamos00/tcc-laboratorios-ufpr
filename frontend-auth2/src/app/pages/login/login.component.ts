@@ -3,19 +3,18 @@ import { ChangeDetectionStrategy, Component, DestroyRef, inject, signal } from '
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
-import { MatFormFieldModule } from '@angular/material/form-field';
-import { MatInputModule } from '@angular/material/input';
+import { MatIconModule } from '@angular/material/icon';
 import { Router } from '@angular/router';
 import { finalize } from 'rxjs';
 
 import { LoginService } from '@/app/services/login.service';
+import { LogoComponent } from '@shared/components/logo/logo.component';
 
 @Component({
   selector: 'app-login',
   standalone: true,
-  imports: [ReactiveFormsModule, MatButtonModule, MatFormFieldModule, MatInputModule],
+  imports: [ReactiveFormsModule, MatButtonModule, MatIconModule, LogoComponent],
   templateUrl: './login.component.html',
-  host: { class: 'w-full max-w-sm' },
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class LoginComponent {
@@ -24,12 +23,17 @@ export class LoginComponent {
   private readonly router = inject(Router);
   private readonly destroyRef = inject(DestroyRef);
 
+  readonly showPassword = signal(false);
   readonly submitting = signal(false);
   readonly errorMessage = signal<string | null>(null);
   readonly form = this.fb.nonNullable.group({
     email: ['', [Validators.required, Validators.email, Validators.maxLength(254)]],
     password: ['', [Validators.required, Validators.maxLength(72)]],
   });
+
+  togglePassword(): void {
+    this.showPassword.update((visible) => !visible);
+  }
 
   submit(): void {
     if (this.submitting()) {
