@@ -1,6 +1,6 @@
 # Frontend Auth2
 
-Portal de administração do Auth2. O projeto usa Angular 19 com componentes
+Portal de administração de acessos do serviço Auth2. O projeto usa Angular 19 com componentes
 standalone, Angular Material, Tailwind CSS e a identidade visual dos portais Lactec.
 
 ## Docker Compose
@@ -42,17 +42,15 @@ O primeiro administrador é criado pelo [procedimento de instalação do Auth2](
 
 `npm run build` gera o site estático em `dist/frontend-auth2/browser`.
 
-## Plano
+## Administração de acessos
 
-1. **Base implementada.** Separar telas em `pages`, layouts em `layouts`, contratos em
-   `model`, chamadas HTTP em `services` e guardas e interceptadores em `core`.
-   A rota `/login` leva à área protegida `/admin` após autenticação.
-2. **Empresas e aplicações.** Criar listagens e formulários para `/api/companies` e
-   `/api/services`. Oferecer emissão e revogação de tokens de aplicação e exibir o valor
-   do token somente na resposta de emissão.
-3. **Clientes e administradores.** Adicionar manutenção de `/api/users` e `/api/admins`,
-   com vínculo a empresas e à aplicação no cadastro de clientes.
-4. **Validação e publicação.** Conferir expiração, bloqueio de login e conflitos de edição
-   contra o servidor. Usar o [contrato OpenAPI](../backend-auth2/docs/openapi.json) como referência.
-   Servir a compilação por HTTPS, encaminhar `/api/**` ao Auth2 na mesma origem e
-   devolver `index.html` para as rotas do Angular.
+| Área | Rota | Operações |
+| --- | --- | --- |
+| Aplicações | `/admin/aplicacoes` | Cadastrar, editar, desativar e reativar aplicações. A aba **Tokens** permite emitir, copiar o valor na emissão e revogar credenciais. |
+| Empresas | `/admin/empresas` | Cadastrar e editar nome e CNPJ. Para excluir uma empresa, remova primeiro os vínculos nas contas de clientes. |
+| Clientes | `/admin/clientes` | Cadastrar contas por aplicação, consultar a confirmação de e-mail e editar nome, situação e empresas representadas. |
+| Administradores | `/admin/administradores` | Criar, atualizar e excluir administradores. A troca de senha encerra as sessões da conta. O serviço exige pelo menos um administrador ativo. |
+
+Cada listagem oferece busca local. O portal usa as operações descritas no [contrato OpenAPI](../backend-auth2/docs/openapi.json).
+
+Em produção, sirva a compilação por HTTPS, encaminhe `/api/**` ao Auth2 na mesma origem e devolva `index.html` para as rotas do Angular.

@@ -4,7 +4,7 @@ import { Router } from '@angular/router';
 import { Observable, tap } from 'rxjs';
 
 import { environment } from '@/app/environment/env';
-import { LoginRequest, LoginResponse } from '@/app/model/login';
+import { Administrator, LoginRequest, LoginResponse } from '@/app/model/login';
 
 export const loginUrl = `${environment.apiUrl}/admin/auth/login`;
 
@@ -45,6 +45,10 @@ export class LoginService {
   accessToken(): string | null {
     const session = this.session();
     return session && session.expiresAt > Date.now() ? session.accessToken : null;
+  }
+
+  updateCurrentUser({ id, name, email }: Administrator): void {
+    this.session.update(session => session?.user.id === id ? { ...session, user: { id, name, email } } : session);
   }
 
   signOut(): void {

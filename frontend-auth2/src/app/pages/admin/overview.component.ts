@@ -13,7 +13,7 @@ import { PageHeaderComponent } from '@shared/components/page-header/page-header.
       <div class="space-y-8 wrap-anywhere">
         <app-page-header
           [title]="'Olá, ' + administrator.name"
-          subtitle="Visão geral da administração do Auth2"
+          subtitle="Visão geral da administração de acessos"
           [breadcrumbs]="breadcrumbs"
         />
 
@@ -41,7 +41,7 @@ import { PageHeaderComponent } from '@shared/components/page-header/page-header.
 export class OverviewComponent {
   protected readonly user = inject(LoginService).currentUser;
   protected readonly breadcrumbs = [
-    { label: 'Administração Auth2', route: '/admin' },
+    { label: 'Administração de acessos', route: '/admin' },
     { label: 'Visão geral' },
   ] as const;
 }

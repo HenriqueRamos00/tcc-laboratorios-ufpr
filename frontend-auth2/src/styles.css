@@ -240,3 +240,98 @@ mat-icon.icone-36 {
     radial-gradient(900px 600px at 20% 20%, rgba(255, 255, 255, 0.06), transparent 60%),
     radial-gradient(600px 400px at 80% 90%, rgba(24, 165, 184, 0.12), transparent 60%);
 }
+
+/* Diretórios da administração de acessos */
+.access-page {
+  display: grid;
+  gap: 1.5rem;
+  max-width: 90rem;
+  min-width: 0;
+  margin-inline: auto;
+}
+.access-card {
+  min-width: 0;
+  background: var(--color-lactec-paper);
+  border: 1px solid var(--color-lactec-line);
+  border-radius: 0.75rem;
+  box-shadow: 0 2px 6px rgb(11 34 48 / 4%);
+}
+.access-toolbar, .access-form-actions, .access-actions, .access-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.75rem;
+}
+.access-toolbar {
+  justify-content: space-between;
+  padding: 1rem 1.25rem;
+  border-bottom: 1px solid var(--color-lactec-line-soft);
+}
+.access-search {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem 0.75rem;
+  width: min(100%, 23rem);
+  color: var(--color-lactec-muted);
+  border: 1px solid var(--color-lactec-divider);
+  border-radius: 0.5rem;
+}
+.access-search input { width: 100%; min-width: 0; outline: 0; color: var(--color-lactec-ink); }
+.access-search:focus-within, .access-input:focus-visible {
+  outline: 2px solid var(--color-lactec-primary-dark);
+  outline-offset: 2px;
+}
+.access-count, .access-subline, .access-fields small { color: var(--color-lactec-muted); font-weight: 400; }
+.access-subline { display: block; font-size: 0.875rem; }
+.access-empty { margin: 0; padding: 2rem 1.25rem; text-align: center; color: var(--color-lactec-ink-soft); }
+.access-scroll { overflow-x: auto; border-radius: 0 0 0.75rem 0.75rem; }
+.access-table { width: 100%; border-collapse: collapse; text-align: left; }
+.access-table th, .access-table td { padding: 0.85rem 1rem; vertical-align: middle; }
+.access-table td, .access-table tbody th { overflow-wrap: anywhere; min-width: 6rem; }
+.access-table thead { background: var(--color-lactec-surface); color: var(--color-lactec-ink-soft); }
+.access-table thead th { font-size: 0.875rem; font-weight: 600; }
+.access-table tbody th { font-weight: 600; }
+.access-table tbody tr + tr { border-top: 1px solid var(--color-lactec-line-soft); }
+.access-table tbody tr:focus-within, .access-table tbody tr:hover { background: #f7fafb; }
+.access-link { color: var(--color-lactec-nav); text-underline-offset: 3px; }
+.access-link:hover, .access-link:focus-visible { text-decoration: underline; }
+.access-actions { flex-wrap: nowrap; gap: 0; }
+button.access-danger { color: var(--color-lactec-danger-ink); }
+.access-badge {
+  display: inline-block;
+  padding: 0.125rem 0.6rem;
+  border-radius: 1rem;
+  font-size: 0.875rem;
+  font-weight: 500;
+  background: var(--color-lactec-line-soft);
+}
+.access-badge[data-tone="positive"], .access-notice { background: #e6f4ed; color: #176143; }
+.access-badge[data-tone="pending"] { background: #fff2d5; color: #775411; }
+.access-notice, .access-error { margin: 0; padding: 0.75rem 1rem; border-radius: 0.5rem; }
+.access-error { color: var(--color-lactec-danger-ink); background: var(--color-lactec-danger-bg); }
+.access-form { width: min(100%, 45rem); padding: clamp(1rem, 3vw, 2rem); }
+.access-fields { display: grid; gap: 1.25rem; min-width: 0; }
+.access-fields > label { display: grid; gap: 0.4rem; font-weight: 600; color: var(--color-lactec-ink-soft); }
+.access-fields small { font-size: 0.875rem; }
+.access-input {
+  width: 100%; min-width: 0; min-height: 2.75rem;
+  padding: 0.55rem 0.75rem;
+  border: 1px solid var(--color-lactec-divider);
+  border-radius: 0.5rem;
+  background: var(--color-lactec-paper);
+  color: var(--color-lactec-ink);
+  font-weight: 400;
+}
+.access-fields input:read-only, .access-input:disabled { background: var(--color-lactec-surface); }
+.access-form-actions { justify-content: flex-end; border-top: 1px solid var(--color-lactec-line); margin-top: 1.5rem; padding-top: 1rem; }
+.access-form .access-error { margin-top: 1rem; }
+.access-companies { border: 1px solid var(--color-lactec-line); border-radius: 0.5rem; padding: 0.75rem; max-height: 18rem; overflow-y: auto; }
+.access-companies legend { padding-inline: 0.4rem; font-weight: 600; }
+.access-companies label { display: flex; align-items: center; gap: 0.65rem; padding: 0.4rem; }
+.access-companies small { display: block; }
+.access-companies input { width: 1rem; height: 1rem; accent-color: var(--color-lactec-primary-dark); }
+.access-readout { display: flex; flex-wrap: wrap; gap: 0.75rem; color: var(--color-lactec-muted); }
+.access-tabs { border-bottom: 1px solid var(--color-lactec-divider); }
+.access-tabs a { padding: 0.55rem 0.85rem; border-bottom: 3px solid transparent; color: var(--color-lactec-muted); }
+.access-tabs a[aria-current] { border-color: var(--color-lactec-primary-dark); color: var(--color-lactec-nav); font-weight: 600; }

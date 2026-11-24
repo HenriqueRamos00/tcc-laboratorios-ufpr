@@ -1,0 +1,110 @@
+<div class="access-page">
+  <app-page-header [title]="section.label" [breadcrumbs]="breadcrumbs">
+    <a acoes mat-flat-button [routerLink]="[basePath, 'novo']">
+      <mat-icon>add</mat-icon>{{ section.create }}
+    </a>
+  </app-page-header>
+
+  @if (message()) {
+    <p class="access-notice" role="status">{{ message() }}</p>
+  }
+  @if (actionError()) {
+    <p class="access-error" role="alert">{{ actionError() }}</p>
+  }
+  <section class="access-card" [attr.aria-label]="section.label">
+    <div class="access-toolbar">
+      <label class="access-search">
+        <mat-icon aria-hidden="true">search</mat-icon>
+        <input
+          type="search"
+          #search
+          [value]="query()"
+          (input)="query.set(search.value)"
+          [placeholder]="'Buscar em ' + section.label.toLowerCase()"
+          aria-label="Buscar registros"
+        />
+      </label>
+      @if (!loading() && !loadError()) {
+        <span class="access-count" role="status"
+          >{{ shown().length }} {{ shown().length === 1 ? 'registro' : 'registros' }}</span
+        >
+      }
+    </div>
+    @if (loading()) {
+      <p class="access-empty" role="status">Carregando registros…</p>
+    } @else if (loadError()) {
+      <div class="access-empty" role="alert">
+        {{ loadError() }}
+        <button mat-button (click)="reload()">Tentar novamente</button>
+      </div>
+    } @else if (!shown().length) {
+      <p class="access-empty">
+        {{
+          query().trim()
+            ? 'Nenhum registro encontrado para a busca.'
+            : 'Nenhum registro cadastrado.'
+        }}
+      </p>
+    } @else {
+      <div class="access-scroll">
+        <table class="access-table">
+          <thead>
+            <tr>
+              <th scope="col">Nome</th>
+              @for (col of section.columns; track col) {
+                <th scope="col">{{ col }}</th>
+              }
+              <th scope="col">Ações</th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (row of shown(); track row.record.id) {
+              <tr>
+                <th scope="row">
+                  <a class="access-link" [routerLink]="[basePath, row.record.id]">{{
+                    row.record.name
+                  }}</a>
+                  @if (row.subtitle) {
+                    <span class="access-subline">{{ row.subtitle }}</span>
+                  }
+                </th>
+                @for (cell of row.cells; track $index) {
+                  <td>
+                    @if (cell.tone) {
+                      <span class="access-badge" [attr.data-tone]="cell.tone">{{ cell.text }}</span>
+                    } @else {
+                      {{ cell.text }}
+                    }
+                  </td>
+                }
+                <td>
+                  <div class="access-actions">
+                    <a mat-button [routerLink]="[basePath, row.record.id]">Editar</a>
+                    @if (section.resource === 'services') {
+                      <a
+                        mat-button
+                        [routerLink]="[basePath, row.record.id]"
+                        [queryParams]="{ aba: 'tokens' }"
+                        >Tokens</a
+                      >
+                    }
+                    @if (canRemove(row.record)) {
+                      <button
+                        mat-button
+                        class="access-danger"
+                        [disabled]="busy()"
+                        (click)="remove(row.record)"
+                      >
+                        {{ section.resource === 'services' ? 'Desativar' : 'Excluir' }}
+                      </button>
+                    }
+                  </div>
+                </td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+    }
+  </section>
+</div>

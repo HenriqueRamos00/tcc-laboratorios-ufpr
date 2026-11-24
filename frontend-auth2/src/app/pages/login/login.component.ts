@@ -82,5 +82,5 @@ function loginErrorMessage(error: unknown): string {
     }
   }
 
-  return 'Não foi possível acessar o Auth2. Tente novamente em instantes.';
+  return 'Não foi possível acessar o portal. Tente novamente em instantes.';
 }

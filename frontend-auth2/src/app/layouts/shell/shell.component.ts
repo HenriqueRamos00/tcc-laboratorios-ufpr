@@ -1,14 +1,16 @@
 import { BreakpointObserver } from '@angular/cdk/layout';
 import { NgClass } from '@angular/common';
-import { ChangeDetectionStrategy, Component, effect, inject, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, DestroyRef, effect, inject, signal } from '@angular/core';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { MatButtonModule } from '@angular/material/button';
+import { MatDialog } from '@angular/material/dialog';
 import { MatIconModule } from '@angular/material/icon';
 import { MatSidenavModule } from '@angular/material/sidenav';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
 import { map } from 'rxjs';
 
+import { sections } from '@/app/pages/admin/directory/sections';
 import { LoginService } from '@/app/services/login.service';
 import { LogoComponent } from '@shared/components/logo/logo.component';
 
@@ -57,9 +59,12 @@ export class ShellComponent {
 
   readonly nav: readonly NavItem[] = [
     { label: 'Visão geral', path: '/admin', icon: 'dashboard', exact: true },
+    ...sections.map(({ label, path, icon }) => ({ label, path: '/admin/' + path, icon, exact: false })),
   ];
 
   constructor() {
+    const dialog = inject(MatDialog);
+    inject(DestroyRef).onDestroy(() => dialog.closeAll());
     effect(() => {
       if (typeof localStorage === 'undefined') return;
       localStorage.setItem(COLLAPSED_KEY, this.collapsed() ? '1' : '0');
