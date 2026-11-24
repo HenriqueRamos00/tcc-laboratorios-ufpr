@@ -1,8 +1,11 @@
-import { Routes } from '@angular/router';
+import { CanDeactivateFn, Routes } from '@angular/router';
 
 import { authGuard, guestGuard } from '@core/guards/auth.guard';
 
+import type { EditorComponent } from './pages/admin/directory/editor.component';
 import { sections } from './pages/admin/directory/sections';
+
+const leaveEditor: CanDeactivateFn<EditorComponent | null> = (editor) => editor?.canLeave() ?? true;
 
 const managementRoutes: Routes = sections.flatMap((section) => {
   const editor = () =>
@@ -22,12 +25,14 @@ const managementRoutes: Routes = sections.flatMap((section) => {
       path: section.path + '/novo',
       data: { section },
       title: section.create + ' - Administração de acessos Lactec',
+      canDeactivate: [leaveEditor],
       loadComponent: editor,
     },
     {
       path: section.path + '/:id',
       data: { section },
       title: section.edit + ' - Administração de acessos Lactec',
+      canDeactivate: [leaveEditor],
       loadComponent: editor,
     },
   ];

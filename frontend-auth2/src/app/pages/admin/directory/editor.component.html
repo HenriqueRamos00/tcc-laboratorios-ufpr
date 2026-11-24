@@ -174,7 +174,9 @@
           <p class="access-error" role="alert">{{ saveError() }}</p>
         }
         <div class="access-form-actions">
-          <a mat-stroked-button [routerLink]="basePath">Cancelar</a>
+          <button mat-stroked-button type="button" [routerLink]="basePath" [disabled]="saving()">
+            Cancelar
+          </button>
           <button mat-flat-button type="submit" [disabled]="saving()">
             {{ saving() ? 'Salvando…' : 'Salvar' }}
           </button>

@@ -1,6 +1,6 @@
 import { HttpErrorResponse, HttpInterceptorFn } from '@angular/common/http';
 import { inject } from '@angular/core';
-import { tap } from 'rxjs';
+import { tap, throwError } from 'rxjs';
 
 import { environment } from '@/app/environment/env';
 import { LoginService, loginUrl } from '@/app/services/login.service';
@@ -13,7 +13,8 @@ export const authTokenInterceptor: HttpInterceptorFn = (request, next) => {
   const login = inject(LoginService);
   const token = login.accessToken();
   if (!token) {
-    return next(request);
+    login.signOut();
+    return throwError(() => new HttpErrorResponse({ status: 401, url: request.url }));
   }
 
   return next(request.clone({ setHeaders: { Authorization: `Bearer ${token}` } })).pipe(

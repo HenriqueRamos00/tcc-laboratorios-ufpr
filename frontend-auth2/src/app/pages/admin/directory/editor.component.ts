@@ -146,6 +146,15 @@ export class EditorComponent {
       : this.form.companyIds.filter((current) => current !== id);
   }
 
+  /** Sair durante a gravação descarta a resposta, mas o servidor ainda pode concluí-la. */
+  canLeave(): boolean {
+    if (!this.saving() || !this.login.accessToken()) return true;
+    this.snack.open('Aguarde o fim do salvamento para sair desta página.', 'Fechar', {
+      duration: 5000,
+    });
+    return false;
+  }
+
   save() {
     if (this.loading() || this.saving() || this.loadError()) return;
     this.saveError.set('');
@@ -193,6 +202,7 @@ export class EditorComponent {
       )
       .subscribe({
         next: (saved) => {
+          this.saving.set(false);
           const ownAccount = this.resource === 'admins' && id === this.login.currentUser()?.id;
           if (ownAccount && (f.password || !f.active)) {
             this.snack.open('Conta atualizada. Sua sessão foi encerrada.', 'Fechar', {

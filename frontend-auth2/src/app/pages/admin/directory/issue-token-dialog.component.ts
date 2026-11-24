@@ -3,7 +3,6 @@ import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { FormsModule } from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
 import { MAT_DIALOG_DATA, MatDialogModule, MatDialogRef } from '@angular/material/dialog';
-import { finalize } from 'rxjs';
 
 import { AccessService, accessError } from '@/app/services/access.service';
 
@@ -94,19 +93,21 @@ export class IssueTokenDialogComponent {
       return;
     }
     this.busy.set(true);
+    // Depois de emitido, o valor não pode ser consultado de novo: só 'Concluir' fecha a janela.
     this.dialog.disableClose = true;
     this.api
       .issue(this.serviceId, this.name.trim(), seconds)
-      .pipe(
-        finalize(() => {
+      .pipe(takeUntilDestroyed(this.destroy))
+      .subscribe({
+        next: (issued) => {
+          this.busy.set(false);
+          this.secret.set(issued.accessToken);
+        },
+        error: (e) => {
           this.busy.set(false);
           this.dialog.disableClose = false;
-        }),
-        takeUntilDestroyed(this.destroy),
-      )
-      .subscribe({
-        next: (issued) => this.secret.set(issued.accessToken),
-        error: (e) => this.error.set(accessError(e, 'Não foi possível emitir o token.')),
+          this.error.set(accessError(e, 'Não foi possível emitir o token.'));
+        },
       });
   }
 

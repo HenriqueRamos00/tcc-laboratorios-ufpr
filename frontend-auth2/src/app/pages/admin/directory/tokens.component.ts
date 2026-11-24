@@ -127,8 +127,12 @@ export class TokensComponent implements OnInit {
     const ref = this.dialog.open(IssueTokenDialogComponent, {
       data: this.serviceId(),
       width: '30rem',
+      closeOnNavigation: false,
     });
-    const unregister = this.destroy.onDestroy(() => ref.close());
+    const unregister = this.destroy.onDestroy(() => {
+      // Emissão em andamento ou token à mostra: a janela continua aberta ao trocar de página.
+      if (!ref.disableClose) ref.close();
+    });
     ref
       .afterClosed()
       .pipe(takeUntilDestroyed(this.destroy))
