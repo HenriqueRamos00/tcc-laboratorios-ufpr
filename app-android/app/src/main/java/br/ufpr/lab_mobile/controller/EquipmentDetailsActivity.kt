@@ -114,6 +114,7 @@ class EquipmentDetailsActivity : PortalActivity() {
         val subtitle = listOfNotNull(equipment.displayTag, equipment.type?.takeIf(String::isNotBlank)).joinToString(" · ")
         binding.equipmentName.text = subtitle
         binding.equipmentName.isVisible = subtitle.isNotEmpty()
+        binding.viewHealth.setOnClickListener { HealthIndicatorsActivity.open(this, equipmentId, equipment.displayTag) }
         binding.nameplateNotice.isVisible = equipment.nameplateKnown == false
         showFields(binding.identificationFields, identificationFields(equipment))
         restoreScroll()

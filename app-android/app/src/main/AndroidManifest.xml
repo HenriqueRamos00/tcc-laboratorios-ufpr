@@ -20,6 +20,7 @@
         <activity android:name=".controller.QuoteReportsActivity" android:exported="false" />
         <activity android:name=".controller.EquipmentActivity" android:exported="false" android:windowSoftInputMode="adjustResize" />
         <activity android:name=".controller.EquipmentDetailsActivity" android:exported="false" />
+        <activity android:name=".controller.HealthIndicatorsActivity" android:exported="false" />
         <activity android:name=".controller.QuoteDetailsActivity" android:exported="false" />
         <activity
             android:name=".controller.LoginActivity"

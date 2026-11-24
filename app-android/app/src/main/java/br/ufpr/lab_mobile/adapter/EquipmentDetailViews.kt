@@ -41,7 +41,7 @@ internal fun identificationFields(equipment: EquipmentDetail): List<Pair<Int, St
 }
 
 /** Duas colunas cabem num celular comum; tela estreita ou fonte ampliada empilha, sem quebrar valores. */
-private val Configuration.stacksFields: Boolean get() = screenWidthDp < 360 || fontScale > 1.3f
+internal val Configuration.stacksFields: Boolean get() = screenWidthDp < 360 || fontScale > 1.3f
 
 /** Distribui os campos em linhas de colunas de mesma largura. */
 internal fun showFields(container: LinearLayout, fields: List<Pair<Int, String?>>) {
