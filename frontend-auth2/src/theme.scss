@@ -1,0 +1,37 @@
+@use '@angular/material' as mat;
+
+html {
+  @include mat.theme((
+    color: (
+      primary: mat.$cyan-palette,
+      theme-type: light,
+    ),
+    typography: (
+      plain-family: (Inter, system-ui, sans-serif),
+      brand-family: ('Instrument Sans', system-ui, sans-serif),
+    ),
+    density: 0,
+  ));
+
+  @include mat.theme-overrides((
+    primary: var(--color-lactec-nav),
+    on-primary: var(--color-lactec-paper),
+    on-surface: var(--color-lactec-ink),
+    on-surface-variant: var(--color-lactec-muted),
+    error: var(--color-lactec-danger-ink),
+    surface: var(--color-lactec-paper),
+  ));
+
+  @include mat.button-overrides((
+    filled-container-shape: 8px,
+    outlined-container-shape: 8px,
+  ));
+}
+
+.shell-header {
+  @include mat.button-overrides((
+    outlined-label-text-color: var(--color-lactec-paper),
+    outlined-outline-color: var(--color-lactec-line),
+    outlined-state-layer-color: var(--color-lactec-paper),
+  ));
+}

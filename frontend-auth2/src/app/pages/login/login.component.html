@@ -1,0 +1,49 @@
+<form
+  [formGroup]="form"
+  (ngSubmit)="submit()"
+  [attr.aria-busy]="submitting()"
+  class="flex flex-col gap-2"
+  novalidate
+>
+  <h1 class="mb-5 font-display text-3xl font-semibold tracking-tight text-lactec-nav">Entrar</h1>
+
+  <mat-form-field appearance="outline">
+    <mat-label>E-mail</mat-label>
+    <input
+      matInput
+      type="email"
+      autocomplete="username"
+      formControlName="email"
+      [readonly]="submitting()"
+    >
+    <mat-error>Informe um e-mail válido.</mat-error>
+  </mat-form-field>
+
+  <mat-form-field appearance="outline">
+    <mat-label>Senha</mat-label>
+    <input
+      matInput
+      type="password"
+      autocomplete="current-password"
+      formControlName="password"
+      [readonly]="submitting()"
+    >
+    <mat-error>
+      @if (form.controls.password.hasError('maxlength')) {
+        Use até 72 caracteres.
+      } @else {
+        Informe sua senha.
+      }
+    </mat-error>
+  </mat-form-field>
+
+  @if (errorMessage(); as message) {
+    <p class="rounded-lg bg-lactec-danger-bg px-4 py-3 text-sm text-lactec-danger-ink" role="alert">
+      {{ message }}
+    </p>
+  }
+
+  <button mat-flat-button type="submit" [disabled]="submitting()">
+    {{ submitting() ? 'Entrando…' : 'Entrar' }}
+  </button>
+</form>

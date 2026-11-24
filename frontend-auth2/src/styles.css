@@ -1,0 +1,32 @@
+@import 'tailwindcss';
+
+@theme static {
+  --color-lactec-primary: #18A5B8;
+  --color-lactec-nav: #0F4C5C;
+  --color-lactec-ink: #0B2230;
+  --color-lactec-muted: #5D7480;
+  --color-lactec-line: #E4E8EA;
+  --color-lactec-surface: #F5F6F3;
+  --color-lactec-paper: #FFFFFF;
+  --color-lactec-danger-bg: #FBE7E5;
+  --color-lactec-danger-ink: #8E2A24;
+
+  --font-display: 'Instrument Sans', system-ui, sans-serif;
+  --font-sans: Inter, system-ui, sans-serif;
+
+  --breakpoint-sm: 480px;
+  --breakpoint-md: 768px;
+}
+
+body {
+  margin: 0;
+  background: var(--color-lactec-surface);
+  color: var(--color-lactec-ink);
+  font-family: var(--font-sans);
+}
+
+.bg-login-glow {
+  background-image:
+    radial-gradient(900px 600px at 20% 20%, rgba(255, 255, 255, 0.06), transparent 60%),
+    radial-gradient(600px 400px at 80% 90%, rgba(24, 165, 184, 0.12), transparent 60%);
+}
