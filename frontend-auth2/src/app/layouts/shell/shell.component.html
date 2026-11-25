@@ -14,16 +14,14 @@
   >
     <div class="h-full w-full flex flex-col bg-lactec-nav text-lactec-on-nav">
       <div
-        class="flex items-center gap-3 py-4 border-b border-white/10 shrink-0"
+        class="flex min-h-20 items-center gap-3 px-4 py-3 border-b border-white/10 shrink-0"
         [class.justify-center]="isCollapsed"
-        [class.px-2]="isCollapsed"
-        [class.px-4]="!isCollapsed"
       >
-        <app-logo [size]="24" [iconSize]="isCollapsed ? 40 : 48" [showWordmark]="showLabels" />
+        <app-logo class="shrink-0" [size]="24" [iconSize]="40" [showWordmark]="showLabels" />
         @if (showLabels) {
           <span class="min-w-0">
-            <span class="block text-xs font-medium text-white/80">Administração de</span>
-            <span class="block text-sm font-semibold text-white">acessos</span>
+            <span class="block text-xs leading-tight font-medium text-white/80">Administração</span>
+            <span class="block text-sm leading-tight font-semibold text-white">de acessos</span>
           </span>
         }
       </div>

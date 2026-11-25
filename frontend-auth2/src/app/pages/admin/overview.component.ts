@@ -1,47 +1,73 @@
-import { ChangeDetectionStrategy, Component, inject } from '@angular/core';
+import { DecimalPipe } from '@angular/common';
+import { ChangeDetectionStrategy, Component, DestroyRef, inject, signal } from '@angular/core';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
+import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
+import { RouterLink } from '@angular/router';
+import { forkJoin } from 'rxjs';
 
+import { Application } from '@/app/model/access';
+import { AccessService, accessError } from '@/app/services/access.service';
 import { LoginService } from '@/app/services/login.service';
 import { PageHeaderComponent } from '@shared/components/page-header/page-header.component';
+import { accessBreadcrumb } from './directory/sections';
+
+interface Overview {
+  clientCount: number;
+  adminCount: number;
+  applicationCount: number;
+  activeApplicationCount: number;
+  topApplications: (Application & { clientCount: number })[];
+}
 
 @Component({
   selector: 'app-overview',
   standalone: true,
-  imports: [MatIconModule, PageHeaderComponent],
-  template: `
-    @if (user(); as administrator) {
-      <div class="space-y-8 wrap-anywhere">
-        <app-page-header
-          [title]="'Olá, ' + administrator.name"
-          subtitle="Visão geral da administração de acessos"
-          [breadcrumbs]="breadcrumbs"
-        />
-
-        <section
-          class="max-w-xl min-w-0 rounded-xl border border-lactec-line bg-lactec-paper p-5 shadow-sm"
-          aria-labelledby="overview-account"
-        >
-          <div class="mb-5 flex min-w-0 items-start justify-between gap-3">
-            <h2
-              id="overview-account"
-              class="m-0 min-w-0 text-sm font-medium uppercase leading-snug text-lactec-muted"
-            >
-              Conta conectada
-            </h2>
-            <mat-icon class="shrink-0 text-lactec-faint" aria-hidden="true">person_outline</mat-icon>
-          </div>
-          <p class="m-0 font-semibold leading-tight text-lactec-ink">{{ administrator.name }}</p>
-          <p class="mt-1 mb-0 text-sm text-lactec-muted">{{ administrator.email }}</p>
-        </section>
-      </div>
-    }
-  `,
+  imports: [DecimalPipe, MatButtonModule, MatIconModule, PageHeaderComponent, RouterLink],
+  templateUrl: './overview.component.html',
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class OverviewComponent {
+  private readonly api = inject(AccessService);
+  private readonly destroyRef = inject(DestroyRef);
   protected readonly user = inject(LoginService).currentUser;
-  protected readonly breadcrumbs = [
-    { label: 'Administração de acessos', route: '/admin' },
-    { label: 'Visão geral' },
-  ] as const;
+  protected readonly breadcrumbs = [accessBreadcrumb, { label: 'Visão geral' }];
+  protected readonly overview = signal<Overview | null>(null);
+  protected readonly error = signal('');
+
+  constructor() {
+    this.load();
+  }
+
+  protected load(): void {
+    this.error.set('');
+    forkJoin({
+      applications: this.api.list('services'),
+      clients: this.api.list('users'),
+      admins: this.api.list('admins'),
+    }).pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
+      next: ({ applications, clients, admins }) => {
+        const clientsByApplication = new Map<string, number>();
+        for (const { serviceId } of clients) {
+          clientsByApplication.set(serviceId, (clientsByApplication.get(serviceId) ?? 0) + 1);
+        }
+
+        const ranked = applications.map(application => ({
+          ...application,
+          clientCount: clientsByApplication.get(application.id) ?? 0,
+        })).sort((a, b) => b.clientCount - a.clientCount || a.name.localeCompare(b.name, 'pt-BR'));
+
+        this.overview.set({
+          clientCount: clients.length,
+          adminCount: admins.length,
+          applicationCount: applications.length,
+          activeApplicationCount: applications.filter(application => application.active).length,
+          topApplications: ranked.slice(0, 5),
+        });
+      },
+      error: (error: unknown) => {
+        this.error.set(accessError(error, 'Não foi possível carregar a visão geral.'));
+      },
+    });
+  }
 }
