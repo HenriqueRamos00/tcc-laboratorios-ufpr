@@ -75,6 +75,13 @@ public static class PortalSourceRegistration
                         client.Timeout = TimeSpan.FromSeconds(10);
                     })
                     .ConfigurePrimaryHttpMessageHandler(() => new HttpClientHandler { AllowAutoRedirect = false });
+                services.AddHttpClient<IClientPasswordRecovery, BackendLabPasswordRecoveryAdapter>((provider, client) =>
+                    {
+                        BackendLabOptions backendLab = provider.GetRequiredService<IOptions<BackendLabOptions>>().Value;
+                        client.BaseAddress = new Uri(backendLab.BaseUrl.TrimEnd('/') + "/");
+                        client.Timeout = TimeSpan.FromSeconds(10);
+                    })
+                    .ConfigurePrimaryHttpMessageHandler(() => new HttpClientHandler { AllowAutoRedirect = false });
                 return services;
 
             case PortalOptions.LactecSource:
@@ -103,6 +110,20 @@ public static class PortalSourceRegistration
                     .ValidateOnStart();
                 services.AddSingleton(provider => provider.GetRequiredService<IOptions<BackendAuthOptions>>().Value);
                 services.AddHttpClient<IClientAuthenticator, BackendAuthAdapter>((provider, client) =>
+                    {
+                        BackendAuthOptions backend = provider.GetRequiredService<IOptions<BackendAuthOptions>>().Value;
+                        client.BaseAddress = new Uri(backend.BaseUrl.TrimEnd('/') + "/");
+                        client.Timeout = TimeSpan.FromSeconds(10);
+                    })
+                    .ConfigurePrimaryHttpMessageHandler(() => new HttpClientHandler { AllowAutoRedirect = false });
+                services.AddHttpClient<IClientPasswordRecovery, BackendAuthPasswordRecoveryAdapter>((provider, client) =>
+                    {
+                        BackendAuthOptions backend = provider.GetRequiredService<IOptions<BackendAuthOptions>>().Value;
+                        client.BaseAddress = new Uri(backend.BaseUrl.TrimEnd('/') + "/");
+                        client.Timeout = TimeSpan.FromSeconds(10);
+                    })
+                    .ConfigurePrimaryHttpMessageHandler(() => new HttpClientHandler { AllowAutoRedirect = false });
+                services.AddHttpClient<IClientEmailConfirmation, BackendAuthEmailConfirmationAdapter>((provider, client) =>
                     {
                         BackendAuthOptions backend = provider.GetRequiredService<IOptions<BackendAuthOptions>>().Value;
                         client.BaseAddress = new Uri(backend.BaseUrl.TrimEnd('/') + "/");
