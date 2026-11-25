@@ -35,6 +35,13 @@ export function equipmentDetailTour(): TourDefinition {
         text: 'Mostra os indicadores de saúde como estavam naquela análise específica.',
       },
       {
+        id: 'historico-visualizar',
+        target: 'equipamento-historico-visualizar',
+        side: 'left',
+        title: 'Visualizar',
+        text: 'Abre o relatório daquela análise em tela cheia, sem baixar o arquivo. No celular dá para ampliar com dois dedos.',
+      },
+      {
         id: 'historico-download',
         target: 'equipamento-historico-download',
         side: 'left',

@@ -28,6 +28,7 @@
       <PrivateAssets>all</PrivateAssets>
       <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
     </PackageReference>
+    <PackageReference Include="PdfPig" Version="0.1.16" />
     <PackageReference Include="QuestPDF" Version="2026.9.1" />
     <PackageReference Include="System.Security.Cryptography.Pkcs" Version="9.0.22" />
   </ItemGroup>

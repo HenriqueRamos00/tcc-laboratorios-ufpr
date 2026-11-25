@@ -1,3 +1,5 @@
+using Microsoft.Extensions.Caching.Memory;
+
 using Portal.Adapters.AutoLab;
 using Portal.Application.CompanyRecords;
 using Portal.Application.CompanyRecords.Exceptions;
@@ -19,18 +21,28 @@ namespace Portal.Adapters.ReportDocuments;
 /// </summary>
 public sealed class AutoLabReportIssueRepository : IReportIssueRepository
 {
+    private const string FindingsCacheKey = "signed-report-findings";
+
+    private static readonly MemoryCacheEntryOptions FindingsLifetime = new()
+    {
+        SlidingExpiration = TimeSpan.FromHours(12)
+    };
+
     private readonly AutoLabDbContext _database;
     private readonly ICompanyRecordsSource _companyRecords;
     private readonly AutoLabQueryLimits _limits;
+    private readonly IMemoryCache _findings;
 
     public AutoLabReportIssueRepository(
         AutoLabDbContext database,
         ICompanyRecordsSource companyRecords,
-        AutoLabQueryLimits limits)
+        AutoLabQueryLimits limits,
+        IMemoryCache findings)
     {
         _database = database;
         _companyRecords = companyRecords;
         _limits = limits;
+        _findings = findings;
     }
 
     public async Task<SignedReportDocument?> GetSignedDocumentOfAsync(
@@ -93,31 +105,56 @@ public sealed class AutoLabReportIssueRepository : IReportIssueRepository
         return new HashSet<string>(wanted.Where(signed.Contains), StringComparer.Ordinal);
     }
 
-    public async Task<ReportIssue?> GetCurrentIssueOfAsync(
+    public async Task<IReadOnlyList<ReportReading>> ReadReportsAsync(
         CompanyScope scope,
-        string reportIdentification,
+        IReadOnlyList<string> reportIdentifications,
         CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(scope);
+        ArgumentNullException.ThrowIfNull(reportIdentifications);
 
-        if (string.IsNullOrWhiteSpace(reportIdentification)) return null;
+        string[] wanted = [.. reportIdentifications
+            .Where(identification => !string.IsNullOrWhiteSpace(identification))
+            .Select(identification => identification.Trim())
+            .Distinct(StringComparer.OrdinalIgnoreCase)];
 
-        CompanyReportRow? current = InOrderOfIssue(IssuesOf(
-                await AuthorizedReportsAsync(scope, cancellationToken), reportIdentification.Trim()))
-            .FirstOrDefault();
+        if (wanted.Length == 0) return [];
 
-        if (current is null) return null;
+        IReadOnlyList<CompanyReportRow> authorized = await AuthorizedReportsAsync(scope, cancellationToken);
 
-        List<ReportIssueRow> found = await AutoLabFetch.ListAsync(
-            AutoLabQueries.IssueTextOf(_database, current.Id),
-            Unavailable,
-            cancellationToken);
+        List<List<CompanyReportRow>> issues = [.. wanted
+            .Select(identification => InOrderOfIssue(IssuesOf(authorized, identification)).ToList())
+            .Where(ofReport => ofReport.Count > 0)];
 
-        ReportIssueRow? issue = found.FirstOrDefault();
+        List<CompanyReportRow> signed = [.. issues
+            .SelectMany(ofReport => ofReport)
+            .Where(report => report.SignedFileId is not null)];
 
-        return issue is null
-            ? null
-            : new ReportIssue(Stated(issue.TituloRelatorio), Stated(issue.Conclusao));
+        HashSet<Guid> live = signed.Count == 0 ? [] : await LiveFilesAmongAsync(signed, cancellationToken);
+
+        List<ReportReading> readings = [];
+
+        foreach (List<CompanyReportRow> ofReport in issues)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+
+            CompanyReportRow? servable = ofReport
+                .FirstOrDefault(report => report.SignedFileId is Guid fileId && live.Contains(fileId));
+
+            SignedReportFindings findings = servable is null
+                ? SignedReportFindings.None
+                : await FindingsOfAsync(servable.SignedFileId!.Value, cancellationToken);
+
+            CompanyReportRow shown = servable ?? ofReport[0];
+
+            readings.Add(new ReportReading(
+                shown.Identification!.Trim(),
+                shown.IssueDate,
+                findings.Chromatography,
+                findings.PhysicalChemical));
+        }
+
+        return readings;
     }
 
     public async Task<Page<LabReport>> ListReportsAsync(
@@ -260,6 +297,32 @@ public sealed class AutoLabReportIssueRepository : IReportIssueRepository
         {
             throw Unavailable("O arquivo assinado do AutoLAB não pôde ser lido.", exception);
         }
+    }
+
+    private async Task<SignedReportFindings> FindingsOfAsync(Guid fileId, CancellationToken cancellationToken)
+    {
+        (string, Guid) key = (FindingsCacheKey, fileId);
+
+        if (_findings.TryGetValue(key, out SignedReportFindings? known) && known is not null) return known;
+
+        SignedReportDocument? document;
+
+        try
+        {
+            document = await DocumentOfAsync(fileId, cancellationToken);
+        }
+        catch (ReportDocumentSourceUnavailableException)
+        {
+            return SignedReportFindings.None;
+        }
+
+        SignedReportFindings findings = document is null
+            ? SignedReportFindings.None
+            : SignedReportText.Read(document.Content);
+
+        _findings.Set(key, findings, FindingsLifetime);
+
+        return findings;
     }
 
     private static string? Stated(string? value)

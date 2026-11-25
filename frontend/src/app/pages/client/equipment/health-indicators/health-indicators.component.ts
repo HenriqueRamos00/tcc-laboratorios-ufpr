@@ -1,12 +1,21 @@
 import { HttpErrorResponse } from '@angular/common/http';
-import { ChangeDetectionStrategy, Component, computed, inject, input, signal } from '@angular/core';
-import { toObservable, toSignal } from '@angular/core/rxjs-interop';
-import { catchError, map, of, startWith, switchMap } from 'rxjs';
+import {
+  ChangeDetectionStrategy,
+  Component,
+  computed,
+  DestroyRef,
+  inject,
+  input,
+  signal,
+} from '@angular/core';
+import { takeUntilDestroyed, toObservable, toSignal } from '@angular/core/rxjs-interop';
+import { catchError, finalize, map, of, startWith, switchMap } from 'rxjs';
 import { MatIconModule } from '@angular/material/icon';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { ActivatedRoute, Router } from '@angular/router';
 
 import { DataPipe } from '@shared/pipes/data.pipe';
+import { handFileToTheBrowser } from '@shared/file-download';
 import { NumeroPipe } from '@shared/pipes/numero.pipe';
 import { ClassificationBadgeComponent } from '@shared/components/classification-badge/classification-badge.component';
 import { ConformityGaugeComponent } from '@shared/components/conformity-gauge/conformity-gauge.component';
@@ -40,10 +49,37 @@ import {
   type HealthTab,
 } from '@/app/model/health-navigation';
 import { empty, failure, loading, ok, type RemoteData } from '@/app/model/remote-data';
+import {
+  LIMIT_ABSENCE_TEXT,
+  oilTypeLabel,
+  oilTypeShortLabel,
+  physicalChemicalCriteriaOf,
+} from '@/app/model/insulating-oil';
 import { DissolvedGasDiagnosisService } from '@/app/services/dissolved-gas-diagnosis.service';
+import { EquipmentsService } from '@/app/services/equipments.service';
 import { HealthService } from '@/app/services/health.service';
 
 type GasSubTab = 'criterios' | 'metodos';
+
+interface ArchiveMessage {
+  readonly tone: 'neutro' | 'erro';
+  readonly text: string;
+}
+
+const ARCHIVE_EMPTY: ArchiveMessage = {
+  tone: 'neutro',
+  text: 'Este equipamento ainda não tem laudo em PDF para baixar.',
+};
+
+const ARCHIVE_TOO_LARGE: ArchiveMessage = {
+  tone: 'erro',
+  text: 'Este equipamento tem laudos demais para um arquivo só. Baixe os laudos pelo histórico do equipamento.',
+};
+
+const ARCHIVE_FAILURE: ArchiveMessage = {
+  tone: 'erro',
+  text: 'Não foi possível baixar os laudos agora. Tente novamente em instantes.',
+};
 
 /**
  * Por que a aba está travada. Com um laudo escolhido no histórico, a aba que ele não mediu
@@ -98,6 +134,7 @@ import {
   HealthIndicatorsSkeletonComponent,
   type HealthSkeletonLayout,
 } from './health-indicators-skeleton.component';
+import { PublishedReportsComponent } from './published-reports/published-reports.component';
 
 import { registerPageTour } from '@/app/services/tour.service';
 import { healthIndicatorsTour } from './health-indicators.tour';
@@ -121,6 +158,7 @@ const numeroPipe = new NumeroPipe();
     DataUnavailableComponent,
     LoadingRegionComponent,
     HealthIndicatorsSkeletonComponent,
+    PublishedReportsComponent,
   ],
   templateUrl: './health-indicators.component.html',
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -136,6 +174,11 @@ export class HealthIndicatorsComponent {
   private readonly diagnosisCalculation = inject(DissolvedGasDiagnosisService);
   private readonly router = inject(Router);
   private readonly currentRoute = inject(ActivatedRoute);
+  private readonly equipments = inject(EquipmentsService);
+  private readonly destroyRef = inject(DestroyRef);
+
+  protected readonly archiveDownloading = signal(false);
+  protected readonly archiveMessage = signal<ArchiveMessage | null>(null);
 
   // Parâmetro ausente chega como undefined, nunca como o valor anterior, então
   // o padrão vive no derivado e não num signal paralelo que precisasse de
@@ -217,6 +260,21 @@ export class HealthIndicatorsComponent {
     return [...trail, { label: `${analysis.label} ${dataPipe.transform(analysis.date)}` }];
   });
 
+  protected readonly oilLabel = computed(() => {
+    const data = this.data();
+    return data ? oilTypeLabel(data.oilType) : '';
+  });
+
+  protected readonly oilShortLabel = computed(() => {
+    const data = this.data();
+    return data ? oilTypeShortLabel(data.oilType) : '';
+  });
+
+  protected readonly physicalChemicalCriteria = computed(() => {
+    const data = this.data();
+    return data ? physicalChemicalCriteriaOf(data.oilType) : null;
+  });
+
   protected readonly errorReason = computed(() => {
     const state = this.state();
     return state.kind === 'failure' ? state.reason : '';
@@ -277,7 +335,8 @@ export class HealthIndicatorsComponent {
       key: test.key,
       name: test.name,
       method: isUnavailableText(test.method) ? null : test.method,
-      limit: isUnavailableText(test.limit) ? null : test.limit,
+      limit: test.limit === null || isUnavailableText(test.limit) ? null : test.limit,
+      limitAbsence: test.limitAbsence ? LIMIT_ABSENCE_TEXT[test.limitAbsence] : null,
       classification: test.classification,
       history: columns
         .map((column, index) => ({ column, value: test.valuesByAnalysis[index] ?? null }))
@@ -335,7 +394,7 @@ export class HealthIndicatorsComponent {
   protected readonly diagnosis = computed(() => {
     const data = this.data();
     if (!data) return null;
-    return data.diagnosis ?? this.diagnosisCalculation.diagnose(data.dissolvedGases);
+    return data.diagnosis ?? this.diagnosisCalculation.diagnose(data.dissolvedGases, data.oilType);
   });
 
   // Trocar de aba troca a URL, para o link da linha do histórico poder apontar
@@ -348,6 +407,34 @@ export class HealthIndicatorsComponent {
       queryParams: { aba },
       replaceUrl: true,
     });
+  }
+
+  protected downloadArchive(): void {
+    if (this.archiveDownloading()) return;
+    const equipmentId = this.id();
+    this.archiveDownloading.set(true);
+    this.archiveMessage.set(null);
+    this.equipments
+      .reportArchive(equipmentId)
+      .pipe(
+        finalize(() => this.archiveDownloading.set(false)),
+        takeUntilDestroyed(this.destroyRef),
+      )
+      .subscribe({
+        next: (file) => {
+          if (!file) {
+            this.archiveMessage.set(ARCHIVE_EMPTY);
+            return;
+          }
+          handFileToTheBrowser(file.content, file.name ?? 'laudos.zip');
+        },
+        error: (error: unknown) =>
+          this.archiveMessage.set(
+            error instanceof HttpErrorResponse && error.status === 422
+              ? ARCHIVE_TOO_LARGE
+              : ARCHIVE_FAILURE,
+          ),
+      });
   }
 
   protected selectGasSubTab(sub: GasSubTab): void {

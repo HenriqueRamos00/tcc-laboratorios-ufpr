@@ -10,7 +10,7 @@ import {
 } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { MatIconModule } from '@angular/material/icon';
-import { finalize } from 'rxjs';
+import { finalize, map } from 'rxjs';
 
 import { DataPipe } from '@shared/pipes/data.pipe';
 import { DataTableActionsDirective } from '@shared/components/data-table/data-table-actions.directive';
@@ -21,6 +21,7 @@ import {
   type DataTableQuery,
 } from '@shared/components/data-table/data-table.model';
 import { handFileToTheBrowser } from '@shared/file-download';
+import { PdfViewerDialog } from '@shared/components/pdf-viewer/pdf-viewer-dialog.service';
 
 import type { Report } from '@/app/model/report';
 import { ReportsService } from '@/app/services/reports.service';
@@ -78,7 +79,7 @@ const dataPipe = new DataPipe();
   host: { class: 'block' },
   template: `
     <app-data-table
-      actionsHeader="Download"
+      actionsHeader="PDF"
       loadingMessage="Carregando relatórios…"
       emptyIcon="search_off"
       [caption]="caption()"
@@ -99,33 +100,56 @@ const dataPipe = new DataPipe();
         let-row
         let-compact="compact"
       >
-        <button
-          type="button"
-          class="inline-flex h-10 items-center justify-center gap-2 rounded-lg
-                 bg-lactec-primary-deep text-lactec-on-primary hover:bg-lactec-primary-deep-strong
-                 disabled:opacity-40"
-          [class.w-10]="!compact"
-          [class.h-11]="compact"
-          [class.w-full]="compact"
-          [class.px-4]="compact"
-          [disabled]="!row.pdfAvailable || downloading() === row.id"
-          [attr.aria-label]="
-            row.pdfAvailable
-              ? 'Baixar o relatório ' + row.identification
-              : 'O relatório ' + row.identification + ' ainda não tem PDF disponível'
-          "
-          [attr.aria-busy]="downloading() === row.id ? 'true' : null"
-          (click)="download(row)"
-        >
-          <mat-icon aria-hidden="true">
-            {{ downloading() === row.id ? 'hourglass_empty' : 'download' }}
-          </mat-icon>
-          @if (compact) {
-            <span class="text-sm font-semibold" aria-hidden="true">
-              {{ row.pdfAvailable ? 'Baixar relatório' : 'PDF indisponível' }}
-            </span>
-          }
-        </button>
+        <div class="flex gap-2" [class.flex-col]="compact" [class.justify-end]="!compact">
+          <button
+            type="button"
+            class="inline-flex h-10 items-center justify-center gap-2 rounded-lg border
+                   border-lactec-line text-lactec-ink hover:bg-lactec-surface disabled:opacity-40"
+            [class.w-10]="!compact"
+            [class.h-11]="compact"
+            [class.w-full]="compact"
+            [class.px-4]="compact"
+            [disabled]="!row.pdfAvailable"
+            [attr.aria-label]="
+              row.pdfAvailable
+                ? 'Visualizar o relatório ' + row.identification
+                : 'O relatório ' + row.identification + ' ainda não tem PDF para visualizar'
+            "
+            (click)="view(row)"
+          >
+            <mat-icon aria-hidden="true">visibility</mat-icon>
+            @if (compact) {
+              <span class="text-sm font-semibold" aria-hidden="true">Visualizar</span>
+            }
+          </button>
+          <button
+            type="button"
+            class="inline-flex h-10 items-center justify-center gap-2 rounded-lg
+                   bg-lactec-primary-deep text-lactec-on-primary hover:bg-lactec-primary-deep-strong
+                   disabled:opacity-40"
+            [class.w-10]="!compact"
+            [class.h-11]="compact"
+            [class.w-full]="compact"
+            [class.px-4]="compact"
+            [disabled]="!row.pdfAvailable || downloading() === row.id"
+            [attr.aria-label]="
+              row.pdfAvailable
+                ? 'Baixar o relatório ' + row.identification
+                : 'O relatório ' + row.identification + ' ainda não tem PDF disponível'
+            "
+            [attr.aria-busy]="downloading() === row.id ? 'true' : null"
+            (click)="download(row)"
+          >
+            <mat-icon aria-hidden="true">
+              {{ downloading() === row.id ? 'hourglass_empty' : 'download' }}
+            </mat-icon>
+            @if (compact) {
+              <span class="text-sm font-semibold" aria-hidden="true">
+                {{ row.pdfAvailable ? 'Baixar relatório' : 'PDF indisponível' }}
+              </span>
+            }
+          </button>
+        </div>
       </ng-template>
     </app-data-table>
 
@@ -148,6 +172,7 @@ export class ReportTableComponent {
 
   private readonly reportsService = inject(ReportsService);
   private readonly destroyRef = inject(DestroyRef);
+  private readonly viewer = inject(PdfViewerDialog);
 
   protected readonly columns = COLUMNS;
   protected readonly downloading = signal<string | null>(null);
@@ -156,6 +181,15 @@ export class ReportTableComponent {
   protected readonly rows = computed<readonly ReportRow[]>(() => this.reports().map(reportRow));
 
   protected readonly trackById = (row: ReportRow): string => row.id;
+
+  protected view(row: ReportRow): void {
+    this.viewer.open({
+      title: `Relatório ${row.identification}`,
+      fileName: row.fileName,
+      errorTitle: 'Não foi possível abrir o relatório agora',
+      source: this.reportsService.signedDocument(row.id).pipe(map((file) => file.content)),
+    });
+  }
 
   protected download(row: ReportRow): void {
     this.downloading.set(row.id);

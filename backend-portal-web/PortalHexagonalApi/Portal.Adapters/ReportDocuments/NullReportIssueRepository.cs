@@ -22,12 +22,12 @@ public sealed class NullReportIssueRepository : IReportIssueRepository
         return Task.FromResult<IReadOnlySet<string>>(new HashSet<string>(StringComparer.Ordinal));
     }
 
-    public Task<ReportIssue?> GetCurrentIssueOfAsync(
+    public Task<IReadOnlyList<ReportReading>> ReadReportsAsync(
         CompanyScope scope,
-        string reportIdentification,
+        IReadOnlyList<string> reportIdentifications,
         CancellationToken cancellationToken)
     {
-        return Task.FromResult<ReportIssue?>(null);
+        return Task.FromResult<IReadOnlyList<ReportReading>>([]);
     }
 
     public Task<Page<LabReport>> ListReportsAsync(

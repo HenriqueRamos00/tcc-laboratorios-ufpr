@@ -56,4 +56,13 @@ export class EquipmentsService {
       )
       .pipe(map(toDownloadedFile));
   }
+
+  reportArchive(id: string): Observable<DownloadedFile | null> {
+    return this.http
+      .get(`${this.baseUrl}/${encodeURIComponent(id)}/reports/archive`, {
+        observe: 'response',
+        responseType: 'blob',
+      })
+      .pipe(map((response) => (response.status === 204 ? null : toDownloadedFile(response))));
+  }
 }

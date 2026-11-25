@@ -20,7 +20,7 @@ import { ReportsService } from '@/app/services/reports.service';
 
 import { EquipmentDetailComponent } from './equipment/detail/equipment-detail.component';
 import { HealthIndicatorsComponent } from './equipment/health-indicators/health-indicators.component';
-import { usePdfViewerStub } from './quotes/detail/pdf-viewer.spec-util';
+import { usePdfViewerStub } from '@shared/components/pdf-viewer/pdf-viewer.spec-util';
 import { QuoteDetailComponent } from './quotes/detail/quote-detail.component';
 import { QuoteListComponent } from './quotes/quote-list.component';
 import { QuoteReportsComponent } from './reports/quote-reports/quote-reports.component';
@@ -241,7 +241,7 @@ describe('skeletons das telas do cliente', () => {
 
       expectSilentBusyRegion(view);
       expect(view.querySelector('app-page-header-skeleton')).not.toBeNull();
-      expect(view.querySelector('app-proposal-skeleton')).not.toBeNull();
+      expect(view.querySelector('app-pdf-skeleton')).not.toBeNull();
     });
 
     it('com o orçamento na tela, o visualizador guarda a altura da proposta até o PDF chegar', () => {
@@ -251,8 +251,8 @@ describe('skeletons das telas do cliente', () => {
       fixture.detectChanges();
       fixture.detectChanges();
 
-      const viewer = view.querySelector('app-proposal-viewer')!;
-      const page = viewer.querySelector<HTMLElement>('app-proposal-skeleton > div > div')!;
+      const viewer = view.querySelector('app-pdf-viewer')!;
+      const page = viewer.querySelector<HTMLElement>('app-pdf-skeleton > div > div')!;
 
       expect(view.querySelector('h2')?.textContent).toContain(QUOTE.name);
       expect(viewer.querySelector('app-loading-region')?.getAttribute('aria-busy')).toBe('true');

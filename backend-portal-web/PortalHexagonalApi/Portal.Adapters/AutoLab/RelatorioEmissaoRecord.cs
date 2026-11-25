@@ -18,9 +18,5 @@ public sealed class RelatorioEmissaoRecord
 
     public DateTime? DataPublicacao { get; init; }
 
-    public string? TituloRelatorio { get; init; }
-
-    public string? Conclusao { get; init; }
-
     public Guid? Solicitacao { get; init; }
 }

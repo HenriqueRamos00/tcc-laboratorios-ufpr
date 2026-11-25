@@ -1,5 +1,4 @@
 using Portal.Application.LabResults;
-using Portal.Application.ReportDocuments;
 using Portal.Domain.LabResults;
 
 namespace Portal.Api.LabResults;
@@ -16,6 +15,9 @@ namespace Portal.Api.LabResults;
 public static class PositionalFlattening
 {
     private const string NotDetectedText = "ND";
+    private const string NormalResultLabel = "NORMAL";
+    private const string NormalConformity = "normal";
+    private const string NonConformingConformity = "nao-conforme";
 
     public static HealthIndicatorsResponse Flatten(
         SampleHealthIndicators indicators,
@@ -30,6 +32,7 @@ public static class PositionalFlattening
             SelectedAnalysis = FindSelectedAnalysis(indicators.SelectedAnalysis),
             PhysicalChemical = BuildPhysicalChemicalBlock(indicators),
             DissolvedGases = BuildGasBlock(indicators),
+            OilType = new OilTypeResponse { Kind = indicators.Oil.Kind, Reported = indicators.Oil.Reported },
             Diagnosis = null,
             UnreadableResults = [.. indicators.UnreadableResults.Select(measuredItem =>
                 new UnreadableResultResponse
@@ -76,22 +79,31 @@ public static class PositionalFlattening
 
         return new PhysicalChemicalBlockResponse
         {
-            Conformity = null,
-            Verdict = null,
+            Conformity = ConformityOf(indicators.PhysicalChemicalResult),
+            Verdict = indicators.PhysicalChemicalResult,
             NominalVoltage = string.IsNullOrWhiteSpace(indicators.NominalVoltage) ? null : indicators.NominalVoltage,
             Columns = BuildColumns(series),
             Analyses = BuildReadings(series),
             Tests = [.. series.ItemsOf(MeasuredItemKind.PhysicalChemicalProperty)
-                .Select(measuredItem => new PhysicalChemicalTestResponse
-                {
-                    Key = measuredItem.Code,
-                    Name = measuredItem.Label,
-                    Method = measuredItem.TestMethod,
-                    Limit = measuredItem.RegulatoryLimit,
-                    ValuesByAnalysis = BuildItemValues(series, measuredItem.Code),
-                    Classification = null
-                })],
-            Report = ReportOf(indicators.PhysicalChemicalReport)
+                .Select(measuredItem => TestOf(series, measuredItem, indicators.Oil.LimitOf(measuredItem)))],
+            Reports = ReportsOf(indicators.PhysicalChemicalReports)
+        };
+    }
+
+    private static PhysicalChemicalTestResponse TestOf(
+        AnalysisSeries series,
+        MeasuredItem measuredItem,
+        PhysicalChemicalLimit limit)
+    {
+        return new PhysicalChemicalTestResponse
+        {
+            Key = measuredItem.Code,
+            Name = measuredItem.Label,
+            Method = measuredItem.TestMethod,
+            Limit = limit.Value,
+            LimitAbsence = limit.Absence,
+            ValuesByAnalysis = BuildItemValues(series, measuredItem.Code),
+            Classification = null
         };
     }
 
@@ -103,8 +115,8 @@ public static class PositionalFlattening
 
         return new DissolvedGasBlockResponse
         {
-            Conformity = null,
-            Verdict = null,
+            Conformity = ConformityOf(indicators.GasResult),
+            Verdict = indicators.GasResult,
             AnalysisDates = [.. series.Readings.Select(DateOf)],
             Analyses = BuildReadings(series),
             Gases = [.. gases.Concat(totalizers).Select(measuredItem => new DissolvedGasResponse
@@ -114,17 +126,29 @@ public static class PositionalFlattening
                 Formula = measuredItem.Formula,
                 Results = BuildItemValues(series, measuredItem.Code)
             })],
-            Report = ReportOf(indicators.GasReport)
+            Reports = ReportsOf(indicators.GasReports)
         };
     }
 
-    private static TestReportResponse ReportOf(ReportIssue? issue)
+    private static IReadOnlyList<PublishedReportResponse> ReportsOf(IReadOnlyList<ReportConclusion> conclusions)
     {
-        return new TestReportResponse
+        return [.. conclusions.Select(conclusion => new PublishedReportResponse
         {
-            Title = issue?.Title,
-            Paragraphs = issue?.Paragraphs ?? []
-        };
+            Identification = conclusion.Identification,
+            Date = WireDate.From(conclusion.Date),
+            ResultLabel = conclusion.ResultLabel,
+            Title = conclusion.Title,
+            Paragraphs = conclusion.Paragraphs
+        })];
+    }
+
+    private static string? ConformityOf(string? resultLabel)
+    {
+        if (string.IsNullOrWhiteSpace(resultLabel)) return null;
+
+        return string.Equals(resultLabel.Trim(), NormalResultLabel, StringComparison.OrdinalIgnoreCase)
+            ? NormalConformity
+            : NonConformingConformity;
     }
 
     /// <summary>

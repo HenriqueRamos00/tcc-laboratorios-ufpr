@@ -14,14 +14,36 @@
       <button
         type="button"
         class="flex h-11 w-full items-center justify-center gap-2 rounded-lg bg-lactec-primary-deep
-               text-lactec-on-primary hover:bg-lactec-primary-deep-strong md:w-11"
-        aria-label="Baixar relatório histórico dos indicadores"
+               text-lactec-on-primary hover:bg-lactec-primary-deep-strong disabled:opacity-60 md:w-11"
+        aria-label="Baixar todos os laudos deste equipamento em um arquivo ZIP"
+        [attr.aria-busy]="archiveDownloading() ? 'true' : null"
+        [disabled]="archiveDownloading()"
+        (click)="downloadArchive()"
       >
-        <mat-icon aria-hidden="true">download</mat-icon>
-        <span class="text-sm font-semibold md:hidden" aria-hidden="true">Baixar relatório</span>
+        <mat-icon aria-hidden="true">{{ archiveDownloading() ? 'hourglass_empty' : 'download' }}</mat-icon>
+        <span class="text-sm font-semibold md:hidden" aria-hidden="true">
+          {{ archiveDownloading() ? 'Preparando o ZIP…' : 'Baixar relatório' }}
+        </span>
       </button>
+      @if (archiveDownloading()) {
+        <span class="sr-only" role="status">Preparando o arquivo ZIP com os laudos…</span>
+      }
+      @if (archiveMessage(); as message) {
+        <p
+          class="m-0 max-w-xs text-sm md:text-right"
+          [class.text-lactec-danger]="message.tone === 'erro'"
+          [class.text-lactec-muted]="message.tone === 'neutro'"
+          [attr.role]="message.tone === 'erro' ? 'alert' : 'status'"
+        >
+          {{ message.text }}
+        </p>
+      }
     </div>
   </app-page-header>
+
+  <p class="mt-2 mb-0 text-sm text-lactec-ink-soft">
+    <span class="font-semibold text-lactec-ink">Tipo do óleo:</span> {{ oilLabel() }}
+  </p>
 
   <div
     data-tour="indicadores-abas"
@@ -101,7 +123,7 @@
       <div data-tour="indicadores-resultados" class="mt-6 overflow-x-auto">
         <table class="w-full border-collapse text-sm">
           <caption class="sr-only">
-            Ensaios físico-químicos, com método, valor-limite da ABNT NBR 10576/17, histórico de
+            Ensaios físico-químicos, com método, valor-limite para {{ oilLabel() }}, histórico de
             resultados por data de coleta, resultado da coleta mais recente e classificação. ND
             marca ensaio não detectado e um hífen marca coleta não realizada.
           </caption>
@@ -116,15 +138,20 @@
               </th>
               <th scope="col" rowspan="2" class="px-4 py-3 font-semibold text-lactec-ink">Método</th>
               <th scope="col" rowspan="2" class="px-4 py-3 font-semibold text-lactec-ink">
-                ABNT NBR 10576/17
-                <span class="block font-normal text-lactec-muted">
-                  Valores-limite para óleo de transformador em uso
-                  @if (data.physicalChemical.nominalVoltage; as nominalVoltage) {
-                    ({{ nominalVoltage }})
-                  } @else {
-                    (<app-data-unavailable subject="Tensão nominal" />)
-                  }
-                </span>
+                @if (physicalChemicalCriteria(); as criteria) {
+                  {{ criteria }}
+                  <span class="block font-normal text-lactec-muted">
+                    Valores-limite para óleo de transformador em uso
+                    @if (data.physicalChemical.nominalVoltage; as nominalVoltage) {
+                      ({{ nominalVoltage }})
+                    } @else {
+                      (<app-data-unavailable subject="Tensão nominal" />)
+                    }
+                  </span>
+                } @else {
+                  Valor-limite
+                  <span class="block font-normal text-lactec-muted">{{ oilLabel() }}</span>
+                }
               </th>
               @if (historyColumns().length) {
                 <th
@@ -179,6 +206,8 @@
                 <td class="px-4 py-3 text-lactec-ink">
                   @if (row.limit; as limit) {
                     {{ limit }}
+                  } @else if (row.limitAbsence) {
+                    <span class="text-lactec-muted">{{ row.limitAbsence }}</span>
                   } @else {
                     <app-data-unavailable subject="Valor-limite" />
                   }
@@ -209,21 +238,10 @@
       aria-labelledby="report-title-physical-chemical"
       class="mt-4 rounded-lactec-panel border border-lactec-line bg-lactec-paper p-6"
     >
-      <h2
-        id="report-title-physical-chemical"
-        class="font-display tracking-display m-0 text-base font-semibold text-lactec-ink uppercase"
-      >
-        @if (data.physicalChemical.report.title; as title) {
-          {{ title }}
-        } @else {
-          <app-data-unavailable subject="Título do relatório" />
-        }
-      </h2>
-      @for (paragraph of data.physicalChemical.report.paragraphs; track $index) {
-        <p class="mt-2 mb-0 text-sm text-lactec-ink-soft">{{ paragraph }}</p>
-      } @empty {
-        <p class="mt-2 mb-0"><app-data-unavailable subject="Conclusão do relatório" /></p>
-      }
+      <app-published-reports
+        headingId="report-title-physical-chemical"
+        [reports]="data.physicalChemical.reports"
+      />
     </section>
   } @else {
     <div
@@ -265,7 +283,7 @@
         [class.bg-lactec-primary]="gasSubTab() !== 'metodos'"
         (click)="selectGasSubTab('metodos')"
       >
-        Métodos de Diagnóstico (Mineral)
+        Métodos de Diagnóstico ({{ oilShortLabel() }})
       </button>
       </div>
 
@@ -357,21 +375,10 @@
         aria-labelledby="report-title-chromatography"
         class="mt-4 rounded-lactec-panel border border-lactec-line bg-lactec-paper p-6"
       >
-        <h2
-          id="report-title-chromatography"
-          class="font-display tracking-display m-0 text-base font-semibold text-lactec-ink uppercase"
-        >
-          @if (data.dissolvedGases.report.title; as title) {
-            {{ title }}
-          } @else {
-            <app-data-unavailable subject="Título do relatório" />
-          }
-        </h2>
-        @for (paragraph of data.dissolvedGases.report.paragraphs; track $index) {
-          <p class="mt-2 mb-0 text-sm text-lactec-ink-soft">{{ paragraph }}</p>
-        } @empty {
-          <p class="mt-2 mb-0"><app-data-unavailable subject="Conclusão do relatório" /></p>
-        }
+        <app-published-reports
+          headingId="report-title-chromatography"
+          [reports]="data.dissolvedGases.reports"
+        />
       </section>
     } @else {
       <section

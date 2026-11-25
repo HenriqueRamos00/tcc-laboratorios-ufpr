@@ -1,4 +1,5 @@
 using Portal.Application.Paging;
+using Portal.Application.ReportDocuments;
 using Portal.Domain.LabResults;
 
 namespace Portal.Application.LabResults;
@@ -21,6 +22,10 @@ public interface IForConsultingClientLabResults
     Task<Stream?> GetReportFileAsync(
         string equipmentId,
         string reportId,
+        CancellationToken cancellationToken);
+
+    Task<EquipmentReportArchive?> OpenReportArchiveAsync(
+        string equipmentId,
         CancellationToken cancellationToken);
 
     Task<SampleHealthIndicators?> GetHealthIndicatorsAsync(

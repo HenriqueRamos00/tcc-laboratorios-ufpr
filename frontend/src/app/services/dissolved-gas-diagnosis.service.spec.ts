@@ -2,9 +2,17 @@ import { TestBed } from '@angular/core/testing';
 
 import { NOT_ASSESSED_LABEL,
   type GasRatioReading, type DissolvedGasBlock, type MeasuredValue } from '@/app/model/health';
+import type { OilType } from '@/app/model/insulating-oil';
 import { HEALTH_INDICATORS } from '@/app/services/fixtures/health-indicators.fixture';
 
-import { DissolvedGasDiagnosisService } from './dissolved-gas-diagnosis.service';
+import {
+  DIAGNOSIS_METHODS,
+  DissolvedGasDiagnosisService,
+  METHOD_NOT_APPLICABLE_TO_OIL,
+  OIL_TYPE_NOT_INFORMED,
+} from './dissolved-gas-diagnosis.service';
+
+const MINERAL: OilType = { kind: 'mineral', reported: 'Óleo Mineral Isolante' };
 
 // O backend serve `diagnosis: null` e os nove gases viajam no mesmo corpo: estes
 // casos provam que cada um dos sete métodos sai do gás medido, e que o que falta
@@ -68,7 +76,7 @@ function gasBlock(dates: readonly string[], results: ResultsByGas): DissolvedGas
       formula: FORMULA_BY_KEY[key],
       results: values,
     })),
-    report: { title: 'Laudo da análise cromatográfica', paragraphs: [] },
+    reports: [],
   };
 }
 
@@ -77,9 +85,15 @@ function collectionWith(changes: ResultsByGas): DissolvedGasBlock {
 }
 
 function diagnosisOf(block: DissolvedGasBlock) {
-  const diagnosis = TestBed.inject(DissolvedGasDiagnosisService).diagnose(block);
-  if (!diagnosis) throw new Error('A coleta deveria render diagnóstico e não rendeu');
+  const diagnosis = TestBed.inject(DissolvedGasDiagnosisService).diagnose(block, MINERAL);
+  if (diagnosis?.kind !== 'applied') throw new Error('A coleta deveria render diagnóstico e não rendeu');
   return diagnosis;
+}
+
+function outcomeOf(block: DissolvedGasBlock, oil: OilType = MINERAL) {
+  const outcome = TestBed.inject(DissolvedGasDiagnosisService).diagnose(block, oil);
+  if (!outcome) throw new Error('A coleta deveria render um desfecho e não rendeu');
+  return outcome;
 }
 
 function triangleOf(block: DissolvedGasBlock, number: 1 | 4 | 5) {
@@ -304,14 +318,14 @@ describe('DissolvedGasDiagnosisService, IEEE C57.104', () => {
       h2: [2028, 12],
       ch4: [601, 3],
       c2h6: [74, 3],
-      c2h4: [960, 15],
+      c2h4: [960, 75],
       c2h2: [1297, 'ND'],
       co: [1239, 730],
     });
     const readings = diagnosisOf(block).ieee.readings;
 
     expect(readings.map((reading) => reading.date)).toEqual(['2024-04-26', '2025-10-26']);
-    expect(readings.map((reading) => reading.total)).toEqual([DEMONSTRATION_COMBUSTIBLE_TOTAL, 763]);
+    expect(readings.map((reading) => reading.total)).toEqual([DEMONSTRATION_COMBUSTIBLE_TOTAL, 823]);
   });
 });
 
@@ -427,7 +441,7 @@ describe('DissolvedGasDiagnosisService, laudo sem gás dissolvido', () => {
   it('não diagnostica laudo de área sem cromatografia', () => {
     const block = gasBlock([], {});
 
-    expect(service().diagnose(block)).toBeNull();
+    expect(service().diagnose(block, MINERAL)).toBeNull();
   });
 
   // Totalizador não é gás medido e se reconhece no fio pela fórmula vazia:
@@ -441,7 +455,7 @@ describe('DissolvedGasDiagnosisService, laudo sem gás dissolvido', () => {
       ],
     };
 
-    expect(service().diagnose(block)).toBeNull();
+    expect(service().diagnose(block, MINERAL)).toBeNull();
   });
 });
 
@@ -477,17 +491,99 @@ describe('DissolvedGasDiagnosisService, conclusões', () => {
 describe('DissolvedGasDiagnosisService, massa de demonstração', () => {
   afterEach(() => TestBed.resetTestingModule());
 
-  // A massa serve `diagnosis: null`, como o backend, e os gases dela são os do
-  // recorte real: se o serviço deixar de ler o fio, a tela de demonstração volta
-  // a dizer que o laudo não tem diagnóstico.
-  it('diagnostica a massa de demonstração, que chega sem bloco de diagnóstico', () => {
-    const diagnosis = diagnosisOf(HEALTH_INDICATORS.dissolvedGases);
+  it('aplica os métodos à massa de demonstração e marca que os gases estão abaixo dos valores típicos', () => {
+    const outcome = outcomeOf(HEALTH_INDICATORS.dissolvedGases, HEALTH_INDICATORS.oilType);
 
     expect(HEALTH_INDICATORS.diagnosis).toBeNull();
-    expect(diagnosis.triangles.map((figure) => figure.number)).toEqual([1, 4, 5]);
-    expect(diagnosis.ieee.readings.map((reading) => reading.total)).toEqual([
-      DEMONSTRATION_COMBUSTIBLE_TOTAL,
-      763,
-    ]);
+    expect(outcome.kind === 'applied' && outcome.belowTypicalValues).toBeTrue();
+  });
+});
+
+const REAL_CASE_DATES = ['2024-02-05', '2024-08-12', '2025-02-17', '2025-08-25'];
+
+const REAL_CASE: ResultsByGas = {
+  h2: [20, 8, 31, 36],
+  o2: [7168, 23262, 19703, 22513],
+  n2: [20799, 73699, 61548, 59148],
+  ch4: [1, 1, 1, 1],
+  co: [42, 61, 72, 88],
+  co2: [257, 327, 305, 356],
+  c2h4: ['ND', 'ND', 'ND', 'ND'],
+  c2h6: ['ND', 'ND', 'ND', 'ND'],
+  c2h2: ['ND', 'ND', 'ND', 'ND'],
+};
+
+describe('DissolvedGasDiagnosisService, gases abaixo dos valores típicos da IEC 60599', () => {
+  afterEach(() => TestBed.resetTestingModule());
+
+  it('no caso real de quatro coletas aplica os sete métodos e marca os gases abaixo dos valores típicos', () => {
+    const outcome = outcomeOf(gasBlock(REAL_CASE_DATES, REAL_CASE));
+
+    expect(outcome.kind).toBe('applied');
+    if (outcome.kind !== 'applied') return;
+    expect(outcome.belowTypicalValues).toBeTrue();
+    expect(outcome.conclusions.map((conclusion) => conclusion.method)).toEqual(DIAGNOSIS_METHODS);
+  });
+
+  it('CO e CO₂ altos sozinhos não tiram os gases de falha de abaixo dos valores típicos', () => {
+    const outcome = outcomeOf(gasBlock(REAL_CASE_DATES, { ...REAL_CASE, co: [42, 61, 72, 900], co2: [257, 327, 305, 15000] }));
+
+    expect(outcome.kind === 'applied' && outcome.belowTypicalValues).toBeTrue();
+  });
+
+  it('um gás de falha acima do valor típico na coleta mais recente tira a marca', () => {
+    const outcome = outcomeOf(
+      gasBlock(REAL_CASE_DATES, { ...REAL_CASE, h2: [20, 8, 31, 180], c2h2: ['ND', 'ND', 'ND', 5] }),
+    );
+
+    expect(outcome.kind === 'applied' && outcome.belowTypicalValues).toBeFalse();
+  });
+
+  it('gás sem ensaio na coleta mais recente não permite afirmar que os gases estão abaixo dos típicos', () => {
+    const outcome = outcomeOf(
+      gasBlock(REAL_CASE_DATES, { ...REAL_CASE, c2h2: ['ND', 'ND', 'ND', null] }),
+    );
+
+    expect(outcome.kind === 'applied' && outcome.belowTypicalValues).toBeFalse();
+  });
+});
+
+describe('DissolvedGasDiagnosisService, tipo do óleo', () => {
+  afterEach(() => TestBed.resetTestingModule());
+
+  const faultyCollection = () => collectionWith({});
+
+  it('aplica os métodos de óleo mineral ao óleo mineral', () => {
+    expect(outcomeOf(faultyCollection(), MINERAL).kind).toBe('applied');
+  });
+
+  for (const oil of [
+    { kind: 'natural-ester', reported: 'Óleo Vegetal Isolante' },
+    { kind: 'silicone', reported: 'Silicone' },
+  ] as const) {
+    it(`não aplica Duval nem pentágono a ${oil.reported}`, () => {
+      const outcome = outcomeOf(faultyCollection(), oil);
+
+      expect(outcome.kind).toBe('withheld');
+      if (outcome.kind !== 'withheld') return;
+      expect(outcome.reason).toBe('oil-type-not-applicable');
+      expect(outcome.message).toBe(METHOD_NOT_APPLICABLE_TO_OIL);
+      expect(outcome.message).toBe('Método não aplicável a este tipo de óleo');
+    });
+  }
+
+  it('tipo do óleo não informado não é tratado como mineral', () => {
+    const outcome = outcomeOf(faultyCollection(), { kind: 'not-informed', reported: null });
+
+    expect(outcome.kind).toBe('withheld');
+    expect(outcome.kind === 'withheld' && outcome.message).toBe(OIL_TYPE_NOT_INFORMED);
+  });
+
+  it('tipo do óleo não reconhecido diz o que o cadastro informou e também não assume mineral', () => {
+    const outcome = outcomeOf(faultyCollection(), { kind: 'unrecognized', reported: 'Ascarel' });
+
+    expect(outcome.kind).toBe('withheld');
+    expect(outcome.kind === 'withheld' && outcome.reason).toBe('oil-type-not-informed');
+    expect(outcome.kind === 'withheld' && outcome.detail).toContain('Ascarel');
   });
 });

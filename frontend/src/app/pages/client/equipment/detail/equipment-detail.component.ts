@@ -16,6 +16,7 @@ import {
   EMPTY,
   filter,
   finalize,
+  map,
   of,
   switchMap,
   tap,
@@ -25,6 +26,7 @@ import { RouterLink } from '@angular/router';
 
 import { DataPipe } from '@shared/pipes/data.pipe';
 import { handFileToTheBrowser } from '@shared/file-download';
+import { PdfViewerDialog } from '@shared/components/pdf-viewer/pdf-viewer-dialog.service';
 import { EmptyStateComponent } from '@shared/components/empty-state/empty-state.component';
 import { PageHeaderComponent } from '@shared/components/page-header/page-header.component';
 import { LoadingRegionComponent } from '@shared/components/skeleton/loading-region.component';
@@ -144,6 +146,7 @@ export class EquipmentDetailComponent {
 
   private readonly equipments = inject(EquipmentsService);
   private readonly destroyRef = inject(DestroyRef);
+  private readonly viewer = inject(PdfViewerDialog);
 
   protected readonly equipment = signal<EquipmentDetail | null>(null);
   protected readonly history = signal<Page<EquipmentReport> | null>(null);
@@ -243,6 +246,17 @@ export class EquipmentDetailComponent {
         this.history.set(result);
         this.historyLoading.set(false);
       });
+  }
+
+  protected view(row: HistoryRow): void {
+    const equipment = this.equipment();
+    if (!equipment) return;
+    this.viewer.open({
+      title: `Relatório de ${row.analysisType} de ${row.date}`,
+      fileName: row.fileName,
+      errorTitle: 'Não foi possível abrir o relatório agora',
+      source: this.equipments.reportDocument(equipment.id, row.id).pipe(map((file) => file.content)),
+    });
   }
 
   protected download(row: HistoryRow): void {

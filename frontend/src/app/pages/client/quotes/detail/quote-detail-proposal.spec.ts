@@ -11,7 +11,7 @@ import { AppDialogService } from '@/app/services/app-dialog.service';
 import { LoginService } from '@/app/services/login.service';
 import { QuotesService } from '@/app/services/quotes.service';
 
-import { PdfViewerStubComponent, usePdfViewerStub } from './pdf-viewer.spec-util';
+import { PdfViewerStubComponent, usePdfViewerStub } from '@shared/components/pdf-viewer/pdf-viewer.spec-util';
 import { QuoteDetailComponent } from './quote-detail.component';
 
 const DOWNLOAD_BUTTON = 'Baixar PDF';
@@ -97,7 +97,7 @@ describe('QuoteDetailComponent, a proposta dentro da página', () => {
   it('sem proposta escrita a tela não monta o visualizador e diz o motivo', () => {
     const { view, askedFor } = mountDetail('Elaborando proposta');
 
-    expect(view.querySelector('app-proposal-viewer')).toBeNull();
+    expect(view.querySelector('app-pdf-viewer')).toBeNull();
     expect(view.querySelector('ngx-extended-pdf-viewer')).toBeNull();
     expect(askedFor).toEqual([]);
     expect(view.textContent).toContain('Proposta em elaboração');
@@ -110,7 +110,7 @@ describe('QuoteDetailComponent, a proposta dentro da página', () => {
   it('em negociação a proposta é exibida dentro da página, a partir do Blob', () => {
     const { fixture, view, askedFor } = mountDetail('Negociação');
 
-    expect(view.querySelector('app-proposal-viewer')).not.toBeNull();
+    expect(view.querySelector('app-pdf-viewer')).not.toBeNull();
     expect(askedFor).toEqual(['quote-3']);
 
     const viewer = fixture.debugElement.query(By.directive(PdfViewerStubComponent))

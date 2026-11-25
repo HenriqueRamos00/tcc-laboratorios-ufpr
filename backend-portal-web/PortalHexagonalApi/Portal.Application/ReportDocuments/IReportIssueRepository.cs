@@ -20,9 +20,9 @@ public interface IReportIssueRepository
         IReadOnlyCollection<string> reportIdentifications,
         CancellationToken cancellationToken);
 
-    Task<ReportIssue?> GetCurrentIssueOfAsync(
+    Task<IReadOnlyList<ReportReading>> ReadReportsAsync(
         CompanyScope scope,
-        string reportIdentification,
+        IReadOnlyList<string> reportIdentifications,
         CancellationToken cancellationToken);
 
     Task<Page<LabReport>> ListReportsAsync(

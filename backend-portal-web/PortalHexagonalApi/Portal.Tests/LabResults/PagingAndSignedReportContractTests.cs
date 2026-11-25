@@ -276,12 +276,12 @@ public sealed class PagingAndSignedReportContractTests : IClassFixture<RunningPo
             return Task.FromResult<IReadOnlySet<string>>(new HashSet<string>(reportIdentifications));
         }
 
-        public Task<ReportIssue?> GetCurrentIssueOfAsync(
+        public Task<IReadOnlyList<ReportReading>> ReadReportsAsync(
             CompanyScope scope,
-            string reportIdentification,
+            IReadOnlyList<string> reportIdentifications,
             CancellationToken cancellationToken)
         {
-            return Task.FromResult<ReportIssue?>(null);
+            return Task.FromResult<IReadOnlyList<ReportReading>>([]);
         }
 
         public Task<Page<LabReport>> ListReportsAsync(

@@ -15,4 +15,5 @@ public sealed record MeasuredItem(
     bool IsCombustible,
     string? TestMethod,
     string? RegulatoryLimit,
-    string? SourceCode = null);
+    string? SourceCode = null,
+    bool LimitPublishedByLab = false);

@@ -31,6 +31,7 @@ public sealed class EquipmentController : ControllerBase
     private readonly IForConsultingLabResults _labResults;
     private readonly IForConsultingClientLabResults _clientResults;
     private readonly IForDownloadingSignedReports _signedReports;
+    private readonly IForArchivingEquipmentReports _archives;
     private readonly LabResultsOptions _labResultsOptions;
     private readonly PortalOptions _portalOptions;
 
@@ -38,12 +39,14 @@ public sealed class EquipmentController : ControllerBase
         IForConsultingLabResults labResults,
         IForConsultingClientLabResults clientResults,
         IForDownloadingSignedReports signedReports,
+        IForArchivingEquipmentReports archives,
         LabResultsOptions labResultsOptions,
         PortalOptions portalOptions)
     {
         _labResults = labResults;
         _clientResults = clientResults;
         _signedReports = signedReports;
+        _archives = archives;
         _labResultsOptions = labResultsOptions;
         _portalOptions = portalOptions;
     }
@@ -238,6 +241,80 @@ public sealed class EquipmentController : ControllerBase
                 ? this.ReportDocumentNotFound()
                 : File(document.Content, "application/pdf", SignedDocumentName.Of(document));
         });
+    }
+
+    [HttpGet("{id}/reports/archive")]
+    [ProducesResponseType(typeof(FileStreamResult), StatusCodes.Status200OK, "application/zip")]
+    [ProducesResponseType(StatusCodes.Status204NoContent)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    [ProducesResponseType(StatusCodes.Status422UnprocessableEntity)]
+    [ProducesResponseType(StatusCodes.Status502BadGateway)]
+    public Task<IActionResult> GetReportArchive(string id, CancellationToken cancellationToken)
+    {
+        if (UsesClientBackend)
+            return AnswerClientAsync(async () =>
+            {
+                if (!OpaqueIdentifier.TryDecode(id, out string equipmentId))
+                    return this.UnreadableEquipmentIdentifier();
+
+                return await ArchiveResponseAsync(
+                    () => _clientResults.OpenReportArchiveAsync(equipmentId, cancellationToken),
+                    cancellationToken);
+            });
+
+        return AnswerAsync(async scope =>
+        {
+            if (!OpaqueIdentifier.TryDecode(id, out string equipmentKey))
+                return this.UnreadableEquipmentIdentifier();
+
+            try
+            {
+                return await ArchiveResponseAsync(
+                    () => _archives.OpenArchiveAsync(scope, equipmentKey, cancellationToken),
+                    cancellationToken);
+            }
+            catch (ReportDocumentSourceUnavailableException)
+            {
+                return this.ReportDocumentSourceUnavailable();
+            }
+        });
+    }
+
+    private async Task<IActionResult> ArchiveResponseAsync(
+        Func<Task<EquipmentReportArchive?>> open,
+        CancellationToken cancellationToken)
+    {
+        EquipmentReportArchive? archive;
+
+        try
+        {
+            archive = await open();
+        }
+        catch (ReportArchiveTooLargeException tooLarge)
+        {
+            return this.ReportArchiveTooLarge(tooLarge.ReportCount, tooLarge.MaxReports);
+        }
+
+        if (archive is null) return this.EquipmentWithoutAnalysis();
+
+        IAsyncEnumerator<ArchivedReportFile> files = archive
+            .ReadFilesAsync(cancellationToken)
+            .GetAsyncEnumerator(cancellationToken);
+
+        try
+        {
+            if (await files.MoveNextAsync())
+                return new ReportArchiveResult(archive.FileName, files);
+        }
+        catch
+        {
+            await files.DisposeAsync();
+            throw;
+        }
+
+        await files.DisposeAsync();
+        return NoContent();
     }
 
     /// <summary>

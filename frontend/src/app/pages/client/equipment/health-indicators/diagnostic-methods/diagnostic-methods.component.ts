@@ -12,7 +12,7 @@ import { NumeroPipe } from '@shared/pipes/numero.pipe';
 
 import {
   NOT_ASSESSED_LABEL,
-  type DiagnosisBlock,
+  type DiagnosisOutcome,
   type GasRatioReading,
   type RatioMethodReading,
 } from '@/app/model/health';
@@ -100,22 +100,32 @@ function ratioOutcomeText(ratio: GasRatioReading): string {
   host: { class: 'block' },
 })
 export class DiagnosticMethodsComponent {
-  readonly diagnosis = input.required<DiagnosisBlock | null>();
+  readonly diagnosis = input.required<DiagnosisOutcome | null>();
+
+  protected readonly applied = computed(() => {
+    const outcome = this.diagnosis();
+    return outcome?.kind === 'applied' ? outcome : null;
+  });
+
+  protected readonly withheld = computed(() => {
+    const outcome = this.diagnosis();
+    return outcome?.kind === 'withheld' ? outcome : null;
+  });
 
   protected readonly notAssessedLabel = NOT_ASSESSED_LABEL;
 
 
   /** Percentual de cada gás do pentágono, já no formato que o cliente lê. */
   protected readonly pentagonPercentages = computed(() =>
-    (this.diagnosis()?.pentagon.percentages ?? []).map((item) => ({
+    (this.applied()?.pentagon.percentages ?? []).map((item) => ({
       gas: item.gas,
       text: item.percentage === null ? NOT_PERFORMED_MARK : `${percentText(item.percentage)} %`,
     })),
   );
 
-  protected readonly iecRatios = computed(() => ratioRows(this.diagnosis()?.iec60599));
+  protected readonly iecRatios = computed(() => ratioRows(this.applied()?.iec60599));
 
-  protected readonly rogersRatios = computed(() => ratioRows(this.diagnosis()?.rogers));
+  protected readonly rogersRatios = computed(() => ratioRows(this.applied()?.rogers));
 
   // Escala e passo saem de um derivado só: traçado, marcadores e linhas de
   // referência precisam dividir o mesmo eixo, senão a linha e o limiar ficam em

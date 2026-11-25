@@ -223,16 +223,6 @@ public static class AutoLabQueries
             .Take(1);
     }
 
-    public static IQueryable<ReportIssueRow> IssueTextOf(
-        AutoLabDbContext database,
-        Guid reportId)
-    {
-        return database.RelatorioEmissao
-            .Where(report => report.Oid == reportId && report.GCRecord == null)
-            .Select(report => new ReportIssueRow(report.TituloRelatorio, report.Conclusao))
-            .Take(1);
-    }
-
     public static IQueryable<Guid> LiveFilesAmong(
         AutoLabDbContext database,
         List<Guid> fileIds,

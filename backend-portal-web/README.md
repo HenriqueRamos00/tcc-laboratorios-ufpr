@@ -430,13 +430,24 @@ no modo Spring.
 `GET /api/reports/{id}/document` baixa o documento autorizado. Documento indisponível,
 identificador desconhecido ou registro de outra empresa respondem 404.
 
-### Indicadores: tensao nominal e texto do relatorio
+### Indicadores: tensao nominal, laudos e conformidade
 
 `physicalChemical.nominalVoltage` informa a tensão nominal do equipamento, ou `null`.
-`physicalChemical.report` e `dissolvedGases.report` trazem `{ title, paragraphs }` com
-o texto do relatório da análise selecionada; sem seleção, usam a análise mais recente
-de cada série. Sem relatório, `title` é `null` e `paragraphs` é vazio. Conformidade,
-veredito, classificação, método e limite podem vir `null`/`-`.
+`physicalChemical.reports` e `dissolvedGases.reports` listam os laudos do equipamento que
+têm aquela seção, do mais recente para o mais antigo, como
+`{ identification, date, resultLabel, title, paragraphs }`. No modo Auth o texto vem do PDF
+assinado de cada laudo (os 24 mais recentes, lidos em sequência e guardados em memória por
+arquivo): `resultLabel` é a célula RESULTADO da tabela (`NORMAL`, `Descarga elétrica`...),
+`title` e `paragraphs` são o bloco `LAUDO DA ANÁLISE CROMATOGRÁFICA` ou
+`LAUDO DAS ANÁLISES FÍSICO-QUÍMICAS`, e `date` é a data de emissão. PDF ausente ou ilegível
+deixa o laudo na lista com `resultLabel`/`title` `null` e `paragraphs` vazio. No modo
+Backend Lab a lista tem um laudo só (o da análise selecionada, ou o mais recente da
+seção), sem rótulo.
+
+`conformity` de cada bloco vem do rótulo do laudo selecionado na rota, ou do mais recente
+da seção: `NORMAL` (sem diferenciar maiúsculas) vira `normal`, outro rótulo vira
+`nao-conforme`, e sem rótulo é `null`. `verdict` repete o rótulo. Classificação, método e
+limite podem vir `null`/`-`.
 
 ### Escopo de visibilidade
 

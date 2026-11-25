@@ -11,7 +11,7 @@ export function reportListTour(): TourDefinition {
         target: 'relatorios-abas',
         side: 'bottom',
         title: 'Duas formas de encontrar um laudo',
-        text: '"Todos os Relatórios" lista cada laudo publicado. "Orçamentos com Relatório" agrupa os laudos pelo orçamento que os gerou. Esta ajuda explica a aba que estiver aberta.',
+        text: '"Todos os Relatórios" lista cada laudo publicado. "Orçamentos com Relatório" agrupa os laudos pelo orçamento que os gerou.',
       },
       {
         id: 'busca',
@@ -25,7 +25,7 @@ export function reportListTour(): TourDefinition {
         target: 'relatorios-tabela',
         side: 'top',
         title: 'Laudos publicados',
-        text: 'Cada linha é um laudo, com solicitação, amostra, laboratório, situação e data de publicação. O botão de download baixa o arquivo do laudo.',
+        text: 'Cada linha é um laudo, com solicitação, amostra, laboratório, situação e data de publicação. O botão de olho abre o laudo em tela cheia, e o de download baixa o arquivo.',
       },
       {
         id: 'orcamentos-busca',

@@ -50,12 +50,14 @@ import {
   type CombustibleGases,
 } from '@/app/model/ieee-c57-104';
 import { ROGERS_FAULT_CODE_NOT_ASSESSED, ROGERS_RATIOS } from '@/app/model/rogers';
+import { belowTypicalValues } from '@/app/model/fault-indication';
+import { oilTypeLabel, type OilType } from '@/app/model/insulating-oil';
 import {
   NOT_ASSESSED_LABEL,
   NOT_DETECTED_TEXT,
   type CombustibleGasReading,
-  type DiagnosisBlock,
   type DiagnosisConclusion,
+  type DiagnosisOutcome,
   type DissolvedGasBlock,
   type DuvalTriangle,
   type GasReadingNBR7274,
@@ -65,6 +67,7 @@ import {
   type RatioMethodReading,
   type TernaryPoint,
   type TriangleReading,
+  type WithheldDiagnosis,
 } from '@/app/model/health';
 
 /** Uma coleta vista pelo diagnóstico: a data e a concentração de cada gás, em ppm. */
@@ -94,6 +97,19 @@ const DUVAL_5_AXES = {
   rightAxis: 'Ethylene C₂H₄ %',
   baseAxis: 'Ethane C₂H₆ %',
 } as const;
+
+export const DIAGNOSIS_METHODS: readonly string[] = [
+  'Triângulo 1',
+  'Triângulo 4',
+  'Triângulo 5',
+  'Pentágono de Duval',
+  'NBR 7274 / IEC 60599',
+  'Rogers',
+  'IEEE C57.104',
+];
+
+export const METHOD_NOT_APPLICABLE_TO_OIL = 'Método não aplicável a este tipo de óleo';
+export const OIL_TYPE_NOT_INFORMED = 'Tipo do óleo não informado';
 
 const TRIANGLE_1_WITHOUT_READING = 'Nenhuma coleta deste laudo tem os três gases do triângulo 1';
 const TRIANGLE_4_WITHOUT_READING = 'Nenhuma coleta deste laudo tem os três gases do triângulo 4';
@@ -144,10 +160,12 @@ export class DissolvedGasDiagnosisService {
    * de laudo de área que não é Óleos: aí não há o que diagnosticar, e a tela
    * diz isso em vez de desenhar sete painéis vazios.
    */
-  diagnose(block: DissolvedGasBlock): DiagnosisBlock | null {
+  diagnose(block: DissolvedGasBlock, oil: OilType): DiagnosisOutcome | null {
     const readings = this.gasReadings(block);
     const currentReading = readings.at(-1);
     if (!currentReading) return null;
+
+    if (oil.kind !== 'mineral') return this.withheldByOil(oil, currentReading.date);
 
     const triangle1Readings = this.triangle1Readings(readings);
     const codesByReading = triangle1Readings.map((reading) =>
@@ -211,6 +229,8 @@ export class DissolvedGasDiagnosisService {
     const pentagon = this.pentagonReading(currentReading);
 
     return {
+      kind: 'applied',
+      belowTypicalValues: belowTypicalValues(currentReading.concentrations),
       triangles,
       pentagon,
       ieee: {
@@ -277,6 +297,23 @@ export class DissolvedGasDiagnosisService {
       ],
     };
   }
+
+  private withheldByOil(oil: OilType, date: string): WithheldDiagnosis {
+    const informed = oil.kind === 'natural-ester' || oil.kind === 'silicone';
+    return {
+      kind: 'withheld',
+      reason: informed ? 'oil-type-not-applicable' : 'oil-type-not-informed',
+      message: informed ? METHOD_NOT_APPLICABLE_TO_OIL : OIL_TYPE_NOT_INFORMED,
+      detail: informed
+        ? `Os métodos desta aba foram definidos para óleo mineral isolante, e este equipamento usa ${oilTypeLabel(oil).toLowerCase()}.`
+        : oil.kind === 'unrecognized'
+          ? `O cadastro informa "${oil.reported ?? ''}", que não é um tipo de óleo reconhecido: os métodos para óleo mineral não são aplicados sem confirmar o tipo.`
+          : 'O cadastro do equipamento não informa o tipo do óleo: os métodos para óleo mineral não são aplicados sem confirmar o tipo.',
+      date,
+      methods: DIAGNOSIS_METHODS,
+    };
+  }
+
 
   /**
    * Percorre as datas das colunas, nunca a lista de gases, e é isso que mantém

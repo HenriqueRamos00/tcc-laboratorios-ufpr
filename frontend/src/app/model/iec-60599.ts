@@ -16,11 +16,6 @@
 //    domínio inteiro - transcrever de memória produziria veredito confiante
 //    sobre fronteira inventada. As razões saem medidas e o código sai nulo com
 //    o motivo escrito.
-// 2. O valor-limite por gás (valores típicos do Anexo A da IEC 60599). São
-//    faixas de percentil que dependem do tipo de equipamento e do histórico da
-//    frota, o AutoLAB não traz esse cadastro, e o laudo do Lactec não publica o
-//    limite do gás como publica o da físico-química. O gráfico mostra o medido
-//    e declara o limite como não avaliado.
 
 import { DESCRICAO_DE_DUVAL_1, type CodigoDeDuval1 } from './duval-1';
 import type { GasRatioDefinition } from './gas-ratio';

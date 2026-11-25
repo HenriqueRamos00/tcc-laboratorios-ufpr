@@ -28,6 +28,7 @@ public static class ReportDocumentSourceRegistration
 
             case ReportDocumentsOptions.SqlServerSource:
                 services.AddAutoLabDatabase(configuration);
+                services.AddMemoryCache();
                 services.AddScoped<IReportIssueRepository, AutoLabReportIssueRepository>();
                 return services;
 

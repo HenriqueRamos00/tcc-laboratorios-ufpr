@@ -140,7 +140,7 @@ describe('ReportListComponent, as duas portas de entrada dos laudos', () => {
     const { tela } = montarTela();
 
     const habilitados = Array.from(
-      tela.querySelectorAll<HTMLButtonElement>('#panel-reports tbody button'),
+      tela.querySelectorAll<HTMLButtonElement>('#panel-reports tbody button:last-child'),
     ).map((botao) => !botao.disabled);
 
     expect(habilitados).toEqual([true, false, true]);

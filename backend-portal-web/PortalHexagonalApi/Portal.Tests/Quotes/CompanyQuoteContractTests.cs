@@ -328,7 +328,8 @@ public sealed class CompanyQuoteContractTests
             IReadOnlyCollection<string> reportIdentifications, CancellationToken cancellationToken) =>
             throw new InvalidOperationException("Fora do escopo deste teste.");
 
-        public Task<ReportIssue?> GetCurrentIssueOfAsync(CompanyScope scope, string reportIdentification, CancellationToken cancellationToken) =>
+        public Task<IReadOnlyList<ReportReading>> ReadReportsAsync(
+            CompanyScope scope, IReadOnlyList<string> reportIdentifications, CancellationToken cancellationToken) =>
             throw new InvalidOperationException("Fora do escopo deste teste.");
 
         public Task<SignedReportDocument?> GetSignedDocumentOfReportAsync(

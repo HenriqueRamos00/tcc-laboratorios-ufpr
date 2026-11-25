@@ -12,7 +12,7 @@ import { LoginService } from '@/app/services/login.service';
 import { QuoteDecisionService } from '@/app/services/quote-decision.service';
 import { QuotesService } from '@/app/services/quotes.service';
 
-import { usePdfViewerStub } from './pdf-viewer.spec-util';
+import { usePdfViewerStub } from '@shared/components/pdf-viewer/pdf-viewer.spec-util';
 import { QuoteDetailComponent } from './quote-detail.component';
 
 const ACCEPT_BUTTON = 'Aceitar Orçamento';

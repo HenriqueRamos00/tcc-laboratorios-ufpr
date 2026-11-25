@@ -72,6 +72,25 @@ public sealed class ClientLabResultsConsultationTests
     }
 
     [Fact]
+    public async Task LaudoDoBackendLabViraListaDeUmItemSemRotulo()
+    {
+        ClientLabResultsConsultation consultation = Consultation([
+            Analysis("report-a", "test-a", "eq-87", "P-1", DateTimeOffset.Parse("2026-11-14T12:00:00Z"), [Gas("h2", "h2", 1m)])]);
+
+        SampleHealthIndicators? indicators = await consultation.GetHealthIndicatorsAsync(
+            "eq-87", null, CancellationToken.None);
+
+        ReportConclusion report = Assert.Single(indicators!.GasReports);
+        Assert.Equal("report-a", report.Identification);
+        Assert.Equal(new DateTime(2026, 11, 14, 9, 0, 0), report.Date);
+        Assert.Null(report.ResultLabel);
+        Assert.Equal("Classificação técnica", report.Title);
+        Assert.Equal(["Conclusão do snapshot"], report.Paragraphs);
+        Assert.Empty(indicators.PhysicalChemicalReports);
+        Assert.Null(indicators.GasResult);
+    }
+
+    [Fact]
     public async Task AnaliseSelecionadaDeOutroEquipamentoNaoRetornaSerieGeral()
     {
         ClientAnalysis stranger = Analysis(

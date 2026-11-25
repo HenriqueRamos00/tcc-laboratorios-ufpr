@@ -154,7 +154,7 @@ export const HEALTH_INDICATORS: HealthIndicators = {
 
   physicalChemical: {
     conformity: 'normal',
-    verdict: 'APROVADO',
+    verdict: 'NORMAL',
     nominalVoltage: '≤ 72,5 kV',
     columns: COLUNAS_FISICO_QUIMICO,
     analyses: COLETAS_FISICO_QUIMICO,
@@ -164,6 +164,7 @@ export const HEALTH_INDICATORS: HealthIndicators = {
         name: 'Índice de Neutralização (mg KOH/g óleo)',
         method: 'NBR 14248',
         limit: 'máx. 0,20',
+        limitAbsence: null,
         valuesByAnalysis: valoresPorColetaDoEnsaio('neutralizacao'),
         classification: 'nao-conforme',
       },
@@ -172,6 +173,7 @@ export const HEALTH_INDICATORS: HealthIndicators = {
         name: 'Teor de Água (ppm m/m) - Medido',
         method: 'NBR 10710',
         limit: 'máx. 40',
+        limitAbsence: null,
         valuesByAnalysis: valoresPorColetaDoEnsaio('agua'),
         classification: 'normal',
       },
@@ -180,6 +182,7 @@ export const HEALTH_INDICATORS: HealthIndicators = {
         name: 'Densidade a 20/4°C (g/mL)',
         method: 'NBR 14065',
         limit: '-',
+        limitAbsence: null,
         valuesByAnalysis: valoresPorColetaDoEnsaio('densidade'),
         classification: 'nao-conforme',
       },
@@ -188,6 +191,7 @@ export const HEALTH_INDICATORS: HealthIndicators = {
         name: 'Fator de Potência a 100°C (%)',
         method: 'NBR 12133',
         limit: 'máx. 20',
+        limitAbsence: null,
         valuesByAnalysis: valoresPorColetaDoEnsaio('fatorDePotencia'),
         classification: 'alerta',
       },
@@ -196,6 +200,7 @@ export const HEALTH_INDICATORS: HealthIndicators = {
         name: 'Rigidez Dielétrica - Calota (kV)',
         method: 'NBR/IEC 60156',
         limit: 'min. 40',
+        limitAbsence: null,
         valuesByAnalysis: valoresPorColetaDoEnsaio('rigidez'),
         classification: 'normal',
       },
@@ -204,23 +209,36 @@ export const HEALTH_INDICATORS: HealthIndicators = {
         name: 'Tensão Interfacial (dina/cm)',
         method: 'NBR 6234',
         limit: 'min. 20',
+        limitAbsence: null,
         valuesByAnalysis: valoresPorColetaDoEnsaio('tensaoInterfacial'),
         classification: 'normal',
       },
     ],
-    report: {
-      title: 'Laudo das análises físico-químicas',
-      paragraphs: [
-        'De acordo com a norma ABNT NBR 10576/17, os resultados obtidos nesta análise indicam que ' +
-          'o óleo mineral isolante encontra-se em boas condições físico-químicas.',
-        'Sugere-se nova análise no prazo de 1 (um) ano.',
-      ],
-    },
+    reports: [
+      {
+        identification: 'LACTEC-04809/2025',
+        date: '2025-10-30',
+        resultLabel: 'NORMAL',
+        title: 'LAUDO DAS ANÁLISES FÍSICO-QUÍMICAS',
+        paragraphs: [
+          'De acordo com a norma ABNT NBR 10576/17, os resultados obtidos nesta análise indicam que ' +
+            'o óleo mineral isolante encontra-se em boas condições físico-químicas.',
+          'Sugere-se nova análise no prazo de 1 (um) ano.',
+        ],
+      },
+      {
+        identification: 'LACTEC-03120/2024',
+        date: '2024-05-02',
+        resultLabel: 'NORMAL',
+        title: 'LAUDO DAS ANÁLISES FÍSICO-QUÍMICAS',
+        paragraphs: ['Sugere-se nova análise no prazo de 1 (um) ano.'],
+      },
+    ],
   },
 
   dissolvedGases: {
     conformity: 'normal',
-    verdict: 'APROVADO',
+    verdict: 'NORMAL',
     analysisDates: ['2025-09-16', '2025-11-27'],
     analyses: COLETAS_DE_GASES,
     gases: [
@@ -236,20 +254,33 @@ export const HEALTH_INDICATORS: HealthIndicators = {
       { key: 'combustiveis', name: 'Total de Gases Combustíveis', formula: '', results: [6199, 763] },
       { key: 'total', name: 'Total de Gases', formula: '', results: [56134, 57424] },
     ],
-    report: {
-      title: 'Laudo da análise cromatográfica',
-      paragraphs: [
-        'Baseado nos critérios adotados pelos Institutos Lactec, os resultados obtidos na análise ' +
-          'são considerados normais.',
-        'Sugere-se nova análise no prazo de 1 (um) ano.',
-      ],
-    },
+    reports: [
+      {
+        identification: 'LACTEC-05230/2025',
+        date: '2025-12-01',
+        resultLabel: 'NORMAL',
+        title: 'LAUDO DA ANÁLISE CROMATOGRÁFICA',
+        paragraphs: [
+          'Baseado nos critérios adotados pelos Institutos Lactec, os resultados obtidos na análise ' +
+            'são considerados normais.',
+          'Sugere-se nova análise no prazo de 1 (um) ano.',
+        ],
+      },
+      {
+        identification: 'LACTEC-04410/2025',
+        date: '2025-09-19',
+        resultLabel: 'Descarga elétrica',
+        title: 'LAUDO DA ANÁLISE CROMATOGRÁFICA',
+        paragraphs: ['Recomenda-se nova análise no prazo de 3 (três) meses.'],
+      },
+    ],
   },
 
   // O corpo da API serve `diagnosis` nulo, e é o `DissolvedGasDiagnosisService` que
   // calcula os métodos a partir dos gases dissolvidos acima. Declarar nulo aqui é o
   // que faz a massa exercitar o caminho que a tela de verdade percorre.
   diagnosis: null,
+  oilType: { kind: 'mineral', reported: 'Óleo Mineral Isolante' },
   // A tela ainda nao mostra estas duas listas; elas existem no corpo da API e por isso
   // existem no tipo. A massa declara vazio em vez de omitir, para o tipo nao precisar de
   // campo opcional so por causa da demonstracao.

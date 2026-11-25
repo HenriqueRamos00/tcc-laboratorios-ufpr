@@ -2,7 +2,7 @@
   DIAGNÓSTICO DE GASES DISSOLVIDOS
 </h2>
 
-@if (diagnosis(); as block) {
+@if (applied(); as block) {
 
         <div class="mt-6 grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
           @for (triangulo of block.triangles; track triangulo.number) {
@@ -61,6 +61,12 @@
           <h3 class="m-0 bg-lactec-line-soft px-4 py-3 text-sm font-semibold text-lactec-ink">
             Diagnóstico
           </h3>
+          @if (block.belowTypicalValues) {
+            <p class="m-0 border-t border-lactec-line-soft px-4 py-3 text-sm text-lactec-ink-soft">
+              Nenhum gás de falha passou do valor típico da IEC 60599 na coleta mais recente. As
+              indicações dos métodos abaixo não foram expressivas e servem apenas de apoio ao diagnóstico.
+            </p>
+          }
           <ul class="m-0 list-none p-0">
             @for (conclusao of block.conclusions; track conclusao.method) {
               <li class="border-t border-lactec-line-soft px-4 py-3 text-sm text-lactec-ink">
@@ -72,8 +78,30 @@
           </ul>
         </div>
 } @else {
+@if (withheld(); as outcome) {
+  <div class="mt-6 rounded-lg border border-lactec-line p-4" role="status">
+    <p class="m-0 text-base font-semibold text-lactec-ink">{{ outcome.message }}</p>
+    <p class="mt-2 mb-0 text-sm text-lactec-ink-soft">{{ outcome.detail }}</p>
+  </div>
+
+  <div class="mt-6 overflow-hidden rounded-lg border border-lactec-line">
+    <h3 class="m-0 bg-lactec-line-soft px-4 py-3 text-sm font-semibold text-lactec-ink">
+      Diagnóstico
+    </h3>
+    <ul class="m-0 list-none p-0">
+      @for (method of outcome.methods; track method) {
+        <li class="border-t border-lactec-line-soft px-4 py-3 text-sm text-lactec-ink">
+          {{ method }}
+          <span class="text-lactec-muted">&gt;</span>
+          {{ outcome.message }}
+        </li>
+      }
+    </ul>
+  </div>
+} @else {
   <p class="mt-6 text-center text-sm text-lactec-muted">
     Este laudo não traz diagnóstico de gases dissolvidos. Os resultados medidos
     continuam na aba de critérios.
   </p>
+}
 }

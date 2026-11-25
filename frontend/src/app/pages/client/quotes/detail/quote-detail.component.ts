@@ -11,6 +11,8 @@ import { LoadingRegionComponent } from '@shared/components/skeleton/loading-regi
 import { PageHeaderSkeletonComponent } from '@shared/components/skeleton/page-header-skeleton.component';
 import { SkeletonComponent } from '@shared/components/skeleton/skeleton.component';
 import { SampleShippingNoticeComponent } from '@shared/components/sample-shipping-notice/sample-shipping-notice.component';
+import { PdfSkeletonComponent } from '@shared/components/pdf-viewer/pdf-skeleton.component';
+import { PdfViewerComponent } from '@shared/components/pdf-viewer/pdf-viewer.component';
 import { handFileToTheBrowser } from '@shared/file-download';
 
 import type { ApprovalMethod } from '@/app/model/acceptance';
@@ -33,8 +35,6 @@ import {
   type RejectQuoteDialogData,
 } from '../decision/reject-quote-dialog.component';
 
-import { ProposalSkeletonComponent } from './proposal-skeleton.component';
-import { ProposalViewerComponent } from './proposal-viewer.component';
 import { MoedaPipe } from '@shared/pipes/moeda.pipe';
 
 import { registerPageTour } from '@/app/services/tour.service';
@@ -70,8 +70,8 @@ function greetingForNow(agora = new Date()): string {
     MatIconModule,
     PageHeaderComponent,
     EmptyStateComponent,
-    ProposalViewerComponent,
-    ProposalSkeletonComponent,
+    PdfViewerComponent,
+    PdfSkeletonComponent,
     SampleShippingNoticeComponent,
     LoadingRegionComponent,
     PageHeaderSkeletonComponent,
@@ -139,6 +139,8 @@ export class QuoteDetailComponent {
   protected readonly proposalFileName = computed(
     () => `proposta-${this.quote()?.code ?? this.id()}.pdf`,
   );
+
+  protected readonly proposalDocument = computed(() => this.quotes.quoteDocument(this.id()));
 
   // Array literal no template cria identidade nova a cada ciclo e suja o
   // PageHeader, que é OnPush, sem nada ter mudado.

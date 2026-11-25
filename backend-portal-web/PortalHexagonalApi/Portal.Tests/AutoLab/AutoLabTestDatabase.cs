@@ -4,6 +4,7 @@ using System.Text.Json;
 using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Diagnostics;
+using Microsoft.Extensions.Caching.Memory;
 
 using Portal.Adapters.AutoLab;
 using Portal.Adapters.CompanyRecords;
@@ -196,12 +197,19 @@ internal sealed class AutoLabTestDatabase : IDisposable
         return new AutoLabLabTestRepository(context, CompanyRecords(context, limits), limits);
     }
 
-    public AutoLabReportIssueRepository ReportIssues(AutoLabDbContext? context = null, AutoLabQueryLimits? limits = null)
+    public AutoLabReportIssueRepository ReportIssues(
+        AutoLabDbContext? context = null,
+        AutoLabQueryLimits? limits = null,
+        IMemoryCache? findings = null)
     {
         context ??= NewContext();
         limits ??= new AutoLabQueryLimits();
 
-        return new AutoLabReportIssueRepository(context, CompanyRecords(context, limits), limits);
+        return new AutoLabReportIssueRepository(
+            context,
+            CompanyRecords(context, limits),
+            limits,
+            findings ?? new MemoryCache(new MemoryCacheOptions()));
     }
 
     public AutoLabSituaProcessRepository Progress(AutoLabDbContext? context = null, AutoLabQueryLimits? limits = null)

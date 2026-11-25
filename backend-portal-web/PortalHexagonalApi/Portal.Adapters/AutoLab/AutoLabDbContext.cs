@@ -113,8 +113,6 @@ public sealed class AutoLabDbContext : DbContext
             table.Property(row => row.RelatorioEnsaioSubstituto).HasColumnName("RelatorioEnsaioSubstituto");
             table.Property(row => row.DataEmissao).HasColumnName("DataEmissao");
             table.Property(row => row.DataPublicacao).HasColumnName("DataPublicacao");
-            table.Property(row => row.TituloRelatorio).HasColumnName("TituloRelatorio").HasMaxLength(250);
-            table.Property(row => row.Conclusao).HasColumnName("Conclusao");
             table.Property(row => row.Solicitacao).HasColumnName("Solicitacao");
         });
 

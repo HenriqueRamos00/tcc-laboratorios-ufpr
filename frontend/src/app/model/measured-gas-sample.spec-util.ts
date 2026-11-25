@@ -419,9 +419,6 @@ export function dissolvedGasBlockOf(
     analysisDates: samples.map((sample) => sample.analysisDate),
     analyses,
     gases,
-    report: {
-      title: 'Laudo da análise cromatográfica',
-      paragraphs: [],
-    },
+    reports: [],
   };
 }

@@ -8,7 +8,18 @@ import { aplicaSeDuval4, classificarDuval4, duval4 } from './duval-4';
 import { aplicaSeDuval5, classificarDuval5, duval5 } from './duval-5';
 import { DissolvedGasDiagnosisService } from '@/app/services/dissolved-gas-diagnosis.service';
 
-import type { TernaryPoint } from './health';
+import { gasRatio } from './gas-ratio';
+import { IEC_60599_RATIOS } from './iec-60599';
+import { totalCombustibleGases } from './ieee-c57-104';
+import type { OilType } from './insulating-oil';
+
+import type { DiagnosisOutcome, TernaryPoint } from './health';
+
+const MINERAL: OilType = { kind: 'mineral', reported: 'Óleo Mineral Isolante' };
+
+function applied(outcome: DiagnosisOutcome | null) {
+  return outcome?.kind === 'applied' ? outcome : null;
+}
 import {
   chromatographySampleOf,
   chromatographySamplesOfEquipment,
@@ -248,34 +259,30 @@ describe('Métodos que o dado medido alcança agora que o diagnóstico está lig
   // Dividir ali devolveria infinito, e infinito num comparador de faixa vira o
   // diagnóstico mais grave da tabela sem ninguém ter medido nada.
   it('recusa a razão com divisor zero, e diz qual gás não foi detectado', () => {
-    const service = new DissolvedGasDiagnosisService();
-    const diagnosis = service.diagnose(dissolvedGasBlockOf([chromatographySampleOf('01439/2026-004')]));
+    const concentrations = chromatographySampleOf('01439/2026-004').gasesInPartsPerMillion;
+    const ratios = IEC_60599_RATIOS.map((definition) => gasRatio(definition, concentrations));
 
-    expect(diagnosis).not.toBeNull();
-    if (!diagnosis) return;
-
-    const porDivisorZero = diagnosis.iec60599.ratios.filter(
-      (ratio) => ratio.kind === 'denominatorNotDetected',
-    );
+    const porDivisorZero = ratios.filter((ratio) => ratio.kind === 'denominatorNotDetected');
 
     expect(porDivisorZero.length).toBe(2);
     expect(porDivisorZero.map((ratio) => ratio.kind === 'denominatorNotDetected' && ratio.denominator))
       .toEqual(['C₂H₄', 'C₂H₆']);
 
-    const calculada = diagnosis.iec60599.ratios.find((ratio) => ratio.kind === 'computed');
+    const calculada = ratios.find((ratio) => ratio.kind === 'computed');
 
     expect(calculada?.kind === 'computed' && calculada.value).toBe(0);
   });
 
-  // O totalizador que o laboratório publicou é a prova independente: a soma dos seis
-  // combustíveis tem que reproduzir o número que veio no laudo, sem o portal saber
-  // dele. Nesse protocolo o publicado é 12, e os gases medidos somam 2 + 10.
+  it('no laudo medido 01439/2026-004 os métodos são aplicados com os gases abaixo dos valores típicos', () => {
+    const service = new DissolvedGasDiagnosisService();
+    const outcome = service.diagnose(dissolvedGasBlockOf([chromatographySampleOf('01439/2026-004')]), MINERAL);
+
+    expect(outcome?.kind === 'applied' && outcome.belowTypicalValues).toBeTrue();
+  });
+
   it('reproduz o total de gases combustíveis que o laudo publicou', () => {
     const amostra = chromatographySampleOf('01439/2026-004');
-    const service = new DissolvedGasDiagnosisService();
-    const diagnosis = service.diagnose(dissolvedGasBlockOf([amostra]));
-
-    const total = diagnosis?.ieee.readings.at(-1)?.total ?? null;
+    const total = totalCombustibleGases(amostra.gasesInPartsPerMillion);
 
     expect(total).toBe(amostra.publishedTotalizers.combustibleGases);
     expect(total).toBe(12);
@@ -286,7 +293,7 @@ describe('Métodos que o dado medido alcança agora que o diagnóstico está lig
   it('acompanha a tendência de combustíveis do 571289 nas quatro coletas', () => {
     const amostras = chromatographySamplesOfEquipment('571289');
     const service = new DissolvedGasDiagnosisService();
-    const diagnosis = service.diagnose(dissolvedGasBlockOf(amostras));
+    const diagnosis = applied(service.diagnose(dissolvedGasBlockOf(amostras), MINERAL));
 
     expect(diagnosis?.ieee.readings.map((leitura) => leitura.total))
       .toEqual(amostras.map((amostra) => amostra.publishedTotalizers.combustibleGases));
@@ -302,7 +309,7 @@ describe('Métodos que o dado medido alcança agora que o diagnóstico está lig
 describe('Métodos que dependem de tabela normativa ausente do repositório', () => {
   it('não atribui zona do pentágono, e declara o motivo', () => {
     const service = new DissolvedGasDiagnosisService();
-    const diagnosis = service.diagnose(dissolvedGasBlockOf([chromatographySampleOf('01417/2026-001')]));
+    const diagnosis = applied(service.diagnose(dissolvedGasBlockOf([chromatographySampleOf('01417/2026-001')]), MINERAL));
 
     expect(diagnosis?.pentagon.zone).toBeNull();
     expect(diagnosis?.pentagon.percentages.length).toBeGreaterThan(0);
@@ -310,7 +317,7 @@ describe('Métodos que dependem de tabela normativa ausente do repositório', ()
 
   it('não atribui código de falha da IEC 60599 nem de Rogers, e declara o motivo', () => {
     const service = new DissolvedGasDiagnosisService();
-    const diagnosis = service.diagnose(dissolvedGasBlockOf([chromatographySampleOf('01417/2026-001')]));
+    const diagnosis = applied(service.diagnose(dissolvedGasBlockOf([chromatographySampleOf('01417/2026-001')]), MINERAL));
 
     expect(diagnosis?.iec60599.faultCode).toBeNull();
     expect(diagnosis?.iec60599.faultCodeNotAssessed).not.toBeNull();
@@ -320,7 +327,7 @@ describe('Métodos que dependem de tabela normativa ausente do repositório', ()
 
   it('não atribui limiar de alarme nem de atenção da IEEE C57.104', () => {
     const service = new DissolvedGasDiagnosisService();
-    const diagnosis = service.diagnose(dissolvedGasBlockOf([chromatographySampleOf('01417/2026-001')]));
+    const diagnosis = applied(service.diagnose(dissolvedGasBlockOf([chromatographySampleOf('01417/2026-001')]), MINERAL));
 
     expect(diagnosis?.ieee.alarm).toBeNull();
     expect(diagnosis?.ieee.attention).toBeNull();

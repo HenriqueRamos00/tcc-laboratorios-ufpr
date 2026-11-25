@@ -36,7 +36,6 @@ public sealed class AutoLabSqlServerQueryTextTests
         "RegistryRowsOf",
         "ProgressRowsOf",
         "ReportViewRowOf",
-        "IssueTextOf",
         "LiveFilesAmong",
         "LiveFileOf"
     ];
@@ -252,8 +251,6 @@ public sealed class AutoLabSqlServerQueryTextTests
 
         Assert.Matches(new Regex(@"\[\w+\]\.\[Solicitacao\] = \[\w+\]\.\[Oid\]"), sql);
         Assert.DoesNotMatch(new Regex(@"ON [^\n]*NumeroSolicitacao"), sql);
-        Assert.DoesNotContain("TituloRelatorio", sql, StringComparison.Ordinal);
-        Assert.DoesNotContain("Conclusao", sql, StringComparison.Ordinal);
     }
 
     [Fact]
@@ -350,7 +347,6 @@ public sealed class AutoLabSqlServerQueryTextTests
             "RegistryRowsOf" => AutoLabQueries.RegistryRowsOf(database, values, 5001).ToQueryString(),
             "ProgressRowsOf" => AutoLabQueries.ProgressRowsOf(database, values, 5001).ToQueryString(),
             "ReportViewRowOf" => AutoLabQueries.ReportViewRowOf(database, Guid.Empty).ToQueryString(),
-            "IssueTextOf" => AutoLabQueries.IssueTextOf(database, Guid.Empty).ToQueryString(),
             "LiveFilesAmong" => AutoLabQueries.LiveFilesAmong(database, [Guid.Empty], 501).ToQueryString(),
             "LiveFileOf" => AutoLabQueries.LiveFileOf(database, Guid.Empty).ToQueryString(),
             _ => throw new ArgumentOutOfRangeException(nameof(name))

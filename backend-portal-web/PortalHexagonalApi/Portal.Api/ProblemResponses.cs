@@ -89,6 +89,15 @@ internal static class ProblemResponses
             "A fonte dos laudos assinados nao respondeu a esta consulta.");
     }
 
+    public static IActionResult ReportArchiveTooLarge(this ControllerBase controller, int reportCount, int maxReports)
+    {
+        return controller.AsProblem(
+            StatusCodes.Status422UnprocessableEntity,
+            "report-archive-too-large",
+            "Laudos demais para um arquivo so.",
+            $"Este equipamento tem {reportCount} laudos e o arquivo compactado aceita no maximo {maxReports}. Baixe os laudos pelo historico.");
+    }
+
     public static IActionResult TenantNotIdentified(this ControllerBase controller)
     {
         return controller.AsProblem(

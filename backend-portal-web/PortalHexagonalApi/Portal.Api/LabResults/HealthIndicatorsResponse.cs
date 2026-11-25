@@ -25,6 +25,8 @@ public sealed record HealthIndicatorsResponse
 
     public required DissolvedGasBlockResponse DissolvedGases { get; init; }
 
+    public required OilTypeResponse OilType { get; init; }
+
     /// <summary>
     /// Nulo nesta fatia. O nucleo normativo de Duval ainda nao foi migrado, e preencher um
     /// pentagono ou uma conformidade sem calcular faria o portal afirmar um diagnostico que
@@ -35,6 +37,13 @@ public sealed record HealthIndicatorsResponse
     public required IReadOnlyList<UnreadableResultResponse> UnreadableResults { get; init; }
 
     public required IReadOnlyList<TotalizerCheckResponse> TotalizerChecks { get; init; }
+}
+
+public sealed record OilTypeResponse
+{
+    public required InsulatingOilKind Kind { get; init; }
+
+    public string? Reported { get; init; }
 }
 
 public sealed record SelectedAnalysisResponse
@@ -50,8 +59,14 @@ public sealed record SelectedAnalysisResponse
     public required bool HasDissolvedGases { get; init; }
 }
 
-public sealed record TestReportResponse
+public sealed record PublishedReportResponse
 {
+    public required string Identification { get; init; }
+
+    public required string Date { get; init; }
+
+    public string? ResultLabel { get; init; }
+
     public string? Title { get; init; }
 
     public required IReadOnlyList<string> Paragraphs { get; init; }
@@ -80,6 +95,8 @@ public sealed record PhysicalChemicalTestResponse
     public string? Method { get; init; }
 
     public string? Limit { get; init; }
+
+    public PhysicalChemicalLimitAbsence? LimitAbsence { get; init; }
 
     public required IReadOnlyList<object?> ValuesByAnalysis { get; init; }
 
@@ -115,7 +132,7 @@ public sealed record PhysicalChemicalBlockResponse
 
     public required IReadOnlyList<PhysicalChemicalTestResponse> Tests { get; init; }
 
-    public required TestReportResponse Report { get; init; }
+    public required IReadOnlyList<PublishedReportResponse> Reports { get; init; }
 }
 
 public sealed record DissolvedGasBlockResponse
@@ -130,7 +147,7 @@ public sealed record DissolvedGasBlockResponse
 
     public required IReadOnlyList<DissolvedGasResponse> Gases { get; init; }
 
-    public required TestReportResponse Report { get; init; }
+    public required IReadOnlyList<PublishedReportResponse> Reports { get; init; }
 }
 
 public sealed record UnreadableResultResponse

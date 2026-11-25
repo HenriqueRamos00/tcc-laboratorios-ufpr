@@ -6,6 +6,11 @@ name: backend-auth2
 x-contexto-da-aplicacao: &contexto-da-aplicacao
   SPRING_DATASOURCE_URL: ${AUTH_DATASOURCE_URL:?defina AUTH_DATASOURCE_URL no .env}
   AUTH_SCHEMA: ${AUTH_SCHEMA_OWNER_USERNAME:?defina AUTH_SCHEMA_OWNER_USERNAME no .env}
+  JAVA_TOOL_OPTIONS: >-
+    -Doracle.net.encryption_client=REQUIRED
+    -Doracle.net.encryption_types_client=(AES256)
+    -Doracle.net.crypto_checksum_client=REQUIRED
+    -Doracle.net.crypto_checksum_types_client=(SHA256)
   # Segredo de instalacao. Sem ele a rota de cadastro do primeiro administrador responde como
   # inexistente, inclusive num banco vazio.
   AUTH_SETUP_SECRET: ${AUTH_SETUP_SECRET:?defina AUTH_SETUP_SECRET no .env}
@@ -25,8 +30,9 @@ x-contexto-da-aplicacao: &contexto-da-aplicacao
 services:
   oracle:
     image: container-registry.oracle.com/database/free:23.26.1.0
+    profiles: ["oracle-local"]
     environment:
-      ORACLE_PWD: ${ORACLE_PASSWORD:?defina ORACLE_PASSWORD no .env}
+      ORACLE_PWD: ${ORACLE_PASSWORD:-}
       ORACLE_PDB: FREEPDB1
       AUTH_SCHEMA_OWNER_USERNAME: ${AUTH_SCHEMA_OWNER_USERNAME:?defina AUTH_SCHEMA_OWNER_USERNAME no .env}
       AUTH_SCHEMA_OWNER_PASSWORD: ${AUTH_SCHEMA_OWNER_PASSWORD:?defina AUTH_SCHEMA_OWNER_PASSWORD no .env}
@@ -91,6 +97,7 @@ services:
     depends_on:
       oracle:
         condition: service_healthy
+        required: false
     environment:
       <<: *contexto-da-aplicacao
       SPRING_MAIN_WEB_APPLICATION_TYPE: none
@@ -112,6 +119,7 @@ services:
     depends_on:
       oracle:
         condition: service_healthy
+        required: false
       migrate:
         condition: service_completed_successfully
     environment:
@@ -129,7 +137,7 @@ services:
       # de sessao.
       SPRING_DATASOURCE_HIKARI_MAXIMUM_POOL_SIZE: "24"
     ports:
-      - "127.0.0.1:8081:8081"
+      - "8081:8081"
     # O contentor sobe sem poder escrever no proprio sistema de arquivos e sem
     # nenhuma capacidade de root. O unico lugar gravavel e o /tmp, que a JVM
     # usa, e ele e um disco em memoria que morre junto com o contentor.

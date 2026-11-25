@@ -6,7 +6,7 @@ import { skeletonIndexes } from '@shared/components/skeleton/table-skeleton.comp
 const PARAGRAPH_COUNT = 4;
 
 @Component({
-  selector: 'app-proposal-skeleton',
+  selector: 'app-pdf-skeleton',
   standalone: true,
   imports: [SkeletonComponent],
   host: { class: 'block' },
@@ -46,7 +46,7 @@ const PARAGRAPH_COUNT = 4;
   `,
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
-export class ProposalSkeletonComponent {
+export class PdfSkeletonComponent {
   readonly framed = input(true);
   readonly height = input('70vh');
 

@@ -56,6 +56,7 @@ builder.Services.TryAddSingleton(TimeProvider.System);
 builder.Services.AddScoped<ILoginUseCase, LoginService>();
 builder.Services.AddScoped<IForConsultingLabResults, LabResultsConsultation>();
 builder.Services.AddScoped<IForDownloadingSignedReports, SignedReportDownload>();
+builder.Services.AddScoped<IForArchivingEquipmentReports, EquipmentReportArchiving>();
 builder.Services.AddScoped<IForConsultingReports, ReportsConsultation>();
 
 builder.Services.AddScoped<SpringReports.IForConsultingReports, SpringReports.ReportsConsultation>();

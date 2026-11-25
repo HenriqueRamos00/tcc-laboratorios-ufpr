@@ -1,3 +1,5 @@
+import { provideHttpClient } from '@angular/common/http';
+import { provideHttpClientTesting } from '@angular/common/http/testing';
 import { TestBed } from '@angular/core/testing';
 import { provideRouter } from '@angular/router';
 import { of } from 'rxjs';
@@ -31,6 +33,8 @@ describe('Aba de métodos de diagnóstico, com o gás medido da amostra real', (
       imports: [HealthIndicatorsComponent],
       providers: [
         provideRouter([]),
+        provideHttpClient(),
+        provideHttpClientTesting(),
         { provide: HealthService, useValue: { equipmentIndicators: () => of(indicadores) } },
       ],
     });

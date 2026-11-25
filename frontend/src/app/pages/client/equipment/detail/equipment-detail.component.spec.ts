@@ -11,6 +11,8 @@ import {
 import { API_URL } from '@/app/environment/env';
 import type { EquipmentDetail, EquipmentReport } from '@/app/model/equipment';
 
+import { PdfViewerDialog } from '@shared/components/pdf-viewer/pdf-viewer-dialog.service';
+import type { PdfViewerDialogData } from '@shared/components/pdf-viewer/pdf-viewer-dialog.component';
 import { EquipmentDetailComponent } from './equipment-detail.component';
 
 const TEMPORARY_ADDRESS = 'blob:relatorio-de-teste';
@@ -124,7 +126,7 @@ describe('EquipmentDetailComponent', () => {
     const tela: HTMLElement = fixture.nativeElement;
 
     expect(tela.querySelector('tbody a')).toBeNull();
-    expect(tela.querySelector('tbody button')).not.toBeNull();
+    expect(tela.querySelector('tbody button[data-tour="equipamento-historico-download"]')).not.toBeNull();
     expect(tela.querySelector('tbody')?.textContent).toContain('Outros ensaios');
   }));
 
@@ -144,9 +146,43 @@ describe('EquipmentDetailComponent', () => {
     fixture.detectChanges();
 
     const tela: HTMLElement = fixture.nativeElement;
-    const botao = tela.querySelector('tbody button') as HTMLButtonElement;
+    const botao = tela.querySelector('tbody button[data-tour="equipamento-historico-download"]') as HTMLButtonElement;
 
     expect(botao.disabled).toBeTrue();
+  }));
+
+  it('Visualizar abre o PDF do histórico em tela cheia pela rota de documento', fakeAsync(() => {
+    const opened: PdfViewerDialogData[] = [];
+    TestBed.configureTestingModule({
+      providers: [
+        provideRouter([]),
+        provideHttpClient(),
+        provideHttpClientTesting(),
+        { provide: PdfViewerDialog, useValue: { open: (data: PdfViewerDialogData) => opened.push(data) } },
+      ],
+    });
+
+    const fixture = TestBed.createComponent(EquipmentDetailComponent);
+    fixture.componentRef.setInput('id', EQUIPMENT_ID);
+    fixture.detectChanges();
+
+    const http = TestBed.inject(HttpTestingController);
+    http.expectOne(`${API_URL}/api/equipments/${EQUIPMENT_ID}`).flush(DETAIL);
+    renderMeasuredTable(fixture);
+    http.expectOne(HISTORY_URL).flush([HISTORY[0]]);
+    fixture.detectChanges();
+
+    const botao = (fixture.nativeElement as HTMLElement)
+      .querySelector('tbody button[data-tour="equipamento-historico-visualizar"]') as HTMLButtonElement;
+    expect(botao.disabled).toBeFalse();
+    botao.click();
+
+    expect(opened.length).toBe(1);
+    let recebido: Blob | undefined;
+    opened[0].source.subscribe((blob) => (recebido = blob));
+    const pdf = new Blob(['%PDF-1.7'], { type: 'application/pdf' });
+    http.expectOne((request) => request.url.endsWith('/document')).flush(pdf);
+    expect(recebido).toBe(pdf);
   }));
 
   for (const pdfAvailable of [true, false]) {
@@ -164,7 +200,7 @@ describe('EquipmentDetailComponent', () => {
         ...HISTORY[0], hasSignedDocument: !pdfAvailable, pdfAvailable,
       }]);
       fixture.detectChanges();
-      const button = fixture.nativeElement.querySelector('tbody button') as HTMLButtonElement;
+      const button = fixture.nativeElement.querySelector('tbody button[data-tour="equipamento-historico-download"]') as HTMLButtonElement;
       expect(button.disabled).toBe(!pdfAvailable);
     }));
   }
@@ -227,7 +263,7 @@ describe('EquipmentDetailComponent', () => {
     const fixture = montarDetalhe();
 
     const tela: HTMLElement = fixture.nativeElement;
-    const botao = tela.querySelector('tbody button') as HTMLButtonElement;
+    const botao = tela.querySelector('tbody button[data-tour="equipamento-historico-download"]') as HTMLButtonElement;
     botao.click();
     fixture.detectChanges();
 
@@ -253,7 +289,7 @@ describe('EquipmentDetailComponent', () => {
     const fixture = montarDetalhe();
     const tela: HTMLElement = fixture.nativeElement;
 
-    (tela.querySelector('tbody button') as HTMLButtonElement).click();
+    (tela.querySelector('tbody button[data-tour="equipamento-historico-download"]') as HTMLButtonElement).click();
     TestBed.inject(HttpTestingController)
       .expectOne(`${API_URL}/api/equipments/${EQUIPMENT_ID}/reports/laudo-fisico-quimico/document`)
       .flush(new Blob(), { status: 404, statusText: 'Not Found' });

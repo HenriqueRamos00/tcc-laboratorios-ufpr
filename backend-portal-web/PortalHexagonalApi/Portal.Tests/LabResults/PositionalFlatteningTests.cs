@@ -163,14 +163,64 @@ public sealed class PositionalFlatteningTests
     }
 
     [Fact]
-    public void ClassificationAndConformityComeOutNullWhileTheStandardHasNotMigrated()
+    public void ClassificationAndConformityComeOutNullWithoutAReportResult()
     {
         HealthIndicatorsResponse response = Flatten(
             PhysicalChemicalAnalysis("01351/2026-004", new DateTime(2026, 7, 6)));
 
         Assert.Null(response.PhysicalChemical.Conformity);
+        Assert.Null(response.PhysicalChemical.Verdict);
+        Assert.Null(response.DissolvedGases.Conformity);
         Assert.Null(response.Diagnosis);
         Assert.All(response.PhysicalChemical.Tests, test => Assert.Null(test.Classification));
+    }
+
+    [Theory]
+    [InlineData("NORMAL", "normal")]
+    [InlineData("Normal", "normal")]
+    [InlineData(" normal ", "normal")]
+    [InlineData("Descarga elétrica", "nao-conforme")]
+    [InlineData("ALERTA", "nao-conforme")]
+    [InlineData("", null)]
+    [InlineData(null, null)]
+    public void TheConformityFollowsTheResultLabelOfTheReport(string? label, string? conformity)
+    {
+        HealthIndicatorsResponse response = FlattenWithResults(label, label);
+
+        Assert.Equal(conformity, response.PhysicalChemical.Conformity);
+        Assert.Equal(conformity, response.DissolvedGases.Conformity);
+        Assert.Equal(label, response.DissolvedGases.Verdict);
+    }
+
+    [Fact]
+    public void EveryReportTravelsWithItsIdentificationDateLabelAndParagraphs()
+    {
+        HealthIndicatorsResponse response = FlattenWithResults(
+            null,
+            "Descarga elétrica",
+            gasReports:
+            [
+                new ReportConclusion(
+                    "LACTEC-00002/2026",
+                    new DateTime(2026, 9, 24, 15, 30, 0),
+                    "Descarga elétrica",
+                    "LAUDO DA ANÁLISE CROMATOGRÁFICA",
+                    ["Primeiro parágrafo.", "Segundo parágrafo."]),
+                new ReportConclusion("LACTEC-00001/2026", new DateTime(2026, 7, 28), null, null, [])
+            ]);
+
+        Assert.Equal(
+            ["LACTEC-00002/2026", "LACTEC-00001/2026"],
+            response.DissolvedGases.Reports.Select(report => report.Identification));
+        PublishedReportResponse latest = response.DissolvedGases.Reports[0];
+        Assert.Equal("2026-09-24", latest.Date);
+        Assert.Equal("Descarga elétrica", latest.ResultLabel);
+        Assert.Equal("LAUDO DA ANÁLISE CROMATOGRÁFICA", latest.Title);
+        Assert.Equal(["Primeiro parágrafo.", "Segundo parágrafo."], latest.Paragraphs);
+        Assert.Null(response.DissolvedGases.Reports[1].Title);
+        Assert.Empty(response.PhysicalChemical.Reports);
+        Assert.Equal("nao-conforme", response.DissolvedGases.Conformity);
+        Assert.Null(response.PhysicalChemical.Conformity);
     }
 
     /// <summary>
@@ -280,6 +330,30 @@ public sealed class PositionalFlatteningTests
                         ((MeasuredValue.UninterpretedText)measurement.Value).OriginalText,
                         analysis.ProtocoloLactec)))],
                 []),
+            "opaque-identifier");
+    }
+
+    private static HealthIndicatorsResponse FlattenWithResults(
+        string? physicalChemicalResult,
+        string? gasResult,
+        IReadOnlyList<ReportConclusion>? gasReports = null)
+    {
+        SampleAnalysis analysis = GasAnalysis("01417/2026-001", new DateTime(2026, 9, 24));
+
+        return PositionalFlattening.Flatten(
+            new SampleHealthIndicators(
+                analysis.SerialNumber,
+                analysis.Identification,
+                AnalysisSeries.Build(analysis.EquipmentKey, []),
+                AnalysisSeries.Build(analysis.EquipmentKey, [analysis]),
+                null,
+                [],
+                [])
+            {
+                PhysicalChemicalResult = physicalChemicalResult,
+                GasResult = gasResult,
+                GasReports = gasReports ?? []
+            },
             "opaque-identifier");
     }
 }

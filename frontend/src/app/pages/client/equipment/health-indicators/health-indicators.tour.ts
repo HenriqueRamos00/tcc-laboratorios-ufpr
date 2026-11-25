@@ -48,8 +48,8 @@ function resultSteps(view: Exclude<HealthTourView, 'metodos'>): TourStep[] {
     id: 'conclusao',
     target: 'indicadores-conclusao',
     side: 'top',
-    title: 'Conclusão do relatório',
-    text: 'Aqui está a conclusão escrita pelo laboratório para a análise mais recente desta aba.',
+    title: 'Laudos',
+    text: 'Aqui estão os laudos publicados para esta aba, do mais recente para o mais antigo, com o resultado e a conclusão de cada um.',
   });
 
   return steps;
@@ -61,7 +61,7 @@ function viewSteps(view: HealthTourView): TourStep[] {
     target: 'indicadores-gases-criterios',
     side: 'bottom',
     title: 'Critério de análise',
-    text: '"Critérios LACTEC" mostra a conformidade e a evolução dos gases. "Métodos de Diagnóstico" aplica os métodos clássicos de interpretação aos mesmos gases. Esta ajuda explica o critério que estiver aberto.',
+    text: '"Critérios LACTEC" mostra a conformidade e a evolução dos gases. "Métodos de Diagnóstico" aplica os métodos clássicos de interpretação aos mesmos gases.',
   };
 
   if (view === 'fisico-quimico') return resultSteps(view);
@@ -88,7 +88,7 @@ export function healthIndicatorsTour(view: HealthTourView): TourDefinition {
         target: 'indicadores-abas',
         side: 'bottom',
         title: 'Tipo de ensaio',
-        text: 'Alterne entre os ensaios Físico-Químicos e os Gases Dissolvidos. Uma aba fica travada quando não há análise daquele tipo. Esta ajuda explica a aba que estiver aberta.',
+        text: 'Alterne entre os ensaios Físico-Químicos e os Gases Dissolvidos. Uma aba fica travada quando não há análise daquele tipo.',
       },
       ...viewSteps(view),
       {
@@ -96,7 +96,7 @@ export function healthIndicatorsTour(view: HealthTourView): TourDefinition {
         target: 'indicadores-baixar',
         side: 'bottom',
         title: 'Baixar relatório',
-        text: 'Baixa o relatório histórico com os indicadores deste equipamento.',
+        text: 'Baixa um arquivo ZIP com todos os laudos em PDF deste equipamento, separados em pastas por tipo de análise e nomeados pela data e pelo número do laudo.',
       },
     ],
   };

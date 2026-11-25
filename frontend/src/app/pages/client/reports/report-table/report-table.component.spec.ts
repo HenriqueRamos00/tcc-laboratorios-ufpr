@@ -5,6 +5,11 @@ import { TestBed } from '@angular/core/testing';
 import { API_URL } from '@/app/environment/env';
 import type { Report } from '@/app/model/report';
 
+import { firstValueFrom } from 'rxjs';
+
+import { PdfViewerDialog } from '@shared/components/pdf-viewer/pdf-viewer-dialog.service';
+import type { PdfViewerDialogData } from '@shared/components/pdf-viewer/pdf-viewer-dialog.component';
+
 import { ReportTableComponent } from './report-table.component';
 
 const SPRING_REPORT: Report = {
@@ -30,7 +35,7 @@ describe('ReportTableComponent, documento publicado pelo Spring', () => {
     const fixture = render();
     const element = fixture.nativeElement as HTMLElement;
     expect(element.textContent).toContain('Laboratório de Ensaios');
-    const button = element.querySelector('button')!;
+    const button = element.querySelector<HTMLButtonElement>('button[aria-label^="Baixar"]')!;
     expect(button.disabled).toBeFalse();
     button.click();
     const pdf = new Blob(['%PDF-1.7\nspring'], { type: 'application/pdf' });
@@ -46,7 +51,7 @@ describe('ReportTableComponent, documento publicado pelo Spring', () => {
     const create = spyOn(URL, 'createObjectURL');
     const fixture = render();
     const element = fixture.nativeElement as HTMLElement;
-    element.querySelector('button')!.click();
+    element.querySelector<HTMLButtonElement>('button[aria-label^="Baixar"]')!.click();
     const http = TestBed.inject(HttpTestingController);
     http.expectOne(`${API_URL}/api/reports/804/document`)
       .flush(null, { status: 502, statusText: 'Bad Gateway' });
@@ -55,5 +60,41 @@ describe('ReportTableComponent, documento publicado pelo Spring', () => {
     expect(element.querySelector('[role="alert"]')?.textContent).toContain('Não foi possível baixar');
     expect(create).not.toHaveBeenCalled();
     http.verify();
+  });
+
+  it('Visualizar abre o PDF da rota de documento direto em tela cheia', async () => {
+    const opened: PdfViewerDialogData[] = [];
+    TestBed.configureTestingModule({
+      providers: [
+        provideHttpClient(),
+        provideHttpClientTesting(),
+        { provide: PdfViewerDialog, useValue: { open: (data: PdfViewerDialogData) => opened.push(data) } },
+      ],
+    });
+    const fixture = TestBed.createComponent(ReportTableComponent);
+    fixture.componentRef.setInput('reports', [SPRING_REPORT]);
+    fixture.detectChanges();
+
+    const view = (fixture.nativeElement as HTMLElement)
+      .querySelector<HTMLButtonElement>('button[aria-label^="Visualizar"]')!;
+    expect(view.disabled).toBeFalse();
+    view.click();
+
+    expect(opened.length).toBe(1);
+    expect(opened[0].title).toBe('Relatório 804');
+    const content = firstValueFrom(opened[0].source);
+    const pdf = new Blob(['%PDF-1.7'], { type: 'application/pdf' });
+    TestBed.inject(HttpTestingController).expectOne(`${API_URL}/api/reports/804/document`).flush(pdf);
+    expect(await content).toBe(pdf);
+  });
+
+  it('Visualizar fica desativado quando não há PDF', () => {
+    TestBed.configureTestingModule({ providers: [provideHttpClient(), provideHttpClientTesting()] });
+    const fixture = TestBed.createComponent(ReportTableComponent);
+    fixture.componentRef.setInput('reports', [{ ...SPRING_REPORT, pdfAvailable: false }]);
+    fixture.detectChanges();
+
+    expect((fixture.nativeElement as HTMLElement)
+      .querySelector<HTMLButtonElement>('button[aria-label*="visualizar"]')!.disabled).toBeTrue();
   });
 });

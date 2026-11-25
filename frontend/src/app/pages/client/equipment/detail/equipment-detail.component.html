@@ -96,6 +96,23 @@
           }
           <button
             type="button"
+            data-tour="equipamento-historico-visualizar"
+            class="inline-flex items-center gap-1 rounded-lg border border-lactec-line
+                   px-3 py-2 text-xs font-semibold text-lactec-ink hover:bg-lactec-surface
+                   disabled:opacity-40"
+            [class.h-11]="compact"
+            [class.w-full]="compact"
+            [class.justify-center]="compact"
+            [class.text-sm]="compact"
+            [disabled]="!row.hasFile"
+            [attr.aria-label]="'Visualizar o relatório de ' + row.analysisType + ' de ' + row.date"
+            (click)="view(row)"
+          >
+            <mat-icon class="icone-16" aria-hidden="true">visibility</mat-icon>
+            Visualizar
+          </button>
+          <button
+            type="button"
             data-tour="equipamento-historico-download"
             class="inline-flex items-center gap-1 rounded-lg border border-lactec-line
                    px-3 py-2 text-xs font-semibold text-lactec-ink hover:bg-lactec-surface

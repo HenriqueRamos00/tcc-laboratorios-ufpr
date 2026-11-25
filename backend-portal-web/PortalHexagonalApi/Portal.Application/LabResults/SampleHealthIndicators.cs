@@ -1,4 +1,3 @@
-using Portal.Application.ReportDocuments;
 using Portal.Domain.LabResults;
 
 namespace Portal.Application.LabResults;
@@ -21,7 +20,13 @@ public sealed record SampleHealthIndicators(
 
     public string? NominalVoltage { get; init; }
 
-    public ReportIssue? PhysicalChemicalReport { get; init; }
+    public InsulatingOil Oil { get; init; } = InsulatingOil.Recognize(null);
 
-    public ReportIssue? GasReport { get; init; }
+    public IReadOnlyList<ReportConclusion> PhysicalChemicalReports { get; init; } = [];
+
+    public IReadOnlyList<ReportConclusion> GasReports { get; init; } = [];
+
+    public string? PhysicalChemicalResult { get; init; }
+
+    public string? GasResult { get; init; }
 }

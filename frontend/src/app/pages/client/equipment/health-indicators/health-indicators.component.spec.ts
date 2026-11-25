@@ -3,12 +3,15 @@ import { TestBed } from '@angular/core/testing';
 import { By } from '@angular/platform-browser';
 import { MatTooltip } from '@angular/material/tooltip';
 import { provideRouter } from '@angular/router';
-import { of } from 'rxjs';
+import { of, throwError, type Observable } from 'rxjs';
+import { HttpErrorResponse } from '@angular/common/http';
 
-import type { HealthIndicators, MeasuredValue } from '@/app/model/health';
+import type { HealthIndicators, MeasuredValue, PublishedReport } from '@/app/model/health';
 import { HEALTH_INDICATORS } from '@/app/services/fixtures/health-indicators.fixture';
 import { DissolvedGasDiagnosisService } from '@/app/services/dissolved-gas-diagnosis.service';
+import { EquipmentsService } from '@/app/services/equipments.service';
 import { HealthService } from '@/app/services/health.service';
+import type { DownloadedFile } from '@shared/file-download';
 
 import { HealthIndicatorsComponent } from './health-indicators.component';
 
@@ -35,6 +38,7 @@ function indicadoresCom(
           name: 'Teor de Água (ppm m/m)',
           method: 'NBR 10710',
           limit: 'máx. 40',
+          limitAbsence: null,
           valuesByAnalysis,
           classification: 'normal',
         },
@@ -42,6 +46,18 @@ function indicadoresCom(
     },
   };
 }
+
+const COM_INDICIO_DE_FALHA: HealthIndicators = {
+  ...HEALTH_INDICATORS,
+  dissolvedGases: {
+    ...HEALTH_INDICATORS.dissolvedGases,
+    gases: HEALTH_INDICATORS.dissolvedGases.gases.map((gas) =>
+      gas.key === 'h2' ? { ...gas, results: [2028, 120] } : gas.key === 'ch4' ? { ...gas, results: [601, 30] } : gas,
+    ),
+  },
+};
+
+let pedirArquivo: (id: string) => Observable<DownloadedFile | null> = () => of(null);
 
 function montarCom(indicadores: HealthIndicators, aba?: string): ComponentFixture<HealthIndicatorsComponent> {
   TestBed.configureTestingModule({
@@ -51,6 +67,10 @@ function montarCom(indicadores: HealthIndicators, aba?: string): ComponentFixtur
       {
         provide: HealthService,
         useValue: { equipmentIndicators: () => of(indicadores) },
+      },
+      {
+        provide: EquipmentsService,
+        useValue: { reportArchive: (id: string) => pedirArquivo(id) },
       },
     ],
   });
@@ -175,20 +195,17 @@ describe('HealthIndicatorsComponent, tabela físico-química', () => {
     expect(celulas[2]).toBe('Valor-limite: Dados não disponíveis');
   });
 
-  it('avisa que o relatório não está disponível quando não há título nem conclusão', () => {
+  it('diz uma vez que não há laudo publicado quando a aba não tem nenhum', () => {
     const raiz = raizDe({
       ...HEALTH_INDICATORS,
-      physicalChemical: {
-        ...HEALTH_INDICATORS.physicalChemical,
-        report: { title: null, paragraphs: [] },
-      },
+      physicalChemical: { ...HEALTH_INDICATORS.physicalChemical, reports: [] },
     });
     const regiao = raiz.querySelector('[aria-labelledby="report-title-physical-chemical"]');
+    const paragraphs = [...(regiao?.querySelectorAll('p') ?? [])].map((p) => p.textContent?.trim());
 
-    expect(regiao?.querySelector('h2')?.textContent?.trim())
-      .toBe('Título do relatório: Dados não disponíveis');
-    expect(regiao?.querySelector('p')?.textContent?.trim())
-      .toBe('Conclusão do relatório: Dados não disponíveis');
+    expect(regiao?.querySelector('h2')?.textContent?.trim()).toBe('Laudos');
+    expect(paragraphs).toEqual(['Nenhum laudo publicado']);
+    expect(regiao?.textContent).not.toContain('Dados não disponíveis');
   });
 
   it('separa ensaio não detectado de coleta não realizada', () => {
@@ -214,14 +231,46 @@ describe('HealthIndicatorsComponent, tabela físico-química', () => {
     expect(cells[5]).toBe('-');
   });
 
-  it('mostra o laudo em parágrafos, um <p> por parágrafo', () => {
+  it('lista cada laudo na ordem recebida, com data, identificação, rótulo e parágrafos', () => {
     const raiz = raizDe(HEALTH_INDICATORS);
-    const report = HEALTH_INDICATORS.physicalChemical.report;
+    const reports = HEALTH_INDICATORS.physicalChemical.reports;
     const regiao = raiz.querySelector('[aria-labelledby="report-title-physical-chemical"]');
-    const paragraphs = [...(regiao?.querySelectorAll('p') ?? [])].map((p) => p.textContent?.trim());
+    const itens = [...(regiao?.querySelectorAll('li') ?? [])];
+    const primeiro = itens[0];
 
-    expect(regiao?.querySelector('h2')?.textContent?.trim()).toBe(report.title ?? undefined);
-    expect(paragraphs).toEqual(report.paragraphs.map((paragraph) => paragraph));
+    expect(itens.length).toBe(reports.length);
+    expect(itens.map((item) => item.querySelector('article')?.getAttribute('aria-label')))
+      .toEqual(reports.map((report) => report.identification));
+    const cabecalho = [...(primeiro.querySelector('p')?.querySelectorAll('span') ?? [])];
+
+    expect(cabecalho.map((span) => span.textContent?.trim()))
+      .toEqual(['30/10/2025', 'LACTEC-04809/2025', 'NORMAL']);
+    expect(primeiro.querySelector('h3')?.textContent?.trim()).toBe(reports[0].title ?? undefined);
+    expect([...primeiro.querySelectorAll('p')].slice(1).map((p) => p.textContent?.trim()))
+      .toEqual([...reports[0].paragraphs]);
+  });
+
+  it('pinta o rótulo NORMAL de verde e qualquer outro de não conforme', () => {
+    const raiz = raizDe({
+      ...HEALTH_INDICATORS,
+      physicalChemical: {
+        ...HEALTH_INDICATORS.physicalChemical,
+        reports: [
+          semTexto('LACTEC-2', '2026-09-24', 'Descarga elétrica'),
+          semTexto('LACTEC-1', '2026-07-28', 'normal'),
+          semTexto('LACTEC-0', '2026-05-02', null),
+        ],
+      },
+    });
+    const rotulos = [
+      ...(raiz
+        .querySelector('[aria-labelledby="report-title-physical-chemical"]')
+        ?.querySelectorAll('[data-result-label]') ?? []),
+    ];
+
+    expect(rotulos.map((rotulo) => rotulo.textContent?.trim())).toEqual(['Descarga elétrica', 'normal']);
+    expect(rotulos[0].classList).toContain('bg-lactec-tarja-nao-conforme');
+    expect(rotulos[1].classList).toContain('bg-lactec-tarja-normal');
   });
 
   it('escreve o laudo como texto, sem interpretar marcação que venha no parágrafo', () => {
@@ -229,14 +278,22 @@ describe('HealthIndicatorsComponent, tabela físico-química', () => {
       ...HEALTH_INDICATORS,
       physicalChemical: {
         ...HEALTH_INDICATORS.physicalChemical,
-        report: { title: 'Laudo', paragraphs: ['Óleo <b>fora</b> do limite'] },
+        reports: [
+          {
+            identification: 'LACTEC-1',
+            date: '2026-07-28',
+            resultLabel: null,
+            title: 'Laudo',
+            paragraphs: ['Óleo <b>fora</b> do limite'],
+          },
+        ],
       },
     };
     const regiao = raizDe(comMarcacao).querySelector(
       '[aria-labelledby="report-title-physical-chemical"]',
     );
 
-    expect(regiao?.querySelector('p')?.textContent?.trim()).toBe('Óleo <b>fora</b> do limite');
+    expect(regiao?.querySelectorAll('p')[1]?.textContent?.trim()).toBe('Óleo <b>fora</b> do limite');
     expect(regiao?.querySelector('b')).toBeNull();
   });
 
@@ -321,7 +378,7 @@ describe('HealthIndicatorsComponent, aba de métodos de diagnóstico', () => {
   });
 
   it('desenha os três triângulos de Duval com o bloco de diagnóstico nulo no corpo', () => {
-    const raiz = abrirAbaDeMetodos(HEALTH_INDICATORS);
+    const raiz = abrirAbaDeMetodos(COM_INDICIO_DE_FALHA);
 
     expect(HEALTH_INDICATORS.diagnosis).toBeNull();
     expect(raiz.querySelectorAll('app-duval-triangle').length).toBe(3);
@@ -333,7 +390,7 @@ describe('HealthIndicatorsComponent, aba de métodos de diagnóstico', () => {
   // mesma aba: estes dois alcançam o painel inteiro, porque painel que desenha
   // triângulo e cala os outros cinco métodos é o defeito anterior pela metade.
   it('mostra os sete métodos, cada um com o seu painel', () => {
-    const painel = abrirAbaDeMetodos(HEALTH_INDICATORS).querySelector('#painel-metodos');
+    const painel = abrirAbaDeMetodos(COM_INDICIO_DE_FALHA).querySelector('#painel-metodos');
     const texto = painel?.textContent ?? '';
 
     expect(painel?.querySelectorAll('app-duval-triangle').length).toBe(3);
@@ -347,7 +404,7 @@ describe('HealthIndicatorsComponent, aba de métodos de diagnóstico', () => {
   // Razão calculada do gás medido, e não texto de demonstração: na coleta mais
   // recente da massa, o metano dá 3 ppm e o hidrogênio 12, e 3/12 é 0,25.
   it('escreve as razões características com o valor medido, no formato do laudo', () => {
-    const painel = abrirAbaDeMetodos(HEALTH_INDICATORS).querySelector('#painel-metodos');
+    const painel = abrirAbaDeMetodos(COM_INDICIO_DE_FALHA).querySelector('#painel-metodos');
 
     expect(painel?.textContent).toContain('CH₄ / H₂');
     expect(painel?.textContent).toContain('0,25');
@@ -355,7 +412,7 @@ describe('HealthIndicatorsComponent, aba de métodos de diagnóstico', () => {
 
   it('diz o que não foi avaliado, em vez de calar ou de inventar faixa', () => {
     const texto =
-      abrirAbaDeMetodos(HEALTH_INDICATORS).querySelector('#painel-metodos')?.textContent ?? '';
+      abrirAbaDeMetodos(COM_INDICIO_DE_FALHA).querySelector('#painel-metodos')?.textContent ?? '';
 
     expect(texto).toContain('Zona Não avaliado');
     expect(texto).toContain('Faixas Não avaliado');
@@ -364,7 +421,7 @@ describe('HealthIndicatorsComponent, aba de métodos de diagnóstico', () => {
   });
 
   it('fecha a aba com uma conclusão para cada um dos sete métodos', () => {
-    const painel = abrirAbaDeMetodos(HEALTH_INDICATORS).querySelector('#painel-metodos');
+    const painel = abrirAbaDeMetodos(COM_INDICIO_DE_FALHA).querySelector('#painel-metodos');
     const conclusoes = [...(painel?.querySelectorAll('ul li') ?? [])]
       .map((item) => item.textContent?.trim() ?? '')
       .filter((texto) => texto.includes('>'));
@@ -394,12 +451,14 @@ describe('HealthIndicatorsComponent, aba de métodos de diagnóstico', () => {
   // nenhum teste perceberia.
   it('prefere o bloco que a API servir ao que a própria tela calcularia', () => {
     const calculado = new DissolvedGasDiagnosisService().diagnose(
-      HEALTH_INDICATORS.dissolvedGases,
+      COM_INDICIO_DE_FALHA.dissolvedGases,
+      COM_INDICIO_DE_FALHA.oilType,
     );
+    if (calculado?.kind !== 'applied') throw new Error('A massa com indício de falha deveria render diagnóstico');
     const servido: HealthIndicators = {
       ...HEALTH_INDICATORS,
       diagnosis: {
-        ...calculado!,
+        ...calculado,
         conclusions: [
           { method: 'Triângulo 1', code: 'PD', description: 'Veredito que veio da API' },
         ],
@@ -410,3 +469,142 @@ describe('HealthIndicatorsComponent, aba de métodos de diagnóstico', () => {
       .toContain('Veredito que veio da API');
   });
 });
+
+const CASO_REAL: HealthIndicators = {
+  ...HEALTH_INDICATORS,
+  dissolvedGases: {
+    ...HEALTH_INDICATORS.dissolvedGases,
+    analysisDates: ['2024-02-05', '2024-08-12', '2025-02-17', '2025-08-25'],
+    analyses: [],
+    gases: [
+      { key: 'h2', name: 'Hidrogênio', formula: 'H₂', results: [20, 8, 31, 36] },
+      { key: 'o2', name: 'Oxigênio', formula: 'O₂', results: [7168, 23262, 19703, 22513] },
+      { key: 'n2', name: 'Nitrogênio', formula: 'N₂', results: [20799, 73699, 61548, 59148] },
+      { key: 'ch4', name: 'Metano', formula: 'CH₄', results: [1, 1, 1, 1] },
+      { key: 'co', name: 'Monóxido de Carbono', formula: 'CO', results: [42, 61, 72, 88] },
+      { key: 'co2', name: 'Dióxido de Carbono', formula: 'CO₂', results: [257, 327, 305, 356] },
+      { key: 'c2h4', name: 'Etileno', formula: 'C₂H₄', results: ['ND', 'ND', 'ND', 'ND'] },
+      { key: 'c2h6', name: 'Etano', formula: 'C₂H₆', results: ['ND', 'ND', 'ND', 'ND'] },
+      { key: 'c2h2', name: 'Acetileno', formula: 'C₂H₂', results: ['ND', 'ND', 'ND', 'ND'] },
+    ],
+  },
+};
+
+describe('HealthIndicatorsComponent, gases abaixo dos valores típicos e tipo do óleo', () => {
+  afterEach(() => TestBed.resetTestingModule());
+
+  it('no caso real de quatro coletas desenha os métodos e avisa que as indicações não foram expressivas', () => {
+    const painel = abrirAbaDeMetodos(CASO_REAL).querySelector('#painel-metodos');
+    expect(painel?.querySelectorAll('app-duval-triangle').length).toBe(3);
+    expect(painel?.textContent).toContain('não foram expressivas e servem apenas de apoio ao diagnóstico');
+  });
+
+  it('com gás de falha acima do valor típico não mostra o aviso de indicações não expressivas', () => {
+    const painel = abrirAbaDeMetodos(COM_INDICIO_DE_FALHA).querySelector('#painel-metodos');
+
+    expect(painel?.textContent).not.toContain('não foram expressivas');
+  });
+
+  it('em óleo vegetal mostra o tipo e declara os métodos de mineral não aplicáveis', () => {
+    const vegetal: HealthIndicators = {
+      ...COM_INDICIO_DE_FALHA,
+      oilType: { kind: 'natural-ester', reported: 'Óleo Vegetal Isolante' },
+    };
+    const raiz = abrirAbaDeMetodos(vegetal);
+    const texto = raiz.querySelector('#painel-metodos')?.textContent ?? '';
+
+    expect(raiz.textContent).toContain('Tipo do óleo: Óleo vegetal (éster natural)');
+    expect(raiz.querySelector('#aba-metodos')?.textContent).toContain('Métodos de Diagnóstico (Vegetal)');
+    expect(texto).toContain('Método não aplicável a este tipo de óleo');
+    expect(raiz.querySelectorAll('app-duval-triangle').length).toBe(0);
+  });
+
+  it('sem tipo do óleo informado não assume mineral', () => {
+    const raiz = abrirAbaDeMetodos({
+      ...COM_INDICIO_DE_FALHA,
+      oilType: { kind: 'not-informed', reported: null },
+    });
+
+    expect(raiz.textContent).toContain('Tipo do óleo: Tipo do óleo não informado');
+    expect(raiz.querySelector('#aba-metodos')?.textContent).not.toContain('Mineral');
+    expect(raiz.querySelector('#painel-metodos')?.textContent).toContain('Tipo do óleo não informado');
+    expect(raiz.querySelectorAll('app-duval-triangle').length).toBe(0);
+  });
+
+  it('sem critério para o tipo do óleo, a tabela físico-química diz isso no lugar do limite', () => {
+    const raiz = raizDe({
+      ...indicadoresCom(['2025-10-26'], [38]),
+      oilType: { kind: 'silicone', reported: 'Silicone' },
+      physicalChemical: {
+        ...indicadoresCom(['2025-10-26'], [38]).physicalChemical,
+        tests: indicadoresCom(['2025-10-26'], [38]).physicalChemical.tests.map((test) => ({
+          ...test,
+          limit: null,
+          limitAbsence: 'oil-type-without-criterion' as const,
+        })),
+      },
+    });
+
+    expect(celulasDaPrimeiraLinha(raiz)).toContain('Sem critério para este tipo de óleo');
+    expect(raiz.querySelector('thead')?.textContent).not.toContain('NBR 10576');
+  });
+});
+
+describe('HealthIndicatorsComponent, ZIP de laudos', () => {
+  afterEach(() => {
+    TestBed.resetTestingModule();
+    pedirArquivo = () => of(null);
+  });
+
+  function botao(raiz: HTMLElement): HTMLButtonElement {
+    return raiz.querySelector('[data-tour="indicadores-baixar"] button') as HTMLButtonElement;
+  }
+
+  it('baixa o ZIP do equipamento com o nome que a API mandou', () => {
+    const create = spyOn(URL, 'createObjectURL').and.returnValue('blob:zip');
+    const click = spyOn(HTMLAnchorElement.prototype, 'click');
+    const pedidos: string[] = [];
+    pedirArquivo = (id) => {
+      pedidos.push(id);
+      return of({ content: new Blob(['PK'], { type: 'application/zip' }), name: 'laudos-571289.zip' });
+    };
+    const fixture = montarCom(HEALTH_INDICATORS);
+
+    botao(fixture.nativeElement).click();
+    fixture.detectChanges();
+
+    expect(pedidos).toEqual([HEALTH_INDICATORS.equipmentId]);
+    expect(create).toHaveBeenCalled();
+    expect((click.calls.mostRecent().object as HTMLAnchorElement).download).toBe('laudos-571289.zip');
+  });
+
+  it('avisa quando o equipamento não tem laudo em PDF', () => {
+    pedirArquivo = () => of(null);
+    const fixture = montarCom(HEALTH_INDICATORS);
+
+    botao(fixture.nativeElement).click();
+    fixture.detectChanges();
+
+    expect((fixture.nativeElement as HTMLElement).textContent).toContain('ainda não tem laudo em PDF');
+  });
+
+  it('explica o teto quando a API recusa com 422, e a falha comum com outra frase', () => {
+    pedirArquivo = () => throwError(() => new HttpErrorResponse({ status: 422 }));
+    const fixture = montarCom(HEALTH_INDICATORS);
+    const raiz = fixture.nativeElement as HTMLElement;
+
+    botao(raiz).click();
+    fixture.detectChanges();
+    expect(raiz.querySelector('[role="alert"]')?.textContent).toContain('laudos demais');
+
+    pedirArquivo = () => throwError(() => new HttpErrorResponse({ status: 502 }));
+    botao(raiz).click();
+    fixture.detectChanges();
+    expect(raiz.querySelector('[role="alert"]')?.textContent).toContain('Não foi possível baixar os laudos');
+    expect(botao(raiz).disabled).toBeFalse();
+  });
+});
+
+function semTexto(identification: string, date: string, resultLabel: string | null): PublishedReport {
+  return { identification, date, resultLabel, title: null, paragraphs: [] };
+}

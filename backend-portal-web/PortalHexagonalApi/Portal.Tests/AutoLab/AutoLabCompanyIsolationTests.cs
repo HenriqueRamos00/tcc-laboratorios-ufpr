@@ -121,7 +121,7 @@ public sealed class AutoLabCompanyIsolationTests : IDisposable
 
         Assert.Equal("proprio.pdf", (await own.SignedDocumentOfAsync("LACTEC-IGUAL/2026"))?.FileName);
         Assert.Null(await own.SignedDocumentOfAsync("LACTEC-SO-DO-OUTRO/2026"));
-        Assert.Null(await own.CurrentIssueOfAsync("LACTEC-SO-DO-OUTRO/2026"));
+        Assert.Empty(await own.ReadingsOfAsync("LACTEC-SO-DO-OUTRO/2026"));
         Assert.Equal(
             ["LACTEC-IGUAL/2026"],
             await _database.ReportIssues().GetIdentificationsWithSignedDocumentAsync(
@@ -249,9 +249,9 @@ public sealed class AutoLabCompanyIsolationTests : IDisposable
             return database.ReportIssues().GetSignedDocumentOfAsync(scope, identification, CancellationToken.None);
         }
 
-        public Task<ReportIssue?> CurrentIssueOfAsync(string identification)
+        public Task<IReadOnlyList<ReportReading>> ReadingsOfAsync(string identification)
         {
-            return database.ReportIssues().GetCurrentIssueOfAsync(scope, identification, CancellationToken.None);
+            return database.ReportIssues().ReadReportsAsync(scope, [identification], CancellationToken.None);
         }
     }
 }

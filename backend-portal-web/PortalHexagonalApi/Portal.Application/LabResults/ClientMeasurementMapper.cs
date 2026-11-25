@@ -40,7 +40,8 @@ public static class ClientMeasurementMapper
                 Unit = measurement.Unit,
                 TestMethod = measurement.Method,
                 RegulatoryLimit = measurement.ReferenceLimit,
-                SourceCode = measurement.Code
+                SourceCode = measurement.Code,
+                LimitPublishedByLab = true
             };
 
         // Uma medição sem chave reconhecida não entra em cálculo nem desaparece do contrato.
@@ -53,6 +54,7 @@ public static class ClientMeasurementMapper
             false,
             measurement.Method,
             measurement.ReferenceLimit,
-            measurement.Code);
+            measurement.Code,
+            LimitPublishedByLab: true);
     }
 }

@@ -1,6 +1,9 @@
+using System.Text.RegularExpressions;
+
 using Portal.Application.LabResults.Exceptions;
 using Portal.Application.Paging;
 using Portal.Application.ReportDocuments;
+using Portal.Application.ReportDocuments.Exceptions;
 using Portal.Application.Reports;
 using Portal.Domain.LabResults;
 using Portal.Domain.Reports;
@@ -8,7 +11,7 @@ using Portal.Domain.Reports;
 namespace Portal.Application.LabResults;
 
 /// <summary>Expõe ao consumidor os dados publicados e autorizados pelo Backend Lab.</summary>
-public sealed class ClientLabResultsConsultation(
+public sealed partial class ClientLabResultsConsultation(
     IClientLabResultsRepository results,
     IReportDocumentRepository reports) : IForConsultingClientLabResults
 {
@@ -58,6 +61,51 @@ public sealed class ClientLabResultsConsultation(
         return file is null ? null : new MemoryStream(file.Content, writable: false);
     }
 
+    public async Task<EquipmentReportArchive?> OpenReportArchiveAsync(
+        string equipmentId,
+        CancellationToken cancellationToken)
+    {
+        string requestedEquipmentId = RequiredId(equipmentId);
+        Page<ClientAnalysis>? first = await results.ListAnalysesOfEquipmentAsync(
+            requestedEquipmentId, FirstHundred, cancellationToken);
+
+        if (first is null) return null;
+
+        if (first.TotalCount > EquipmentReportArchive.MaxReports)
+            throw new ReportArchiveTooLargeException(first.TotalCount, EquipmentReportArchive.MaxReports);
+
+        List<ClientAnalysis> analyses = [.. first.Items];
+
+        for (int pageNumber = 2; analyses.Count < first.TotalCount && first.Items.Count > 0; pageNumber++)
+        {
+            Page<ClientAnalysis>? next = await results.ListAnalysesOfEquipmentAsync(
+                requestedEquipmentId, new PageRequest(pageNumber, SpringMaximumPageSize), cancellationToken);
+
+            if (next is null || next.Items.Count == 0) break;
+
+            analyses.AddRange(next.Items);
+        }
+
+        return new EquipmentReportArchive(
+            requestedEquipmentId,
+            analyses
+                .Where(analysis => analysis.PdfAvailable)
+                .OrderByDescending(analysis => analysis.PublishedAt)
+                .Select(analysis => new ReportArchiveCandidate(
+                    analysis.ReportId,
+                    ArchiveTypeOf(analysis.AnalysisType),
+                    DateOnly.FromDateTime(TimeZoneInfo.ConvertTime(analysis.PublishedAt, PortalTimeZone).DateTime),
+                    analysis.ReportCode)),
+            (reportId, token) => GetReportFileAsync(requestedEquipmentId, reportId, token));
+    }
+
+    private static ReportAnalysisType ArchiveTypeOf(string? analysisType) => analysisType switch
+    {
+        "physical-chemical" => ReportAnalysisType.PhysicalChemical,
+        "chromatography" => ReportAnalysisType.Chromatography,
+        _ => ReportAnalysisType.Other
+    };
+
     public async Task<SampleHealthIndicators?> GetHealthIndicatorsAsync(
         string equipmentId,
         string? selectedAnalysisId,
@@ -88,7 +136,8 @@ public sealed class ClientLabResultsConsultation(
                 [])
             {
                 Tag = equipment.Tag,
-                NominalVoltage = VoltageText(equipment.PrimaryVoltageKv)
+                NominalVoltage = VoltageText(equipment.PrimaryVoltageKv),
+                Oil = InsulatingOil.Recognize(equipment.OilType)
             };
         }
 
@@ -117,8 +166,9 @@ public sealed class ClientLabResultsConsultation(
         {
             Tag = equipment.Tag,
             NominalVoltage = VoltageText(equipment.PrimaryVoltageKv),
-            PhysicalChemicalReport = ToReportIssue(physicalChemicalReport),
-            GasReport = ToReportIssue(gasReport)
+            Oil = InsulatingOil.Recognize(equipment.OilType),
+            PhysicalChemicalReports = ConclusionsOf(physicalChemicalReport),
+            GasReports = ConclusionsOf(gasReport)
         };
     }
 
@@ -182,9 +232,26 @@ public sealed class ClientLabResultsConsultation(
                 source.ReportId, chosen.ReportId, StringComparison.Ordinal));
     }
 
-    private static ReportIssue? ToReportIssue(ClientAnalysis? analysis) => analysis is null
-        ? null
-        : new ReportIssue(analysis.TechnicalClassification, analysis.Conclusion);
+    private static IReadOnlyList<ReportConclusion> ConclusionsOf(ClientAnalysis? analysis) => analysis is null
+        ? []
+        :
+        [
+            new ReportConclusion(
+                analysis.ReportCode,
+                TimeZoneInfo.ConvertTime(analysis.PublishedAt, PortalTimeZone).DateTime,
+                null,
+                analysis.TechnicalClassification,
+                ParagraphsOf(analysis.Conclusion))
+        ];
+
+    private static IReadOnlyList<string> ParagraphsOf(string? text) => string.IsNullOrWhiteSpace(text)
+        ? []
+        : [.. BlankLine().Split(text)
+            .Select(paragraph => paragraph.Trim())
+            .Where(paragraph => paragraph.Length > 0)];
+
+    [GeneratedRegex(@"\r?\n[ \t]*\r?\n")]
+    private static partial Regex BlankLine();
 
     private static IReadOnlyList<UnreadableResult> GatherUnmappedResults(IEnumerable<SampleAnalysis> analyses)
     {

@@ -1,5 +1,7 @@
 import type { PentagonZone } from '@shared/components/duval-pentagon/duval-pentagon.component';
 
+import type { OilType, PhysicalChemicalLimitAbsence } from './insulating-oil';
+
 // Indicadores de saúde do transformador (HU-07): ensaios físico-químicos,
 // cromatografia de gases dissolvidos e os métodos de diagnóstico derivados.
 // Espelha o corpo de GET /api/equipments/{id}/health.
@@ -66,12 +68,18 @@ export type MeasuredValue = number | string | null;
  */
 export const NOT_DETECTED_TEXT = 'ND';
 
-/**
- * O laudo é texto corrido em parágrafos, não um blocão único: o parágrafo é a
- * unidade que o laboratório escreve e revisa. Guardar a lista preserva essa
- * divisão sem pedir marcação ao template.
- */
-export interface TestReport {
+export function resultLabelConformity(
+  label: string | null,
+): Extract<Classification, 'normal' | 'nao-conforme'> | null {
+  const text = label?.trim();
+  if (!text) return null;
+  return text.toUpperCase() === 'NORMAL' ? 'normal' : 'nao-conforme';
+}
+
+export interface PublishedReport {
+  readonly identification: string;
+  readonly date: string;
+  readonly resultLabel: string | null;
   readonly title: string | null;
   readonly paragraphs: readonly string[];
 }
@@ -89,7 +97,8 @@ export interface PhysicalChemicalTest {
   readonly name: string;
   readonly method: string;
   /** Valor-limite da ABNT NBR 10576/17 para óleo de transformador em uso. */
-  readonly limit: string;
+  readonly limit: string | null;
+  readonly limitAbsence: PhysicalChemicalLimitAbsence | null;
   readonly valuesByAnalysis: readonly MeasuredValue[];
   /** `null` enquanto o núcleo normativo não roda no backend. */
   readonly classification: Classification | null;
@@ -103,11 +112,10 @@ export interface DissolvedGas {
 }
 
 export interface TestBlock {
-  /** `null` enquanto o núcleo normativo não roda no backend. */
   readonly conformity: Classification | null;
   readonly verdict: string | null;
   readonly analyses: readonly AnalysisReading[];
-  readonly report: TestReport;
+  readonly reports: readonly PublishedReport[];
 }
 
 export interface PhysicalChemicalBlock extends TestBlock {
@@ -299,6 +307,8 @@ export interface DiagnosisConclusion {
 }
 
 export interface DiagnosisBlock {
+  readonly kind: 'applied';
+  readonly belowTypicalValues: boolean;
   readonly triangles: readonly DuvalTriangle[];
   readonly pentagon: PentagonReading;
   readonly ieee: IeeeBlock;
@@ -309,6 +319,21 @@ export interface DiagnosisBlock {
   readonly rogers: RatioMethodReading;
   readonly conclusions: readonly DiagnosisConclusion[];
 }
+
+export type DiagnosisWithheldReason =
+  | 'oil-type-not-applicable'
+  | 'oil-type-not-informed';
+
+export interface WithheldDiagnosis {
+  readonly kind: 'withheld';
+  readonly reason: DiagnosisWithheldReason;
+  readonly message: string;
+  readonly detail: string;
+  readonly date: string;
+  readonly methods: readonly string[];
+}
+
+export type DiagnosisOutcome = DiagnosisBlock | WithheldDiagnosis;
 
 /**
  * Qual análise do histórico está na tela. Vem junto dos indicadores para a
@@ -367,7 +392,8 @@ export interface HealthIndicators {
    * continua no contrato: no dia em que a API servir o bloco, o valor servido vence e a
    * tela não muda.
    */
-  readonly diagnosis: DiagnosisBlock | null;
+  readonly diagnosis: DiagnosisOutcome | null;
+  readonly oilType: OilType;
   readonly unreadableResults: readonly UnreadableResult[];
   readonly totalizerChecks: readonly TotalizerCheck[];
 }

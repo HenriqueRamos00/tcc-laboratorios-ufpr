@@ -135,6 +135,103 @@ o envio de e-mail**, e com o disjuntor do envio aberto ela responde
 conexao, o disjuntor abre e a raiz muda de corpo enquanto a prontidao segue `{"status":"UP"}`:
 quem automatiza alarme consulta a prontidao, e quem quer saber do envio consulta a raiz.
 
+### Banco Oracle local ou externo
+
+O servico `oracle` do `compose.yaml` pertence ao perfil `oracle-local`, e quem escolhe se ele
+sobe e a variavel `COMPOSE_PROFILES` do `.env`:
+
+| `.env` | O que sobe | Banco usado |
+| --- | --- | --- |
+| `COMPOSE_PROFILES=oracle-local` | `oracle`, `migrate` e `api` | O contentor do Oracle |
+| `COMPOSE_PROFILES=` ou linha ausente | `migrate` e `api` | O Oracle externo de `AUTH_DATASOURCE_URL` |
+
+O `.env.example` ja traz `COMPOSE_PROFILES=oracle-local`, entao copiar o arquivo e subir
+continua criando o banco local. Sem a linha, o contentor do Oracle nao sobe e `migrate` e `api`
+conectam direto no endereco configurado.
+
+No modo local, `ORACLE_PASSWORD` e a senha administrativa do contentor; vazia, a imagem gera
+uma senha aleatoria na criacao do banco. No modo externo ela nao e usada.
+
+#### Variaveis do banco externo
+
+| Variavel | Uso |
+| --- | --- |
+| `AUTH_DATASOURCE_URL` | Endereco JDBC, por SID ou por servico |
+| `AUTH_SCHEMA_OWNER_USERNAME` | Dono do esquema; roda a migracao e da nome ao esquema usado pela aplicacao |
+| `AUTH_SCHEMA_OWNER_PASSWORD` | Senha do dono do esquema |
+| `AUTH_DATASOURCE_USERNAME` | Usuario da aplicacao, usado pela `api` |
+| `AUTH_DATASOURCE_PASSWORD` | Senha do usuario da aplicacao |
+
+As duas formas de endereco sao aceitas:
+
+```text
+jdbc:oracle:thin:@HOST:1521:SID
+jdbc:oracle:thin:@//HOST:1521/SERVICO
+```
+
+Exemplo para a homologacao do Lactec, com um unico usuario como dono e como aplicacao:
+
+```dotenv
+COMPOSE_PROFILES=
+AUTH_DATASOURCE_URL=jdbc:oracle:thin:@192.168.250.14:1521:HOMOL
+AUTH_SCHEMA_OWNER_USERNAME=AUTH_LACTEC
+AUTH_SCHEMA_OWNER_PASSWORD=<senha do AUTH_LACTEC>
+AUTH_DATASOURCE_USERNAME=AUTH_LACTEC
+AUTH_DATASOURCE_PASSWORD=<senha do AUTH_LACTEC>
+```
+
+Em producao muda so o SID: `jdbc:oracle:thin:@192.168.250.14:1521:PROD`. As senhas ficam
+somente no `.env`, que nao entra no git.
+
+O esquema da sessao e sempre o do dono: o `compose.yaml` preenche `AUTH_SCHEMA` com
+`AUTH_SCHEMA_OWNER_USERNAME`, e as tabelas nascem no esquema desse usuario.
+
+#### Pre-requisitos no banco externo
+
+O script `docker/oracle/init/01-create-schema-users.sh` so roda no contentor do Oracle. No
+banco externo, quem prepara os usuarios e o DBA, antes da primeira subida:
+
+```sql
+CREATE ROLE AUTH_READWRITE;
+GRANT CREATE SESSION, CREATE TABLE TO AUTH_LACTEC;
+ALTER USER AUTH_LACTEC QUOTA UNLIMITED ON USERS;
+GRANT AUTH_READWRITE TO AUTH_LACTEC;
+```
+
+- O papel `AUTH_READWRITE` precisa existir antes da migracao, porque toda migracao que cria
+  tabela concede `SELECT, INSERT, UPDATE, DELETE` a ele, e sem o papel a migracao falha.
+- O dono do esquema precisa de `CREATE SESSION`, `CREATE TABLE` e cota na tablespace dele.
+- O usuario da aplicacao precisa de `CREATE SESSION` e do papel `AUTH_READWRITE`. Com dois
+  usuarios separados, ele nao recebe `CREATE TABLE` nem cota.
+- A senha de servico nao pode vencer pelo perfil do banco: senha expirada derruba o pool com
+  `ORA-28001`.
+
+O servidor onde o compose roda precisa alcancar o host do banco na porta 1521.
+
+#### Conexao cifrada
+
+`migrate` e `api` exigem Oracle Native Network Encryption nos dois modos. O `compose.yaml`
+entrega as propriedades ao driver por `JAVA_TOOL_OPTIONS`:
+
+```text
+-Doracle.net.encryption_client=REQUIRED
+-Doracle.net.encryption_types_client=(AES256)
+-Doracle.net.crypto_checksum_client=REQUIRED
+-Doracle.net.crypto_checksum_types_client=(SHA256)
+```
+
+Banco que nao aceita AES256 com SHA256 recusa a conexao em vez de trafegar em claro. Para
+conferir, com um usuario que leia `v$session_connect_info`:
+
+```sql
+SELECT network_service_banner
+  FROM v$session_connect_info
+ WHERE sid IN (SELECT sid FROM v$session WHERE username = 'AUTH_LACTEC');
+```
+
+A resposta lista `AES256 Encryption service adapter` e `SHA256 Crypto-checksumming service
+adapter`. A JVM escreve uma linha `Picked up JAVA_TOOL_OPTIONS` no stderr a cada subida.
+
 ## Testar
 
 ```bash

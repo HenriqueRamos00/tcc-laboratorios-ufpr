@@ -28,20 +28,23 @@ public sealed class HealthIndicatorsContractTests : IClassFixture<RunningPortal>
         JsonObject body = await GetBodyAsync("571289");
 
         Assert.Equal(
-            ["diagnosis", "dissolvedGases", "equipmentId", "physicalChemical",
+            ["diagnosis", "dissolvedGases", "equipmentId", "oilType", "physicalChemical",
              "selectedAnalysis", "tag", "totalizerChecks", "unreadableResults"],
             body.Select(pair => pair.Key).Order());
+
+        Assert.Equal("mineral", (string?)body["oilType"]!["kind"]);
+        Assert.Equal("Óleo Mineral Isolante", (string?)body["oilType"]!["reported"]);
 
         JsonObject gases = body["dissolvedGases"]!.AsObject();
 
         Assert.Equal(
-            ["analyses", "analysisDates", "conformity", "gases", "report", "verdict"],
+            ["analyses", "analysisDates", "conformity", "gases", "reports", "verdict"],
             gases.Select(pair => pair.Key).Order());
 
         JsonObject physicalChemical = body["physicalChemical"]!.AsObject();
 
         Assert.Equal(
-            ["analyses", "columns", "conformity", "nominalVoltage", "report", "tests", "verdict"],
+            ["analyses", "columns", "conformity", "nominalVoltage", "reports", "tests", "verdict"],
             physicalChemical.Select(pair => pair.Key).Order());
     }
 
@@ -292,30 +295,42 @@ public sealed class HealthIndicatorsContractTests : IClassFixture<RunningPortal>
     }
 
     [Fact]
-    public async Task TheReportTextComesFromTheCurrentIssueOfTheSelectedAnalysis()
+    public async Task EveryReportOfTheEquipmentComesListedMostRecentFirst()
+    {
+        JsonObject body = await GetBodyAsync("571289");
+
+        foreach (string block in new[] { "physicalChemical", "dissolvedGases" })
+        {
+            JsonArray reports = body[block]!["reports"]!.AsArray();
+
+            Assert.All(reports, report => Assert.Equal(
+                ["date", "identification", "paragraphs", "resultLabel", "title"],
+                report!.AsObject().Select(pair => pair.Key).Order()));
+            Assert.All(reports, report => Assert.Matches(@"^\d{4}-\d{2}-\d{2}$", (string?)report!["date"]));
+
+            List<string> dates = [.. reports.Select(report => (string)report!["date"]!)];
+
+            Assert.Equal(dates.OrderDescending(StringComparer.Ordinal), dates);
+        }
+
+        Assert.NotEmpty(body["dissolvedGases"]!["reports"]!.AsArray());
+    }
+
+    [Fact]
+    public async Task AReportWithoutReadableTextTravelsWithoutLabelTitleOrParagraphs()
     {
         string equipment = OpaqueIdentifier.Encode("571289");
         string analysis = OpaqueIdentifier.Encode("01417/2026-001");
 
         HttpResponseMessage response = await _portal.CreateClient()
             .GetAsync($"/api/equipments/{equipment}/health/reports/{analysis}");
-        JsonObject report = JsonNode.Parse(await response.Content.ReadAsStringAsync())!["dissolvedGases"]!["report"]!.AsObject();
+        JsonObject gases = JsonNode.Parse(await response.Content.ReadAsStringAsync())!["dissolvedGases"]!.AsObject();
+        JsonObject report = gases["reports"]!.AsArray()[0]!.AsObject();
 
-        Assert.StartsWith("Relatório de ensaio", (string?)report["title"], StringComparison.Ordinal);
-        Assert.Equal(3, report["paragraphs"]!.AsArray().Count);
-    }
-
-    [Fact]
-    public async Task WithoutReportTextTheTitleIsNullAndThereAreNoParagraphs()
-    {
-        string equipment = OpaqueIdentifier.Encode("111.594/1");
-        string analysis = OpaqueIdentifier.Encode("00894/2026-004");
-
-        HttpResponseMessage response = await _portal.CreateClient()
-            .GetAsync($"/api/equipments/{equipment}/health/reports/{analysis}");
-        JsonObject report = JsonNode.Parse(await response.Content.ReadAsStringAsync())!["physicalChemical"]!["report"]!.AsObject();
-
-        Assert.True(report.ContainsKey("title"));
+        Assert.True(gases.ContainsKey("conformity"));
+        Assert.Null(gases["conformity"]);
+        Assert.True(report.ContainsKey("resultLabel"));
+        Assert.Null(report["resultLabel"]);
         Assert.Null(report["title"]);
         Assert.Empty(report["paragraphs"]!.AsArray());
     }

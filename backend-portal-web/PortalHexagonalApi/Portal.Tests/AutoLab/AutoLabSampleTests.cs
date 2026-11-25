@@ -152,18 +152,6 @@ public sealed class AutoLabSampleTests : IDisposable
     }
 
     [Fact]
-    public async Task TheCurrentIssueCarriesTheTitleAndTheConclusionInParagraphs()
-    {
-        ReportIssue? issue = await Issues().GetCurrentIssueOfAsync(Energy, "LACTEC-02272/2026", CancellationToken.None);
-        ReportIssue? withoutText = await Issues().GetCurrentIssueOfAsync(Energy, "LACTEC-01502/2026", CancellationToken.None);
-
-        Assert.StartsWith("Relatório de ensaio", issue?.Title, StringComparison.Ordinal);
-        Assert.Equal(3, issue?.Paragraphs.Count);
-        Assert.Null(withoutText?.Title);
-        Assert.Empty(withoutText!.Paragraphs);
-    }
-
-    [Fact]
     public async Task TheReportListingFiltersByQuoteAndByCompany()
     {
         Page<LabReport> ofQuote = await Issues().ListReportsAsync(
