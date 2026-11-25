@@ -416,6 +416,23 @@ e estar autorizado para a conta. Equipamento ou laudo fora do escopo, ou laudo s
 PDF assinado, respondem 404. O campo `hasSignedDocument` do histórico informa a
 disponibilidade do documento assinado.
 
+### Laudos do equipamento em um arquivo
+
+`GET /api/equipments/{id}/reports/archive` devolve `application/zip` com os PDFs
+assinados dos laudos do equipamento, num arquivo chamado `laudos-<equipamento>.zip`.
+Cada laudo entra na pasta do tipo de ensaio, `Cromatografia/`, `Fisico-Quimica/` ou
+`Outros-Ensaios/`, com o nome `<data>_<número do laudo>.pdf`. Nome repetido recebe
+sufixo numérico. O arquivo é transmitido conforme é montado, sem ficar inteiro em
+memória.
+
+O escopo é o mesmo das demais rotas: equipamento de outra empresa responde 404.
+Equipamento sem análise responde 404 (`equipment-without-analysis`) e identificador
+ilegível responde 400. Quando nenhum laudo do equipamento tem PDF assinado, a
+resposta é 204, sem corpo. Acima de 200 laudos a resposta é 422
+(`report-archive-too-large`), informando a quantidade encontrada e o máximo aceito,
+porque o histórico já permite baixar laudo a laudo. Falha da fonte de documentos
+responde 502 (`report-document-source-unavailable`).
+
 ### Relatorios
 
 `GET /api/reports?quoteCode=` lista os relatórios das empresas da sessão. O filtro
@@ -446,8 +463,21 @@ seção), sem rótulo.
 
 `conformity` de cada bloco vem do rótulo do laudo selecionado na rota, ou do mais recente
 da seção: `NORMAL` (sem diferenciar maiúsculas) vira `normal`, outro rótulo vira
-`nao-conforme`, e sem rótulo é `null`. `verdict` repete o rótulo. Classificação, método e
-limite podem vir `null`/`-`.
+`nao-conforme`, e sem rótulo é `null`. `verdict` repete o rótulo. A seção que a análise
+selecionada não tem também usa o laudo mais recente dela, em vez de ficar sem conformidade.
+Classificação, método e limite podem vir `null`/`-`.
+
+`oilType` informa o óleo isolante do equipamento como `{ kind, reported }`, onde `reported`
+é o texto do cadastro e `kind` é `mineral`, `natural-ester`, `silicone`, `unrecognized`
+(o cadastro informou um tipo que não corresponde a nenhum dos anteriores) ou `not-informed`.
+O cadastro ausente responde `not-informed`: o tipo nunca é presumido mineral.
+
+O limite de cada ensaio físico-químico depende desse tipo. Quando o laboratório publica o
+limite junto do resultado, ele é mantido como veio. Sem isso, só o óleo mineral recebe o
+limite curado do projeto; os demais vêm com `limit` nulo e `limitAbsence` dizendo por quê:
+`oil-type-without-criterion` para éster natural e silicone, que o projeto não tem critério
+para avaliar, `oil-type-unrecognized` para o tipo informado e não reconhecido, e
+`oil-type-not-informed` para o cadastro sem tipo.
 
 ### Escopo de visibilidade
 

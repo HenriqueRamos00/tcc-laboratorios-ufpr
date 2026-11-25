@@ -58,6 +58,7 @@ import {
   type CombustibleGasReading,
   type DiagnosisConclusion,
   type DiagnosisOutcome,
+  type DiagnosisWithheldReason,
   type DissolvedGasBlock,
   type DuvalTriangle,
   type GasReadingNBR7274,
@@ -110,6 +111,13 @@ export const DIAGNOSIS_METHODS: readonly string[] = [
 
 export const METHOD_NOT_APPLICABLE_TO_OIL = 'Método não aplicável a este tipo de óleo';
 export const OIL_TYPE_NOT_INFORMED = 'Tipo do óleo não informado';
+export const OIL_TYPE_UNRECOGNIZED = 'Tipo do óleo não reconhecido';
+
+const WITHHELD_MESSAGE: Record<DiagnosisWithheldReason, string> = {
+  'oil-type-not-applicable': METHOD_NOT_APPLICABLE_TO_OIL,
+  'oil-type-not-informed': OIL_TYPE_NOT_INFORMED,
+  'oil-type-unrecognized': OIL_TYPE_UNRECOGNIZED,
+};
 
 const TRIANGLE_1_WITHOUT_READING = 'Nenhuma coleta deste laudo tem os três gases do triângulo 1';
 const TRIANGLE_4_WITHOUT_READING = 'Nenhuma coleta deste laudo tem os três gases do triângulo 4';
@@ -299,12 +307,18 @@ export class DissolvedGasDiagnosisService {
   }
 
   private withheldByOil(oil: OilType, date: string): WithheldDiagnosis {
-    const informed = oil.kind === 'natural-ester' || oil.kind === 'silicone';
+    const withCriterion = oil.kind === 'natural-ester' || oil.kind === 'silicone';
+    const reason: DiagnosisWithheldReason = withCriterion
+      ? 'oil-type-not-applicable'
+      : oil.kind === 'unrecognized'
+        ? 'oil-type-unrecognized'
+        : 'oil-type-not-informed';
+
     return {
       kind: 'withheld',
-      reason: informed ? 'oil-type-not-applicable' : 'oil-type-not-informed',
-      message: informed ? METHOD_NOT_APPLICABLE_TO_OIL : OIL_TYPE_NOT_INFORMED,
-      detail: informed
+      reason,
+      message: WITHHELD_MESSAGE[reason],
+      detail: withCriterion
         ? `Os métodos desta aba foram definidos para óleo mineral isolante, e este equipamento usa ${oilTypeLabel(oil).toLowerCase()}.`
         : oil.kind === 'unrecognized'
           ? `O cadastro informa "${oil.reported ?? ''}", que não é um tipo de óleo reconhecido: os métodos para óleo mineral não são aplicados sem confirmar o tipo.`

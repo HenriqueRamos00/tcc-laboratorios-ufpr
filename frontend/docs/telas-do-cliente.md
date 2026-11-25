@@ -105,8 +105,8 @@ e comentado no lugar de uso.
 - **Aceite, ordem de compra, envio de amostra e recusa** são gravados pela API C#
   no banco do portal (`QuoteDecisionService` faz os POSTs). O termo de aceite
   pela metade fica como rascunho no navegador até ser enviado ou descartado.
-- **PDF da proposta** vem do Salesforce e ainda não está integrado; a tela mostra
-  o aviso em vez de um visualizador vazio.
+- **PDF da proposta** vem do Salesforce e é exibido no visualizador da própria
+  tela, que também abre em tela cheia.
 
 ## O que precisa de conferência técnica
 
@@ -116,6 +116,14 @@ conhecidas (PD, T1, T2, T3, D1, D2 e DT em função de %CH₄, %C₂H₄ e %C₂
 geometria está isolada em `src/app/services/fixtures/indicadores.fixture.ts`
 justamente para que o laboratório valide antes de ir para produção.
 
+**Os valores típicos por gás da IEC 60599** (`src/app/model/fault-indication.ts`)
+decidem quando a tabela "Diagnóstico" avisa que as indicações dos métodos não foram
+expressivas e servem apenas de apoio. Eles foram transcritos sem a faixa e sem a
+classe de equipamento a que pertencem; a norma publica faixas de percentil que
+variam conforme o equipamento e o histórico da frota. A tela cita a Tabela A.1 da
+IEC 60599:2015, e os valores e a tabela precisam ser conferidos pelo laboratório
+antes de ir para produção.
+
 Os valores das séries dos gráficos reproduzem o traçado das telas; os resultados
 das tabelas são os números que aparecem nelas.
 
@@ -124,7 +132,6 @@ das tabelas são os números que aparecem nelas.
 - Sem testes automatizados para as telas novas.
 - O item "Home" existe nas telas e não existe na navegação (o shell nunca teve
   essa rota).
-- Os botões de download não baixam nada: falta o endpoint que serve o arquivo.
 - A tela HU004 mostra "Ensaios" na navegação em vez de "Relatórios"; as demais
   mostram "Relatórios". Ficou "Relatórios", que é o nome usado em oito das nove
   telas.

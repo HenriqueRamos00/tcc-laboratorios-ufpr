@@ -62,6 +62,24 @@ public sealed class HealthReportsConsultationTests
     }
 
     [Fact]
+    public async Task TheSectionTheSelectedAnalysisDoesNotHaveKeepsItsMostRecentReport()
+    {
+        SampleHealthIndicators indicators = await IndicatorsAsync(
+            new ReadingsByIdentification(
+                Reading(Older, new DateTime(2026, 3, 1), gas: Section("Descarga elétrica")),
+                Reading(Latest, new DateTime(2026, 7, 1), physicalChemical: Section("Normal"))),
+            "03/2026-001",
+            Gas("01/2026-001", Older, new DateTime(2026, 2, 20)),
+            PhysicalChemical("03/2026-001", Latest, new DateTime(2026, 6, 20)));
+
+        HealthIndicatorsResponse response = PositionalFlattening.Flatten(indicators, "equipamento");
+
+        Assert.Equal("normal", response.PhysicalChemical.Conformity);
+        Assert.Equal("nao-conforme", response.DissolvedGases.Conformity);
+        Assert.Equal("Descarga elétrica", response.DissolvedGases.Verdict);
+    }
+
+    [Fact]
     public async Task TheSelectedReportDecidesTheConformityAndTheListStaysWhole()
     {
         SampleHealthIndicators indicators = await IndicatorsAsync(

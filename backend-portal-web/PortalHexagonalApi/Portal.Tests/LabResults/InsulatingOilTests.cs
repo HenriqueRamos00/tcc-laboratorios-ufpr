@@ -64,6 +64,22 @@ public sealed class InsulatingOilTests
     }
 
     [Theory]
+    [InlineData("Ascarel")]
+    [InlineData("Éster sintético")]
+    public void AnOilTypeThatWasInformedButNotRecognizedSaysSo(string reported)
+    {
+        HealthIndicatorsResponse response = Flatten(reported);
+
+        Assert.Equal(InsulatingOilKind.Unrecognized, response.OilType.Kind);
+        Assert.Equal(reported, response.OilType.Reported);
+        Assert.All(response.PhysicalChemical.Tests, test =>
+        {
+            Assert.Null(test.Limit);
+            Assert.Equal(PhysicalChemicalLimitAbsence.OilTypeUnrecognized, test.LimitAbsence);
+        });
+    }
+
+    [Theory]
     [InlineData("Óleo Vegetal Isolante")]
     [InlineData("Silicone")]
     [InlineData(null)]

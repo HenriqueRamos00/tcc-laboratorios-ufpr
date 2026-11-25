@@ -322,7 +322,8 @@ export interface DiagnosisBlock {
 
 export type DiagnosisWithheldReason =
   | 'oil-type-not-applicable'
-  | 'oil-type-not-informed';
+  | 'oil-type-not-informed'
+  | 'oil-type-unrecognized';
 
 export interface WithheldDiagnosis {
   readonly kind: 'withheld';

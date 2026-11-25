@@ -10,11 +10,15 @@ export interface OilType {
   readonly reported: string | null;
 }
 
-export type PhysicalChemicalLimitAbsence = 'oil-type-without-criterion' | 'oil-type-not-informed';
+export type PhysicalChemicalLimitAbsence =
+  | 'oil-type-without-criterion'
+  | 'oil-type-not-informed'
+  | 'oil-type-unrecognized';
 
 export const LIMIT_ABSENCE_TEXT: Record<PhysicalChemicalLimitAbsence, string> = {
   'oil-type-without-criterion': 'Sem critério para este tipo de óleo',
   'oil-type-not-informed': 'Tipo do óleo não informado',
+  'oil-type-unrecognized': 'Tipo do óleo não reconhecido',
 };
 
 const OIL_TYPE_LABEL: Record<Exclude<InsulatingOilKind, 'unrecognized'>, string> = {

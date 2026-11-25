@@ -15,7 +15,8 @@ public enum InsulatingOilKind
 public enum PhysicalChemicalLimitAbsence
 {
     OilTypeWithoutCriterion,
-    OilTypeNotInformed
+    OilTypeNotInformed,
+    OilTypeUnrecognized
 }
 
 public sealed record PhysicalChemicalLimit(string? Value, PhysicalChemicalLimitAbsence? Absence);
@@ -54,6 +55,8 @@ public sealed record InsulatingOil(InsulatingOilKind Kind, string? Reported)
             InsulatingOilKind.Mineral => new PhysicalChemicalLimit(measuredItem.RegulatoryLimit, null),
             InsulatingOilKind.NaturalEster or InsulatingOilKind.Silicone =>
                 new PhysicalChemicalLimit(null, PhysicalChemicalLimitAbsence.OilTypeWithoutCriterion),
+            InsulatingOilKind.Unrecognized =>
+                new PhysicalChemicalLimit(null, PhysicalChemicalLimitAbsence.OilTypeUnrecognized),
             _ => new PhysicalChemicalLimit(null, PhysicalChemicalLimitAbsence.OilTypeNotInformed)
         };
     }

@@ -233,7 +233,8 @@ public sealed class LabResultsConsultation : IForConsultingLabResults
         ReportConclusion? current = selected is null
             ? conclusions.FirstOrDefault()
             : conclusions.FirstOrDefault(conclusion => string.Equals(
-                conclusion.Identification, selected.Identification, StringComparison.OrdinalIgnoreCase));
+                conclusion.Identification, selected.Identification, StringComparison.OrdinalIgnoreCase))
+                ?? conclusions.FirstOrDefault();
 
         return current?.ResultLabel;
     }

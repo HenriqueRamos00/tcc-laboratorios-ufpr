@@ -583,7 +583,7 @@ describe('DissolvedGasDiagnosisService, tipo do óleo', () => {
     const outcome = outcomeOf(faultyCollection(), { kind: 'unrecognized', reported: 'Ascarel' });
 
     expect(outcome.kind).toBe('withheld');
-    expect(outcome.kind === 'withheld' && outcome.reason).toBe('oil-type-not-informed');
+    expect(outcome.kind === 'withheld' && outcome.reason).toBe('oil-type-unrecognized');
     expect(outcome.kind === 'withheld' && outcome.detail).toContain('Ascarel');
   });
 });
