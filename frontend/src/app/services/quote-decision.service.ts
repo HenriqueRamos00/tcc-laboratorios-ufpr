@@ -1,13 +1,13 @@
-import { Injectable, signal } from '@angular/core';
-import { delay, Observable, of, tap } from 'rxjs';
+import { HttpClient } from '@angular/common/http';
+import { inject, Injectable, signal } from '@angular/core';
+import { map, Observable, tap } from 'rxjs';
 
+import { API_URL } from '@/app/environment/env';
 import type { QuoteRejection, AcceptanceTerms } from '@/app/model/acceptance';
 import type { RequestStatus } from '@/app/model/analysis-pipeline';
+import { statusOfClientDecision, type ClientDecision } from '@/app/model/quote';
 
-// A API de Quote é somente-leitura hoje, então aceite e recusa ficam em
-// memória durante a sessão. As assinaturas já são as do POST que a aplicação
-// Java vai expor.
-const LATENCIA_SIMULADA = 450;
+import { AcceptanceDraftService } from './acceptance-draft.service';
 
 export interface RecordedDecision {
   readonly proposalId: string;
@@ -17,6 +17,9 @@ export interface RecordedDecision {
 
 @Injectable({ providedIn: 'root' })
 export class QuoteDecisionService {
+  private readonly http = inject(HttpClient);
+  private readonly drafts = inject(AcceptanceDraftService);
+  private readonly baseUrl = `${API_URL}/api/quotes`;
   private readonly registro = signal<ReadonlyMap<string, RecordedDecision>>(new Map());
 
   readonly decisions = this.registro.asReadonly();
@@ -25,37 +28,44 @@ export class QuoteDecisionService {
     return this.registro().get(proposalId);
   }
 
-  /** POST /api/quotes/{id}/acceptance */
   aceitar(termo: AcceptanceTerms): Observable<RecordedDecision> {
-    return this.registrar(termo.proposalId, 'aprovado-pelo-cliente');
+    return this.registrar(termo.proposalId, 'acceptance', {
+      billing: termo.billing,
+      approval: termo.approval,
+    });
   }
 
-  /** POST /api/quotes/{id}/purchase-order */
   aceitarComOrdemDeCompra(proposalId: string, arquivo: File): Observable<RecordedDecision> {
-    void arquivo;
-    return this.registrar(proposalId, 'aprovado-pelo-cliente');
+    const form = new FormData();
+    form.append('file', arquivo, arquivo.name);
+    return this.registrar(proposalId, 'purchase-order', form);
   }
 
-  /** POST /api/quotes/{id}/sample-shipment */
   confirmSampleShipment(proposalId: string): Observable<RecordedDecision> {
-    return this.registrar(proposalId, 'aguardando-amostra');
+    return this.registrar(proposalId, 'sample-shipment', null);
   }
 
-  /** POST /api/quotes/{id}/rejection */
   recusar(recusa: QuoteRejection): Observable<RecordedDecision> {
-    return this.registrar(recusa.proposalId, 'recusado');
+    return this.registrar(recusa.proposalId, 'rejection', { justification: recusa.justification });
   }
 
   private registrar(
     proposalId: string,
-    status: RequestStatus,
+    route: 'acceptance' | 'purchase-order' | 'sample-shipment' | 'rejection',
+    body: unknown,
   ): Observable<RecordedDecision> {
-    const decisions: RecordedDecision = { proposalId, status, recordedAt: new Date() };
-    return of(decisions).pipe(
-      delay(LATENCIA_SIMULADA),
-      // Só grava depois que o servidor confirma: falha na integração não pode
-      // deixar a tela dizendo que o orçamento foi aceito (HU-09, critério 7).
-      tap((valor) => this.registro.update((atual) => new Map(atual).set(proposalId, valor))),
-    );
+    return this.http
+      .post<ClientDecision>(`${this.baseUrl}/${encodeURIComponent(proposalId)}/${route}`, body)
+      .pipe(
+        map((decision) => ({
+          proposalId,
+          status: statusOfClientDecision(decision.kind),
+          recordedAt: new Date(decision.recordedAt),
+        })),
+        tap((valor) => {
+          this.registro.update((atual) => new Map(atual).set(proposalId, valor));
+          this.drafts.discard(proposalId);
+        }),
+      );
   }
 }

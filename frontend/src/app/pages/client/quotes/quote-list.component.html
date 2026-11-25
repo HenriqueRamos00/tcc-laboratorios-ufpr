@@ -2,7 +2,7 @@
 
 <section class="flex flex-col gap-6 md:gap-8">
   <header class="flex flex-col gap-1">
-    <h1 class="display text-2xl md:text-3xl font-semibold text-lactec-ink m-0">
+    <h1 class="font-display tracking-display text-2xl md:text-3xl font-semibold text-lactec-ink m-0">
       {{ greeting }}, {{ firstName() }}
     </h1>
     <p class="text-lactec-muted text-sm md:text-base m-0">
@@ -13,6 +13,7 @@
   <!-- Botões de alternância, não o padrão ARIA Tabs: não existe tabpanel nem
        navegação por setas aqui, então `aria-pressed` descreve melhor o que é. -->
   <div
+    data-tour="orcamentos-filtros"
     class="hidden md:flex border-b border-lactec-line gap-6"
     role="group"
     aria-label="Filtrar orçamentos por status"
@@ -22,8 +23,11 @@
         type="button"
         [attr.aria-pressed]="activeFilter() === tab.value"
         (click)="setFilter(tab.value)"
-        class="quote-filter-tab"
-        [class.quote-filter-tab--active]="activeFilter() === tab.value"
+        class="cursor-pointer border-b-2 px-1 py-3 font-medium transition-[color,border-color] duration-120
+               ease-[ease] hover:text-lactec-ink-soft"
+        [ngClass]="activeFilter() === tab.value
+          ? 'border-lactec-primary text-lactec-ink'
+          : 'border-transparent text-lactec-muted'"
       >
         {{ tab.label }}
       </button>
@@ -31,19 +35,22 @@
   </div>
 
   <div class="flex flex-col gap-3 md:flex-row md:items-center md:justify-between md:gap-6">
-    <h2 class="display text-xl md:text-2xl font-semibold text-lactec-ink m-0">
+    <h2 class="font-display tracking-display text-xl md:text-2xl font-semibold text-lactec-ink m-0">
       Listagem de Orçamentos Lactec
     </h2>
 
     <div class="md:hidden">
       <button
         type="button"
-        class="quote-filter-dropdown"
+        data-tour="orcamentos-filtros"
+        class="inline-flex cursor-pointer items-center gap-1 rounded-[8px] border border-lactec-line
+               bg-lactec-paper py-1.5 pr-2 pl-3 text-[13px] font-medium text-lactec-ink-soft
+               transition-[border-color] duration-120 ease-[ease] hover:border-lactec-line-strong"
         [matMenuTriggerFor]="filterMenu"
         aria-haspopup="menu"
       >
         <span>{{ mobileFilterLabel() }}</span>
-        <mat-icon>expand_more</mat-icon>
+        <mat-icon class="seta-do-filtro">expand_more</mat-icon>
       </button>
     </div>
     <mat-menu #filterMenu="matMenu">
@@ -54,11 +61,18 @@
       }
     </mat-menu>
 
-    <div class="input-field md:w-80">
-      <mat-icon class="input-field__icon" aria-hidden="true">search</mat-icon>
+    <div
+      data-tour="orcamentos-busca"
+      class="flex h-11 items-center gap-2.5 rounded-[8px] border border-lactec-line-control bg-lactec-paper px-3
+             text-lactec-muted transition-[border-color,box-shadow] duration-120 ease-[ease] not-focus-within:hover:border-lactec-muted
+             focus-within:border-lactec-primary focus-within:text-lactec-primary-strong
+             focus-within:shadow-lactec-focus md:w-80"
+    >
+      <mat-icon class="icone-20 flex-none" aria-hidden="true">search</mat-icon>
       <input
         type="search"
-        class="input-field__input"
+        class="h-full min-w-0 flex-auto pl-1.5 text-lactec-ink caret-lactec-primary outline-none
+               placeholder:text-lactec-muted/55"
         placeholder="Pesquisar..."
         aria-label="Pesquisar orçamentos"
         [ngModel]="searchTerm()"
@@ -75,49 +89,54 @@
     @for (quote of visible; track quote.id) {
       @let badge = badgeFor(quote.status);
 
-      <article class="quote-card">
-        <div class="quote-card-body">
-          <div class="quote-card-body__header">
-            <div class="quote-card-field">
-              <span class="quote-card-field__label">ID da Proposta</span>
-              <span class="quote-card-field__value">{{ quote.code }}</span>
+      <article data-tour="orcamento-cartao" class="flex flex-col gap-4 rounded-[12px] border border-lactec-line bg-lactec-paper p-5 shadow-lactec-raised md:p-6">
+        <div class="flex flex-col gap-4 md:grid md:grid-cols-[1fr_1fr_auto] md:grid-rows-[auto_auto_1fr] md:gap-x-10">
+          <div class="flex items-start justify-between gap-3 md:contents">
+            <div class="flex min-w-0 flex-col gap-1 md:col-start-1 md:row-start-1">
+              <span class="text-xs/[inherit] text-lactec-muted">ID da Proposta</span>
+              <span class="font-semibold wrap-break-word hyphens-auto text-lactec-ink">{{ quote.code }}</span>
             </div>
-            <span class="quote-status-pill" [ngClass]="badge.badgeClass">
+            <span
+              data-tour="orcamento-status"
+              class="inline-flex items-center rounded-[6px] px-2.5 py-0.5 text-xs leading-[1.4] font-medium whitespace-nowrap md:col-start-3 md:row-start-1 md:justify-self-end"
+              [ngClass]="badge.badgeClass"
+            >
               {{ badge.label }}
             </span>
           </div>
 
-          <div class="quote-card-body__content">
-            <div class="quote-card-field">
-              <span class="quote-card-field__label">Empresa</span>
-              <span class="quote-card-field__value">{{ quote.company }}</span>
+          <div class="flex flex-col gap-4 md:contents">
+            <div class="flex min-w-0 flex-col gap-1">
+              <span class="text-xs/[inherit] text-lactec-muted">Empresa</span>
+              <span class="font-semibold wrap-break-word hyphens-auto text-lactec-ink">{{ quote.company }}</span>
             </div>
 
-            <div class="quote-card-field">
-              <span class="quote-card-field__label">Nome da Proposta</span>
-              <span class="quote-card-field__value">{{ quote.proposalName }}</span>
+            <div class="flex min-w-0 flex-col gap-1">
+              <span class="text-xs/[inherit] text-lactec-muted">Nome da Proposta</span>
+              <span class="font-semibold wrap-break-word hyphens-auto text-lactec-ink">{{ quote.proposalName }}</span>
             </div>
-            <div class="quote-card-field">
-              <span class="quote-card-field__label">Contato Externo</span>
-              <span class="quote-card-field__value">{{ quote.externalContact }}</span>
+            <div class="flex min-w-0 flex-col gap-1">
+              <span class="text-xs/[inherit] text-lactec-muted">Contato Externo</span>
+              <span class="font-semibold wrap-break-word hyphens-auto text-lactec-ink">{{ quote.externalContact }}</span>
             </div>
 
-            <div class="quote-card-field">
-              <span class="quote-card-field__label">Data de Criação</span>
-              <span class="quote-card-field__value">{{ quote.createdAt }}</span>
+            <div class="flex min-w-0 flex-col gap-1">
+              <span class="text-xs/[inherit] text-lactec-muted">Data de Criação</span>
+              <span class="font-semibold wrap-break-word hyphens-auto text-lactec-ink">{{ quote.createdAt }}</span>
             </div>
             @if (quote.estimatedValue) {
-              <div class="quote-card-field">
-                <span class="quote-card-field__label">Valor Estimado</span>
-                <span class="quote-card-field__value">{{ quote.estimatedValue }}</span>
+              <div class="flex min-w-0 flex-col gap-1">
+                <span class="text-xs/[inherit] text-lactec-muted">Valor Estimado</span>
+                <span class="font-semibold wrap-break-word hyphens-auto text-lactec-ink">{{ quote.estimatedValue }}</span>
               </div>
             }
           </div>
 
-          <div class="quote-card-body__footer">
+          <div class="flex flex-col gap-2 md:col-start-3 md:row-[2/-1] md:min-w-48 md:self-end">
             <button
               mat-flat-button
               type="button"
+              data-tour="orcamento-verificar-status"
               class="quote-card-action"
               (click)="checkStatus(quote)"
             >
@@ -129,6 +148,7 @@
             @if (quote.hasProposal) {
               <a
                 mat-flat-button
+                data-tour="orcamento-visualizar"
                 class="quote-card-action"
                 [routerLink]="['/cliente/quotes', quote.id]"
               >
@@ -159,6 +179,7 @@
 
   @if (!loadError() && total() > 0) {
     <app-pagination
+      data-tour="orcamentos-paginacao"
       label="Paginação da listagem de orçamentos"
       [page]="page()"
       [pageSize]="pageSize"

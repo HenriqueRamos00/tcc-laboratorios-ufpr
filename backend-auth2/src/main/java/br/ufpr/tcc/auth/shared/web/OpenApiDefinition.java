@@ -13,8 +13,8 @@ import org.springframework.context.annotation.Configuration;
  *
  * Sem isto o artefato nasce chamado "OpenAPI definition", versao "v0", e sem
  * `securitySchemes` nenhum. Duas consequencias medidas no proprio arquivo gerado: ele nao diz
- * de qual dos dois servicos de autenticacao do repositorio ele e, e cliente gerado a partir
- * dele nao manda credencial nenhuma, tomando 401 com desafio em tudo, que no consumidor
+ * qual servico ele descreve, e cliente gerado a partir dele nao manda credencial nenhuma,
+ * tomando 401 com desafio em tudo, que no consumidor
  * aparece como fonte indisponivel e nao como credencial faltando.
  *
  * As duas credenciais aparecem separadas porque a distincao entre elas e o eixo do contrato, e
@@ -26,7 +26,7 @@ import org.springframework.context.annotation.Configuration;
  */
 @Configuration
 @OpenAPIDefinition(info = @Info(
-        title = "Servico de autenticacao do Lactec, segunda implementacao",
+        title = "Servico de autenticacao do Lactec",
         version = "0.0.1-SNAPSHOT",
         description = """
                 Autenticacao e autorizacao compartilhada pelas aplicacoes do Lactec.

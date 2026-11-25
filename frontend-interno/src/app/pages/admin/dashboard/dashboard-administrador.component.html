@@ -1,12 +1,13 @@
 <div class="space-y-8 [overflow-wrap:anywhere]">
   <app-page-header
+    data-tour="pagina-cabecalho"
     [title]="saudacao()"
     subtitle="Dashboard de administrador"
     [breadcrumbs]="trilha"
   />
 
   @if (estado() === 'carregando') {
-    <section aria-label="Indicadores do dashboard" aria-busy="true">
+    <section data-tour="pagina-indicadores" aria-label="Indicadores do dashboard" aria-busy="true">
       <p class="sr-only" role="status">Carregando indicadores do painel.</p>
       <div class="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
         @for (card of cards; track card.chave) {
@@ -31,7 +32,7 @@
     </app-empty-state>
   } @else {
     @if (indicadores(); as dados) {
-      <section class="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4" aria-label="Indicadores do dashboard">
+      <section data-tour="pagina-indicadores" class="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4" aria-label="Indicadores do dashboard">
         @for (card of cards; track card.chave) {
           <article
             class="min-w-0 rounded-xl border border-lactec-line bg-lactec-paper p-5 shadow-sm [container-type:inline-size]"
@@ -65,7 +66,7 @@
     }
   }
 
-  <nav class="mx-auto grid w-full max-w-3xl grid-cols-1 gap-4 sm:grid-cols-2" aria-label="Acesso rápido aos módulos">
+  <nav data-tour="pagina-atalhos" class="mx-auto grid w-full max-w-3xl grid-cols-1 gap-4 sm:grid-cols-2" aria-label="Acesso rápido aos módulos">
     @for (atalho of atalhos; track atalho.rota) {
       <a
         class="group flex min-h-32 min-w-0 flex-col justify-between gap-4 rounded-xl border border-lactec-line bg-lactec-paper p-5 shadow-sm transition-colors hover:border-lactec-primary hover:shadow-md focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-lactec-primary"

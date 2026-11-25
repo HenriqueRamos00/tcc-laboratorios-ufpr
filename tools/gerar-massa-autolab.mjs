@@ -9,11 +9,11 @@ import {
   EQUIPAMENTOS,
   RELATORIOS,
   SITUA_PROCESS,
+  SOLICITACOES_SEM_RELATORIO,
   TEXTOS_POR_TIPO,
 } from './massa-autolab.mjs';
 
 const RAIZ = resolve(dirname(fileURLToPath(import.meta.url)), '..');
-const SAIDA_SQL = resolve(RAIZ, 'backend-portal-web/docker/autolab/03-load-sample.sql');
 const SAIDA_JSON = resolve(RAIZ, 'backend-portal-web/PortalHexagonalApi/Portal.Tests/AutoLab/autolab-sample.json');
 
 const GCRECORD_APAGADO = 1873465;
@@ -148,8 +148,6 @@ function emissoes() {
         },
         solicitacao: {
           Oid: guid(`RelatorioEmissao:${chave}`),
-          NumeroSolicitacao: relatorio.numeroSolicitacao,
-          OrcamentoCRM: relatorio.orcamentoCRM,
           IDAmostra: `AM-${analise.protocoloLactec}`,
           Nome: 'Óleos',
           ClienteSolicitante: analise.empresaTrafo,
@@ -166,9 +164,9 @@ function emissoes() {
 
 function linhaDaView(emissao) {
   return {
-    NumeroSolicitacao: emissao.solicitacao.NumeroSolicitacao,
+    NumeroSolicitacao: emissao.relatorio.numeroSolicitacao,
     Oid: emissao.registro.Oid,
-    OrcamentoCRM: emissao.solicitacao.OrcamentoCRM,
+    OrcamentoCRM: emissao.relatorio.orcamentoCRM,
     IDAmostra: emissao.solicitacao.IDAmostra,
     Nome: emissao.solicitacao.Nome,
     PdfAssinado: emissao.registro.PdfAssinado,
@@ -183,32 +181,6 @@ function linhaDaView(emissao) {
 }
 
 const COLUNAS_DATA = new Set(['DataEmissao', 'DataFinalAnalise', 'DataPublicacao', 'DataFinalProgramadaCliente']);
-const COLUNAS_GUID = new Set(['Oid', 'PdfAssinado', 'RelatorioEnsaioSubstituto', 'Solicitacao']);
-const COLUNAS_VARCHAR = new Set(['Nome@SolicitacaoRelatorioLocal', 'SituacaoRelatorio@SolicitacaoRelatorioLocal']);
-
-function valorSql(tabela, coluna, valor) {
-  if (valor === null || valor === undefined) return 'NULL';
-  if (Buffer.isBuffer(valor)) return `0x${valor.toString('hex').toUpperCase()}`;
-  if (typeof valor === 'boolean') return valor ? '1' : '0';
-  if (typeof valor === 'number') return String(valor);
-  if (COLUNAS_DATA.has(coluna)) return `CONVERT(datetime, '${valor}', 126)`;
-  if (COLUNAS_GUID.has(coluna)) return `'${valor}'`;
-
-  const texto = valor.replaceAll("'", "''");
-
-  return COLUNAS_VARCHAR.has(`${coluna}@${tabela}`) ? `'${texto}'` : `N'${texto}'`;
-}
-
-function insercao(tabela, linhas) {
-  if (linhas.length === 0) return '';
-
-  const colunas = Object.keys(linhas[0]);
-  const valores = linhas
-    .map((linha) => `    (${colunas.map((coluna) => valorSql(tabela, coluna, linha[coluna])).join(', ')})`)
-    .join(',\n');
-
-  return `INSERT INTO dbo.${tabela}\n    (${colunas.join(', ')})\nVALUES\n${valores};\nGO\n`;
-}
 
 function valorJson(coluna, valor) {
   if (valor === null || valor === undefined) return null;
@@ -228,23 +200,58 @@ const dadosEnsaios = linhasDeDadosEnsaios();
 const todasAsEmissoes = emissoes();
 const registros = todasAsEmissoes.map((emissao) => emissao.registro);
 const arquivos = todasAsEmissoes.map((emissao) => emissao.arquivo).filter(Boolean);
-const solicitacoes = todasAsEmissoes.map((emissao) => emissao.solicitacao);
 const viewDeRelatorios = todasAsEmissoes.filter((emissao) => emissao.registro.GCRecord === null).map(linhaDaView);
 const clientes = CLIENTES.map((cliente) => ({ Oid: guid(`Cliente:${cliente.Sigla}`), ...cliente }));
 
-const sql = [
-  'USE [autolab];\nGO\n',
-  'DELETE FROM dbo.DadosEnsaiosLocal;\nDELETE FROM dbo.EquipamentosLocal;\nDELETE FROM dbo.SituaProcessLocal;\n'
-    + 'DELETE FROM dbo.SolicitacaoRelatorioLocal;\nDELETE FROM dbo.RelatorioEmissao;\nDELETE FROM dbo.FileData;\n'
-    + 'DELETE FROM dbo.ClienteLocal;\nGO\n',
-  insercao('DadosEnsaiosLocal', dadosEnsaios),
-  insercao('EquipamentosLocal', EQUIPAMENTOS),
-  insercao('SituaProcessLocal', SITUA_PROCESS),
-  insercao('FileData', arquivos),
-  insercao('RelatorioEmissao', registros),
-  insercao('SolicitacaoRelatorioLocal', solicitacoes),
-  insercao('ClienteLocal', clientes),
-].join('\n');
+function oidDoCliente(nome) {
+  const cliente = clientes.find((candidato) => candidato.Nome === nome);
+
+  if (!cliente) throw new Error(`Empresa sem cadastro em Cliente: ${nome}`);
+
+  return cliente.Oid;
+}
+
+const cadastroDeClientes = clientes.map((cliente) => ({
+  Oid: cliente.Oid,
+  cli_cadastronacional_a: cliente.Cnpj_Cpf,
+  GCRecord: null,
+}));
+
+const solicitacoesDeServico = [
+  ...RELATORIOS.map((relatorio) => ({
+    Oid: guid(`Solicitacao:${relatorio.numeroSolicitacao}`),
+    NumeroSolicitacao: relatorio.numeroSolicitacao,
+    OrcamentoCRM: relatorio.orcamentoCRM,
+    Cliente: oidDoCliente(analiseDoRelatorio(relatorio).empresaTrafo),
+    GCRecord: null,
+  })),
+  ...SOLICITACOES_SEM_RELATORIO.map((solicitacao) => ({
+    Oid: guid(`Solicitacao:${solicitacao.numeroSolicitacao}`),
+    NumeroSolicitacao: solicitacao.numeroSolicitacao,
+    OrcamentoCRM: solicitacao.orcamentoCRM,
+    Cliente: oidDoCliente(solicitacao.cliente),
+    GCRecord: null,
+  })),
+];
+
+const protocolosDeAmostra = ANALISES.map((analise) => ({
+  Oid: guid(`ProtocoloAmostra:${analise.protocoloLactec}`),
+  Identificacao: analise.protocoloLactec,
+  GCRecord: null,
+}));
+
+const amostras = RELATORIOS.map((relatorio) => {
+  const analise = analiseDoRelatorio(relatorio);
+
+  return {
+    Oid: guid(`AmostraObjeto:${analise.protocoloLactec}`),
+    ProtocoloAmostra: guid(`ProtocoloAmostra:${analise.protocoloLactec}`),
+    SolicitacaoServico: guid(`Solicitacao:${relatorio.numeroSolicitacao}`),
+    GCRecord: null,
+  };
+});
+
+if (amostras.length !== ANALISES.length) throw new Error('Ha laudo sem relatorio: o protocolo ficaria sem cliente.');
 
 const json = {
   'dbo.vwDadosEnsaios': linhasJson(dadosEnsaios),
@@ -254,10 +261,12 @@ const json = {
   'dbo.RelatorioEmissao': linhasJson(registros),
   'dbo.vwRelatoriosEnsaios': linhasJson(viewDeRelatorios),
   'dbo.dCliente': linhasJson(clientes),
+  'dbo.Cliente': linhasJson(cadastroDeClientes),
+  'dbo.SolicitacaoServico': linhasJson(solicitacoesDeServico),
+  'dbo.ProtocoloAmostra': linhasJson(protocolosDeAmostra),
+  'dbo.AmostraObjeto': linhasJson(amostras),
 };
 
-writeFileSync(SAIDA_SQL, sql, 'utf8');
 writeFileSync(SAIDA_JSON, `${JSON.stringify(json, null, 2)}\n`, 'utf8');
 
-console.log(`${SAIDA_SQL}: ${dadosEnsaios.length} linhas de ensaio, ${registros.length} emissoes, ${arquivos.length} PDFs`);
-console.log(`${SAIDA_JSON}: mesma massa para a suite`);
+console.log(`${SAIDA_JSON}: ${dadosEnsaios.length} linhas de ensaio, ${registros.length} emissoes, ${arquivos.length} PDFs`);

@@ -44,7 +44,7 @@ public sealed class AutoLabSituaProcessRepositoryTests : IDisposable
         string[] codes = ["2026_49001", "2026_49003", "2026_49004"];
 
         IReadOnlyList<LaboratoryProgress> found = await Repository()
-            .GetProgressOfQuotesAsync(codes, CancellationToken.None);
+            .GetProgressOfQuotesAsync(TestCompanies.ScopeOf(TestCompanies.Energy), codes, CancellationToken.None);
 
         IReadOnlyList<LaboratoryProgress> expected = SituaProcessReading.ProgressOf(
             [
@@ -58,7 +58,10 @@ public sealed class AutoLabSituaProcessRepositoryTests : IDisposable
             expected.Select(progress => (progress.QuoteCode, progress.Stage)).Order(),
             found.Select(progress => (progress.QuoteCode, progress.Stage)).Order());
         Assert.DoesNotContain(found, progress => progress.QuoteCode == "2026_49999");
-        Assert.Contains(" IN (", Assert.Single(_database.Commands), StringComparison.Ordinal);
+        Assert.Contains(
+            " IN (",
+            Assert.Single(_database.Commands, command => command.Contains("SituaProcess", StringComparison.Ordinal)),
+            StringComparison.Ordinal);
     }
 
     [Fact]
@@ -66,11 +69,14 @@ public sealed class AutoLabSituaProcessRepositoryTests : IDisposable
     {
         _database.AddSituaProcess("2026_49001_UHAB Agua Boa", true, true, 0, 0);
 
-        Assert.Null(await Repository().GetProgressOfQuoteAsync("2026_49001", CancellationToken.None));
+        _database.RequestOf(TestCompanies.Energy, "2026_49001");
+
+        Assert.Null(await Repository().GetProgressOfQuoteAsync(
+            TestCompanies.ScopeOf(TestCompanies.Energy), "2026_49001", CancellationToken.None));
     }
 
     private AutoLabSituaProcessRepository Repository()
     {
-        return new AutoLabSituaProcessRepository(_database.NewContext(), new AutoLabQueryLimits());
+        return _database.Progress();
     }
 }

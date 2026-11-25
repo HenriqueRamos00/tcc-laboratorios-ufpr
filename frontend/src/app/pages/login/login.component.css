@@ -1,0 +1,13 @@
+.brilho-do-painel {
+  background-image:
+    radial-gradient(
+      900px 600px at 20% 20%,
+      color-mix(in oklab, var(--color-lactec-paper) 6%, transparent),
+      transparent 60%
+    ),
+    radial-gradient(
+      600px 400px at 80% 90%,
+      color-mix(in oklab, var(--color-lactec-primary) 12%, transparent),
+      transparent 60%
+    );
+}

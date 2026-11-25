@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Mvc;
 
+using Portal.Api.Authentication;
 using Portal.Api.LabResults;
 using Portal.Api.Configuration;
 using Portal.Application.LabResults;
@@ -17,6 +18,7 @@ namespace Portal.Api.Controllers;
 /// achata a resposta. Nenhuma regra de laudo passa por aqui.
 /// </summary>
 [ApiController]
+[NoStore]
 [Route("api/equipments")]
 public sealed class HealthIndicatorsController : ControllerBase
 {
@@ -107,7 +109,7 @@ public sealed class HealthIndicatorsController : ControllerBase
         if (reportId is not null && !OpaqueIdentifier.TryDecode(reportId, out selectedProtocol))
             return this.UnreadableReportIdentifier();
 
-        VisibilityScope? scope = VisibilityScopeResolution.Resolve(User, _labResultsOptions);
+        CompanyScope? scope = CompanyScopeResolution.Resolve(User);
 
         if (scope is null) return this.TenantNotIdentified();
 

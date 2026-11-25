@@ -1,6 +1,7 @@
 import { ChangeDetectionStrategy, Component, computed, input } from '@angular/core';
 
-import { readableDate } from '@shared/brazilian-date';
+import { DataPipe } from '@shared/pipes/data.pipe';
+import { NumeroPipe } from '@shared/pipes/numero.pipe';
 import { LineChartComponent, type ChartSeries } from '@shared/components/line-chart/line-chart.component';
 
 import { NOT_ASSESSED_LABEL, type IeeeBlock } from '@/app/model/health';
@@ -19,6 +20,9 @@ import { NOT_ASSESSED_LABEL, type IeeeBlock } from '@/app/model/health';
  * evolução medida e diz que as faixas não foram avaliadas, em vez de desenhar reta
  * em altura inventada.
  */
+const dataPipe = new DataPipe();
+const numeroPipe = new NumeroPipe();
+
 @Component({
   selector: 'app-ieee-c57104-chart',
   standalone: true,
@@ -33,7 +37,7 @@ export class IeeeC57104ChartComponent {
   protected readonly notAssessedLabel = NOT_ASSESSED_LABEL;
 
   protected readonly dates = computed(() =>
-    this.block().readings.map((reading) => readableDate(reading.date)),
+    this.block().readings.map((reading) => dataPipe.transform(reading.date)),
   );
 
   protected readonly series = computed<readonly ChartSeries[]>(() => [
@@ -52,6 +56,6 @@ export class IeeeC57104ChartComponent {
     if (!latest) return null;
     if (latest.total === null) return latest.notComputed;
 
-    return `${readableDate(latest.date)}: ${latest.total.toLocaleString('pt-BR')} ppm`;
+    return `${dataPipe.transform(latest.date)}: ${numeroPipe.transform(latest.total)} ppm`;
   });
 }

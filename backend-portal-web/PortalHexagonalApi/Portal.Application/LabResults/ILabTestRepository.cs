@@ -16,19 +16,19 @@ namespace Portal.Application.LabResults;
 public interface ILabTestRepository
 {
     Task<Page<SampleAnalysis>> GetAnalysesAsync(
-        VisibilityScope scope,
+        CompanyScope scope,
         EquipmentSearch? search,
         PageRequest equipmentPage,
         CancellationToken cancellationToken);
 
     Task<Page<SampleAnalysis>> GetAnalysesOfEquipmentAsync(
-        VisibilityScope scope,
+        CompanyScope scope,
         string equipmentKey,
         PageRequest reportPage,
         CancellationToken cancellationToken);
 
     Task<SampleAnalysis?> GetAnalysisByProtocolAsync(
-        VisibilityScope scope,
+        CompanyScope scope,
         string protocoloLactec,
         CancellationToken cancellationToken);
 }

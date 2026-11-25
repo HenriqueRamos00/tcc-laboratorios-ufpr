@@ -9,21 +9,21 @@
   <app-loading-region label="Carregando relatórios…">
     <app-page-header-skeleton [breadcrumbs]="true" [subtitle]="true" />
 
-    <div class="mt-6 rounded-2xl border border-lactec-line bg-lactec-paper p-6">
-      <div class="status-stepper">
+    <div class="mt-6 rounded-lactec-panel border border-lactec-line bg-lactec-paper p-6">
+      <div class="flex w-full items-start">
         @for (step of stepPlaceholders; track step; let last = $last; let index = $index) {
-          <div class="status-stepper__step" [class.max-md:hidden]="index >= 3">
+          <div class="flex min-w-0 flex-[1_1_0] flex-col items-center gap-2" [class.max-md:hidden]="index >= 3">
             <app-skeleton class="h-10 w-10" shape="round" />
             <app-skeleton class="h-3 w-16 max-w-full" />
           </div>
           @if (!last) {
-            <span class="status-stepper__connector" [class.max-md:hidden]="index >= 2"></span>
+            <span class="mt-[19px] h-0.5 min-w-3 flex-[1_1_16px] rounded-[2px] bg-lactec-line" [class.max-md:hidden]="index >= 2"></span>
           }
         }
       </div>
     </div>
 
-    <div class="mt-4 flex items-start gap-3 rounded-2xl bg-lactec-line-soft px-5 py-4">
+    <div class="mt-4 flex items-start gap-3 rounded-lactec-panel bg-lactec-line-soft px-5 py-4">
       <app-skeleton class="h-6 w-6 shrink-0" tone="strong" />
       <div class="min-w-0 flex-1">
         <app-skeleton class="my-0.5 h-4 w-48 max-w-full" tone="strong" />
@@ -44,14 +44,20 @@
   />
 
   @if (currentStageIndex() !== null) {
-    <section class="mt-6 rounded-2xl border border-lactec-line bg-lactec-paper p-6">
+    <section
+      data-tour="laudos-progresso"
+      class="mt-6 rounded-lactec-panel border border-lactec-line bg-lactec-paper p-6"
+    >
       <h2 class="sr-only">Progresso da solicitação</h2>
       <app-status-stepper [steps]="stages" [currentIndex]="currentStageIndex()!" />
     </section>
   }
 
-  <section class="mt-4 flex items-start gap-3 rounded-2xl bg-lactec-line-soft px-5 py-4">
-    <mat-icon class="shrink-0 text-lactec-nav" aria-hidden="true">description</mat-icon>
+  <section
+    data-tour="laudos-resumo"
+    class="mt-4 flex items-start gap-3 rounded-lactec-panel bg-lactec-line-soft px-5 py-4"
+  >
+    <mat-icon class="shrink-0 text-lactec-primary-deep" aria-hidden="true">description</mat-icon>
     <div class="min-w-0">
       <h2 class="m-0 text-sm font-semibold text-lactec-ink">
         @if (reportList() === null) { Tipo de ensaio }
@@ -70,6 +76,7 @@
 
   @if (withoutReports()) {
     <app-empty-state
+      data-tour="laudos-sem-relatorio"
       class="mt-6"
       icon="pending_actions"
       title="Este orçamento ainda não tem relatório publicado"
@@ -77,6 +84,7 @@
     />
   } @else {
     <app-search-field
+      data-tour="laudos-busca"
       class="mt-4"
       placeholder="Buscar por relatório ou solicitação"
       label="Buscar por relatório ou solicitação"
@@ -84,6 +92,7 @@
     />
 
     <app-report-table
+      data-tour="laudos-tabela"
       class="mt-4"
       caption="Relatórios deste orçamento, com solicitação, amostra, laboratório, situação e data."
       paginationLabel="Paginação dos relatórios do orçamento"

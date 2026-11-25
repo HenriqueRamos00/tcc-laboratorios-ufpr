@@ -5,6 +5,7 @@
     <uses-permission android:name="android.permission.INTERNET" />
 
     <application
+        android:name=".PortalApplication"
         android:allowBackup="true"
         android:dataExtractionRules="@xml/data_extraction_rules"
         android:fullBackupContent="@xml/backup_rules"
@@ -12,11 +13,14 @@
         android:label="@string/app_name"
         android:roundIcon="@mipmap/ic_launcher_round"
         android:supportsRtl="true"
-        android:usesCleartextTraffic="true"
+        android:usesCleartextTraffic="false"
         android:theme="@style/Theme.Labmobile">
         <activity android:name=".controller.QuotesActivity" android:exported="false" />
         <activity android:name=".controller.ResultsActivity" android:exported="false" />
+        <activity android:name=".controller.QuoteReportsActivity" android:exported="false" />
         <activity android:name=".controller.EquipmentActivity" android:exported="false" android:windowSoftInputMode="adjustResize" />
+        <activity android:name=".controller.EquipmentDetailsActivity" android:exported="false" />
+        <activity android:name=".controller.HealthIndicatorsActivity" android:exported="false" />
         <activity android:name=".controller.QuoteDetailsActivity" android:exported="false" />
         <activity
             android:name=".controller.LoginActivity"

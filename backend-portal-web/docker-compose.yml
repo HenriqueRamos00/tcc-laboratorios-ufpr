@@ -1,10 +1,31 @@
 services:
+  portal-sqlserver:
+    cap_drop:
+      - NET_RAW
+    image: mcr.microsoft.com/mssql/server:2022-latest
+    environment:
+      ACCEPT_EULA: "Y"
+      MSSQL_PID: Developer
+      MSSQL_SA_PASSWORD: ${PORTAL_SQLSERVER_SA_PASSWORD:?Configure PORTAL_SQLSERVER_SA_PASSWORD no .env}
+    ports:
+      - "127.0.0.1:${PORTAL_SQLSERVER_PORT:-1434}:1433"
+    volumes:
+      - portal-sqlserver-data:/var/opt/mssql
+    healthcheck:
+      test:
+        - CMD-SHELL
+        - >-
+          SQLCMDPASSWORD="$$MSSQL_SA_PASSWORD" /opt/mssql-tools18/bin/sqlcmd -S localhost -U sa -C -b
+          -Q "SELECT 1" -o /dev/null
+      interval: 5s
+      timeout: 5s
+      retries: 30
+      start_period: 20s
+    restart: unless-stopped
+
   portal-api:
     cap_drop:
       - NET_RAW
-    networks:
-      - default
-      - lactec-auth
     build:
       context: .
       dockerfile: Dockerfile
@@ -15,15 +36,21 @@ services:
       ASPNETCORE_URLS: ${ASPNETCORE_URLS:-http://+:8080}
       Portal__DataSource: ${Portal__DataSource}
       BackendLab__BaseUrl: ${BackendLab__BaseUrl-}
+      PortalStore__Source: sql-server
+      PortalStore__Server: portal-sqlserver
+      PortalStore__Database: portal
+      PortalStore__User: sa
+      PortalStore__Password: ${PORTAL_SQLSERVER_SA_PASSWORD:?Configure PORTAL_SQLSERVER_SA_PASSWORD no .env}
     extra_hosts:
       - "host.docker.internal:host-gateway"
+    depends_on:
+      portal-sqlserver:
+        condition: service_healthy
     ports:
       - "${PORT:-5125}:8080"
     # Volta sozinho quando o daemon do Docker reinicia junto com o WSL, em vez
     # de exigir um novo `docker compose up`. Parar à mão continua parando.
     restart: unless-stopped
 
-networks:
-  lactec-auth:
-    name: lactec-auth
-    external: true
+volumes:
+  portal-sqlserver-data:

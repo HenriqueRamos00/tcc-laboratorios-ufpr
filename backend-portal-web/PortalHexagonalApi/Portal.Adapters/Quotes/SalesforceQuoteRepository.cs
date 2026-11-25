@@ -82,9 +82,18 @@ public sealed class SalesforceQuoteRepository : IQuoteRepository
         return new Page<Quote>([.. records.Take(page.PageSize).Select(MapQuote)], page.Page, page.PageSize, total);
     }
 
+    /// <summary>
+    /// O identificador vem da rota, e por isso so segue para o Salesforce quando tem a forma
+    /// de um Id do Salesforce (15 ou 18 letras e digitos). Qualquer outro texto e orcamento
+    /// inexistente, sem consulta: a montagem do SOQL nao depende de escapar o que o cliente
+    /// escreveu. O filtro de empresa acompanha o Id na mesma consulta, entao o orcamento de
+    /// outra empresa e o que nao existe respondem igual.
+    /// </summary>
     public async Task<Quote?> GetQuoteByIdAsync(string id, CancellationToken cancellationToken)
     {
         cancellationToken.ThrowIfCancellationRequested();
+        if (id is null || !Regex.IsMatch(id, @"\A[A-Za-z0-9]{15}(?:[A-Za-z0-9]{3})?\z", RegexOptions.CultureInvariant))
+            return null;
         string? companyFilter = BuildCompanyFilter();
         if (companyFilter is null) return null;
 

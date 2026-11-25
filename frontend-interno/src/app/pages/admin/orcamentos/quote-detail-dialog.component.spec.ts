@@ -1,6 +1,6 @@
 import { DATE_PIPE_DEFAULT_OPTIONS, registerLocaleData } from '@angular/common';
 import pt from '@angular/common/locales/pt';
-import { HttpErrorResponse } from '@angular/common/http';
+import { HttpErrorResponse, HttpHeaders, HttpResponse } from '@angular/common/http';
 import { fakeAsync, TestBed, tick } from '@angular/core/testing';
 import { MAT_DIALOG_DATA } from '@angular/material/dialog';
 import { of, Subject, throwError } from 'rxjs';
@@ -35,7 +35,10 @@ describe('Detalhes do orçamento', () => {
   };
 
   beforeEach(() => {
-    service = jasmine.createSpyObj<OrcamentosService>('OrcamentosService', ['list', 'get', 'downloadDocument']);
+    service = jasmine.createSpyObj<OrcamentosService>(
+      'OrcamentosService',
+      ['list', 'get', 'downloadDocument', 'downloadPurchaseOrder'],
+    );
     TestBed.configureTestingModule({
       imports: [QuoteDetailDialogComponent],
       providers: [
@@ -89,6 +92,132 @@ describe('Detalhes do orçamento', () => {
     expect(fixture.nativeElement.textContent).toContain('Escopo');
     expect(fixture.nativeElement.textContent).toContain('Itens não informados para este orçamento.');
     expect(fixture.nativeElement.textContent).toContain('Não informado');
+    fixture.destroy();
+  }));
+
+  it('exibe a justificativa da recusa no detalhe administrativo', fakeAsync(() => {
+    service.get.and.returnValue(of({
+      ...detalhe,
+      status: 'Refused',
+      stage: 'Fechado recusado Lactec',
+      clientDecision: {
+        acceptance: null,
+        rejection: {
+          refusedAt: '2026-11-21T09:15:00Z',
+          justification: 'Prazo de entrega incompatível com a necessidade da empresa.',
+        },
+      },
+    }));
+    const fixture = TestBed.createComponent(QuoteDetailDialogComponent);
+    fixture.detectChanges();
+    tick();
+    fixture.detectChanges();
+
+    expect(fixture.nativeElement.textContent).toContain('Motivo da recusa');
+    expect(fixture.nativeElement.textContent)
+      .toContain('Prazo de entrega incompatível com a necessidade da empresa.');
+    fixture.destroy();
+  }));
+
+  it('exibe os campos do termo de aceite preenchido pelo cliente', fakeAsync(() => {
+    service.get.and.returnValue(of({
+      ...detalhe,
+      status: 'InProgress',
+      clientDecision: {
+        acceptance: {
+          method: 'TERMO_DE_ACEITE',
+          acceptedAt: '2026-11-20T14:30:00Z',
+          hasPurchaseOrder: false,
+          terms: {
+            billing: {
+              company: 'Copel Distribuição',
+              cnpj: '00000001000136',
+              stateRegistration: null,
+              street: 'Rua de Cobrança, 123',
+              city: 'Curitiba',
+              state: 'PR',
+              district: null,
+              postalCode: '80000-000',
+              contact: null,
+              phone: null,
+              fax: null,
+              invoiceEmails: 'financeiro@example.test',
+            },
+            approval: {
+              requesterName: 'Ana Solicitante',
+              responsibleName: 'Carlos Responsável',
+              jobTitle: 'Gerente',
+              department: null,
+              date: '2026-11-19',
+              allowsResultsByEmail: true,
+              resultsEmail: 'resultados@example.test',
+            },
+          },
+        },
+        rejection: null,
+      },
+    }));
+    const fixture = TestBed.createComponent(QuoteDetailDialogComponent);
+    fixture.detectChanges();
+    tick();
+    fixture.detectChanges();
+
+    expect(fixture.nativeElement.textContent).toContain('Aceite do cliente');
+    expect(fixture.nativeElement.textContent).toContain('Termo de aceite');
+    expect(fixture.nativeElement.textContent).toContain('Ver dados do termo preenchido');
+    expect(fixture.nativeElement.textContent).toContain('Rua de Cobrança, 123');
+    expect(fixture.nativeElement.textContent).toContain('Carlos Responsável');
+    expect(fixture.nativeElement.textContent).toContain('resultados@example.test');
+    fixture.destroy();
+  }));
+
+  it('abre o PDF da ordem de compra em outra aba', fakeAsync(() => {
+    service.get.and.returnValue(of({
+      ...detalhe,
+      status: 'InProgress',
+      clientDecision: {
+        acceptance: {
+          method: 'ORDEM_DE_COMPRA',
+          acceptedAt: '2026-11-22T21:52:00Z',
+          terms: null,
+          hasPurchaseOrder: true,
+        },
+        rejection: null,
+      },
+    }));
+    service.downloadPurchaseOrder.and.returnValue(of(new HttpResponse({
+      body: new Blob(['%PDF-1.7 ordem de compra'], { type: 'application/pdf' }),
+      headers: new HttpHeaders({
+        'Content-Type': 'application/pdf',
+        'Content-Disposition': 'inline; filename="ordem.pdf"',
+      }),
+    })));
+    const janela = {
+      opener: null,
+      close: jasmine.createSpy('close'),
+      location: { href: '' },
+    } as unknown as Window;
+    spyOn(window, 'open').and.returnValue(janela);
+    spyOn(URL, 'createObjectURL').and.returnValue('blob:ordem-de-compra');
+    const revogarUrl = spyOn(URL, 'revokeObjectURL');
+
+    const fixture = TestBed.createComponent(QuoteDetailDialogComponent);
+    fixture.detectChanges();
+    tick();
+    fixture.detectChanges();
+
+    expect(fixture.nativeElement.textContent).toContain('O cliente enviou uma ordem de compra.');
+    const botao = Array.from<HTMLButtonElement>(fixture.nativeElement.querySelectorAll('button'))
+      .find((elemento) => elemento.textContent?.includes('Abrir ordem de compra'));
+    expect(botao).toBeDefined();
+    botao?.click();
+    fixture.detectChanges();
+
+    expect(service.downloadPurchaseOrder).toHaveBeenCalledOnceWith('quote-1');
+    expect(janela.location.href).toBe('blob:ordem-de-compra');
+    expect(janela.close).not.toHaveBeenCalled();
+    tick(60_000);
+    expect(revogarUrl).toHaveBeenCalledOnceWith('blob:ordem-de-compra');
     fixture.destroy();
   }));
 

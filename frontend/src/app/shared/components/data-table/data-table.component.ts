@@ -1,3 +1,4 @@
+import { BreakpointObserver } from '@angular/cdk/layout';
 import { NgTemplateOutlet } from '@angular/common';
 import {
   afterNextRender,
@@ -8,6 +9,7 @@ import {
   contentChildren,
   effect,
   ElementRef,
+  inject,
   input,
   model,
   signal,
@@ -15,7 +17,9 @@ import {
   untracked,
   viewChild,
 } from '@angular/core';
+import { toSignal } from '@angular/core/rxjs-interop';
 import { MatIconModule } from '@angular/material/icon';
+import { map } from 'rxjs';
 
 import { DataUnavailableComponent } from '@shared/components/data-unavailable/data-unavailable.component';
 import { SkeletonPlaceholderDirective } from '@shared/components/skeleton/skeleton-placeholder.directive';
@@ -42,6 +46,8 @@ import {
 } from './data-table.model';
 
 const AUTOMATIC = 'auto';
+
+const COMPACT_QUERY = '(max-width: 767.98px)';
 
 @Component({
   selector: 'app-data-table',
@@ -81,15 +87,26 @@ export class DataTableComponent<T> {
 
   private readonly cells = contentChildren<DataTableCellDirective<T>>(DataTableCellDirective);
   private readonly root = viewChild.required<ElementRef<HTMLElement>>('root');
-  private readonly head = viewChild.required<ElementRef<HTMLElement>>('head');
-  private readonly footer = viewChild.required<ElementRef<HTMLElement>>('footer');
+  private readonly head = viewChild<ElementRef<HTMLElement>>('head');
+  private readonly footer = viewChild<ElementRef<HTMLElement>>('footer');
 
-  private readonly fittingRows = viewportRows({
+  private readonly breakpoints = inject(BreakpointObserver);
+
+  protected readonly compact = toSignal(
+    this.breakpoints.observe(COMPACT_QUERY).pipe(map((state) => state.matches)),
+    { initialValue: this.breakpoints.isMatched(COMPACT_QUERY) },
+  );
+
+  private readonly measuredRows = viewportRows({
     host: () => this.root().nativeElement,
     reservedHeight: () => this.reservedHeight(),
     rowHeight: () => this.renderedRowHeight(),
     minimum: () => this.minimumRows(),
   });
+
+  private readonly fittingRows = computed(() =>
+    this.compact() ? this.pageSizeOptions()[0] : this.measuredRows(),
+  );
 
   private readonly measured = signal(false);
   private readonly chosenPageSize = computed(() => this.query().chosenPageSize ?? null);
@@ -109,7 +126,7 @@ export class DataTableComponent<T> {
 
   protected readonly skeletonRows = computed(() =>
     this.loading() && this.rows().length === 0
-      ? skeletonIndexes(Math.min(this.pageSize(), this.fittingRows()))
+      ? skeletonIndexes(Math.min(this.pageSize(), this.fittingRows(), this.compact() ? 3 : Infinity))
       : [],
   );
 
@@ -161,8 +178,8 @@ export class DataTableComponent<T> {
     const root = this.root().nativeElement;
     const borders = root.offsetHeight - root.clientHeight;
     return Math.ceil(
-      this.head().nativeElement.getBoundingClientRect().height +
-        this.footer().nativeElement.getBoundingClientRect().height +
+      (this.head()?.nativeElement.getBoundingClientRect().height ?? 0) +
+        (this.footer()?.nativeElement.getBoundingClientRect().height ?? 0) +
         borders,
     );
   }

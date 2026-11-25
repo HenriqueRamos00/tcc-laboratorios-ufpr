@@ -1,9 +1,13 @@
-<div class="sample-shipping-notice">
-  <mat-icon class="sample-shipping-notice__icon" aria-hidden="true">inventory_2</mat-icon>
+<!-- A cor do ícone vem da caixa por herança, que é o único caminho que o Material
+     deixa para utilitária; o texto retoma a própria cor no bloco. -->
+<div
+  class="flex gap-2.5 rounded-[10px] border px-3.5 py-3 border-lactec-warning-line bg-lactec-warning-surface text-lactec-warning-ink"
+>
+  <mat-icon class="icone-20 flex-none" aria-hidden="true">inventory_2</mat-icon>
 
-  <div>
-    <h3 class="sample-shipping-notice__title">Identifique a caixa antes de despachar a amostra</h3>
-    <p class="sample-shipping-notice__text">
+  <div class="text-lactec-ink-soft">
+    <h3 class="mb-1 font-semibold text-lactec-ink">Identifique a caixa antes de despachar a amostra</h3>
+    <p class="text-[13px] leading-normal">
       Cole do lado de fora da embalagem uma etiqueta com o código desta proposta,
       {{ proposalCode() }}, o nome da sua empresa e o contato responsável pelo envio. Amostra
       identificada é reconhecida assim que chega: o protocolo sai mais rápido, a análise começa
@@ -11,8 +15,8 @@
     </p>
 
     @if (showsAddress()) {
-      <h4 class="sample-shipping-notice__address-title">Endereço para envio das amostras</h4>
-      <p class="sample-shipping-notice__address">
+      <h4 class="mt-2.5 mb-0.5 text-[13px] font-semibold text-lactec-ink">Endereço para envio das amostras</h4>
+      <p class="text-[13px] leading-normal">
         @for (linha of address; track $index) {
           {{ linha }}@if (!$last) {<br />}
         }

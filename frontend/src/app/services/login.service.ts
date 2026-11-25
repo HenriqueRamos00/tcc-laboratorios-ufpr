@@ -28,7 +28,7 @@ interface PortalClaims {
   exp?: number;
 }
 
-function sessionStorageForToken(): Storage | null {
+export function sessionStorageForToken(): Storage | null {
   if (typeof localStorage === 'undefined') return null;
   return localStorage.getItem(LS_TOKEN) ? localStorage : sessionStorage;
 }

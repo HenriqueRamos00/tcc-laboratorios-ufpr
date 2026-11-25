@@ -4,10 +4,10 @@
 @let passwordInvalid = passwordCtrl.touched && passwordCtrl.invalid;
 
 <div class="min-h-svh grid grid-cols-1 grid-rows-[auto_1fr] md:grid-rows-none md:grid-cols-2 bg-lactec-paper">
-  <section class="min-w-0 bg-lactec-nav bg-login-glow text-white grid place-items-center px-6 py-10 md:p-10">
+  <section class="min-w-0 brilho-do-painel bg-lactec-primary-deep text-white grid place-items-center px-6 py-10 md:p-10">
     <div class="text-center max-w-sm flex flex-col items-center gap-4 md:gap-6">
       <app-logo [size]="36" />
-      <h2 class="display text-2xl md:text-3xl font-semibold tracking-tight leading-tight m-0">
+      <h2 class="font-display tracking-display text-2xl md:text-3xl font-semibold leading-tight m-0">
         Portal do Cliente Lactec
       </h2>
       <p class="hidden md:block text-sm leading-relaxed text-white/70 max-w-xs m-0">
@@ -23,16 +23,23 @@
       novalidate
       class="self-center justify-self-center min-w-0 w-full max-w-sm flex flex-col gap-5"
     >
-      <h3 class="display text-2xl md:text-3xl font-semibold text-lactec-nav tracking-tight m-0 mb-1">
+      <h3 class="font-display tracking-display text-2xl md:text-3xl font-semibold text-lactec-primary-deep m-0 mb-1">
         Acessar
       </h3>
 
       <div class="flex flex-col gap-2">
         <label for="login-email" class="text-xs font-medium text-lactec-ink-soft tracking-wide">
-          E-mail <span class="text-lactec-danger">*</span>
+          E-mail <span class="text-lactec-danger-ink">*</span>
         </label>
-        <div class="input-field" [class.input-field--error]="emailInvalid">
-          <mat-icon class="input-field__icon" aria-hidden="true">mail_outline</mat-icon>
+        <div
+          class="flex h-11 items-center gap-2.5 rounded-[8px] border bg-lactec-paper px-3 transition-[border-color,box-shadow] duration-120 ease-[ease]"
+          [ngClass]="emailInvalid
+            ? 'border-lactec-danger text-lactec-danger-ink focus-within:text-lactec-primary-strong
+              focus-within:shadow-lactec-focus-danger'
+            : 'border-lactec-line-control text-lactec-muted not-focus-within:hover:border-lactec-muted focus-within:border-lactec-primary
+              focus-within:text-lactec-primary-strong focus-within:shadow-lactec-focus'"
+        >
+          <mat-icon class="icone-20 flex-none" aria-hidden="true">mail_outline</mat-icon>
           <input
             id="login-email"
             type="email"
@@ -40,13 +47,13 @@
             autocomplete="email"
             inputmode="email"
             placeholder="seu@email.com"
-            class="input-field__input"
+            class="h-full min-w-0 flex-auto pl-1.5 text-lactec-ink caret-lactec-primary outline-none placeholder:text-lactec-muted/55"
             [attr.aria-invalid]="emailInvalid"
             aria-describedby="login-email-error"
           />
         </div>
         @if (emailInvalid) {
-          <p id="login-email-error" class="text-xs text-lactec-danger m-0" role="alert">
+          <p id="login-email-error" class="text-xs text-lactec-danger-ink m-0" role="alert">
             {{ emailCtrl.hasError('required') ? 'Campo obrigatório.' : 'Informe um e-mail válido.' }}
           </p>
         }
@@ -54,31 +61,41 @@
 
       <div class="flex flex-col gap-2">
         <label for="login-password" class="text-xs font-medium text-lactec-ink-soft tracking-wide">
-          Senha <span class="text-lactec-danger">*</span>
+          Senha <span class="text-lactec-danger-ink">*</span>
         </label>
-        <div class="input-field" [class.input-field--error]="passwordInvalid">
-          <mat-icon class="input-field__icon" aria-hidden="true">lock_outline</mat-icon>
+        <div
+          class="flex h-11 items-center gap-2.5 rounded-[8px] border bg-lactec-paper px-3 transition-[border-color,box-shadow] duration-120 ease-[ease]"
+          [ngClass]="passwordInvalid
+            ? 'border-lactec-danger text-lactec-danger-ink focus-within:text-lactec-primary-strong
+              focus-within:shadow-lactec-focus-danger'
+            : 'border-lactec-line-control text-lactec-muted not-focus-within:hover:border-lactec-muted focus-within:border-lactec-primary
+              focus-within:text-lactec-primary-strong focus-within:shadow-lactec-focus'"
+        >
+          <mat-icon class="icone-20 flex-none" aria-hidden="true">lock_outline</mat-icon>
           <input
             id="login-password"
             [type]="showPassword() ? 'text' : 'password'"
             formControlName="password"
             autocomplete="current-password"
             placeholder="Digite sua senha"
-            class="input-field__input"
+            class="h-full min-w-0 flex-auto pl-1.5 text-lactec-ink caret-lactec-primary outline-none placeholder:text-lactec-muted/55"
             [attr.aria-invalid]="passwordInvalid"
             aria-describedby="login-password-error"
           />
           <button
             type="button"
             (click)="togglePassword()"
-            class="input-field__suffix"
+            class="-mr-1.5 inline-flex size-8 flex-none cursor-pointer items-center justify-center rounded-[6px]
+                   text-lactec-muted transition-[background-color,color] duration-120 ease-[ease]
+                   hover:bg-lactec-line-soft hover:text-lactec-ink-soft
+                   focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-lactec-primary"
             [attr.aria-label]="showPassword() ? 'Ocultar senha' : 'Mostrar senha'"
           >
             <mat-icon>{{ showPassword() ? 'visibility' : 'visibility_off' }}</mat-icon>
           </button>
         </div>
         @if (passwordInvalid) {
-          <p id="login-password-error" class="text-xs text-lactec-danger m-0" role="alert">
+          <p id="login-password-error" class="text-xs text-lactec-danger-ink m-0" role="alert">
             {{ passwordCtrl.hasError('required') ? 'Campo obrigatório.' : 'A senha deve ter no máximo 72 caracteres.' }}
           </p>
         }
@@ -88,7 +105,7 @@
         <mat-checkbox formControlName="keepConnected">
           Me mantenha conectado
         </mat-checkbox>
-        <a routerLink="/recuperar-senha" class="text-lactec-primary-dark font-medium text-sm hover:underline">
+        <a routerLink="/recuperar-senha" class="text-lactec-primary-strong font-medium text-sm hover:underline">
           Esqueceu a senha?
         </a>
       </div>
@@ -107,7 +124,7 @@
 
       @if (errorMessage()) {
         <div
-          class="mt-2 flex gap-3 items-start px-4 py-4 rounded-xl bg-lactec-danger-bg text-lactec-danger-ink border border-lactec-danger-border text-sm leading-snug"
+          class="mt-2 flex gap-3 items-start px-4 py-4 rounded-xl bg-lactec-danger-surface text-lactec-danger-ink border border-lactec-danger-line text-sm leading-snug"
           role="alert"
         >
           <mat-icon class="text-lactec-danger-ink shrink-0">error_outline</mat-icon>

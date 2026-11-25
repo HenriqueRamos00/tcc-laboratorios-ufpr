@@ -262,6 +262,17 @@ export const CLIENTES = [
   { Sigla: 'DISTENERGIA', Nome: 'DISTRIBUIDORA DE ENERGIA', RazaoSocial: 'DISTRIBUIDORA DE ENERGIA LTDA.', Cnpj_Cpf: '11.222.333/0001-81' },
 ];
 
+export const SOLICITACOES_SEM_RELATORIO = [
+  { numeroSolicitacao: 'SOL-2026-00082', orcamentoCRM: '2026_45482', cliente: 'EMPRESA DE ENERGIA' },
+  { numeroSolicitacao: 'SOL-2026-00090', orcamentoCRM: '2026_45490', cliente: 'DISTRIBUIDORA DE ENERGIA' },
+  { numeroSolicitacao: 'SOL-2026-00091', orcamentoCRM: '2026_45491', cliente: 'EMPRESA DE ENERGIA' },
+  { numeroSolicitacao: 'SOL-2026-00092', orcamentoCRM: '2026_45492', cliente: 'DISTRIBUIDORA DE ENERGIA' },
+  { numeroSolicitacao: 'SOL-2026-00094', orcamentoCRM: '2026_45494', cliente: 'DISTRIBUIDORA DE ENERGIA' },
+  { numeroSolicitacao: 'SOL-2026-09001', orcamentoCRM: '2026_49001', cliente: 'EMPRESA DE ENERGIA' },
+  { numeroSolicitacao: 'SOL-2026-09003', orcamentoCRM: '2026_49003', cliente: 'EMPRESA DE ENERGIA' },
+  { numeroSolicitacao: 'SOL-2026-09004', orcamentoCRM: '2026_49004', cliente: 'EMPRESA DE ENERGIA' },
+];
+
 const TITULO_CROMATOGRAFIA = 'Relatório de ensaio: análise cromatográfica de gases dissolvidos em óleo isolante';
 const TITULO_FISICO_QUIMICO = 'Relatório de ensaio: análises físico-químicas de óleo isolante';
 const OBJETIVO_CROMATOGRAFIA = 'Determinar a concentração de gases dissolvidos no óleo isolante do equipamento.';

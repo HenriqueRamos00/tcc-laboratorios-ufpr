@@ -40,7 +40,7 @@ public sealed class LabResultsConsultation : IForConsultingLabResults
     /// banco abrir uma consulta por linha da tela.
     /// </summary>
     public async Task<Page<EquipmentWithNameplate>> ListEquipmentAsync(
-        VisibilityScope scope,
+        CompanyScope scope,
         EquipmentSearch? search,
         PageRequest page,
         CancellationToken cancellationToken)
@@ -61,7 +61,7 @@ public sealed class LabResultsConsultation : IForConsultingLabResults
     }
 
     public async Task<Page<EquipmentReportEntry>?> ListReportsAsync(
-        VisibilityScope scope,
+        CompanyScope scope,
         string equipmentKey,
         PageRequest page,
         CancellationToken cancellationToken)
@@ -82,6 +82,7 @@ public sealed class LabResultsConsultation : IForConsultingLabResults
             return analyses.TotalCount == 0 ? null : analyses.WithItems<EquipmentReportEntry>([]);
 
         IReadOnlySet<string> signed = await _reportIssues.GetIdentificationsWithSignedDocumentAsync(
+            scope,
             [.. equipment.Reports.Select(report => report.Identification).Distinct(StringComparer.Ordinal)],
             cancellationToken);
 
@@ -100,7 +101,7 @@ public sealed class LabResultsConsultation : IForConsultingLabResults
     /// pergunta sobre a placa nem chega a ser feita.
     /// </summary>
     public async Task<EquipmentWithNameplate?> GetEquipmentAsync(
-        VisibilityScope scope,
+        CompanyScope scope,
         string equipmentKey,
         CancellationToken cancellationToken)
     {
@@ -155,11 +156,11 @@ public sealed class LabResultsConsultation : IForConsultingLabResults
             ?? analyses.FirstOrDefault(analysis => analysis.HasDissolvedGas))?.Identification;
 
         ReportIssue? physicalChemicalReport = await CurrentIssueOfAsync(
-            physicalChemicalIdentification, cancellationToken);
+            query.Scope, physicalChemicalIdentification, cancellationToken);
         ReportIssue? gasReport = string.Equals(
                 gasIdentification, physicalChemicalIdentification, StringComparison.Ordinal)
             ? physicalChemicalReport
-            : await CurrentIssueOfAsync(gasIdentification, cancellationToken);
+            : await CurrentIssueOfAsync(query.Scope, gasIdentification, cancellationToken);
 
         return new SampleHealthIndicators(
             analyses[0].SerialNumber,
@@ -181,12 +182,13 @@ public sealed class LabResultsConsultation : IForConsultingLabResults
     }
 
     private async Task<ReportIssue?> CurrentIssueOfAsync(
+        CompanyScope scope,
         string? identification,
         CancellationToken cancellationToken)
     {
         return identification is null
             ? null
-            : await _reportIssues.GetCurrentIssueOfAsync(identification, cancellationToken);
+            : await _reportIssues.GetCurrentIssueOfAsync(scope, identification, cancellationToken);
     }
 
     /// <summary>

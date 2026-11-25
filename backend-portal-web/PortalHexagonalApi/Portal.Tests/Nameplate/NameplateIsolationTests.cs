@@ -1,3 +1,4 @@
+using Portal.Tests.AutoLab;
 using Portal.Application.LabResults;
 using Portal.Domain.LabResults;
 using Portal.Domain.Nameplate;
@@ -91,7 +92,7 @@ public sealed class NameplateIsolationTests
             NameplateBuilder.Valid(serialNumber: "5233", tag: "TR-00004"));
 
         EquipmentWithNameplate? found = await new LabResultsConsultation(labTests, registry, new NullReportIssueRepository())
-            .GetEquipmentAsync(VisibilityScope.OfCompany(Tenant), "5233", CancellationToken.None);
+            .GetEquipmentAsync(TestCompanies.ScopeOf(Tenant), "5233", CancellationToken.None);
 
         Assert.Null(found);
         Assert.Equal(0, registry.TimesOneSerialNumberWasAsked);
@@ -111,7 +112,7 @@ public sealed class NameplateIsolationTests
             NameplateBuilder.Valid(serialNumber: "571289"));
 
         EquipmentWithNameplate? found = await new LabResultsConsultation(labTests, registry, new NullReportIssueRepository())
-            .GetEquipmentAsync(VisibilityScope.OfCompany(Tenant), "571289", CancellationToken.None);
+            .GetEquipmentAsync(TestCompanies.ScopeOf(Tenant), "571289", CancellationToken.None);
 
         Assert.NotNull(found);
         Assert.NotNull(found.Nameplate);
@@ -170,7 +171,7 @@ public sealed class NameplateIsolationTests
             NameplateBuilder.Valid(serialNumber: "01439/2026-004"));
 
         EquipmentWithNameplate? detail = await new LabResultsConsultation(labTests, registry, new NullReportIssueRepository())
-            .GetEquipmentAsync(VisibilityScope.OfCompany(Tenant), "01439/2026-004", CancellationToken.None);
+            .GetEquipmentAsync(TestCompanies.ScopeOf(Tenant), "01439/2026-004", CancellationToken.None);
 
         Assert.NotNull(detail);
         Assert.Null(detail.Nameplate);

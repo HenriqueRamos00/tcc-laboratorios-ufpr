@@ -1753,5 +1753,277 @@
       "RazaoSocial": "DISTRIBUIDORA DE ENERGIA LTDA.",
       "Cnpj_Cpf": "11.222.333/0001-81"
     }
+  ],
+  "dbo.Cliente": [
+    {
+      "Oid": "3F41F29E-56C9-4855-2434-425F7E1EE99F",
+      "cli_cadastronacional_a": "30.960.572/0001-83",
+      "GCRecord": null
+    },
+    {
+      "Oid": "D58DB8A8-E715-2B77-686B-B21DCF29BEBD",
+      "cli_cadastronacional_a": "11.222.333/0001-81",
+      "GCRecord": null
+    }
+  ],
+  "dbo.SolicitacaoServico": [
+    {
+      "Oid": "E0A4C264-8C6B-702F-2613-96EC774E6892",
+      "NumeroSolicitacao": "SOL-2026-00417",
+      "OrcamentoCRM": "2026_45499",
+      "Cliente": "3F41F29E-56C9-4855-2434-425F7E1EE99F",
+      "GCRecord": null
+    },
+    {
+      "Oid": "C8671CD3-B799-1195-39C0-F8383C5AB26C",
+      "NumeroSolicitacao": "SOL-2026-00718",
+      "OrcamentoCRM": "2026_45496",
+      "Cliente": "D58DB8A8-E715-2B77-686B-B21DCF29BEBD",
+      "GCRecord": null
+    },
+    {
+      "Oid": "1A6A0AC0-DBD5-AB0D-61F7-5CBF34CC7255",
+      "NumeroSolicitacao": "SOL-2026-00351",
+      "OrcamentoCRM": "2026_45499",
+      "Cliente": "3F41F29E-56C9-4855-2434-425F7E1EE99F",
+      "GCRecord": null
+    },
+    {
+      "Oid": "00F4453C-5E81-FFD8-4DA8-8A44B789A3F3",
+      "NumeroSolicitacao": "SOL-2026-00439",
+      "OrcamentoCRM": "2026_45493",
+      "Cliente": "3F41F29E-56C9-4855-2434-425F7E1EE99F",
+      "GCRecord": null
+    },
+    {
+      "Oid": "8B592DCC-2995-CFCE-3804-05061ACE6108",
+      "NumeroSolicitacao": "SOL-2026-00482",
+      "OrcamentoCRM": "2026_45493",
+      "Cliente": "3F41F29E-56C9-4855-2434-425F7E1EE99F",
+      "GCRecord": null
+    },
+    {
+      "Oid": "164D78A8-D544-0AE5-829A-E9617429E3B9",
+      "NumeroSolicitacao": "SOL-2026-00563",
+      "OrcamentoCRM": "2026_45500",
+      "Cliente": "D58DB8A8-E715-2B77-686B-B21DCF29BEBD",
+      "GCRecord": null
+    },
+    {
+      "Oid": "8F4E101A-174C-68A4-6B9D-CC4326808D6A",
+      "NumeroSolicitacao": "SOL-2025-02114",
+      "OrcamentoCRM": "2026_45495",
+      "Cliente": "3F41F29E-56C9-4855-2434-425F7E1EE99F",
+      "GCRecord": null
+    },
+    {
+      "Oid": "1591011A-DD68-5960-9A4E-7570FB85E282",
+      "NumeroSolicitacao": "SOL-2025-02630",
+      "OrcamentoCRM": "2026_45495",
+      "Cliente": "3F41F29E-56C9-4855-2434-425F7E1EE99F",
+      "GCRecord": null
+    },
+    {
+      "Oid": "2DF5B420-2266-5198-EDD1-208982B692AA",
+      "NumeroSolicitacao": "SOL-2026-00712",
+      "OrcamentoCRM": "2026_45499",
+      "Cliente": "3F41F29E-56C9-4855-2434-425F7E1EE99F",
+      "GCRecord": null
+    },
+    {
+      "Oid": "EB05AA33-7800-7AFD-4078-101AFB2DB90D",
+      "NumeroSolicitacao": "SOL-2026-00188",
+      "OrcamentoCRM": "2026_45495",
+      "Cliente": "3F41F29E-56C9-4855-2434-425F7E1EE99F",
+      "GCRecord": null
+    },
+    {
+      "Oid": "325A6379-91F0-8ABD-256B-5868975374A1",
+      "NumeroSolicitacao": "SOL-2026-00894",
+      "OrcamentoCRM": "2026_45493",
+      "Cliente": "3F41F29E-56C9-4855-2434-425F7E1EE99F",
+      "GCRecord": null
+    },
+    {
+      "Oid": "7D13E3CE-8056-9A10-D6A4-AEE301311C9B",
+      "NumeroSolicitacao": "SOL-2026-00082",
+      "OrcamentoCRM": "2026_45482",
+      "Cliente": "3F41F29E-56C9-4855-2434-425F7E1EE99F",
+      "GCRecord": null
+    },
+    {
+      "Oid": "6D664D82-5AEB-F919-3A5C-CDB75FB2D316",
+      "NumeroSolicitacao": "SOL-2026-00090",
+      "OrcamentoCRM": "2026_45490",
+      "Cliente": "D58DB8A8-E715-2B77-686B-B21DCF29BEBD",
+      "GCRecord": null
+    },
+    {
+      "Oid": "182442D0-ED54-7E8D-2900-376E9A32B1FC",
+      "NumeroSolicitacao": "SOL-2026-00091",
+      "OrcamentoCRM": "2026_45491",
+      "Cliente": "3F41F29E-56C9-4855-2434-425F7E1EE99F",
+      "GCRecord": null
+    },
+    {
+      "Oid": "024B9047-6316-0A39-02EA-BA357E78297C",
+      "NumeroSolicitacao": "SOL-2026-00092",
+      "OrcamentoCRM": "2026_45492",
+      "Cliente": "D58DB8A8-E715-2B77-686B-B21DCF29BEBD",
+      "GCRecord": null
+    },
+    {
+      "Oid": "FF91202B-378D-8D03-2FE8-1328178CE6E7",
+      "NumeroSolicitacao": "SOL-2026-00094",
+      "OrcamentoCRM": "2026_45494",
+      "Cliente": "D58DB8A8-E715-2B77-686B-B21DCF29BEBD",
+      "GCRecord": null
+    },
+    {
+      "Oid": "F49ED085-419F-D2D7-797D-DDF9725A13E1",
+      "NumeroSolicitacao": "SOL-2026-09001",
+      "OrcamentoCRM": "2026_49001",
+      "Cliente": "3F41F29E-56C9-4855-2434-425F7E1EE99F",
+      "GCRecord": null
+    },
+    {
+      "Oid": "17EC0E10-CB8D-4AC7-5EEC-DF9A33A969A4",
+      "NumeroSolicitacao": "SOL-2026-09003",
+      "OrcamentoCRM": "2026_49003",
+      "Cliente": "3F41F29E-56C9-4855-2434-425F7E1EE99F",
+      "GCRecord": null
+    },
+    {
+      "Oid": "C2078351-A3D3-057E-E507-D692C77CDF6F",
+      "NumeroSolicitacao": "SOL-2026-09004",
+      "OrcamentoCRM": "2026_49004",
+      "Cliente": "3F41F29E-56C9-4855-2434-425F7E1EE99F",
+      "GCRecord": null
+    }
+  ],
+  "dbo.ProtocoloAmostra": [
+    {
+      "Oid": "FAF1AE44-4408-CF7A-4F0E-0FD1F32957C2",
+      "Identificacao": "01417/2026-001",
+      "GCRecord": null
+    },
+    {
+      "Oid": "14018710-76CD-495C-D310-4CFB34B6A686",
+      "Identificacao": "01718/2026-005",
+      "GCRecord": null
+    },
+    {
+      "Oid": "5CD18293-5DA4-BDFA-3EAD-FFE454C1E6AD",
+      "Identificacao": "01351/2026-004",
+      "GCRecord": null
+    },
+    {
+      "Oid": "99C44929-2ED7-83BC-CC5E-36081EA0F6DB",
+      "Identificacao": "01439/2026-004",
+      "GCRecord": null
+    },
+    {
+      "Oid": "7C263F8C-1B26-8AA4-DB1A-7616AD9421EC",
+      "Identificacao": "01482/2026-001",
+      "GCRecord": null
+    },
+    {
+      "Oid": "AFB54750-DF43-0D2C-368A-78FAB44C5A1A",
+      "Identificacao": "01563/2026-018",
+      "GCRecord": null
+    },
+    {
+      "Oid": "21EDD494-C889-FEB4-CF18-4252394470D3",
+      "Identificacao": "02114/2025-001",
+      "GCRecord": null
+    },
+    {
+      "Oid": "A1C21E92-E412-1C48-EB59-120546951DCA",
+      "Identificacao": "02630/2025-001",
+      "GCRecord": null
+    },
+    {
+      "Oid": "D29ABD11-645E-EB6C-F093-35E1D63AF995",
+      "Identificacao": "00712/2026-001",
+      "GCRecord": null
+    },
+    {
+      "Oid": "FD2C64B2-3304-F29A-B725-38BF585923F9",
+      "Identificacao": "00188/2026-004",
+      "GCRecord": null
+    },
+    {
+      "Oid": "EBB95866-2B02-1319-CA9A-2E81D54132F5",
+      "Identificacao": "00894/2026-004",
+      "GCRecord": null
+    }
+  ],
+  "dbo.AmostraObjeto": [
+    {
+      "Oid": "560B40B0-E168-926C-763C-E092A1E854E0",
+      "ProtocoloAmostra": "FAF1AE44-4408-CF7A-4F0E-0FD1F32957C2",
+      "SolicitacaoServico": "E0A4C264-8C6B-702F-2613-96EC774E6892",
+      "GCRecord": null
+    },
+    {
+      "Oid": "D7DC9A10-1AE6-0179-90C3-5B6F0BE56213",
+      "ProtocoloAmostra": "14018710-76CD-495C-D310-4CFB34B6A686",
+      "SolicitacaoServico": "C8671CD3-B799-1195-39C0-F8383C5AB26C",
+      "GCRecord": null
+    },
+    {
+      "Oid": "39979CB2-843D-CA74-1916-081211485AA5",
+      "ProtocoloAmostra": "5CD18293-5DA4-BDFA-3EAD-FFE454C1E6AD",
+      "SolicitacaoServico": "1A6A0AC0-DBD5-AB0D-61F7-5CBF34CC7255",
+      "GCRecord": null
+    },
+    {
+      "Oid": "32AF9D76-8B37-C1D5-0A41-AE8B45C4DF6D",
+      "ProtocoloAmostra": "99C44929-2ED7-83BC-CC5E-36081EA0F6DB",
+      "SolicitacaoServico": "00F4453C-5E81-FFD8-4DA8-8A44B789A3F3",
+      "GCRecord": null
+    },
+    {
+      "Oid": "1DFABD3E-0C1C-DA4D-5573-7208119FFF1B",
+      "ProtocoloAmostra": "7C263F8C-1B26-8AA4-DB1A-7616AD9421EC",
+      "SolicitacaoServico": "8B592DCC-2995-CFCE-3804-05061ACE6108",
+      "GCRecord": null
+    },
+    {
+      "Oid": "A86E5D98-F4C6-CC7F-F409-89C0B21790E4",
+      "ProtocoloAmostra": "AFB54750-DF43-0D2C-368A-78FAB44C5A1A",
+      "SolicitacaoServico": "164D78A8-D544-0AE5-829A-E9617429E3B9",
+      "GCRecord": null
+    },
+    {
+      "Oid": "91FCCDC5-D227-7BB7-6D16-8B712FEEFF05",
+      "ProtocoloAmostra": "21EDD494-C889-FEB4-CF18-4252394470D3",
+      "SolicitacaoServico": "8F4E101A-174C-68A4-6B9D-CC4326808D6A",
+      "GCRecord": null
+    },
+    {
+      "Oid": "6185E673-E2F5-F019-56E4-1C56449431D4",
+      "ProtocoloAmostra": "A1C21E92-E412-1C48-EB59-120546951DCA",
+      "SolicitacaoServico": "1591011A-DD68-5960-9A4E-7570FB85E282",
+      "GCRecord": null
+    },
+    {
+      "Oid": "61F9D243-C20F-38FA-8D8D-B4D7C1819374",
+      "ProtocoloAmostra": "D29ABD11-645E-EB6C-F093-35E1D63AF995",
+      "SolicitacaoServico": "2DF5B420-2266-5198-EDD1-208982B692AA",
+      "GCRecord": null
+    },
+    {
+      "Oid": "D704359F-C62E-52AA-837E-EA4C4039F57B",
+      "ProtocoloAmostra": "FD2C64B2-3304-F29A-B725-38BF585923F9",
+      "SolicitacaoServico": "EB05AA33-7800-7AFD-4078-101AFB2DB90D",
+      "GCRecord": null
+    },
+    {
+      "Oid": "17C36A74-2C4C-59EF-EEA6-7D06085D29D5",
+      "ProtocoloAmostra": "EBB95866-2B02-1319-CA9A-2E81D54132F5",
+      "SolicitacaoServico": "325A6379-91F0-8ABD-256B-5868975374A1",
+      "GCRecord": null
+    }
   ]
 }

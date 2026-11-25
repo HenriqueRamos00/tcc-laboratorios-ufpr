@@ -32,12 +32,12 @@ public sealed class AutoLabEquipmentKeyAgreementTests : IDisposable
         AutoLabLabTestRepository repository = Repository();
 
         Page<SampleAnalysis> listing = await repository.GetAnalysesAsync(
-            VisibilityScope.OfCompany(Tenant), null, PageRequest.First, CancellationToken.None);
+            TestCompanies.ScopeOf(Tenant), null, PageRequest.First, CancellationToken.None);
 
         string listedKey = Assert.Single(listing.Items).EquipmentKey;
 
         Page<SampleAnalysis> detail = await repository.GetAnalysesOfEquipmentAsync(
-            VisibilityScope.OfCompany(Tenant), listedKey, PageRequest.First, CancellationToken.None);
+            TestCompanies.ScopeOf(Tenant), listedKey, PageRequest.First, CancellationToken.None);
 
         Assert.Equal("571289", listedKey);
         Assert.Single(detail.Items);
@@ -54,12 +54,12 @@ public sealed class AutoLabEquipmentKeyAgreementTests : IDisposable
         AutoLabLabTestRepository repository = Repository();
 
         Page<SampleAnalysis> listing = await repository.GetAnalysesAsync(
-            VisibilityScope.OfCompany(Tenant), null, PageRequest.First, CancellationToken.None);
+            TestCompanies.ScopeOf(Tenant), null, PageRequest.First, CancellationToken.None);
 
         string listedKey = Assert.Single(listing.Items).EquipmentKey;
 
         SampleAnalysis? found = await repository.GetAnalysisByProtocolAsync(
-            VisibilityScope.OfCompany(Tenant), listedKey, CancellationToken.None);
+            TestCompanies.ScopeOf(Tenant), listedKey, CancellationToken.None);
 
         Assert.Equal("P-1", listedKey);
         Assert.NotNull(found);
@@ -86,6 +86,6 @@ public sealed class AutoLabEquipmentKeyAgreementTests : IDisposable
 
     private AutoLabLabTestRepository Repository()
     {
-        return new AutoLabLabTestRepository(_database.NewContext(), new AutoLabQueryLimits());
+        return _database.LabTests();
     }
 }

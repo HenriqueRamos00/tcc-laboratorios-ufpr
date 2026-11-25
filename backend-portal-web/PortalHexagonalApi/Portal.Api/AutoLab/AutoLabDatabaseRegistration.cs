@@ -2,6 +2,8 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
 
 using Portal.Adapters.AutoLab;
+using Portal.Adapters.CompanyRecords;
+using Portal.Application.CompanyRecords;
 
 namespace Portal.Api.AutoLab;
 
@@ -40,6 +42,7 @@ public static class AutoLabDatabaseRegistration
                     sqlServer =>
                     {
                         sqlServer.CommandTimeout(options.CommandTimeoutSeconds);
+                        sqlServer.UseCompatibilityLevel(AutoLabDbContext.SqlServerCompatibilityLevel);
 
                         if (options.MaxRetryCount > 0)
                             sqlServer.EnableRetryOnFailure(
@@ -49,6 +52,8 @@ public static class AutoLabDatabaseRegistration
                     })
                 .UseQueryTrackingBehavior(QueryTrackingBehavior.NoTracking);
         });
+
+        services.AddScoped<ICompanyRecordsSource, AutoLabCompanyRecordsSource>();
 
         return services;
     }

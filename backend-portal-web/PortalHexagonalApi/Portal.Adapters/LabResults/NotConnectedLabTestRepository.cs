@@ -10,18 +10,18 @@ namespace Portal.Adapters.LabResults;
 public sealed class NotConnectedLabTestRepository : ILabTestRepository
 {
     public Task<Page<SampleAnalysis>> GetAnalysesAsync(
-        VisibilityScope scope,
+        CompanyScope scope,
         EquipmentSearch? search,
         PageRequest equipmentPage,
         CancellationToken cancellationToken) =>
         throw Pending();
 
     public Task<Page<SampleAnalysis>> GetAnalysesOfEquipmentAsync(
-        VisibilityScope scope, string equipmentKey, PageRequest reportPage, CancellationToken cancellationToken) =>
+        CompanyScope scope, string equipmentKey, PageRequest reportPage, CancellationToken cancellationToken) =>
         throw Pending();
 
     public Task<SampleAnalysis?> GetAnalysisByProtocolAsync(
-        VisibilityScope scope, string protocoloLactec, CancellationToken cancellationToken) =>
+        CompanyScope scope, string protocoloLactec, CancellationToken cancellationToken) =>
         throw Pending();
 
     private static LabTestSourceUnavailableException Pending() =>

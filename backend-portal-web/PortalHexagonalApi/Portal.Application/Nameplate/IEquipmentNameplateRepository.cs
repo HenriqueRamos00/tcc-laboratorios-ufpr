@@ -19,8 +19,8 @@ namespace Portal.Application.Nameplate;
 /// E porta separada de <c>ILabTestRepository</c>, embora do outro lado haja hoje o mesmo SQL
 /// Server, e o motivo nao e a tabela: e a conversa. Cockburn recomenda comecar com uma porta
 /// por ator secundario, porque e isso que casa com as intencoes das conversas. A porta dos
-/// ensaios tem o inquilino em toda assinatura, porque a fonte dela tem a empresa do
-/// transformador e a assinatura nao deixa ninguem esquecer de filtrar. O cadastro nao tem
+/// ensaios tem o escopo de empresas em toda assinatura, porque os ensaios chegam ao CNPJ
+/// do cliente pela solicitacao e a assinatura nao deixa ninguem esquecer de filtrar. O cadastro nao tem
 /// coluna de empresa nenhuma: nao existe inquilino para pedir. Juntar as duas numa porta so
 /// obrigaria esta consulta a receber um inquilino que ela nao sabe filtrar, e uma porta que
 /// recebe um filtro que ela ignora promete um isolamento que ela nao entrega.

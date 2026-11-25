@@ -1,7 +1,7 @@
 {
     "openapi": "3.1.0",
     "info": {
-        "title": "Servico de autenticacao do Lactec, segunda implementacao",
+        "title": "Servico de autenticacao do Lactec",
         "description": "Autenticacao e autorizacao compartilhada pelas aplicacoes do Lactec.\n\nQuatro pontos do contrato que valem para quase toda rota, ditos uma vez aqui:\n\n1. 401 **sem** `WWW-Authenticate` quer dizer credencial da pessoa recusada;\n401 **com** `WWW-Authenticate` quer dizer que a credencial da aplicacao nao foi\naceita. Sao erros de dono diferente e a tela trata cada um de um jeito.\n2. 429 sempre leva `Retry-After` em segundos inteiros.\n3. Todo identificador viaja como texto, inclusive quando o banco guarda numero:\nnumero de 64 bits perde precisao em JavaScript.\n4. O minimo de oito caracteres da senha e regra de **cadastro**. No login nao\nexiste minimo, de proposito: cobrar ali responderia 400 onde o contrato espera\n401 e entregaria o tamanho da senha a quem sonda.\n",
         "version": "0.0.1-SNAPSHOT"
     },

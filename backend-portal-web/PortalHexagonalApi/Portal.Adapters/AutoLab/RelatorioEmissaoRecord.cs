@@ -21,4 +21,6 @@ public sealed class RelatorioEmissaoRecord
     public string? TituloRelatorio { get; init; }
 
     public string? Conclusao { get; init; }
+
+    public Guid? Solicitacao { get; init; }
 }

@@ -1,11 +1,13 @@
 package br.ufpr.tcc.backend_lab.presentation.rest;
 
 import br.ufpr.tcc.backend_lab.application.dto.request.OrcamentoRequest;
+import br.ufpr.tcc.backend_lab.application.dto.response.ArquivoOrdemCompraResponse;
 import br.ufpr.tcc.backend_lab.application.dto.response.OrcamentoDetalheInternoResponse;
 import br.ufpr.tcc.backend_lab.application.dto.response.PaginaOrcamentosResponse;
 import br.ufpr.tcc.backend_lab.application.usecase.CreateOrcamentoUseCase;
 import br.ufpr.tcc.backend_lab.application.usecase.GetDocumentoOrcamentoUseCase;
 import br.ufpr.tcc.backend_lab.application.usecase.GetOrcamentoUseCase;
+import br.ufpr.tcc.backend_lab.application.usecase.GetOrdemCompraOrcamentoUseCase;
 import br.ufpr.tcc.backend_lab.application.usecase.ListOrcamentosUseCase;
 import br.ufpr.tcc.backend_lab.application.usecase.UpdateOrcamentoUseCase;
 
@@ -13,6 +15,7 @@ import jakarta.validation.Valid;
 
 import lombok.RequiredArgsConstructor;
 
+import org.springframework.http.ContentDisposition;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
@@ -28,6 +31,7 @@ import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.net.URI;
+import java.nio.charset.StandardCharsets;
 
 @RestController
 @RequestMapping("/api/quotes")
@@ -36,6 +40,7 @@ public class OrcamentoController {
     private final ListOrcamentosUseCase listOrcamentos;
     private final GetOrcamentoUseCase getOrcamento;
     private final GetDocumentoOrcamentoUseCase getDocumentoOrcamento;
+    private final GetOrdemCompraOrcamentoUseCase getOrdemCompraOrcamento;
     private final CreateOrcamentoUseCase createOrcamento;
     private final UpdateOrcamentoUseCase updateOrcamento;
 
@@ -89,6 +94,22 @@ public class OrcamentoController {
                         HttpHeaders.CONTENT_DISPOSITION,
                         "attachment; filename=quote-" + id + ".pdf")
                 .body(bytes);
+    }
+
+    @GetMapping("/{id}/purchase-order")
+    public ResponseEntity<byte[]> ordemDeCompra(@PathVariable Long id) {
+        ArquivoOrdemCompraResponse arquivo = getOrdemCompraOrcamento.execute(id);
+        boolean pdf = MediaType.APPLICATION_PDF_VALUE.equals(arquivo.contentType());
+        ContentDisposition disposition =
+                (pdf ? ContentDisposition.inline() : ContentDisposition.attachment())
+                        .filename(arquivo.fileName(), StandardCharsets.UTF_8)
+                        .build();
+        return ResponseEntity.ok()
+                .contentType(MediaType.parseMediaType(arquivo.contentType()))
+                .header(HttpHeaders.CONTENT_DISPOSITION, disposition.toString())
+                .header("X-Content-Type-Options", "nosniff")
+                .header(HttpHeaders.CACHE_CONTROL, "no-store")
+                .body(arquivo.content());
     }
 
     private ResponseEntity<OrcamentoDetalheInternoResponse> criar(

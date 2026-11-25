@@ -6,6 +6,8 @@ services:
         UID: ${HOST_UID:-1000}
         GID: ${HOST_GID:-1000}
     image: tcc/app-android:jdk21
+    # adb reverse targets this container's localhost, which must reach the host API.
+    network_mode: host
     working_dir: /workspace
     tty: true
     stdin_open: true
@@ -20,6 +22,8 @@ services:
       GRADLE_OPTS: -Dorg.gradle.daemon=false
       # Aparelho a conectar no start, no formato ip:porta. Ver .env.example.
       ADB_DEVICE: ${ADB_DEVICE:-}
+      ADB_REVERSE_PORT: ${ADB_REVERSE_PORT:-5125}
+      PORTAL_API_URL: ${ANDROID_PORTAL_API_URL:-}
 
 volumes:
   app-android-gradle-home:

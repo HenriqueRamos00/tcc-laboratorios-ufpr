@@ -94,8 +94,8 @@ internal static class ProblemResponses
         return controller.AsProblem(
             StatusCodes.Status401Unauthorized,
             "tenant-not-identified",
-            "Inquilino nao identificado.",
-            "A requisicao nao diz por qual empresa se pergunta.");
+            "Sessao nao identificada.",
+            "A requisicao nao traz a sessao do cliente que diz por quais empresas se pergunta.");
     }
 
     /// <summary>
@@ -190,13 +190,49 @@ internal static class ProblemResponses
             "O orcamento existe, mas o documento dele nao pode ser lido.");
     }
 
-    public static IActionResult QuoteRequestRefused(this ControllerBase controller, string detail)
+    public static IActionResult QuoteRequestRefused(this ControllerBase controller)
     {
         return controller.AsProblem(
             StatusCodes.Status400BadRequest,
             "quote-request-refused",
             "Consulta de orcamento recusada.",
+            "A consulta de orcamento nao pode ser atendida como foi pedida.");
+    }
+
+    public static IActionResult InvalidClientDecision(this ControllerBase controller, string detail)
+    {
+        return controller.AsProblem(
+            StatusCodes.Status400BadRequest,
+            "invalid-client-decision",
+            "Decisao invalida.",
             detail);
+    }
+
+    public static IActionResult ClientDecisionNotAllowed(this ControllerBase controller)
+    {
+        return controller.AsProblem(
+            StatusCodes.Status409Conflict,
+            "client-decision-not-allowed",
+            "Decisao nao permitida.",
+            "A etapa atual do orcamento nao aceita esta decisao, ou ela ja foi registrada.");
+    }
+
+    public static IActionResult ClientDecisionsNotAvailable(this ControllerBase controller)
+    {
+        return controller.AsProblem(
+            StatusCodes.Status501NotImplemented,
+            "client-decisions-not-available",
+            "Registro de decisoes indisponivel.",
+            "Esta forma de decisao nao esta disponivel neste ambiente.");
+    }
+
+    public static IActionResult ClientDecisionStoreUnavailable(this ControllerBase controller)
+    {
+        return controller.AsProblem(
+            StatusCodes.Status502BadGateway,
+            "client-decision-store-unavailable",
+            "Banco do portal indisponivel.",
+            "Nao foi possivel registrar a decisao agora. Tente novamente em instantes.");
     }
 
     public static IActionResult QuoteNotFound(this ControllerBase controller)

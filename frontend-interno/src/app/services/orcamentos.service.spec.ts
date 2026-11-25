@@ -95,6 +95,19 @@ describe('Serviço de orçamentos', () => {
     expect(documento?.type).toBe('application/pdf');
   });
 
+  it('consulta a ordem de compra como arquivo sem alterar o conteúdo', () => {
+    let arquivo: Blob | null | undefined;
+    service.downloadPurchaseOrder('quote/42').subscribe((resposta) => arquivo = resposta.body);
+    const request = http.expectOne('/api/quotes/quote%2F42/purchase-order');
+
+    expect(request.request.method).toBe('GET');
+    expect(request.request.responseType).toBe('blob');
+    request.flush(new Blob(['%PDF-1.7'], { type: 'application/pdf' }), {
+      headers: { 'Content-Disposition': 'inline; filename="ordem.pdf"' },
+    });
+    expect(arquivo?.type).toBe('application/pdf');
+  });
+
   it('envia a criação como JSON quando não há PDF', () => {
     let resposta: OrcamentoDetalhe | undefined;
     service.create(requisicao).subscribe((resultado) => resposta = resultado);

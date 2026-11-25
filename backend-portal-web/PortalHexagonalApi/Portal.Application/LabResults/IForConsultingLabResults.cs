@@ -24,18 +24,18 @@ public interface IForConsultingLabResults
     /// A placa e nula com frequencia e isso e resposta bem sucedida.
     /// </summary>
     Task<Page<EquipmentWithNameplate>> ListEquipmentAsync(
-        VisibilityScope scope,
+        CompanyScope scope,
         EquipmentSearch? search,
         PageRequest page,
         CancellationToken cancellationToken);
 
     Task<EquipmentWithNameplate?> GetEquipmentAsync(
-        VisibilityScope scope,
+        CompanyScope scope,
         string equipmentKey,
         CancellationToken cancellationToken);
 
     Task<Page<EquipmentReportEntry>?> ListReportsAsync(
-        VisibilityScope scope,
+        CompanyScope scope,
         string equipmentKey,
         PageRequest page,
         CancellationToken cancellationToken);

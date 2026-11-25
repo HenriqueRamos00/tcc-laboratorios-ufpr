@@ -24,6 +24,7 @@ const HANDSET_QUERY = '(max-width: 767.98px)';
   standalone: true,
   imports: [MatIconModule],
   templateUrl: './status-stepper.component.html',
+  styleUrl: './status-stepper.component.css',
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class StatusStepperComponent {

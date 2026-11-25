@@ -1,3 +1,4 @@
+import { NgxMaskDirective } from 'ngx-mask';
 import { ChangeDetectionStrategy, Component, computed, input } from '@angular/core';
 import { toObservable, toSignal } from '@angular/core/rxjs-interop';
 import { ReactiveFormsModule, type FormControl } from '@angular/forms';
@@ -14,21 +15,35 @@ let proximoId = 0;
 @Component({
   selector: 'app-text-field',
   standalone: true,
-  imports: [ReactiveFormsModule],
+  imports: [ReactiveFormsModule, NgxMaskDirective],
   host: { class: 'block' },
   template: `
     <label class="block">
       <span class="text-sm text-lactec-ink-soft">{{ label() }}</span>
-      <input
-        [type]="tipo()"
-        [formControl]="controle()"
-        class="campo"
-        [class.uppercase]="caixaAlta()"
-        [attr.inputmode]="inputmode()"
-        [attr.maxlength]="maxlength()"
-        [attr.aria-invalid]="invalido() ? 'true' : null"
-        [attr.aria-describedby]="invalido() ? idDoErro : null"
-      />
+      @if (mascara(); as mascara) {
+        <input
+          [type]="tipo()"
+          [formControl]="controle()"
+          [mask]="mascara"
+          [outputTransformFn]="caixaAlta() ? emCaixaAlta : manter"
+          class="campo"
+          [class.uppercase]="caixaAlta()"
+          [attr.inputmode]="inputmode()"
+          [attr.aria-invalid]="invalido() ? 'true' : null"
+          [attr.aria-describedby]="invalido() ? idDoErro : null"
+        />
+      } @else {
+        <input
+          [type]="tipo()"
+          [formControl]="controle()"
+          class="campo"
+          [class.uppercase]="caixaAlta()"
+          [attr.inputmode]="inputmode()"
+          [attr.maxlength]="maxlength()"
+          [attr.aria-invalid]="invalido() ? 'true' : null"
+          [attr.aria-describedby]="invalido() ? idDoErro : null"
+        />
+      }
       @if (invalido()) {
         <span class="erro" [id]="idDoErro" role="alert">{{ mensagem() }}</span>
       }
@@ -41,16 +56,29 @@ let proximoId = 0;
       height: 2.75rem;
       width: 100%;
       border-radius: 0.5rem;
-      border: 1px solid var(--color-lactec-line);
+      border: 1px solid var(--color-lactec-line-control);
       background: var(--color-lactec-paper);
       padding: 0 0.75rem;
       font-size: 0.875rem;
       color: var(--color-lactec-ink);
     }
 
+    .campo:hover {
+      border-color: var(--color-lactec-muted);
+    }
+
     .campo:focus {
       border-color: var(--color-lactec-primary);
+      box-shadow: 0 0 0 1px var(--color-lactec-primary);
       outline: none;
+    }
+
+    .campo[aria-invalid='true'] {
+      border-color: var(--color-lactec-danger);
+    }
+
+    .campo[aria-invalid='true']:focus {
+      box-shadow: 0 0 0 1px var(--color-lactec-danger);
     }
 
     .campo:disabled {
@@ -62,7 +90,7 @@ let proximoId = 0;
       margin-top: 0.25rem;
       display: block;
       font-size: 0.75rem;
-      color: var(--color-lactec-danger);
+      color: var(--color-lactec-danger-ink);
     }
   `,
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -74,6 +102,11 @@ export class TextFieldComponent {
   readonly inputmode = input<string>();
   readonly maxlength = input<number>();
   readonly caixaAlta = input(false);
+  readonly mascara = input<string>();
+
+  protected readonly emCaixaAlta = (valor: string | number | null | undefined) =>
+    String(valor ?? '').toUpperCase();
+  protected readonly manter = (valor: string | number | null | undefined) => String(valor ?? '');
 
   /** Precisa ser único: `aria-describedby` aponta para um id, não para uma classe. */
   protected readonly idDoErro = `erro-do-campo-${proximoId++}`;
@@ -92,6 +125,10 @@ export class TextFieldComponent {
 
   protected readonly mensagem = computed(() => {
     this.eventos();
-    return this.controle().hasError('email') ? 'Informe um e-mail válido' : 'Campo obrigatório';
+    const controle = this.controle();
+    if (controle.hasError('email')) return 'Informe um e-mail válido';
+    if (controle.hasError('repetido')) return 'Este e-mail já foi informado em outro campo';
+    if (controle.hasError('mask')) return 'Preencha o campo completo';
+    return 'Campo obrigatório';
   });
 }

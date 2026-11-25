@@ -13,7 +13,7 @@ public sealed class GeneratedQuoteDocumentTests
     {
         byte[] written = "%PDF-1.4 proposta escrita a mao"u8.ToArray();
         var documents = new GeneratedQuoteDocumentRepository(
-            new FakeSalesforceQuoteRepository(),
+            new FakeSalesforceQuoteRepository(FixedCompanyScope.DemoCompanies),
             new FixedDocumentRepository(written));
 
         byte[]? document = await documents.GetDocumentAsync("quote-3", CancellationToken.None);
@@ -25,7 +25,7 @@ public sealed class GeneratedQuoteDocumentTests
     public async Task QuoteWithoutWrittenProposalGetsOneWithItsOwnData()
     {
         var documents = new GeneratedQuoteDocumentRepository(
-            new FakeSalesforceQuoteRepository(),
+            new FakeSalesforceQuoteRepository(FixedCompanyScope.DemoCompanies),
             new FixedDocumentRepository(null));
 
         byte[]? document = await documents.GetDocumentAsync("quote-15", CancellationToken.None);
@@ -48,7 +48,7 @@ public sealed class GeneratedQuoteDocumentTests
     public async Task GeneratedProposalOpensWithFivePages()
     {
         var documents = new GeneratedQuoteDocumentRepository(
-            new FakeSalesforceQuoteRepository(),
+            new FakeSalesforceQuoteRepository(FixedCompanyScope.DemoCompanies),
             new FixedDocumentRepository(null));
 
         byte[] document = (await documents.GetDocumentAsync("quote-15", CancellationToken.None))!;
@@ -60,7 +60,7 @@ public sealed class GeneratedQuoteDocumentTests
     public async Task UnknownQuoteHasNoDocumentToGenerate()
     {
         var documents = new GeneratedQuoteDocumentRepository(
-            new FakeSalesforceQuoteRepository(),
+            new FakeSalesforceQuoteRepository(FixedCompanyScope.DemoCompanies),
             new FixedDocumentRepository(null));
 
         byte[]? document = await documents.GetDocumentAsync("quote-ausente", CancellationToken.None);

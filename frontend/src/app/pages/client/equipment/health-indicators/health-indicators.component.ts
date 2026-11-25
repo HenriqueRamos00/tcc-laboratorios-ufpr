@@ -6,7 +6,8 @@ import { MatIconModule } from '@angular/material/icon';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { ActivatedRoute, Router } from '@angular/router';
 
-import { readableDate } from '@shared/brazilian-date';
+import { DataPipe } from '@shared/pipes/data.pipe';
+import { NumeroPipe } from '@shared/pipes/numero.pipe';
 import { ClassificationBadgeComponent } from '@shared/components/classification-badge/classification-badge.component';
 import { ConformityGaugeComponent } from '@shared/components/conformity-gauge/conformity-gauge.component';
 import { EmptyStateComponent } from '@shared/components/empty-state/empty-state.component';
@@ -89,7 +90,7 @@ interface ReadableColumn {
 function measuredValueText(valor: MeasuredValue): string {
   if (valor === null) return NOT_PERFORMED_MARK;
   if (typeof valor === 'string') return valor;
-  return valor.toLocaleString('pt-BR');
+  return numeroPipe.transform(valor);
 }
 
 import { DiagnosticMethodsComponent } from './diagnostic-methods/diagnostic-methods.component';
@@ -97,6 +98,12 @@ import {
   HealthIndicatorsSkeletonComponent,
   type HealthSkeletonLayout,
 } from './health-indicators-skeleton.component';
+
+import { registerPageTour } from '@/app/services/tour.service';
+import { healthIndicatorsTour } from './health-indicators.tour';
+
+const dataPipe = new DataPipe();
+const numeroPipe = new NumeroPipe();
 
 @Component({
   selector: 'app-indicadores',
@@ -157,6 +164,10 @@ export class HealthIndicatorsComponent {
     this.activeTab() === 'gases' ? this.gasSubTab() : 'fisico-quimico',
   );
 
+  constructor() {
+    registerPageTour(() => healthIndicatorsTour(this.skeletonLayout()));
+  }
+
   private readonly query = computed(() => ({
     id: this.id(),
     reportId: this.reportId(),
@@ -203,7 +214,7 @@ export class HealthIndicatorsComponent {
     ];
     const analysis = data.selectedAnalysis;
     if (!analysis) return trail;
-    return [...trail, { label: `${analysis.label} ${readableDate(analysis.date)}` }];
+    return [...trail, { label: `${analysis.label} ${dataPipe.transform(analysis.date)}` }];
   });
 
   protected readonly errorReason = computed(() => {
@@ -215,7 +226,7 @@ export class HealthIndicatorsComponent {
   // quem está lendo é o navegador. A conversão acontece aqui, na entrada da tela, e não
   // no template: assim existe um só ponto a mudar se o laudo passar a mostrar a hora.
   protected readonly physicalChemicalDates = computed(
-    () => this.data()?.physicalChemical.analyses.map((reading) => readableDate(reading.date)) ?? [],
+    () => this.data()?.physicalChemical.analyses.map((reading) => dataPipe.transform(reading.date)) ?? [],
   );
 
   // A série sai da lista que o laudo publicou, nunca de uma lista de itens conhecidos escrito aqui.
@@ -235,7 +246,7 @@ export class HealthIndicatorsComponent {
   protected readonly physicalChemicalColumns = computed<readonly ReadableColumn[]>(
     () =>
       this.data()?.physicalChemical.columns.map((column) => ({
-        readableDate: readableDate(column.date),
+        readableDate: dataPipe.transform(column.date),
         isCurrentResult: column.isCurrentResult,
       })) ?? [],
   );
@@ -277,11 +288,11 @@ export class HealthIndicatorsComponent {
   });
 
   protected readonly gasDates = computed(
-    () => this.data()?.dissolvedGases.analyses.map((reading) => readableDate(reading.date)) ?? [],
+    () => this.data()?.dissolvedGases.analyses.map((reading) => dataPipe.transform(reading.date)) ?? [],
   );
 
   protected readonly gasColumnDates = computed(
-    () => this.data()?.dissolvedGases.analysisDates.map(readableDate) ?? [],
+    () => this.data()?.dissolvedGases.analysisDates.map((date) => dataPipe.transform(date)) ?? [],
   );
 
   /** A fórmula distingue gás medido de totalizador, e o totalizador não evolui. */

@@ -22,9 +22,8 @@ public sealed class SampleAnalysisTests
     }
 
     /// <summary>
-    /// A empresa e a unica coluna da view que diz de quem e o transformador. Analise sem
-    /// empresa nao tem como ser filtrada por inquilino, e serviria o laudo de um cliente
-    /// para qualquer um.
+    /// A empresa e a coluna da view que nomeia o dono do transformador na tela. Analise sem
+    /// empresa nao e montada, em vez de aparecer sem dono.
     /// </summary>
     [Fact]
     public void AnAnalysisWithoutACompanyIsNotBuilt()

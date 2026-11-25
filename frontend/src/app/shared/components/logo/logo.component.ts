@@ -3,12 +3,13 @@ import { ChangeDetectionStrategy, Component, computed, input } from '@angular/co
 @Component({
   selector: 'app-logo',
   standalone: true,
+  host: { class: 'flex' },
   template: `
-    <span class="inline-flex items-center gap-3">
+    <span class="flex items-center gap-3">
       <img
         src="assets/lactec-logo.png"
         alt="Lactec"
-        class="inline-block object-contain"
+        class="block object-contain"
         [style.width.px]="imgSize()"
         [style.height.px]="imgSize()"
         [style.filter]="filter()"

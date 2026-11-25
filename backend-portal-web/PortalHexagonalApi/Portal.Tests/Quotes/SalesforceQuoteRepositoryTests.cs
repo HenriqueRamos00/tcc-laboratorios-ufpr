@@ -119,16 +119,40 @@ public sealed class SalesforceQuoteRepositoryTests
             Assert.Contains("WHERE Opportunity.Account.CNPJ__c IN ('12ABC34501DE35', '76436849000174')", query));
     }
 
-    [Fact]
-    public async Task ConsultaPorIdCombinaOIdentificadorEscapadoComOEscopo()
+    [Theory]
+    [InlineData("0Q0000000000003")]
+    [InlineData("0Q0000000000003AAA")]
+    public async Task ConsultaPorIdCombinaOIdentificadorComOEscopo(string id)
     {
         using var handler = new SalesforceQueryHandler();
         using var http = new HttpClient(handler);
         var repository = Create(http, new QuoteTokenProvider(), "76436849000174");
 
-        await repository.GetQuoteByIdAsync("quote'id", CancellationToken.None);
+        await repository.GetQuoteByIdAsync(id, CancellationToken.None);
 
-        Assert.EndsWith("WHERE Id = 'quote\\'id' AND Opportunity.Account.CNPJ__c = '76436849000174' LIMIT 1", Assert.Single(handler.Queries));
+        Assert.EndsWith($"WHERE Id = '{id}' AND Opportunity.Account.CNPJ__c = '76436849000174' LIMIT 1", Assert.Single(handler.Queries));
+    }
+
+    [Theory]
+    [InlineData("")]
+    [InlineData("quote'id")]
+    [InlineData("0Q0000000000003' OR Id != '")]
+    [InlineData("0Q0000000000003AAA' OR Opportunity.Account.CNPJ__c != '")]
+    [InlineData("0Q0000000000003\\")]
+    [InlineData("0Q00000000000")]
+    [InlineData("0Q0000000000003AAAA")]
+    [InlineData("0Q0000000000003AA%")]
+    [InlineData("0Q0000000000003\n")]
+    public async Task IdentificadorQueNaoEIdDoSalesforceNaoViraConsulta(string id)
+    {
+        using var handler = new SalesforceQueryHandler();
+        using var http = new HttpClient(handler);
+        var tokens = new QuoteTokenProvider();
+        var repository = Create(http, tokens, "76436849000174");
+
+        Assert.Null(await repository.GetQuoteByIdAsync(id, CancellationToken.None));
+        Assert.Empty(handler.Queries);
+        Assert.Equal(0, tokens.Calls);
     }
 
     [Fact]
@@ -137,14 +161,14 @@ public sealed class SalesforceQuoteRepositoryTests
         using var handler = new SalesforceQueryHandler
         {
             Body = """
-                {"records":[{"Id":"quote-1","Codigo_da_Cotacao__c":"EAQ_2024_37569_V_1",
+                {"records":[{"Id":"0Q0000000000001AAA","Codigo_da_Cotacao__c":"EAQ_2024_37569_V_1",
                 "Opportunity":{"Codigo_da_Oportunidade__c":"EAQ_2099_99999_V_1"}}]}
                 """
         };
         using var http = new HttpClient(handler);
         var repository = Create(http, new QuoteTokenProvider(), "76436849000174");
 
-        Quote? quote = await repository.GetQuoteByIdAsync("quote-1", CancellationToken.None);
+        Quote? quote = await repository.GetQuoteByIdAsync("0Q0000000000001AAA", CancellationToken.None);
 
         Assert.Contains("Codigo_da_Cotacao__c", Assert.Single(handler.Queries));
         Assert.Equal("EAQ_2099_99999_V_1", quote!.Code);
@@ -169,7 +193,7 @@ public sealed class SalesforceQuoteRepositoryTests
         Page<Quote> page = await repository.GetQuotesAsync(PageRequest.First, CancellationToken.None);
         Assert.Empty(page.Items);
         Assert.Equal(0, page.TotalCount);
-        Assert.Null(await repository.GetQuoteByIdAsync("quote-3", CancellationToken.None));
+        Assert.Null(await repository.GetQuoteByIdAsync("0Q0000000000003AAA", CancellationToken.None));
         Assert.Empty(handler.Queries);
         Assert.Equal(0, tokens.Calls);
     }
@@ -183,7 +207,7 @@ public sealed class SalesforceQuoteRepositoryTests
         var repository = Create(http, tokens);
 
         Assert.Empty((await repository.GetQuotesAsync(PageRequest.First, CancellationToken.None)).Items);
-        Assert.Null(await repository.GetQuoteByIdAsync("quote-3", CancellationToken.None));
+        Assert.Null(await repository.GetQuoteByIdAsync("0Q0000000000003AAA", CancellationToken.None));
         Assert.Empty(handler.Queries);
         Assert.Equal(0, tokens.Calls);
     }

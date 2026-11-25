@@ -33,6 +33,9 @@ import {
   EquipmentsService,
 } from '@/app/services/equipments.service';
 
+import { registerPageTour } from '@/app/services/tour.service';
+import { equipmentListTour } from './equipment-list.tour';
+
 export const SEARCH_DEBOUNCE_MS = 300;
 
 const NOT_REPORTED = 'Não informado';
@@ -91,6 +94,8 @@ export class EquipmentListComponent {
   protected readonly trackById = (equipment: Equipment): string => equipment.id;
 
   constructor() {
+    registerPageTour(equipmentListTour);
+
     toObservable(this.searchTerm)
       .pipe(
         skip(1),

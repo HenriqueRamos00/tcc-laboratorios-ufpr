@@ -1,65 +1,97 @@
 @import 'tailwindcss';
 
-/* Paleta Lactec: fonte única das cores da aplicação.
+/* Tokens do Lactec: fonte única de cor, raio, espaçamento, sombra e animação.
+   Nomeados pela função que cumprem, nunca pelo matiz nem pelo elemento que os
+   usa. O passo de tom tem um vocabulário só: `soft` recua, `strong` avança.
+   Família tingida repete o trio da base: `surface` é o fundo, `ink` é o que se
+   escreve sobre ele e `line` é o traço em volta.
+
    `static` garante que todas as variáveis sejam emitidas em :root mesmo quando
    nenhuma classe utilitária as usa, porque src/theme.scss (tema do Angular
    Material) as referencia por var(). */
 @theme static {
-  /* Marca */
+  --radius-lactec-control: 0.5rem;
+  --spacing-lactec-panel: 1.5rem;
+  --spacing-lactec-panel-gap: 1rem;
+  --radius-lactec-panel: calc(var(--radius-lactec-control) + var(--spacing-lactec-panel));
+
+  /* Marca. `primary` é a cor da ação; `primary-deep` é o tom mais fundo dela,
+     que serve de superfície (menu, painel do login), de título e de botão de
+     segunda ordem. O `strong` de cada um é o mesmo tom sob o cursor. */
   --color-lactec-primary: #138291;
-  --color-lactec-primary-dark: #106A77;
+  --color-lactec-primary-strong: #106A77;
   --color-lactec-on-primary: #FFFFFF;
-  --color-lactec-nav: #0F4C5C;
-  --color-lactec-nav-dark: #0B3D4A;
-  --color-lactec-nav-hover: #163F4A;
-  --color-lactec-on-nav: #C8DBDF;
+  --color-lactec-primary-deep: #0F4C5C;
+  --color-lactec-primary-deep-strong: #0B3D4A;
+  --color-lactec-on-primary-deep: #C8DBDF;
 
   /* Superfícies e texto */
+  --color-lactec-surface: #F5F6F3;
+  --color-lactec-paper: #FFFFFF;
   --color-lactec-ink: #0B2230;
   --color-lactec-ink-soft: #274251;
   --color-lactec-muted: #5D7480;
-  --color-lactec-line: #E4E8EA;
+  --color-lactec-faint: #94A4AB;
+
+  /* Traços, do mais discreto ao mais marcado. `line-control` contorna campo e
+     controle: é o único que precisa dos 3:1 que a WCAG pede para componente de
+     interface, e os outros são decoração. */
   --color-lactec-line-soft: #EEF1F2;
-  --color-lactec-surface: #F5F6F3;
-  --color-lactec-paper: #FFFFFF;
+  --color-lactec-line: #E4E8EA;
+  --color-lactec-line-strong: #C9D1D5;
+  --color-lactec-divider: #B8C2C7;
+  --color-lactec-line-control: #758A94;
 
-  /* Feedback */
+  /* Feedback. O tom sozinho serve para traço, ícone e texto sobre papel. */
   --color-lactec-success: #27865A;
-  --color-lactec-success-soft: #3FAE6B;
-  --color-lactec-danger: #D9534F;
   --color-lactec-warning: #E5A53B;
-  --color-lactec-warning-soft: #E5B23B;
+  --color-lactec-danger: #D9534F;
 
-  /* Pills de status do orçamento */
-  --color-lactec-pill-qual-bg: #DCE0E2;
-  --color-lactec-pill-qual-ink: #46555E;
-  --color-lactec-pill-pend-bg: #F7D7D2;
-  --color-lactec-pill-pend-ink: #8E2A24;
-  --color-lactec-pill-proc-bg: #D6EEF3;
-  --color-lactec-pill-proc-ink: #0C6170;
-  --color-lactec-pill-done-bg: #D4ECDC;
-  --color-lactec-pill-done-ink: #1F6B44;
-  --color-lactec-pill-cancel-bg: #E6E8E9;
-  --color-lactec-pill-cancel-ink: #4B5A63;
-  /* Cores distintas por etapa do orçamento (StageName do Salesforce). */
-  --color-lactec-pill-analysis-bg: #FBE8CC;
-  --color-lactec-pill-analysis-ink: #8A5A12;
-  --color-lactec-pill-drafting-bg: #F0E0FF;
-  --color-lactec-pill-drafting-ink: #692DB1;
-  --color-lactec-pill-accepted-bg: #EAF0CC;
-  --color-lactec-pill-accepted-ink: #5E6B12;
-  --color-lactec-pill-awaiting-bg: #F7E6D2;
-  --color-lactec-pill-awaiting-ink: #9A5B1E;
-  --color-lactec-pill-complete-bg: #D6F0E0;
-  --color-lactec-pill-complete-ink: #1F6B44;
-  --color-lactec-pill-validated-bg: #C7E6EC;
-  --color-lactec-pill-validated-ink: #0C6170;
-  --color-lactec-pill-finalized-bg: #BFE3C9;
-  --color-lactec-pill-finalized-ink: #155A36;
-  --color-lactec-pill-drafting-report-bg: #E4DAF7;
-  --color-lactec-pill-drafting-report-ink: #4F1F8E;
-  --color-lactec-pill-published-bg: #1F6B44;
-  --color-lactec-pill-published-ink: #FFFFFF;
+  /* Etapas do orçamento (StageName do Salesforce e etapas do AutoLAB). É
+     legenda de domínio: cada par leva o nome da primeira etapa que o usa, e
+     quem diz qual etapa pinta com qual par é STATUS_BADGE, em
+     quote-presentation.ts. `neutra` não é apontado por etapa nenhuma hoje. */
+  --color-lactec-etapa-qualificacao-surface: #DCE0E2;
+  --color-lactec-etapa-qualificacao-ink: #46555E;
+  --color-lactec-etapa-analise-da-area-surface: #FBE8CC;
+  --color-lactec-etapa-analise-da-area-ink: #8A5A12;
+  --color-lactec-etapa-elaborando-proposta-surface: #F0E0FF;
+  --color-lactec-etapa-elaborando-proposta-ink: #692DB1;
+  --color-lactec-etapa-negociacao-surface: #D6EEF3;
+  --color-lactec-etapa-negociacao-ink: #0C6170;
+  --color-lactec-etapa-aprovado-pelo-cliente-surface: #EAF0CC;
+  --color-lactec-etapa-aprovado-pelo-cliente-ink: #5E6B12;
+  --color-lactec-etapa-aguardando-amostra-surface: #F7E6D2;
+  --color-lactec-etapa-aguardando-amostra-ink: #9A5B1E;
+  --color-lactec-etapa-recebido-surface: #D4ECDC;
+  --color-lactec-etapa-recebido-ink: #1F6B44;
+  --color-lactec-etapa-completo-surface: #D6F0E0;
+  --color-lactec-etapa-completo-ink: #1F6B44;
+  --color-lactec-etapa-validado-surface: #C7E6EC;
+  --color-lactec-etapa-validado-ink: #0C6170;
+  --color-lactec-etapa-finalizado-surface: #BFE3C9;
+  --color-lactec-etapa-finalizado-ink: #155A36;
+  --color-lactec-etapa-elaborando-relatorio-surface: #E4DAF7;
+  --color-lactec-etapa-elaborando-relatorio-ink: #4F1F8E;
+  --color-lactec-etapa-relatorio-publicado-surface: #1F6B44;
+  --color-lactec-etapa-relatorio-publicado-ink: #FFFFFF;
+  --color-lactec-etapa-cancelado-surface: #F7D7D2;
+  --color-lactec-etapa-cancelado-ink: #8E2A24;
+  --color-lactec-etapa-neutra-surface: #E6E8E9;
+  --color-lactec-etapa-neutra-ink: #4B5A63;
+
+  /* Caixas de aviso. `info` e `warning` herdam o fundo e a tinta de uma etapa
+     por `var()` para que cada matiz tenha um dono só, e o nome diz o que a
+     caixa afirma em vez de apontar para uma etapa que ela não representa. */
+  --color-lactec-info-surface: var(--color-lactec-etapa-negociacao-surface);
+  --color-lactec-info-ink: var(--color-lactec-etapa-negociacao-ink);
+  --color-lactec-info-line: #B9DDE4;
+  --color-lactec-warning-surface: var(--color-lactec-etapa-analise-da-area-surface);
+  --color-lactec-warning-ink: var(--color-lactec-etapa-analise-da-area-ink);
+  --color-lactec-warning-line: #EFCF9A;
+  --color-lactec-danger-surface: #FBE7E5;
+  --color-lactec-danger-ink: #8E2A24;
+  --color-lactec-danger-line: #F3C8C3;
 
   /* Tarja de conformidade do laudo: bloco sólido com a palavra escrita dentro,
      então cada faixa precisa do par fundo/tinta, não só do tom. As variáveis
@@ -79,19 +111,6 @@
   --color-lactec-on-tarja-normal: #FFFFFF;
   --color-lactec-on-tarja-alerta: #0B2230;
   --color-lactec-on-tarja-nao-conforme: #FFFFFF;
-
-  --color-lactec-danger-bg: #FBE7E5;
-  --color-lactec-danger-ink: #8E2A24;
-  --color-lactec-danger-border: #F3C8C3;
-
-  /* Detalhes */
-  --color-lactec-divider: #B8C2C7;
-  --color-lactec-faint: #94A4AB;
-  /* Borda de campo sob o cursor: um passo acima de `line`, que nesse estado
-     some. */
-  --color-lactec-line-strong: #C9D1D5;
-  --color-lactec-pill-proc-border: #B9DDE4;
-  --color-lactec-pill-analysis-border: #EFCF9A;
 
   /* Paleta categórica do gráfico de linhas, validada para superfície clara
      (checagem de visão de cores, faixa de luminosidade e piso de contraste).
@@ -123,23 +142,42 @@
   /* Zona publicada pela norma cujo código ainda não tem cor catalogada aqui. */
   --color-lactec-zona-sem-faixa: #E8E8E8;
 
-  /* Diagnóstico de gases dissolvidos. Herdam o tom da paleta categórica por
-     `var()` para que cada matiz tenha um dono só, enquanto o nome conta o que
-     a cor está afirmando no gráfico ou na tabela. */
-  --color-lactec-diagnostico-termico: var(--color-lactec-serie-terceira);
-  --color-lactec-diagnostico-descarga: var(--color-lactec-serie-primeira);
+  /* Leitura do gráfico de gases dissolvidos. Herdam o tom da paleta categórica
+     por `var()` para que cada matiz tenha um dono só, enquanto o nome conta o
+     que a cor está afirmando no gráfico ou na tabela. */
   --color-lactec-valor-medido: var(--color-lactec-serie-primeira);
   --color-lactec-limite-da-norma: var(--color-lactec-serie-terceira);
+
+  /* Sombras. Em px porque são traço físico e não devem crescer com a fonte. */
+  --shadow-lactec-raised: 0 1px 2px color-mix(in oklab, var(--color-lactec-ink) 4%, transparent);
+  --shadow-lactec-focus:
+    0 0 0 1px var(--color-lactec-primary),
+    0 0 0 4px color-mix(in oklab, var(--color-lactec-primary) 12%, transparent);
+  --shadow-lactec-focus-danger:
+    0 0 0 1px var(--color-lactec-danger),
+    0 0 0 4px color-mix(in oklab, var(--color-lactec-danger) 14%, transparent);
 
   --font-display: 'Instrument Sans', system-ui, sans-serif;
   --font-sans: Inter, system-ui, sans-serif;
   --font-mono: 'JetBrains Mono', ui-monospace, monospace;
+  --tracking-display: -0.01em;
 
   --breakpoint-sm: 480px;
   --breakpoint-md: 768px;
   --breakpoint-lg: 1024px;
   --breakpoint-xl: 1280px;
   --breakpoint-2xl: 1440px;
+
+  --animate-sheet-up: sheet-up 260ms ease;
+
+  @keyframes sheet-up {
+    from {
+      transform: translateY(100%);
+    }
+    to {
+      transform: translateY(0);
+    }
+  }
 }
 
 *,
@@ -174,11 +212,8 @@ html {
   color: var(--color-lactec-ink);
 }
 
-.display {
-  font-family: 'Instrument Sans', system-ui, sans-serif;
-  letter-spacing: -0.01em;
-}
-
+/* Fica em CSS, e não em `--animate-*`: o Karma não passa pelo Tailwind, e o
+   loading-region.component.spec.ts mede esta animação no navegador. */
 .skeleton-reveal {
   animation: skeleton-reveal 200ms ease-out var(--skeleton-delay, 250ms) both;
 }
@@ -256,702 +291,6 @@ mat-icon.icone-36 {
   height: 36px;
 }
 
-.mono {
-  font-family: 'JetBrains Mono', ui-monospace, monospace;
-}
-
-.input-field {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  height: 44px;
-  padding: 0 12px;
-  background: var(--color-lactec-paper);
-  border: 1px solid var(--color-lactec-line);
-  border-radius: 8px;
-  transition:
-    border-color 120ms ease,
-    box-shadow 120ms ease;
-}
-.input-field:hover {
-  border-color: var(--color-lactec-line-strong);
-}
-.input-field:focus-within {
-  border-color: var(--color-lactec-primary);
-  box-shadow: 0 0 0 4px color-mix(in oklab, var(--color-lactec-primary) 12%, transparent);
-}
-.input-field--error,
-.input-field--error:hover {
-  border-color: var(--color-lactec-danger);
-}
-.input-field--error:focus-within {
-  border-color: var(--color-lactec-danger);
-  box-shadow: 0 0 0 4px color-mix(in oklab, var(--color-lactec-danger) 14%, transparent);
-}
-.input-field__icon {
-  flex: none;
-  color: var(--color-lactec-muted);
-  font-size: 20px;
-  width: 20px;
-  height: 20px;
-  line-height: 20px;
-}
-.input-field:focus-within .input-field__icon {
-  color: var(--color-lactec-primary-dark);
-}
-.input-field--error .input-field__icon {
-  color: var(--color-lactec-danger);
-}
-.input-field__input {
-  flex: 1 1 auto;
-  min-width: 0;
-  height: 100%;
-  background: transparent;
-  border: 0;
-  outline: 0;
-  padding: 0 0 0 6px;
-  font: inherit;
-  font-size: 14px;
-  color: var(--color-lactec-ink);
-  caret-color: var(--color-lactec-primary);
-}
-.input-field__input::placeholder {
-  color: color-mix(in oklab, var(--color-lactec-muted) 55%, transparent);
-}
-.input-field__suffix {
-  flex: none;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 32px;
-  height: 32px;
-  margin-right: -6px;
-  background: transparent;
-  border: 0;
-  border-radius: 6px;
-  color: var(--color-lactec-muted);
-  cursor: pointer;
-  transition:
-    background-color 120ms ease,
-    color 120ms ease;
-}
-.input-field__suffix:hover {
-  background: var(--color-lactec-line-soft);
-  color: var(--color-lactec-ink-soft);
-}
-.input-field__suffix:focus-visible {
-  outline: 2px solid var(--color-lactec-primary);
-  outline-offset: 2px;
-}
-
-.bg-login-glow {
-  background-image:
-    radial-gradient(
-      900px 600px at 20% 20%,
-      color-mix(in oklab, var(--color-lactec-paper) 6%, transparent),
-      transparent 60%
-    ),
-    radial-gradient(
-      600px 400px at 80% 90%,
-      color-mix(in oklab, var(--color-lactec-primary) 12%, transparent),
-      transparent 60%
-    );
-}
-
-.quote-filter-tab {
-  position: relative;
-  padding: 12px 4px;
-  font-size: 14px;
-  font-weight: 500;
-  color: var(--color-lactec-muted);
-  background: transparent;
-  border: 0;
-  border-bottom: 2px solid transparent;
-  cursor: pointer;
-  transition:
-    color 120ms ease,
-    border-color 120ms ease;
-}
-.quote-filter-tab:hover {
-  color: var(--color-lactec-ink-soft);
-}
-.quote-filter-tab--active {
-  color: var(--color-lactec-ink);
-  border-bottom-color: var(--color-lactec-primary);
-}
-
-.quote-filter-dropdown {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  padding: 6px 8px 6px 12px;
-  background: var(--color-lactec-paper);
-  border: 1px solid var(--color-lactec-line);
-  border-radius: 8px;
-  font-size: 13px;
-  font-weight: 500;
-  color: var(--color-lactec-ink-soft);
-  cursor: pointer;
-  transition: border-color 120ms ease;
-}
-.quote-filter-dropdown:hover {
-  border-color: var(--color-lactec-line-strong);
-}
-.quote-filter-dropdown mat-icon {
-  font-size: 18px;
-  width: 18px;
-  height: 18px;
-  color: var(--color-lactec-muted);
-}
-
-.quote-card {
-  display: flex;
-  flex-direction: column;
-  gap: 16px;
-  padding: 20px;
-  background: var(--color-lactec-paper);
-  border: 1px solid var(--color-lactec-line);
-  border-radius: 12px;
-  box-shadow: 0 1px 2px color-mix(in oklab, var(--color-lactec-ink) 4%, transparent);
-}
-@media (min-width: 768px) {
-  .quote-card {
-    padding: 24px;
-  }
-}
-
-.quote-card-body {
-  display: flex;
-  flex-direction: column;
-  gap: 16px;
-}
-.quote-card-body__header {
-  display: flex;
-  justify-content: space-between;
-  align-items: flex-start;
-  gap: 12px;
-}
-.quote-card-body__content {
-  display: flex;
-  flex-direction: column;
-  gap: 16px;
-}
-.quote-card-body__footer {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-}
-@media (min-width: 768px) {
-  .quote-card-body {
-    display: grid;
-    grid-template-columns: 1fr 1fr auto;
-    grid-template-rows: auto auto 1fr;
-    column-gap: 40px;
-    row-gap: 16px;
-  }
-  .quote-card-body__header,
-  .quote-card-body__content {
-    display: contents;
-  }
-  .quote-card-body__header > .quote-card-field {
-    grid-column: 1;
-    grid-row: 1;
-  }
-  .quote-card-body__header > .quote-status-pill {
-    grid-column: 3;
-    grid-row: 1;
-    justify-self: end;
-  }
-  .quote-card-body__footer {
-    grid-column: 3;
-    grid-row: 2 / -1;
-    align-self: end;
-    min-width: 192px;
-  }
-}
-
-.quote-card-field {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-  min-width: 0;
-}
-.quote-card-field__label {
-  font-size: 12px;
-  color: var(--color-lactec-muted);
-}
-.quote-card-field__value {
-  font-size: 14px;
-  font-weight: 600;
-  color: var(--color-lactec-ink);
-  overflow-wrap: break-word;
-  hyphens: auto;
-}
-
-
-.quote-status-pill {
-  display: inline-flex;
-  align-items: center;
-  padding: 2px 10px;
-  border-radius: 6px;
-  font-size: 12px;
-  font-weight: 500;
-  line-height: 1.4;
-  white-space: nowrap;
-}
-.quote-status-pill--qualification {
-  background: var(--color-lactec-pill-qual-bg);
-  color: var(--color-lactec-pill-qual-ink);
-}
-.quote-status-pill--analysis {
-  background: var(--color-lactec-pill-analysis-bg);
-  color: var(--color-lactec-pill-analysis-ink);
-}
-.quote-status-pill--drafting {
-  background: var(--color-lactec-pill-drafting-bg);
-  color: var(--color-lactec-pill-drafting-ink);
-}
-.quote-status-pill--negotiation {
-  background: var(--color-lactec-pill-proc-bg);
-  color: var(--color-lactec-pill-proc-ink);
-}
-.quote-status-pill--accepted {
-  background: var(--color-lactec-pill-accepted-bg);
-  color: var(--color-lactec-pill-accepted-ink);
-}
-.quote-status-pill--awaiting-sample {
-  background: var(--color-lactec-pill-awaiting-bg);
-  color: var(--color-lactec-pill-awaiting-ink);
-}
-.quote-status-pill--received {
-  background: var(--color-lactec-pill-done-bg);
-  color: var(--color-lactec-pill-done-ink);
-}
-.quote-status-pill--complete {
-  background: var(--color-lactec-pill-complete-bg);
-  color: var(--color-lactec-pill-complete-ink);
-}
-.quote-status-pill--protocoled {
-  background: var(--color-lactec-pill-proc-bg);
-  color: var(--color-lactec-pill-proc-ink);
-}
-.quote-status-pill--running {
-  background: var(--color-lactec-pill-analysis-bg);
-  color: var(--color-lactec-pill-analysis-ink);
-}
-.quote-status-pill--validated {
-  background: var(--color-lactec-pill-validated-bg);
-  color: var(--color-lactec-pill-validated-ink);
-}
-.quote-status-pill--finalized {
-  background: var(--color-lactec-pill-finalized-bg);
-  color: var(--color-lactec-pill-finalized-ink);
-}
-.quote-status-pill--drafting-report {
-  background: var(--color-lactec-pill-drafting-report-bg);
-  color: var(--color-lactec-pill-drafting-report-ink);
-}
-.quote-status-pill--report-published {
-  background: var(--color-lactec-pill-published-bg);
-  color: var(--color-lactec-pill-published-ink);
-}
-.quote-status-pill--cancelled {
-  background: var(--color-lactec-pill-pend-bg);
-  color: var(--color-lactec-pill-pend-ink);
-}
-
-
-.status-stepper {
-  display: flex;
-  align-items: flex-start;
-  gap: 0;
-  width: 100%;
-}
-.status-stepper__step {
-  flex: 1 1 0;
-  min-width: 0;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 8px;
-}
-.status-stepper__circle {
-  width: 40px;
-  height: 40px;
-  border-radius: 50%;
-  background: var(--color-lactec-line);
-  color: var(--color-lactec-muted);
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  transition:
-    background-color 160ms ease,
-    color 160ms ease,
-    box-shadow 160ms ease;
-}
-mat-icon.status-stepper__icon {
-  font-size: 20px;
-  width: 20px;
-  height: 20px;
-  line-height: 20px;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-}
-.status-stepper__step[data-state='completed'] .status-stepper__circle {
-  background: var(--color-lactec-nav);
-  color: var(--color-lactec-on-primary);
-}
-.status-stepper__step[data-state='active'] .status-stepper__circle {
-  background: var(--color-lactec-primary);
-  color: var(--color-lactec-on-primary);
-  box-shadow: 0 0 0 4px color-mix(in oklab, var(--color-lactec-primary) 18%, transparent);
-}
-.status-stepper__label {
-  font-size: 10px;
-  font-weight: 600;
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
-  text-align: center;
-  color: var(--color-lactec-muted);
-  line-height: 1.3;
-}
-.status-stepper__step[data-state='active'] .status-stepper__label {
-  color: var(--color-lactec-primary-dark);
-}
-.status-stepper__step[data-state='completed'] .status-stepper__label {
-  color: var(--color-lactec-ink-soft);
-}
-.status-stepper__connector {
-  flex: 1 1 16px;
-  min-width: 12px;
-  height: 2px;
-  background: var(--color-lactec-line);
-  margin-top: 19px;
-  border-radius: 2px;
-}
-.status-stepper__connector[data-completed='true'] {
-  background: var(--color-lactec-nav);
-}
-
-.dialog-shell {
-  display: flex;
-  flex-direction: column;
-  gap: 16px;
-  padding: 20px;
-}
-.dialog-shell__navbar {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-}
-.dialog-shell__brand {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  min-width: 0;
-}
-.dialog-shell__title-block {
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-}
-.dialog-shell__title {
-  margin: 0;
-  font-family: 'Instrument Sans', system-ui, sans-serif;
-  font-size: 24px;
-  font-weight: 600;
-  color: var(--color-lactec-ink);
-  letter-spacing: -0.01em;
-}
-.dialog-shell__subtitle {
-  margin: 0;
-  font-size: 13px;
-  color: var(--color-lactec-muted);
-}
-.dialog-shell__content {
-  display: flex;
-  flex-direction: column;
-  gap: 16px;
-  padding: 8px 0;
-}
-.dialog-shell__footer {
-  border-top: 1px solid var(--color-lactec-line);
-  padding-top: 12px;
-  display: flex;
-  justify-content: flex-start;
-}
-
-.status-dialog-brand {
-  display: inline-flex;
-  align-items: baseline;
-  gap: 6px;
-  font-family: 'Instrument Sans', system-ui, sans-serif;
-  font-size: 13px;
-  font-weight: 600;
-  letter-spacing: 0.04em;
-  color: var(--color-lactec-ink-soft);
-}
-.status-dialog-brand__lactec {
-  color: var(--color-lactec-nav);
-}
-.status-dialog-brand__sep {
-  color: var(--color-lactec-divider);
-}
-.status-dialog-brand__lab {
-  color: var(--color-lactec-muted);
-}
-
-.status-dialog-message {
-  display: flex;
-  gap: 10px;
-  padding: 12px 14px;
-  background: var(--color-lactec-pill-proc-bg);
-  border: 1px solid var(--color-lactec-pill-proc-border);
-  border-radius: 10px;
-  color: var(--color-lactec-ink-soft);
-}
-mat-icon.status-dialog-message__icon {
-  color: var(--color-lactec-primary-dark);
-  font-size: 20px;
-  line-height: 20px;
-  width: 20px;
-  height: 20px;
-  flex: none;
-}
-.status-dialog-message__title {
-  margin: 0 0 4px;
-  font-size: 14px;
-  font-weight: 600;
-  color: var(--color-lactec-ink);
-}
-
-.status-dialog-message__text {
-  margin: 0;
-  font-size: 13px;
-  line-height: 1.5;
-}
-
-/* O mesmo aviso aparece no modal de status, dentro do orçamento aprovado e no
-   termo de aceite: tom de atenção, porque caixa sem etiqueta para o processo
-   no recebimento. */
-app-sample-shipping-notice {
-  display: block;
-}
-.sample-shipping-notice {
-  display: flex;
-  gap: 10px;
-  padding: 12px 14px;
-  background: var(--color-lactec-pill-analysis-bg);
-  border: 1px solid var(--color-lactec-pill-analysis-border);
-  border-radius: 10px;
-  color: var(--color-lactec-ink-soft);
-}
-/* Elemento mais classe, e não a classe sozinha: o Material declara 24px em
-   `.mat-icon` sem camada, então classe de mesma especificidade perde o empate
-   e o ícone sai do tamanho e com a cor herdada. Mesmo motivo do icone-20. */
-mat-icon.sample-shipping-notice__icon {
-  color: var(--color-lactec-pill-analysis-ink);
-  font-size: 20px;
-  line-height: 20px;
-  width: 20px;
-  height: 20px;
-  flex: none;
-}
-.sample-shipping-notice__title {
-  margin: 0 0 4px;
-  font-size: 14px;
-  font-weight: 600;
-  color: var(--color-lactec-ink);
-}
-.sample-shipping-notice__text {
-  margin: 0;
-  font-size: 13px;
-  line-height: 1.5;
-}
-.sample-shipping-notice__address-title {
-  margin: 10px 0 2px;
-  font-size: 13px;
-  font-weight: 600;
-  color: var(--color-lactec-ink);
-}
-.sample-shipping-notice__address {
-  margin: 0;
-  font-size: 13px;
-  line-height: 1.5;
-}
-
-/* Baixar a proposta e falar com o laboratório ficam lado a lado no rodapé do
-   modal, e quebram um sob o outro quando a largura não dá para os dois. */
-.status-dialog-actions {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: 12px 16px;
-  margin-top: 4px;
-}
-
-/* Cada aviso fica embaixo do botão que o provocou: o do PDF à esquerda, com o
-   download, e o da cópia à direita, com a caixa de contato. */
-.status-dialog-actions__group {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-  min-width: 0;
-}
-.status-dialog-actions__group--fim {
-  margin-left: auto;
-  align-items: flex-end;
-  text-align: right;
-}
-
-.status-dialog-download {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  padding: 8px 4px;
-  background: transparent;
-  border: 0;
-  font-size: 13px;
-  font-weight: 600;
-  color: var(--color-lactec-ink);
-  cursor: pointer;
-}
-.status-dialog-download:hover:not(:disabled) {
-  color: var(--color-lactec-primary-dark);
-}
-.status-dialog-download:disabled {
-  color: var(--color-lactec-muted);
-  cursor: default;
-}
-
-.status-dialog-contact {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  max-width: 100%;
-  padding: 8px 8px 8px 14px;
-  border-radius: 10px;
-  background: var(--color-lactec-nav);
-}
-.status-dialog-contact__label {
-  flex: none;
-  font-size: 12px;
-  font-weight: 700;
-  color: var(--color-lactec-on-nav);
-}
-.status-dialog-contact__value {
-  flex: 0 1 13.5rem;
-  min-width: 0;
-  padding: 6px 10px;
-  border: 0;
-  border-radius: 8px;
-  background: var(--color-lactec-paper);
-  font-size: 13px;
-  color: var(--color-lactec-ink);
-  text-overflow: ellipsis;
-}
-.status-dialog-contact__value:focus-visible {
-  outline: 2px solid var(--color-lactec-paper);
-  outline-offset: 2px;
-}
-.status-dialog-contact__copy {
-  flex: none;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  padding: 6px;
-  background: transparent;
-  border: 0;
-  border-radius: 8px;
-  cursor: pointer;
-}
-.status-dialog-contact__copy:hover {
-  background: var(--color-lactec-nav-hover);
-}
-.status-dialog-contact__copy mat-icon {
-  color: var(--color-lactec-on-nav);
-}
-
-.status-dialog-feedback {
-  margin: 0;
-  font-size: 12px;
-  color: var(--color-lactec-ink-soft);
-}
-.status-dialog-feedback--erro {
-  color: var(--color-lactec-danger-ink);
-}
-
-
-.status-dialog-protocol {
-  font-size: 11px;
-  letter-spacing: 0.12em;
-  color: var(--color-lactec-faint);
-  text-transform: uppercase;
-}
-
-
-/* Mobile: o overlay vira a tela toda e transparente. Quem desenha barra +
-   escurecedor + sheet é o .dialog-sheet abaixo, só com flexbox. A largura vem
-   do MatDialogConfig, que o overlay escreve no próprio elemento: repetida aqui
-   com `!important`, ela vencia o estilo embutido e nenhum chamador conseguia
-   mais ajustar a largura pelo parâmetro de configuração. */
-
-.dialog-sheet {
-  display: flex;
-  flex-direction: column;
-  height: 100dvh;
-}
-/* divA: barra que cobre a navigation real, só com o fechar */
-.dialog-sheet__bar {
-  flex: none;
-  height: 56px;
-  display: flex;
-  align-items: center;
-  justify-content: flex-end;
-  padding: 0 4px;
-  background: var(--color-lactec-nav);
-}
-/* divB: escurecedor; segura o sheet colado embaixo (justify-end) e fica atrás
-   dele enquanto sobe, então não abre buraco. Toque fora fecha. */
-.dialog-sheet__backdrop {
-  flex: 1 1 auto;
-  min-height: 0;
-  display: flex;
-  flex-direction: column;
-  justify-content: flex-end;
-  overflow: hidden;
-  background: color-mix(in oklab, var(--color-lactec-ink) 55%, transparent);
-  cursor: pointer;
-}
-/* divC: o modal em si, colado embaixo, quadrado. Só ele desliza de baixo;
-   barra e escurecedor não são afetados. */
-.dialog-sheet__panel {
-  flex: none;
-  max-height: 100%;
-  overflow-y: auto;
-  display: flex;
-  flex-direction: column;
-  gap: 16px;
-  padding: 20px;
-  cursor: default;
-  background: var(--color-lactec-paper);
-  animation: dialog-sheet-up 260ms ease;
-}
-@keyframes dialog-sheet-up {
-  from {
-    transform: translateY(100%);
-  }
-  to {
-    transform: translateY(0);
-  }
-}
-.lactec-dialog-desktop .dialog-shell {
-  padding: 24px 40px 20px;
-}
-
 /* Visualizador da proposta (ngx-extended-pdf-viewer).
 
    A biblioteca injeta o CSS dela com ViewEncapsulation.None e fora de camada,
@@ -977,8 +316,8 @@ app-proposal-viewer ngx-extended-pdf-viewer .sidebar {
 app-proposal-viewer ngx-extended-pdf-viewer .treeView {
   --treeitem-color: var(--color-lactec-ink-soft);
   --treeitem-hover-color: var(--color-lactec-ink);
-  --treeitem-selected-bg-color: var(--color-lactec-pill-proc-bg);
-  --treeitem-selected-color: var(--color-lactec-pill-proc-ink);
+  --treeitem-selected-bg-color: var(--color-lactec-info-surface);
+  --treeitem-selected-color: var(--color-lactec-info-ink);
 }
 
 app-proposal-viewer ngx-extended-pdf-viewer .popupMenu {
@@ -1014,46 +353,139 @@ mat-sidenav-content.mat-drawer-content:has(app-proposal-viewer [data-fullscreen]
   z-index: 3;
 }
 
-/* O retorno para o nivel acima, no inicio da barra superior. Regra nao encamadada e nao
-   utilitaria pelo motivo que o resto deste arquivo ja documenta: o mat-icon de dentro herda
-   a cor do ancestral, e utilitaria do Tailwind nao alcanca componente do Material. A altura
-   de 44px e o alvo de toque recomendado, e o foco e um contorno de 2px em vez de uma troca
-   de cor de borda. */
-.shell-back {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  min-height: 44px;
-  margin-left: -8px;
-  padding: 0 12px 0 8px;
-  border-radius: 8px;
-  font-size: 14px;
-  font-weight: 600;
-  color: var(--color-lactec-ink-soft);
-  text-decoration: none;
-  transition: background-color 120ms ease, color 120ms ease;
+.driver-popover.lactec-tour--stale {
+  visibility: hidden;
 }
 
-.shell-back:hover {
-  background: var(--color-lactec-line-soft);
+.driver-popover.lactec-tour {
+  --driver-popover-font-family: var(--font-sans);
+  min-width: min(16rem, calc(100vw - 2 * var(--spacing-lactec-panel-gap)));
+  max-width: min(22rem, calc(100vw - 2 * var(--spacing-lactec-panel-gap)));
+  padding: var(--spacing-lactec-panel-gap);
+  background-color: var(--color-lactec-paper);
+  color: var(--color-lactec-ink-soft);
+  border-radius: calc(var(--radius-lactec-control) * 1.5);
+  box-shadow:
+    0 0 0 1px color-mix(in oklab, var(--color-lactec-ink) 12%, transparent),
+    0 12px 32px color-mix(in oklab, var(--color-lactec-ink) 28%, transparent);
+}
+
+.driver-popover.lactec-tour .driver-popover-title {
+  padding-right: 2.5rem;
+  font-family: var(--font-display);
+  font-size: 1rem;
+  font-weight: 600;
+  line-height: 1.4;
   color: var(--color-lactec-ink);
 }
 
-.shell-back:focus-visible {
-  outline: 2px solid var(--color-lactec-primary);
-  outline-offset: 2px;
+.driver-popover.lactec-tour .driver-popover-description {
+  font-size: 0.875rem;
+  line-height: 1.5;
+  color: var(--color-lactec-ink-soft);
 }
 
-/* No celular a barra superior e escura, entao o mesmo link usa o par de cores da navegacao. */
-.shell-back--dark {
-  color: var(--color-lactec-on-nav);
+.driver-popover.lactec-tour .driver-popover-close-btn {
+  top: 0.25rem;
+  right: 0.25rem;
+  width: 2.5rem;
+  height: 2.5rem;
+  font-size: 1.25rem;
+  line-height: 2.5rem;
+  border-radius: var(--radius-lactec-control);
+  color: var(--color-lactec-muted);
 }
 
-.shell-back--dark:hover {
-  background: var(--color-lactec-nav-hover);
+.driver-popover.lactec-tour .driver-popover-close-btn:hover,
+.driver-popover.lactec-tour .driver-popover-close-btn:focus-visible {
+  color: var(--color-lactec-ink);
+}
+
+.driver-popover.lactec-tour .driver-popover-footer {
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-top: var(--spacing-lactec-panel-gap);
+}
+
+.driver-popover.lactec-tour .driver-popover-progress-text {
+  font-size: 0.8125rem;
+  font-variant-numeric: tabular-nums;
+  color: var(--color-lactec-muted);
+}
+
+.driver-popover.lactec-tour .driver-popover-navigation-btns {
+  gap: 0.5rem;
+}
+
+.driver-popover.lactec-tour .driver-popover-navigation-btns button + button {
+  margin-inline-start: 0;
+}
+
+.driver-popover.lactec-tour .driver-popover-footer-btn {
+  min-height: 2.5rem;
+  padding: 0 0.875rem;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  line-height: 2.5rem;
+  text-shadow: none;
+  border: 1px solid var(--color-lactec-line-control);
+  border-radius: var(--radius-lactec-control);
+  background-color: var(--color-lactec-paper);
+  color: var(--color-lactec-ink);
+}
+
+.driver-popover.lactec-tour .driver-popover-footer-btn:hover {
+  background-color: var(--color-lactec-line-soft);
+}
+
+.driver-popover.lactec-tour .driver-popover-next-btn {
+  border-color: var(--color-lactec-primary-strong);
+  background-color: var(--color-lactec-primary-strong);
   color: var(--color-lactec-on-primary);
 }
 
-.shell-back--dark:focus-visible {
-  outline-color: var(--color-lactec-paper);
+.driver-popover.lactec-tour .driver-popover-next-btn:hover {
+  border-color: var(--color-lactec-primary-deep);
+  background-color: var(--color-lactec-primary-deep);
+}
+
+.driver-popover.lactec-tour .driver-popover-footer-btn:focus-visible,
+.driver-popover.lactec-tour .driver-popover-close-btn:focus-visible {
+  outline: 2px solid var(--color-lactec-primary-strong);
+  outline-offset: 2px;
+}
+
+.driver-popover.lactec-tour .driver-popover-arrow {
+  border-color: var(--color-lactec-paper);
+}
+
+.driver-popover.lactec-tour .driver-popover-arrow-side-left {
+  border-top-color: transparent;
+  border-right-color: transparent;
+  border-bottom-color: transparent;
+}
+
+.driver-popover.lactec-tour .driver-popover-arrow-side-right {
+  border-top-color: transparent;
+  border-bottom-color: transparent;
+  border-left-color: transparent;
+}
+
+.driver-popover.lactec-tour .driver-popover-arrow-side-top {
+  border-right-color: transparent;
+  border-bottom-color: transparent;
+  border-left-color: transparent;
+}
+
+.driver-popover.lactec-tour .driver-popover-arrow-side-bottom {
+  border-top-color: transparent;
+  border-right-color: transparent;
+  border-left-color: transparent;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .driver-fade .driver-overlay,
+  .driver-fade .driver-popover {
+    animation: none;
+  }
 }

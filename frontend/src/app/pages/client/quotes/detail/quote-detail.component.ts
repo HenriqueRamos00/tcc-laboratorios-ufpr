@@ -35,8 +35,12 @@ import {
 
 import { ProposalSkeletonComponent } from './proposal-skeleton.component';
 import { ProposalViewerComponent } from './proposal-viewer.component';
+import { MoedaPipe } from '@shared/pipes/moeda.pipe';
 
-const BRL = new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' });
+import { registerPageTour } from '@/app/services/tour.service';
+import { quoteDetailTour } from './quote-detail.tour';
+
+const moedaPipe = new MoedaPipe();
 
 /**
  * A tela oferece uma ação só, e quem a escolhe é a etapa: em negociação o
@@ -101,7 +105,7 @@ export class QuoteDetailComponent {
 
   protected readonly total = computed(() => {
     const valor = this.quote()?.totalPrice;
-    return typeof valor === 'number' ? BRL.format(valor) : '—';
+    return moedaPipe.transform(valor) || '—';
   });
 
   // A decisão tomada nesta sessão vale mais que a etapa que veio na carga da
@@ -155,6 +159,10 @@ export class QuoteDetailComponent {
   });
 
   constructor() {
+    registerPageTour(() =>
+      quoteDetailTour({ stage: this.stage(), pendingAction: this.pendingAction() }),
+    );
+
     // O router reaproveita a instância quando só o id muda, e ngOnInit não roda
     // de novo.
     toObservable(this.id)

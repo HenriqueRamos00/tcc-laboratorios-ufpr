@@ -1,10 +1,13 @@
+using Portal.Tests.Quotes;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Http;
 using Portal.Adapters.Quotes;
 using Portal.Api.Controllers;
 using Portal.Application.Quotes;
 using Portal.Application.Quotes.Exceptions;
+using Portal.Api.Configuration;
 using Portal.Tests.Pipeline;
+using Portal.Tests.Quotes;
 
 using Xunit;
 
@@ -15,7 +18,7 @@ public sealed class QuoteDocumentTests
     [Fact]
     public async Task QuoteFixtureHasRequestedCodeStatusAndTotal()
     {
-        var quotes = new FakeSalesforceQuoteRepository();
+        var quotes = new FakeSalesforceQuoteRepository(FixedCompanyScope.DemoCompanies);
 
         var quote = await quotes.GetQuoteByIdAsync("quote-3", CancellationToken.None);
 
@@ -135,8 +138,19 @@ public sealed class QuoteDocumentTests
     }
 
     private static QuotesController CreateController(IQuoteDocumentRepository documents) =>
-        new(new QuoteService(
-            new FakeSalesforceQuoteRepository(), documents, new InMemoryLaboratoryProgressRepository()));
+        new(
+            new QuoteService(
+                new FakeSalesforceQuoteRepository(FixedCompanyScope.DemoCompanies), documents, new InMemoryLaboratoryProgressRepository(),
+                new InMemoryClientDecisionRepository(), FixedCompanyScope.DemoCompanies),
+            new UnusedClientDecisionRecording(),
+            new PortalOptions { DataSource = PortalOptions.LactecSource });
+
+    private sealed class UnusedClientDecisionRecording : IForRecordingClientDecisions
+    {
+        public Task<ClientDecisionResult> RecordAsync(
+            string quoteId, ClientDecisionRequest request, CancellationToken cancellationToken) =>
+            throw new InvalidOperationException("Este teste nao registra decisoes.");
+    }
 
     private sealed class FixedDocumentRepository(byte[] document) : IQuoteDocumentRepository
     {

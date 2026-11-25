@@ -1,6 +1,7 @@
 <app-page-header title="Listagem de Equipamentos" />
 
 <app-search-field
+  data-tour="equipamentos-busca"
   class="mt-6"
   placeholder="Buscar por Número de Série ou TAG"
   label="Buscar por número de série ou TAG"
@@ -25,6 +26,7 @@
   />
 } @else {
   <app-data-table
+    data-tour="equipamentos-tabela"
     class="mt-6"
     caption="Equipamentos da sua empresa, com número de série, TAG, tipo, número de laudos e acesso aos detalhes de cada um."
     paginationLabel="Paginação da listagem de equipamentos"
@@ -40,11 +42,20 @@
     [loading]="loading()"
     [(query)]="query"
   >
-    <ng-template appDataTableActions [appDataTableActionsOf]="equipmentList()" let-equipment>
+    <ng-template
+      appDataTableActions
+      [appDataTableActionsOf]="equipmentList()"
+      let-equipment
+      let-compact="compact"
+    >
       <a
+        data-tour="equipamentos-detalhes"
         [routerLink]="['/cliente/equipamentos', equipment.id]"
         class="inline-flex items-center gap-2 rounded-lg bg-lactec-primary px-4 py-2
-               text-sm font-semibold text-lactec-on-primary hover:bg-lactec-primary-dark"
+               text-sm font-semibold text-lactec-on-primary hover:bg-lactec-primary-strong"
+        [class.h-11]="compact"
+        [class.w-full]="compact"
+        [class.justify-center]="compact"
       >
         Ver Detalhes
         <mat-icon class="icone-16" aria-hidden="true">arrow_forward</mat-icon>

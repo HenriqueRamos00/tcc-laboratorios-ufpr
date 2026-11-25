@@ -7,6 +7,7 @@ namespace Portal.Adapters.ReportDocuments;
 public sealed class NullReportIssueRepository : IReportIssueRepository
 {
     public Task<SignedReportDocument?> GetSignedDocumentOfAsync(
+        CompanyScope scope,
         string reportIdentification,
         CancellationToken cancellationToken)
     {
@@ -14,6 +15,7 @@ public sealed class NullReportIssueRepository : IReportIssueRepository
     }
 
     public Task<IReadOnlySet<string>> GetIdentificationsWithSignedDocumentAsync(
+        CompanyScope scope,
         IReadOnlyCollection<string> reportIdentifications,
         CancellationToken cancellationToken)
     {
@@ -21,6 +23,7 @@ public sealed class NullReportIssueRepository : IReportIssueRepository
     }
 
     public Task<ReportIssue?> GetCurrentIssueOfAsync(
+        CompanyScope scope,
         string reportIdentification,
         CancellationToken cancellationToken)
     {
@@ -28,7 +31,7 @@ public sealed class NullReportIssueRepository : IReportIssueRepository
     }
 
     public Task<Page<LabReport>> ListReportsAsync(
-        VisibilityScope scope,
+        CompanyScope scope,
         string? quoteCode,
         PageRequest page,
         CancellationToken cancellationToken)
@@ -37,7 +40,7 @@ public sealed class NullReportIssueRepository : IReportIssueRepository
     }
 
     public Task<SignedReportDocument?> GetSignedDocumentOfReportAsync(
-        VisibilityScope scope,
+        CompanyScope scope,
         Guid reportId,
         CancellationToken cancellationToken)
     {

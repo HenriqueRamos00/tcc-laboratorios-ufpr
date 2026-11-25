@@ -1,112 +1,208 @@
-<div #root class="overflow-hidden rounded-2xl border border-lactec-line bg-lactec-paper">
-  <div class="overflow-x-auto">
-    <table class="w-full border-collapse text-sm" [attr.aria-busy]="loading() ? 'true' : null">
-      <caption class="sr-only">{{ caption() }}</caption>
-      <thead #head>
-        <tr class="bg-lactec-line-soft text-left">
-          @for (column of columns(); track column.key) {
-            <th
-              scope="col"
-              class="whitespace-nowrap px-4 py-3 font-semibold text-lactec-ink"
-              [class.text-right]="column.align === 'end'"
-            >
-              {{ column.header }}
-            </th>
-          }
-          @if (actions()) {
-            <th scope="col" class="whitespace-nowrap px-4 py-3 text-right font-semibold text-lactec-ink">
-              {{ actionsHeader() }}
-            </th>
-          }
-        </tr>
-      </thead>
-      <tbody [class.opacity-60]="loading() && rows().length > 0">
-        @for (row of rows(); track trackBy()(row)) {
-          <tr data-row class="border-t border-lactec-line-soft" [style.height.px]="rowHeight()">
+@if (compact()) {
+  <div class="flex flex-col gap-4">
+    <ul
+      class="m-0 flex list-none flex-col gap-4 p-0"
+      [attr.aria-label]="caption()"
+      [attr.aria-busy]="loading() ? 'true' : null"
+      [class.opacity-60]="loading() && rows().length > 0"
+    >
+      @for (row of rows(); track trackBy()(row)) {
+        <li
+          data-row
+          class="flex flex-col gap-4 rounded-lactec-panel border border-lactec-line bg-lactec-paper p-lactec-panel"
+        >
+          <dl class="m-0 flex flex-col gap-4">
             @for (column of columns(); track column.key) {
-              <td
-                class="whitespace-nowrap px-4 py-1.5 text-lactec-ink"
+              <div class="flex min-w-0 flex-col gap-1">
+                <dt class="text-xs text-lactec-muted">{{ column.header }}</dt>
+                <dd class="m-0 break-words text-sm font-semibold text-lactec-ink">
+                  @if (cellTemplate(column.key); as template) {
+                    <ng-container
+                      [ngTemplateOutlet]="template"
+                      [ngTemplateOutletContext]="{ $implicit: row, compact: true }"
+                    />
+                  } @else {
+                    @let value = cellValue(row, column);
+                    @if (value === null) {
+                      <app-data-unavailable />
+                    } @else {
+                      {{ value }}
+                    }
+                  }
+                </dd>
+              </div>
+            }
+          </dl>
+          @if (actions(); as rowActions) {
+            <div class="flex flex-col gap-2 border-t border-lactec-line-soft pt-4">
+              <ng-container
+                [ngTemplateOutlet]="rowActions.template"
+                [ngTemplateOutletContext]="{ $implicit: row, compact: true }"
+              />
+            </div>
+          }
+        </li>
+      } @empty {
+        @if (!loading()) {
+          <li
+            class="flex flex-col items-center gap-2 rounded-lactec-panel border border-lactec-line
+                   bg-lactec-paper px-6 py-10 text-center"
+            role="status"
+          >
+            <mat-icon class="icone-36 text-lactec-faint" aria-hidden="true">{{ emptyIcon() }}</mat-icon>
+            <p class="m-0 text-sm font-medium text-lactec-ink">{{ emptyTitle() }}</p>
+            @if (emptyDescription()) {
+              <p class="m-0 max-w-prose text-sm text-lactec-muted">{{ emptyDescription() }}</p>
+            }
+          </li>
+        }
+      }
+    </ul>
+
+    @if (skeletonRows().length) {
+      <ul class="m-0 flex list-none flex-col gap-4 p-0" data-skeleton [appSkeletonPlaceholder]="loadingMessage()">
+        @for (row of skeletonRows(); track row) {
+          <li class="flex flex-col gap-4 rounded-lactec-panel border border-lactec-line bg-lactec-paper p-lactec-panel">
+            @for (column of columns(); track column.key; let position = $index) {
+              <div class="flex flex-col gap-2">
+                <app-skeleton class="h-3 w-20" />
+                <app-skeleton class="h-4" [class]="skeletonWidthClass(row, position)" />
+              </div>
+            }
+          </li>
+        }
+      </ul>
+    }
+
+    <div
+      #root
+      class="rounded-lactec-panel border border-lactec-line bg-lactec-paper px-4 py-3"
+    >
+      <app-pagination
+        class="w-full"
+        [label]="paginationLabel()"
+        [page]="query().page"
+        [pageSize]="pageSize()"
+        [total]="total()"
+        [disabled]="loading()"
+        [pageSizeOptions]="pageSizeChoices()"
+        [pageSizeChoice]="pageSizeChoice()"
+        (pageChange)="goToPage($event)"
+        (pageSizeChoiceChange)="choosePageSize($event)"
+      />
+    </div>
+  </div>
+} @else {
+  <div #root class="overflow-hidden rounded-lactec-panel border border-lactec-line bg-lactec-paper">
+    <div class="overflow-x-auto">
+      <table class="w-full border-collapse text-sm" [attr.aria-busy]="loading() ? 'true' : null">
+        <caption class="sr-only">{{ caption() }}</caption>
+        <thead #head>
+          <tr class="bg-lactec-line-soft text-left">
+            @for (column of columns(); track column.key) {
+              <th
+                scope="col"
+                class="whitespace-nowrap px-4 py-3 font-semibold text-lactec-ink"
                 [class.text-right]="column.align === 'end'"
               >
-                @if (cellTemplate(column.key); as template) {
-                  <ng-container
-                    [ngTemplateOutlet]="template"
-                    [ngTemplateOutletContext]="{ $implicit: row }"
-                  />
-                } @else {
-                  @let value = cellValue(row, column);
-                  @if (value === null) {
-                    <app-data-unavailable />
-                  } @else {
-                    {{ value }}
-                  }
-                }
-              </td>
+                {{ column.header }}
+              </th>
             }
-            @if (actions(); as rowActions) {
-              <td class="whitespace-nowrap px-4 py-1.5 text-right">
-                <ng-container
-                  [ngTemplateOutlet]="rowActions.template"
-                  [ngTemplateOutletContext]="{ $implicit: row }"
-                />
-              </td>
+            @if (actions()) {
+              <th scope="col" class="whitespace-nowrap px-4 py-3 text-right font-semibold text-lactec-ink">
+                {{ actionsHeader() }}
+              </th>
             }
           </tr>
-        } @empty {
-          @if (!loading()) {
-            <tr class="border-t border-lactec-line-soft">
-              <td class="px-6 py-10 text-center" [attr.colspan]="columnCount()">
-                <div class="flex flex-col items-center gap-2" role="status">
-                  <mat-icon class="icone-36 text-lactec-faint" aria-hidden="true">
-                    {{ emptyIcon() }}
-                  </mat-icon>
-                  <p class="m-0 text-sm font-medium text-lactec-ink">{{ emptyTitle() }}</p>
-                  @if (emptyDescription()) {
-                    <p class="m-0 max-w-prose text-sm text-lactec-muted">{{ emptyDescription() }}</p>
+        </thead>
+        <tbody [class.opacity-60]="loading() && rows().length > 0">
+          @for (row of rows(); track trackBy()(row)) {
+            <tr data-row class="border-t border-lactec-line-soft" [style.height.px]="rowHeight()">
+              @for (column of columns(); track column.key) {
+                <td
+                  class="whitespace-nowrap px-4 py-1.5 text-lactec-ink"
+                  [class.text-right]="column.align === 'end'"
+                >
+                  @if (cellTemplate(column.key); as template) {
+                    <ng-container
+                      [ngTemplateOutlet]="template"
+                      [ngTemplateOutletContext]="{ $implicit: row, compact: false }"
+                    />
+                  } @else {
+                    @let value = cellValue(row, column);
+                    @if (value === null) {
+                      <app-data-unavailable />
+                    } @else {
+                      {{ value }}
+                    }
                   }
-                </div>
-              </td>
-            </tr>
-          }
-        }
-      </tbody>
-      @if (skeletonRows().length) {
-        <tbody data-skeleton [appSkeletonPlaceholder]="loadingMessage()">
-          @for (row of skeletonRows(); track row) {
-            <tr class="border-t border-lactec-line-soft" [style.height.px]="rowHeight()">
-              @for (column of columns(); track column.key; let position = $index) {
-                <td class="px-4 py-1.5">
-                  <app-skeleton
-                    class="h-4"
-                    [class]="skeletonWidthClass(row, position)"
-                    [class.ml-auto]="column.align === 'end'"
+                </td>
+              }
+              @if (actions(); as rowActions) {
+                <td class="whitespace-nowrap px-4 py-1.5 text-right">
+                  <ng-container
+                    [ngTemplateOutlet]="rowActions.template"
+                    [ngTemplateOutletContext]="{ $implicit: row, compact: false }"
                   />
                 </td>
               }
-              @if (actions()) {
-                <td class="px-4 py-1.5">
-                  <app-skeleton class="ml-auto h-6 w-24" />
-                </td>
-              }
             </tr>
+          } @empty {
+            @if (!loading()) {
+              <tr class="border-t border-lactec-line-soft">
+                <td class="px-6 py-10 text-center" [attr.colspan]="columnCount()">
+                  <div class="flex flex-col items-center gap-2" role="status">
+                    <mat-icon class="icone-36 text-lactec-faint" aria-hidden="true">
+                      {{ emptyIcon() }}
+                    </mat-icon>
+                    <p class="m-0 text-sm font-medium text-lactec-ink">{{ emptyTitle() }}</p>
+                    @if (emptyDescription()) {
+                      <p class="m-0 max-w-prose text-sm text-lactec-muted">{{ emptyDescription() }}</p>
+                    }
+                  </div>
+                </td>
+              </tr>
+            }
           }
         </tbody>
-      }
-    </table>
-  </div>
+        @if (skeletonRows().length) {
+          <tbody data-skeleton [appSkeletonPlaceholder]="loadingMessage()">
+            @for (row of skeletonRows(); track row) {
+              <tr class="border-t border-lactec-line-soft" [style.height.px]="rowHeight()">
+                @for (column of columns(); track column.key; let position = $index) {
+                  <td class="px-4 py-1.5">
+                    <app-skeleton
+                      class="h-4"
+                      [class]="skeletonWidthClass(row, position)"
+                      [class.ml-auto]="column.align === 'end'"
+                    />
+                  </td>
+                }
+                @if (actions()) {
+                  <td class="px-4 py-1.5">
+                    <app-skeleton class="ml-auto h-6 w-24" />
+                  </td>
+                }
+              </tr>
+            }
+          </tbody>
+        }
+      </table>
+    </div>
 
-  <div #footer class="flex min-h-16 items-center border-t border-lactec-line-soft px-4 py-3">
-    <app-pagination
-      class="w-full"
-      [label]="paginationLabel()"
-      [page]="query().page"
-      [pageSize]="pageSize()"
-      [total]="total()"
-      [disabled]="loading()"
-      [pageSizeOptions]="pageSizeChoices()"
-      [pageSizeChoice]="pageSizeChoice()"
-      (pageChange)="goToPage($event)"
-      (pageSizeChoiceChange)="choosePageSize($event)"
-    />
+    <div #footer class="flex min-h-16 items-center border-t border-lactec-line-soft px-4 py-3">
+      <app-pagination
+        class="w-full"
+        [label]="paginationLabel()"
+        [page]="query().page"
+        [pageSize]="pageSize()"
+        [total]="total()"
+        [disabled]="loading()"
+        [pageSizeOptions]="pageSizeChoices()"
+        [pageSizeChoice]="pageSizeChoice()"
+        (pageChange)="goToPage($event)"
+        (pageSizeChoiceChange)="choosePageSize($event)"
+      />
+    </div>
   </div>
-</div>
+}

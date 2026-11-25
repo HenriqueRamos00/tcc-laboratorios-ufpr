@@ -8,7 +8,7 @@ import { Nbr7274ChartComponent } from '@shared/components/nbr-7274-chart/nbr-727
 import { DuvalTriangleComponent } from '@shared/components/duval-triangle/duval-triangle.component';
 import { ZoomLensComponent } from '@shared/components/zoom-lens/zoom-lens.component';
 
-import { readableDate } from '@shared/brazilian-date';
+import { NumeroPipe } from '@shared/pipes/numero.pipe';
 
 import {
   NOT_ASSESSED_LABEL,
@@ -38,12 +38,14 @@ const NOT_PERFORMED_MARK = '-';
 /** Duas casas bastam numa razão de gases, e a vírgula é a do leitor do laudo. */
 // Faixas do IEEE C57.104: a severidade é a própria mensagem, então as três
 // reusam o trio de feedback do tema em vez de inventar matiz nova.
+const numeroPipe = new NumeroPipe();
+
 function ratioText(value: number): string {
-  return value.toLocaleString('pt-BR', { maximumFractionDigits: 2 });
+  return numeroPipe.transform(value, 2);
 }
 
 function percentText(value: number): string {
-  return value.toLocaleString('pt-BR', { maximumFractionDigits: 1 });
+  return numeroPipe.transform(value, 1);
 }
 
 function ratioRows(method: RatioMethodReading | undefined) {

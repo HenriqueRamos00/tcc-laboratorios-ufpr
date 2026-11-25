@@ -62,6 +62,8 @@ describe('skeletons das telas do cliente', () => {
       TestBed.configureTestingModule({
         providers: [
           provideRouter([]),
+          provideHttpClient(),
+          provideHttpClientTesting(),
           { provide: HealthService, useValue: { equipmentIndicators: () => response } },
         ],
       });
@@ -122,6 +124,8 @@ describe('skeletons das telas do cliente', () => {
       TestBed.configureTestingModule({
         providers: [
           provideRouter([]),
+          provideHttpClient(),
+          provideHttpClientTesting(),
           {
             provide: QuotesService,
             useValue: {
@@ -156,7 +160,7 @@ describe('skeletons das telas do cliente', () => {
       fixture.detectChanges();
 
       expect(region(view)).toBeNull();
-      expect(view.querySelectorAll('article.quote-card').length).toBe(1);
+      expect(view.querySelectorAll('article').length).toBe(1);
     });
 
     it('ao trocar de página mantém os cartões atuais esmaecidos, sem skeleton', () => {
@@ -167,7 +171,7 @@ describe('skeletons das telas do cliente', () => {
       fixture.componentInstance.goToPage(2);
       fixture.detectChanges();
 
-      const list = view.querySelector('article.quote-card')!.parentElement!;
+      const list = view.querySelector('article')!.parentElement!;
 
       expect(region(view)).toBeNull();
       expect(list.classList).toContain('opacity-60');
@@ -214,6 +218,8 @@ describe('skeletons das telas do cliente', () => {
       TestBed.configureTestingModule({
         providers: [
           provideRouter([]),
+          provideHttpClient(),
+          provideHttpClientTesting(),
           {
             provide: QuotesService,
             useValue: { getQuoteById: () => quote, quoteDocument: () => document },
@@ -267,6 +273,8 @@ describe('skeletons das telas do cliente', () => {
       TestBed.configureTestingModule({
         providers: [
           provideRouter([]),
+          provideHttpClient(),
+          provideHttpClientTesting(),
           { provide: QuotesService, useValue: { getQuoteById: () => quote } },
           { provide: ReportsService, useValue: { list: () => NEVER } },
         ],
@@ -281,7 +289,7 @@ describe('skeletons das telas do cliente', () => {
       const { view } = mount();
 
       expectSilentBusyRegion(view);
-      expect(view.querySelectorAll('.status-stepper__step').length).toBe(5);
+      expect(view.querySelectorAll('app-skeleton[shape="round"]').length).toBe(5);
       expect(view.querySelector('app-table-skeleton')).not.toBeNull();
     });
 
@@ -306,6 +314,8 @@ describe('skeletons das telas do cliente', () => {
       TestBed.configureTestingModule({
         providers: [
           provideRouter([]),
+          provideHttpClient(),
+          provideHttpClientTesting(),
           {
             provide: QuotesService,
             useValue: {
@@ -345,7 +355,7 @@ describe('skeletons das telas do cliente', () => {
       fixture.detectChanges();
 
       expect(panel.querySelector('app-loading-region')).toBeNull();
-      expect(panel.querySelectorAll('article.quote-card').length).toBe(1);
+      expect(panel.querySelectorAll('article').length).toBe(1);
     });
   });
 });

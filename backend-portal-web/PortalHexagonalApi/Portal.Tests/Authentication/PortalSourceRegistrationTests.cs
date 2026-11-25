@@ -7,7 +7,9 @@ using Microsoft.Extensions.Options;
 using Portal.Adapters.BackendAuth;
 using Portal.Adapters.BackendLab;
 using Portal.Adapters.Quotes;
+using Portal.Adapters.PortalStore;
 using Portal.Api.Configuration;
+using Portal.Api.PortalStore;
 using Portal.Api.Reports;
 using Portal.Adapters.Reports;
 using Portal.Adapters.Salesforce;
@@ -37,6 +39,43 @@ public sealed class PortalSourceRegistrationTests
 
         Assert.IsType<SpringQuoteRepository>(scope.ServiceProvider.GetRequiredService<IQuoteRepository>());
         Assert.IsType<SpringQuoteDocumentRepository>(scope.ServiceProvider.GetRequiredService<IQuoteDocumentRepository>());
+    }
+
+    [Fact]
+    public void BackendLabRegistraOEnvioDeAceitePeloSpring()
+    {
+        IServiceCollection services = Register("backend-lab");
+        using ServiceProvider provider = services.BuildServiceProvider();
+        using IServiceScope scope = provider.CreateScope();
+
+        Assert.Equal(typeof(BackendLabClientDecisionRecording), services.Last(item =>
+            item.ServiceType == typeof(IForRecordingClientDecisions)).ImplementationType);
+        Assert.IsType<SpringClientDecisionSubmission>(
+            scope.ServiceProvider.GetRequiredService<IClientDecisionSubmission>());
+    }
+
+    [Fact]
+    public void LactecPreservaORegistroLocalDeDecisoes()
+    {
+        IServiceCollection services = Register("lactec");
+
+        Assert.Equal(typeof(ClientDecisionRecording), services.Last(item =>
+            item.ServiceType == typeof(IForRecordingClientDecisions)).ImplementationType);
+    }
+
+    [Fact]
+    public void BackendLabNaoInicializaBancoLocalDeDecisoes()
+    {
+        IConfiguration configuration = Configuration("backend-lab", overrides: new()
+        {
+            ["PortalStore:Source"] = "sqlserver"
+        });
+        IServiceCollection services = Register("backend-lab").AddPortalStore(configuration);
+        using ServiceProvider provider = services.BuildServiceProvider();
+
+        Assert.IsType<NotConnectedClientDecisionRepository>(
+            provider.GetRequiredService<IClientDecisionRepository>());
+        Assert.DoesNotContain(services, item => item.ServiceType == typeof(PortalStoreDbContext));
     }
 
     [Fact]

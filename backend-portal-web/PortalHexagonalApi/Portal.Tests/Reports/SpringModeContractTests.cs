@@ -129,7 +129,6 @@ public sealed class SpringModeContractTests
             builder.UseSetting("BackendLab:BaseUrl", "https://spring.test/");
             foreach (string section in new[] { "LabResults", "EquipmentRegistry", "LaboratoryProgress", "ReportDocuments" })
                 builder.UseSetting($"{section}:Source", "not-connected");
-            builder.UseSetting("LabResults:Scope", "");
             builder.UseSetting("AutoLab:Server", "");
             builder.UseSetting("AutoLab:Password", "");
             builder.ConfigureTestServices(services =>

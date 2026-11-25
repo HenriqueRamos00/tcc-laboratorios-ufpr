@@ -18,7 +18,6 @@ internal enum class PortalDestination(val itemId: Int, val screen: Class<out App
 
 internal class PortalDrawer(
     private val activity: AppCompatActivity,
-    private val token: String,
     private val selected: PortalDestination,
 ) {
     private val drawer = activity.findViewById<DrawerLayout>(R.id.portalDrawer)
@@ -53,9 +52,6 @@ internal class PortalDrawer(
         }
         activity.findViewById<View>(R.id.logoutButton).setOnClickListener {
             LoginActivity.clearSession(activity)
-            activity.startActivity(Intent(activity, LoginActivity::class.java)
-                .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK))
-            activity.finish()
         }
         updateMenu(false)
     }
@@ -80,7 +76,6 @@ internal class PortalDrawer(
         if (destination == selected || navigating) return
         navigating = true
         activity.startActivity(Intent(activity, destination.screen)
-            .putExtra(LoginActivity.EXTRA_ACCESS_TOKEN, token)
             .addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP))
         if (selected != PortalDestination.QUOTES) activity.finish()
     }

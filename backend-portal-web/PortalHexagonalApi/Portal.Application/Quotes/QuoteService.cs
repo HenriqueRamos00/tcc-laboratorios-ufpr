@@ -1,5 +1,6 @@
 using Portal.Application.Paging;
 using Portal.Application.Pipeline;
+using Portal.Application.Visibility;
 using Portal.Domain.Pipeline;
 using Portal.Domain.Quotes;
 
@@ -22,16 +23,29 @@ public sealed class QuoteService : IQuoteUseCase
     private readonly IQuoteRepository _quoteRepository;
     private readonly IQuoteDocumentRepository _documents;
     private readonly ILaboratoryProgressRepository _laboratoryProgress;
+    private readonly IClientDecisionRepository _decisions;
+    private readonly IQuoteCompanyScope _companyScope;
 
     public QuoteService(
         IQuoteRepository quoteRepository,
         IQuoteDocumentRepository documents,
-        ILaboratoryProgressRepository laboratoryProgress)
+        ILaboratoryProgressRepository laboratoryProgress,
+        IClientDecisionRepository decisions,
+        IQuoteCompanyScope companyScope)
     {
         _quoteRepository = quoteRepository;
         _documents = documents;
         _laboratoryProgress = laboratoryProgress;
+        _decisions = decisions;
+        _companyScope = companyScope;
     }
+
+    /// <summary>
+    /// A etapa do laboratorio e pedida com as mesmas empresas que filtraram o orcamento. O
+    /// codigo da cotacao sozinho nao basta: ele e digitado no sistema comercial, e a fonte do
+    /// laboratorio so responde pelos codigos das solicitacoes dessas empresas.
+    /// </summary>
+    private CompanyScope LaboratoryScope => CompanyScope.OfCnpjs(_companyScope.CompanyCnpjs);
 
     public async Task<Page<QuoteWithLaboratoryStage>> GetQuotesAsync(
         PageRequest page,
@@ -52,10 +66,16 @@ public sealed class QuoteService : IQuoteUseCase
 
         IReadOnlyList<LaboratoryProgress> progress = keys.Length == 0
             ? []
-            : await _laboratoryProgress.GetProgressOfQuotesAsync(keys, cancellationToken);
+            : await _laboratoryProgress.GetProgressOfQuotesAsync(LaboratoryScope, keys, cancellationToken);
+
+        IReadOnlyList<ClientDecision> decisions = await _decisions.GetSummariesOfQuotesAsync(
+            [.. quotes.Items.Select(quote => quote.Id).Distinct(StringComparer.Ordinal)], cancellationToken);
 
         return quotes.WithItems<QuoteWithLaboratoryStage>([.. quotes.Items
-            .Select(quote => new QuoteWithLaboratoryStage(quote, StageOf(progress, quote.LaboratoryKey)))]);
+            .Select(quote => new QuoteWithLaboratoryStage(
+                quote,
+                StageOf(progress, quote.LaboratoryKey),
+                LatestOf(decisions, quote.Id)))]);
     }
 
     public async Task<QuoteWithLaboratoryStage?> GetQuoteByIdAsync(
@@ -67,12 +87,15 @@ public sealed class QuoteService : IQuoteUseCase
         Quote? quote = await _quoteRepository.GetQuoteByIdAsync(id, cancellationToken);
 
         if (quote is null) return null;
-        if (quote.LaboratoryKey is not { } key) return new QuoteWithLaboratoryStage(quote, null);
 
-        LaboratoryProgress? progress = await _laboratoryProgress
-            .GetProgressOfQuoteAsync(key.Value, cancellationToken);
+        IReadOnlyList<ClientDecision> decisions = await _decisions.GetSummariesOfQuotesAsync(
+            [quote.Id], cancellationToken);
 
-        return new QuoteWithLaboratoryStage(quote, progress?.Stage);
+        LaboratoryProgress? progress = quote.LaboratoryKey is { } key
+            ? await _laboratoryProgress.GetProgressOfQuoteAsync(LaboratoryScope, key.Value, cancellationToken)
+            : null;
+
+        return new QuoteWithLaboratoryStage(quote, progress?.Stage, LatestOf(decisions, quote.Id));
     }
 
     /// <summary>
@@ -104,6 +127,12 @@ public sealed class QuoteService : IQuoteUseCase
     /// perguntada, e nunca pelo codigo publico: o <c>OrcamentoCRM</c> que a fonte devolve e a
     /// forma nua da chave, e o <see cref="Quote.Code"/> nao e.
     /// </summary>
+    private static ClientDecision? LatestOf(IReadOnlyList<ClientDecision> decisions, string quoteId)
+    {
+        return ClientDecisionPolicy.Latest(
+            decisions.Where(decision => string.Equals(decision.QuoteId, quoteId, StringComparison.Ordinal)));
+    }
+
     private static PipelineStage? StageOf(IReadOnlyList<LaboratoryProgress> progress, LaboratoryQuoteKey? key)
     {
         if (key is null) return null;

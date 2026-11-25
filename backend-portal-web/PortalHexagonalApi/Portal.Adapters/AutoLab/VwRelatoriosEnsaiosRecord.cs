@@ -1,30 +1,22 @@
 namespace Portal.Adapters.AutoLab;
 
+/// <summary>
+/// As colunas baratas de <c>vwRelatoriosEnsaios</c>, lidas uma emissao por vez pelo
+/// <c>Oid</c>. <c>Identificacao</c>, <c>DataEmissao</c>, <c>DataPublicacao</c> e
+/// <c>PdfAssinado</c> nao estao mapeadas de proposito: na view elas custam caro por linha, e
+/// os mesmos valores vem de <c>RelatorioEmissao</c>.
+/// </summary>
 public sealed class VwRelatoriosEnsaiosRecord
 {
-    public string? NumeroSolicitacao { get; init; }
-
     public Guid Oid { get; init; }
-
-    public string? OrcamentoCRM { get; init; }
 
     public string? IDAmostra { get; init; }
 
     public string? Nome { get; init; }
 
-    public Guid? PdfAssinado { get; init; }
-
     public string? ClienteSolicitante { get; init; }
-
-    public string? Identificacao { get; init; }
 
     public DateTime? DataFinalProgramadaCliente { get; init; }
 
     public string? SituacaoRelatorio { get; init; }
-
-    public DateTime? DataEmissao { get; init; }
-
-    public DateTime? DataPublicacao { get; init; }
-
-    public int? DiasIntervalo { get; init; }
 }

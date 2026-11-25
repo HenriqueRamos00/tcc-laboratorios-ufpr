@@ -1,11 +1,15 @@
+using Portal.Api.LabResults;
 using Portal.Application.Quotes;
 
 namespace Portal.Api.Quotes;
 
-// The JWT middleware verifies these claims before the quote endpoints run.
+/// <summary>
+/// O escopo comercial e o mesmo escopo do laboratorio, lido do mesmo token pelo mesmo
+/// caminho: claim ausente, vazia ou com um valor malformado nao alcanca orcamento nenhum,
+/// seja qual for o adaptador que responda pelos orcamentos.
+/// </summary>
 public sealed class AuthenticatedQuoteCompanyScope(IHttpContextAccessor context) : IQuoteCompanyScope
 {
-    public IReadOnlyList<string> CompanyCnpjs => context.HttpContext?.User is { Identity.IsAuthenticated: true } user
-        ? user.FindAll("companyCnpjs").Select(claim => claim.Value).ToArray()
-        : [];
+    public IReadOnlyList<string> CompanyCnpjs =>
+        CompanyScopeResolution.Resolve(context.HttpContext?.User)?.Cnpjs ?? [];
 }

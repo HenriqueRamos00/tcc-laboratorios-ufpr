@@ -34,7 +34,7 @@ const CONCLUSION_COUNT = 4;
     @if (layout() === 'fisico-quimico') {
       <div
         data-skeleton-panel="fisico-quimico"
-        class="mt-6 rounded-2xl border border-lactec-line bg-lactec-paper p-6"
+        class="mt-6 rounded-lactec-panel border border-lactec-line bg-lactec-paper p-6"
       >
         <div class="grid grid-cols-1 items-center gap-6 lg:grid-cols-[minmax(0,20rem)_1fr]">
           <ng-container [ngTemplateOutlet]="gauge" />
@@ -53,7 +53,7 @@ const CONCLUSION_COUNT = 4;
         @if (layout() === 'criterios') {
           <div
             data-skeleton-panel="criterios"
-            class="mt-4 rounded-2xl border border-lactec-line bg-lactec-paper p-6"
+            class="mt-4 rounded-lactec-panel border border-lactec-line bg-lactec-paper p-6"
           >
             <ng-container [ngTemplateOutlet]="gauge" />
             <div class="mt-6"><ng-container [ngTemplateOutlet]="chart" /></div>
@@ -63,7 +63,7 @@ const CONCLUSION_COUNT = 4;
         } @else {
           <div
             data-skeleton-panel="metodos"
-            class="mt-4 rounded-2xl border border-lactec-line bg-lactec-paper p-6"
+            class="mt-4 rounded-lactec-panel border border-lactec-line bg-lactec-paper p-6"
           >
             <div class="flex h-7 items-center justify-center">
               <app-skeleton class="h-5 w-80 max-w-full" />
@@ -141,7 +141,7 @@ const CONCLUSION_COUNT = 4;
     </ng-template>
 
     <ng-template #report>
-      <div class="mt-4 rounded-2xl border border-lactec-line bg-lactec-paper p-6">
+      <div class="mt-4 rounded-lactec-panel border border-lactec-line bg-lactec-paper p-6">
         <app-skeleton class="my-0.5 h-5 w-72 max-w-full" />
         <app-skeleton class="mt-2.5 mb-0.5 h-4 w-full" />
         <app-skeleton class="mt-2.5 mb-0.5 h-4 w-5/6" />

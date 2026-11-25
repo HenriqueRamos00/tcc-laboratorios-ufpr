@@ -305,7 +305,7 @@ O documento é opcional e limitado a 50 MiB; a API valida extensão `.pdf` e ass
 
 `Orcamento` e `DocumentoOrcamento` representam os recursos nas tabelas `orcamentos` e `documentos_orcamentos`. A fonte de conexão pertence à configuração da aplicação; os nomes dos recursos não dependem do ambiente ou backend escolhido. O campo público `origin` das empresas conserva o contrato existente e não concede acesso a dados externos.
 
-Nas respostas de orçamento, `id` identifica o orçamento persistido no Spring. O campo `opportunityId` pertence ao contrato Salesforce da API C# e não é retornado pelo Spring.
+Nas respostas de orçamento, `id` identifica o orçamento persistido no Spring. O campo `opportunityId` pertence ao contrato público da API C# e não é retornado pelo Spring.
 
 ### Consulta técnica de orçamentos
 

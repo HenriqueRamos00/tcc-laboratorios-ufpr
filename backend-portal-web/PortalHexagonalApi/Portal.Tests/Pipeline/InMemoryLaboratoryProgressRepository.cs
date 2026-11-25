@@ -1,3 +1,4 @@
+using Portal.Application.Visibility;
 using Portal.Application.Pipeline;
 using Portal.Application.Pipeline.Exceptions;
 using Portal.Domain.Pipeline;
@@ -37,6 +38,7 @@ public sealed class InMemoryLaboratoryProgressRepository : ILaboratoryProgressRe
     public LaboratoryProgressSourceUnavailableException? Failure { get; init; }
 
     public Task<IReadOnlyList<LaboratoryProgress>> GetProgressOfQuotesAsync(
+        CompanyScope scope,
         IReadOnlyCollection<string> quoteCodes,
         CancellationToken cancellationToken)
     {
@@ -52,6 +54,7 @@ public sealed class InMemoryLaboratoryProgressRepository : ILaboratoryProgressRe
     }
 
     public Task<LaboratoryProgress?> GetProgressOfQuoteAsync(
+        CompanyScope scope,
         string quoteCode,
         CancellationToken cancellationToken)
     {

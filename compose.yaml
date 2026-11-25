@@ -70,8 +70,6 @@ services:
       Portal__DataSource: backend-lab
       BackendLab__BaseUrl: ${BACKEND_LAB_BASE_URL:-http://backend-lab:8080}
       LabResults__Source: backend-lab
-      LabResults__Scope: ""
-      LabResults__DevelopmentTenant: ""
       EquipmentRegistry__Source: backend-lab
       LaboratoryProgress__Source: not-connected
       ReportDocuments__Source: not-connected
@@ -114,6 +112,7 @@ services:
 
   app-android:
     profiles: [android]
+    network_mode: host
     build:
       context: ./app-android
       args:
@@ -123,6 +122,8 @@ services:
     environment:
       GRADLE_OPTS: -Dorg.gradle.daemon=false
       ADB_DEVICE: ${ADB_DEVICE:-}
+      ADB_REVERSE_PORT: ${ADB_REVERSE_PORT:-5125}
+      PORTAL_API_URL: ${ANDROID_PORTAL_API_URL:-}
     volumes:
       - ./app-android:/workspace
       - app-android-gradle-home:/home/dev/.gradle

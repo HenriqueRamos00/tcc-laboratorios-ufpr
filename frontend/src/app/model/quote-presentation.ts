@@ -10,7 +10,9 @@ import {
   type PipelineStage,
   type RequestStatus,
 } from './analysis-pipeline';
-import type { Quote } from './quote';
+import { statusOfClientDecision, type Quote } from './quote';
+import { DataPipe } from '@shared/pipes/data.pipe';
+import { MoedaPipe } from '@shared/pipes/moeda.pipe';
 
 /** Um orçamento já resolvido para a tela: rótulo pronto, valor e data legíveis. */
 export interface DisplayedQuote {
@@ -34,54 +36,46 @@ export interface StatusBadge {
 }
 
 export const STATUS_BADGE: Record<RequestStatus, StatusBadge> = {
-  qualificacao: { label: 'Qualificação', badgeClass: 'quote-status-pill--qualification' },
+  qualificacao: { label: 'Qualificação', badgeClass: 'bg-lactec-etapa-qualificacao-surface text-lactec-etapa-qualificacao-ink' },
   'analise-da-area': {
     label: 'Em Análise pela Área',
-    badgeClass: 'quote-status-pill--analysis',
+    badgeClass: 'bg-lactec-etapa-analise-da-area-surface text-lactec-etapa-analise-da-area-ink',
   },
   'elaborando-proposta': {
     label: 'Elaborando Proposta',
-    badgeClass: 'quote-status-pill--drafting',
+    badgeClass: 'bg-lactec-etapa-elaborando-proposta-surface text-lactec-etapa-elaborando-proposta-ink',
   },
-  negociacao: { label: 'Em Negociação', badgeClass: 'quote-status-pill--negotiation' },
+  negociacao: { label: 'Em Negociação', badgeClass: 'bg-lactec-etapa-negociacao-surface text-lactec-etapa-negociacao-ink' },
   'aprovado-pelo-cliente': {
     label: 'Aprovado pelo Cliente',
-    badgeClass: 'quote-status-pill--accepted',
+    badgeClass: 'bg-lactec-etapa-aprovado-pelo-cliente-surface text-lactec-etapa-aprovado-pelo-cliente-ink',
   },
   'aguardando-amostra': {
     label: 'Aguardando Entrega da Amostra',
-    badgeClass: 'quote-status-pill--awaiting-sample',
+    badgeClass: 'bg-lactec-etapa-aguardando-amostra-surface text-lactec-etapa-aguardando-amostra-ink',
   },
-  recebido: { label: 'Recebido', badgeClass: 'quote-status-pill--received' },
-  protocolado: { label: 'Protocolado', badgeClass: 'quote-status-pill--protocoled' },
-  'em-execucao': { label: 'Em Execução', badgeClass: 'quote-status-pill--running' },
-  completo: { label: 'Completo', badgeClass: 'quote-status-pill--complete' },
-  validado: { label: 'Validado', badgeClass: 'quote-status-pill--validated' },
-  finalizado: { label: 'Finalizado', badgeClass: 'quote-status-pill--finalized' },
+  recebido: { label: 'Recebido', badgeClass: 'bg-lactec-etapa-recebido-surface text-lactec-etapa-recebido-ink' },
+  protocolado: { label: 'Protocolado', badgeClass: 'bg-lactec-etapa-negociacao-surface text-lactec-etapa-negociacao-ink' },
+  'em-execucao': { label: 'Em Execução', badgeClass: 'bg-lactec-etapa-analise-da-area-surface text-lactec-etapa-analise-da-area-ink' },
+  completo: { label: 'Completo', badgeClass: 'bg-lactec-etapa-completo-surface text-lactec-etapa-completo-ink' },
+  validado: { label: 'Validado', badgeClass: 'bg-lactec-etapa-validado-surface text-lactec-etapa-validado-ink' },
+  finalizado: { label: 'Finalizado', badgeClass: 'bg-lactec-etapa-finalizado-surface text-lactec-etapa-finalizado-ink' },
   'elaborando-relatorio': {
     label: 'Elaborando Relatório',
-    badgeClass: 'quote-status-pill--drafting-report',
+    badgeClass: 'bg-lactec-etapa-elaborando-relatorio-surface text-lactec-etapa-elaborando-relatorio-ink',
   },
   'relatorio-publicado': {
     label: 'Relatório Publicado',
-    badgeClass: 'quote-status-pill--report-published',
+    badgeClass: 'bg-lactec-etapa-relatorio-publicado-surface text-lactec-etapa-relatorio-publicado-ink',
   },
-  cancelado: { label: 'Cancelado', badgeClass: 'quote-status-pill--cancelled' },
-  recusado: { label: 'Recusado', badgeClass: 'quote-status-pill--cancelled' },
+  cancelado: { label: 'Cancelado', badgeClass: 'bg-lactec-etapa-cancelado-surface text-lactec-etapa-cancelado-ink' },
+  recusado: { label: 'Recusado', badgeClass: 'bg-lactec-etapa-cancelado-surface text-lactec-etapa-cancelado-ink' },
 };
 
 const FIELD_PLACEHOLDER = '—';
 
-const BRL_FORMATTER = new Intl.NumberFormat('pt-BR', {
-  style: 'currency',
-  currency: 'BRL',
-});
-
-const DATE_FORMATTER = new Intl.DateTimeFormat('pt-BR', {
-  day: '2-digit',
-  month: '2-digit',
-  year: 'numeric',
-});
+const dataPipe = new DataPipe();
+const moedaPipe = new MoedaPipe();
 
 // O match exato cobre os valores conhecidos do Salesforce; o regex do
 // `recognizeStage` existe para variações futuras não derrubarem a tela.
@@ -127,20 +121,18 @@ function recognizeLaboratoryStage(wireName: string | null | undefined): Pipeline
   return isPipelineStage(key) ? key : null;
 }
 
-export function stageOfQuote(quote: Pick<Quote, 'stage' | 'laboratoryStage'>): RequestStatus {
+export function stageOfQuote(
+  quote: Pick<Quote, 'stage' | 'laboratoryStage' | 'clientDecision'>,
+): RequestStatus {
   const commercial = recognizeStage(quote.stage ?? '');
   if (isClosed(commercial)) return commercial;
 
   const laboratory = recognizeLaboratoryStage(quote.laboratoryStage);
-  return laboratory && stageIndex(laboratory) > stageIndex(commercial) ? laboratory : commercial;
+  const reached = laboratory && stageIndex(laboratory) > stageIndex(commercial) ? laboratory : commercial;
+  const decided = quote.clientDecision ? statusOfClientDecision(quote.clientDecision.kind) : undefined;
+  return statusAfterDecision(reached, decided);
 }
 
-// O Salesforce manda ISO 8601 com offset: 2026-03-13T13:16:07.000+0000.
-function readableCreatedDate(createdDate: string | null): string {
-  if (!createdDate) return FIELD_PLACEHOLDER;
-  const date = new Date(createdDate);
-  return Number.isNaN(date.getTime()) ? FIELD_PLACEHOLDER : DATE_FORMATTER.format(date);
-}
 
 function resolveExternalContact(quote: Quote): string {
   return (
@@ -161,8 +153,8 @@ export function toDisplayedQuote(quote: Quote): DisplayedQuote {
     description: quote.description?.trim() || '',
     company: quote.companyName?.trim() || FIELD_PLACEHOLDER,
     externalContact: resolveExternalContact(quote),
-    createdAt: readableCreatedDate(quote.createdDate),
-    estimatedValue: hasValue ? BRL_FORMATTER.format(quote.totalPrice) : undefined,
+    createdAt: dataPipe.transform(quote.createdDate) || FIELD_PLACEHOLDER,
+    estimatedValue: hasValue ? moedaPipe.transform(quote.totalPrice) : undefined,
     status,
     hasProposal: hasProposal(status),
   };

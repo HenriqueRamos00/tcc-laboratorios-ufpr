@@ -60,7 +60,7 @@ html {
       filled-label-text-font: $plain-family,
       filled-label-text-size: 0.875rem,
       filled-label-text-weight: 600,
-      filled-state-layer-color: var(--color-lactec-primary-dark),
+      filled-state-layer-color: var(--color-lactec-primary-strong),
       filled-hover-state-layer-opacity: 1,
       filled-focus-state-layer-opacity: 1,
       filled-pressed-state-layer-opacity: 1,
@@ -76,7 +76,7 @@ html {
       outlined-focus-state-layer-opacity: 1,
       outlined-pressed-state-layer-opacity: 1,
 
-      text-label-text-color: var(--color-lactec-primary-dark),
+      text-label-text-color: var(--color-lactec-primary-strong),
       text-label-text-font: $plain-family,
       text-label-text-weight: 500,
     )
@@ -86,8 +86,8 @@ html {
     (
       selected-icon-color: var(--color-lactec-primary),
       selected-focus-icon-color: var(--color-lactec-primary),
-      selected-hover-icon-color: var(--color-lactec-primary-dark),
-      selected-pressed-icon-color: var(--color-lactec-primary-dark),
+      selected-hover-icon-color: var(--color-lactec-primary-strong),
+      selected-pressed-icon-color: var(--color-lactec-primary-strong),
       selected-checkmark-color: var(--color-lactec-on-primary),
       unselected-icon-color: var(--color-lactec-muted),
       unselected-hover-icon-color: var(--color-lactec-ink-soft),
@@ -102,8 +102,8 @@ html {
     (
       container-shape: 0,
       container-divider-color: transparent,
-      container-background-color: var(--color-lactec-nav),
-      container-text-color: var(--color-lactec-on-nav),
+      container-background-color: var(--color-lactec-primary-deep),
+      container-text-color: var(--color-lactec-on-primary-deep),
     )
   );
 
@@ -123,6 +123,13 @@ html {
 
 .dialog-shell__close {
   @include mat.icon-button-overrides((icon-color: var(--color-lactec-muted)));
+}
+
+.mat-mdc-icon-button.dialog-shell__close {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
 }
 
 // Botão compacto dos cards de orçamento.
@@ -152,10 +159,14 @@ html {
   );
 }
 
-// Modal: no desktop o painel é quadrado; no mobile o overlay é só um contêiner
+// Modal: no desktop o painel tem o raio dos cartões; no mobile o overlay é só um contêiner
 // transparente - quem desenha barra, escurecedor e sheet é o .dialog-sheet.
 .lactec-dialog-desktop {
-  @include mat.dialog-overrides((container-shape: 0));
+  @include mat.dialog-overrides((container-shape: var(--radius-lactec-panel)));
+}
+
+.cdk-overlay-backdrop.cdk-overlay-backdrop-showing:has(+ .cdk-global-overlay-wrapper > .lactec-dialog-mobile) {
+  background: transparent;
 }
 
 .lactec-dialog-mobile {

@@ -20,7 +20,6 @@ import br.ufpr.lab_mobile.controller.LoginActivity
 import br.ufpr.lab_mobile.controller.EquipmentActivity
 import br.ufpr.lab_mobile.controller.QuotesActivity
 import br.ufpr.lab_mobile.controller.ResultsActivity
-import br.ufpr.lab_mobile.model.QuoteSimulations
 import br.ufpr.lab_mobile.service.RetrofitProvider
 import okhttp3.Interceptor
 import okhttp3.OkHttpClient
@@ -45,12 +44,11 @@ class SidebarResultsTest {
 
     @Before
     fun installOfflineQuotesResponse() {
-        QuoteSimulations.clear()
         oldRetrofit = retrofitField.get(null)
         oldBaseUrl = baseUrlField.get(null)
-        val client = OkHttpClient.Builder().addInterceptor(Interceptor { chain ->
+        val client = OkHttpClient.Builder().addInterceptor(TestSession.interceptor(context)).addInterceptor(Interceptor { chain ->
             Response.Builder().request(chain.request()).protocol(Protocol.HTTP_1_1).code(200)
-                .message("Instrumented response").body("[]".toResponseBody()).build()
+                .message("Instrumented response").body(ReportFixtures.body(chain.request()).toResponseBody()).build()
         }).build()
         retrofitField.set(null, RetrofitProvider.retrofit(context.getString(R.string.api_base_url)).newBuilder().client(client).build())
     }
@@ -60,40 +58,40 @@ class SidebarResultsTest {
         scenario?.close()
         retrofitField.set(null, oldRetrofit)
         baseUrlField.set(null, oldBaseUrl)
-        QuoteSimulations.clear()
-        context.getSharedPreferences(LoginActivity.SESSION_PREFERENCES, 0).edit().clear().commit()
+        TestSession.clear(context)
     }
 
     @Test
-    fun resultsShowBothFixtureRecordsDownloadNoticeAndEmptyState() {
+    fun resultsShowPublishedReportsFromApiSearchAndQuotesTab() {
         launchResults()
-        await("both report cards shown") { checkActive { it.findViewById<ViewGroup>(R.id.reportsList).childCount == 2 } }
+        await("both reports loaded from the API") { checkActive { it.findViewById<ViewGroup>(R.id.reportsList).childCount == 2 } }
         onActive { activity ->
             val rows = activity.findViewById<ViewGroup>(R.id.reportsList)
             val first = rows.getChildAt(0)
-            assertEquals("Relatório: LACTEC-00307/2026", first.findViewById<TextView>(R.id.reportNumber).text.toString())
-            assertEquals("Protocolo: 00307/2026", first.findViewById<TextView>(R.id.protocol).text.toString())
+            assertEquals("LACTEC-00307/2026", first.findViewById<TextView>(R.id.reportIdentification).text.toString())
+            assertEquals("Solicitação: 00307/2026", first.findViewById<TextView>(R.id.requestNumber).text.toString())
             assertEquals("Amostra: Areia", first.findViewById<TextView>(R.id.sample).text.toString())
             assertEquals("Laboratório: Lab. de Óleos", first.findViewById<TextView>(R.id.laboratory).text.toString())
-            assertEquals("Publicação: 07/03/2026", first.findViewById<TextView>(R.id.reportDate).text.toString())
+            assertEquals("Situação: Publicado", first.findViewById<TextView>(R.id.situation).text.toString())
+            assertEquals("Publicação: 07/03/2026", first.findViewById<TextView>(R.id.publishedOn).text.toString())
+            assertTrue(first.findViewById<View>(R.id.downloadReport).isEnabled)
             val second = rows.getChildAt(1)
-            assertEquals("Relatório: LACTEC-00308/2026", second.findViewById<TextView>(R.id.reportNumber).text.toString())
-            assertEquals("Protocolo: 00308/2026", second.findViewById<TextView>(R.id.protocol).text.toString())
-            assertEquals("Amostra: Água", second.findViewById<TextView>(R.id.sample).text.toString())
-            assertEquals("Laboratório: Lab. de Águas", second.findViewById<TextView>(R.id.laboratory).text.toString())
-            assertEquals("Publicação: 08/03/2026", second.findViewById<TextView>(R.id.reportDate).text.toString())
-            first.findViewById<View>(R.id.downloadReport).performClick()
+            assertEquals("LACTEC-00308/2026", second.findViewById<TextView>(R.id.reportIdentification).text.toString())
+            assertEquals("Publicação: 08/03/2026", second.findViewById<TextView>(R.id.publishedOn).text.toString())
+
+            activity.findViewById<EditText>(R.id.search).setText("00308")
+            assertEquals(1, rows.childCount)
+            activity.findViewById<EditText>(R.id.search).setText("inexistente")
+            assertEquals(0, rows.childCount)
+            assertEquals(View.VISIBLE, activity.findViewById<View>(R.id.resultsState).visibility)
+            assertEquals(context.getString(R.string.reports_no_matches), activity.findViewById<TextView>(R.id.resultsState).text.toString())
+
+            activity.findViewById<com.google.android.material.tabs.TabLayout>(R.id.resultsTabs).getTabAt(1)!!.select()
+            assertEquals("", activity.findViewById<EditText>(R.id.search).text.toString())
+            assertEquals(View.GONE, rows.visibility)
         }
-        await("download notice shown") {
-            checkActive { it.findViewById<TextView>(com.google.android.material.R.id.snackbar_text)?.text == context.getString(R.string.demo_download_unavailable) }
-        }
-        await("download notice dismissed") {
-            checkActive { it.findViewById<TextView>(com.google.android.material.R.id.snackbar_text) == null }
-        }
-        onActive { activity ->
-            (activity as ResultsActivity).renderReports(emptyList())
-            assertEquals(0, activity.findViewById<ViewGroup>(R.id.reportsList).childCount)
-            assertEquals(View.VISIBLE, activity.findViewById<View>(R.id.reportsEmpty).visibility)
+        await("quotes tab shows its empty state") {
+            checkActive { it.findViewById<TextView>(R.id.resultsState).text == context.getString(R.string.reported_quotes_empty) }
         }
     }
 
@@ -188,26 +186,20 @@ class SidebarResultsTest {
         instrumentation.sendKeyDownUpSync(KeyEvent.KEYCODE_BACK)
         await("Back returns to original Quotes") { activeActivity() === quotes }
         navigate(R.id.navEquipment, EquipmentActivity::class.java)
-        context.getSharedPreferences(LoginActivity.SESSION_PREFERENCES, 0).edit()
-            .putString(LoginActivity.ACCESS_TOKEN, "test-session").commit()
         openDrawer(R.id.navEquipment)
         onActive { it.findViewById<View>(R.id.logoutButton).performClick() }
         await("equipment logout returns to Login") { activeActivity() is LoginActivity }
-        assertNull(context.getSharedPreferences(LoginActivity.SESSION_PREFERENCES, 0).getString(LoginActivity.ACCESS_TOKEN, null))
+        assertNull(context.portalApplication.sessions.current)
     }
 
     @Test
-    fun logoutClearsSavedAndSimulationSessionsAndMissingSessionOpensLogin() {
-        context.getSharedPreferences(LoginActivity.SESSION_PREFERENCES, 0).edit()
-            .putString(LoginActivity.ACCESS_TOKEN, "test-session").commit()
-        QuoteSimulations.startSession("test-session")
-        assertTrue(QuoteSimulations.isSessionActive("test-session"))
+    fun logoutEncerraSessaoEVoltaAoLogin() {
         launchResults()
+        assertNotNull(context.portalApplication.sessions.current)
         openDrawer(R.id.navReports)
         onActive { it.findViewById<View>(R.id.logoutButton).performClick() }
         await("login shown after logout") { activeActivity() is LoginActivity }
-        assertNull(context.getSharedPreferences(LoginActivity.SESSION_PREFERENCES, 0).getString(LoginActivity.ACCESS_TOKEN, null))
-        assertFalse(QuoteSimulations.isSessionActive("test-session"))
+        assertNull(context.portalApplication.sessions.current)
         scenario?.close()
         scenario = null
         launchResults(token = null)
@@ -216,14 +208,14 @@ class SidebarResultsTest {
 
     private fun launchResults(token: String? = "test-session") {
         val intent = Intent(context, ResultsActivity::class.java)
-        token?.let { intent.putExtra(LoginActivity.EXTRA_ACCESS_TOKEN, it) }
+        TestSession.start(context, token)
         scenario = ActivityScenario.launch<ResultsActivity>(intent)
     }
 
     private fun launchQuotes() {
         scenario?.close()
         scenario = ActivityScenario.launch<QuotesActivity>(
-            Intent(context, QuotesActivity::class.java).putExtra(LoginActivity.EXTRA_ACCESS_TOKEN, "test-session"),
+            Intent(context, QuotesActivity::class.java).also { TestSession.start(context, "test-session") },
         )
     }
 

@@ -5,7 +5,7 @@ namespace Portal.Application.ReportDocuments;
 public interface IForDownloadingSignedReports
 {
     Task<SignedReportDocument?> GetSignedReportAsync(
-        VisibilityScope scope,
+        CompanyScope scope,
         string equipmentKey,
         string protocoloLactec,
         CancellationToken cancellationToken);

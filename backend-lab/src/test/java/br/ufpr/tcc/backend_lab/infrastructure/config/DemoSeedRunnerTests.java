@@ -45,7 +45,7 @@ class DemoSeedRunnerTests {
         assertEquals(60, contar("itens_orcamento"));
         assertEquals(10, contar("cliente_empresas"));
         assertEquals(14, contar("documentos_orcamentos"));
-        assertEquals(6, contar("demo_seed_runs"));
+        assertEquals(7, contar("demo_seed_runs"));
         assertEquals(0, jdbc.queryForObject(
                 "SELECT COUNT(*) FROM orcamentos WHERE protocol IS NULL AND ("
                         + "code LIKE 'DEMO-SEED-2026-%' OR code LIKE 'DEMO-PIPE-2026-%' "
@@ -140,6 +140,58 @@ class DemoSeedRunnerTests {
         assertTrue(
                 documentosPipeline.stream()
                         .allMatch(pdf -> new String(pdf, 0, 5, StandardCharsets.US_ASCII).equals("%PDF-")));
+        assertEquals(
+                10,
+                jdbc.queryForObject(
+                        "SELECT COUNT(*) FROM aceites_orcamentos a "
+                                + "JOIN orcamentos o ON o.id = a.orcamento_id "
+                                + "WHERE o.code LIKE 'DEMO-PIPE-2026-%'",
+                        Integer.class));
+        assertEquals(
+                0,
+                jdbc.queryForObject(
+                        "SELECT COUNT(*) FROM orcamentos o "
+                                + "WHERE o.code LIKE 'DEMO-PIPE-2026-%' "
+                                + "AND o.stage IN ('Aprovado pelo cliente', 'Aguardando entrega da amostra', "
+                                + "'Recebido', 'Protocolado', 'Em execução', 'Completo', 'Validado', "
+                                + "'Finalizado', 'Elaborando relatório', 'Relatório publicado') "
+                                + "AND NOT EXISTS (SELECT 1 FROM aceites_orcamentos a "
+                                + "WHERE a.orcamento_id = o.id)",
+                        Integer.class));
+        assertEquals(
+                0,
+                jdbc.queryForObject(
+                        "SELECT COUNT(*) FROM aceites_orcamentos a "
+                                + "JOIN orcamentos o ON o.id = a.orcamento_id "
+                                + "WHERE o.code LIKE 'DEMO-PIPE-2026-%' AND ("
+                                + "(a.method = 'TERMO_DE_ACEITE' AND NOT EXISTS "
+                                + "(SELECT 1 FROM termos_aceite_orcamentos termo WHERE termo.aceite_id = a.orcamento_id)) "
+                                + "OR (a.method = 'ORDEM_DE_COMPRA' AND NOT EXISTS "
+                                + "(SELECT 1 FROM ordens_compra_orcamentos arquivo WHERE arquivo.aceite_id = a.orcamento_id)))",
+                        Integer.class));
+        assertEquals(
+                9,
+                jdbc.queryForObject(
+                        "SELECT COUNT(*) FROM termos_aceite_orcamentos termo "
+                                + "JOIN aceites_orcamentos a ON a.orcamento_id = termo.aceite_id "
+                                + "JOIN orcamentos o ON o.id = a.orcamento_id "
+                                + "WHERE o.code LIKE 'DEMO-PIPE-2026-%'",
+                        Integer.class));
+        assertEquals(
+                1,
+                jdbc.queryForObject(
+                        "SELECT COUNT(*) FROM ordens_compra_orcamentos arquivo "
+                                + "JOIN aceites_orcamentos a ON a.orcamento_id = arquivo.aceite_id "
+                                + "JOIN orcamentos o ON o.id = a.orcamento_id "
+                                + "WHERE o.code LIKE 'DEMO-PIPE-2026-%'",
+                        Integer.class));
+        byte[] ordemCompra = jdbc.queryForObject(
+                "SELECT arquivo.content FROM ordens_compra_orcamentos arquivo "
+                        + "JOIN aceites_orcamentos aceite ON aceite.orcamento_id = arquivo.aceite_id "
+                        + "JOIN orcamentos o ON o.id = aceite.orcamento_id "
+                        + "WHERE o.code = 'DEMO-PIPE-2026-005'",
+                byte[].class);
+        assertEquals("%PDF-", new String(ordemCompra, 0, 5, StandardCharsets.US_ASCII));
         assertEquals(4, jdbc.queryForObject("SELECT COUNT(DISTINCT tipo_resultado) FROM medicoes_ensaios", Integer.class));
         assertEquals(1, jdbc.queryForObject("SELECT COUNT(*) FROM equipamentos WHERE tag='DEMO-TR-HU25-01' AND numero_serie='111.594/1'", Integer.class));
         assertEquals(2, jdbc.queryForObject("SELECT COUNT(*) FROM execucoes_ensaios e JOIN amostras a ON a.id=e.amostra_id WHERE a.codigo='A-HU25-DEMO-001/2026'", Integer.class));
@@ -300,7 +352,7 @@ class DemoSeedRunnerTests {
         assertEquals(41, contar("orcamentos"));
         assertEquals(58, contar("itens_orcamento"));
         assertEquals(9, contar("cliente_empresas"));
-        assertEquals(5, contar("demo_seed_runs"));
+        assertEquals(6, contar("demo_seed_runs"));
         assertEquals(
                 0,
                 jdbc.queryForObject(
@@ -322,7 +374,7 @@ class DemoSeedRunnerTests {
         assertEquals(42, contar("orcamentos"));
         assertEquals(60, contar("itens_orcamento"));
         assertEquals(9, contar("cliente_empresas"));
-        assertEquals(6, contar("demo_seed_runs"));
+        assertEquals(7, contar("demo_seed_runs"));
         assertEquals(23, contar("execucoes_ensaios"));
         assertEquals(
                 "LAUDO-DEMO-MANTIDO",

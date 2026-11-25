@@ -15,17 +15,15 @@ import org.junit.Test
 import retrofit2.HttpException
 import retrofit2.Response
 import retrofit2.http.GET
-import retrofit2.http.Header
 import retrofit2.http.Path
 
 class QuoteDetailsServiceTest {
     @Test
-    fun `envia autorizacao e identificador e retorna o modelo existente`() = runBlocking {
+    fun `envia identificador e retorna o modelo existente`() = runBlocking {
         val quote = Gson().fromJson("""{"id":"q-17","code":"EAQ-17","stage":"Recebido"}""", Quote::class.java)
         val api = FakeQuoteApi(Response.success(quote))
 
-        assertSame(quote, QuoteService(api).getQuote("session-token", "  q-17  "))
-        assertEquals("Bearer session-token", api.authorization)
+        assertSame(quote, QuoteService(api).getQuote("  q-17  "))
         assertEquals("q-17", api.id)
     }
 
@@ -34,7 +32,7 @@ class QuoteDetailsServiceTest {
         listOf("", "  ", "\t\n").forEach { id ->
             val api = FakeQuoteApi(Response.success(null))
             try {
-                QuoteService(api).getQuote("token", id)
+                QuoteService(api).getQuote(id)
                 fail("Expected invalid ID")
             } catch (_: IllegalArgumentException) {
                 assertFalse(api.called)
@@ -46,7 +44,7 @@ class QuoteDetailsServiceTest {
     fun `resposta sem corpo e falha e nao cria uma proposta`() = runBlocking {
         val api = FakeQuoteApi(Response.success(null))
         try {
-            QuoteService(api).getQuote("token", "q-17")
+            QuoteService(api).getQuote("q-17")
             fail("Expected empty-body failure")
         } catch (_: IllegalStateException) {
             assertTrue(api.called)
@@ -58,7 +56,7 @@ class QuoteDetailsServiceTest {
         listOf(401, 404, 500, 502).forEach { code ->
             val api = FakeQuoteApi(Response.error(code, "{}".toResponseBody()))
             try {
-                QuoteService(api).getQuote("token", "q-17")
+                QuoteService(api).getQuote("q-17")
                 fail("Expected HTTP $code")
             } catch (error: HttpException) {
                 assertEquals(code, error.code())
@@ -67,32 +65,28 @@ class QuoteDetailsServiceTest {
     }
 
     @Test
-    fun `contrato Retrofit usa GET quotes por id e header Authorization`() {
+    fun `contrato Retrofit usa GET api quotes por id`() {
         val method = QuoteApiService::class.java.methods.single { it.name == "getQuote" }
-        assertEquals("quotes/{id}", requireNotNull(method.getAnnotation(GET::class.java)).value)
-        assertEquals("Authorization", method.parameterAnnotations[0].filterIsInstance<Header>().single().value)
-        assertEquals("id", method.parameterAnnotations[1].filterIsInstance<Path>().single().value)
+        assertEquals("api/quotes/{id}", requireNotNull(method.getAnnotation(GET::class.java)).value)
+        assertEquals("id", method.parameterAnnotations[0].filterIsInstance<Path>().single().value)
     }
 
     private class FakeQuoteApi(private val response: Response<Quote>) : QuoteApiService {
-        var authorization: String? = null
         var id: String? = null
         var called = false
 
-        override suspend fun getDocument(authorization: String, id: String): Response<ResponseBody> =
+        override suspend fun getDocument(id: String): Response<ResponseBody> =
             error("Unexpected document request")
 
-        override suspend fun getQuote(authorization: String, id: String): Response<Quote> {
-            this.authorization = authorization
+        override suspend fun getQuote(id: String): Response<Quote> {
             this.id = id
             called = true
             return response
         }
 
         override suspend fun getQuotes(
-            authorization: String,
-            search: String?,
-            status: String?,
+            page: Int,
+            pageSize: Int,
         ): Response<JsonElement> = error("Unexpected list request")
     }
 }

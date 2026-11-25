@@ -129,6 +129,142 @@ body.lactec-lateral-dialog-open app-root main {
   overflow: hidden;
 }
 
+.driver-popover.lactec-tour--stale {
+  visibility: hidden;
+}
+
+.driver-popover.lactec-tour {
+  --driver-popover-font-family: var(--font-sans);
+  min-width: min(16rem, calc(100vw - 2rem));
+  max-width: min(22rem, calc(100vw - 2rem));
+  padding: 1rem;
+  border: 1px solid color-mix(in oklab, var(--color-lactec-ink) 12%, transparent);
+  border-radius: 0.75rem;
+  background: var(--color-lactec-paper);
+  color: var(--color-lactec-ink-soft);
+  box-shadow: 0 12px 32px color-mix(in oklab, var(--color-lactec-ink) 28%, transparent);
+}
+
+.driver-popover.lactec-tour .driver-popover-title {
+  padding-right: 2.5rem;
+  color: var(--color-lactec-ink);
+  font-family: var(--font-display);
+  font-size: 1rem;
+  font-weight: 600;
+  line-height: 1.4;
+}
+
+.driver-popover.lactec-tour .driver-popover-description {
+  color: var(--color-lactec-ink-soft);
+  font-size: 0.875rem;
+  line-height: 1.5;
+}
+
+.driver-popover.lactec-tour .driver-popover-close-btn {
+  top: 0.25rem;
+  right: 0.25rem;
+  width: 2.5rem;
+  height: 2.5rem;
+  border-radius: 0.5rem;
+  color: var(--color-lactec-muted);
+  font-size: 1.25rem;
+  line-height: 2.5rem;
+}
+
+.driver-popover.lactec-tour .driver-popover-close-btn:hover,
+.driver-popover.lactec-tour .driver-popover-close-btn:focus-visible {
+  color: var(--color-lactec-ink);
+}
+
+.driver-popover.lactec-tour .driver-popover-footer {
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-top: 1rem;
+}
+
+.driver-popover.lactec-tour .driver-popover-progress-text {
+  color: var(--color-lactec-muted);
+  font-size: 0.8125rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.driver-popover.lactec-tour .driver-popover-navigation-btns {
+  gap: 0.5rem;
+}
+
+.driver-popover.lactec-tour .driver-popover-navigation-btns button + button {
+  margin-inline-start: 0;
+}
+
+.driver-popover.lactec-tour .driver-popover-footer-btn {
+  min-height: 2.5rem;
+  padding: 0 0.875rem;
+  border: 1px solid var(--color-lactec-line);
+  border-radius: 0.5rem;
+  background: var(--color-lactec-paper);
+  color: var(--color-lactec-ink);
+  font-size: 0.8125rem;
+  font-weight: 600;
+  line-height: 2.5rem;
+  text-shadow: none;
+}
+
+.driver-popover.lactec-tour .driver-popover-footer-btn:hover {
+  background: var(--color-lactec-line-soft);
+}
+
+.driver-popover.lactec-tour .driver-popover-next-btn {
+  border-color: var(--color-lactec-primary-dark);
+  background: var(--color-lactec-primary-dark);
+  color: var(--color-lactec-on-primary);
+}
+
+.driver-popover.lactec-tour .driver-popover-next-btn:hover {
+  border-color: var(--color-lactec-nav-dark);
+  background: var(--color-lactec-nav-dark);
+}
+
+.driver-popover.lactec-tour .driver-popover-footer-btn:focus-visible,
+.driver-popover.lactec-tour .driver-popover-close-btn:focus-visible {
+  outline: 2px solid var(--color-lactec-primary-dark);
+  outline-offset: 2px;
+}
+
+.driver-popover.lactec-tour .driver-popover-arrow {
+  border-color: var(--color-lactec-paper);
+}
+
+.driver-popover.lactec-tour .driver-popover-arrow-side-left {
+  border-top-color: transparent;
+  border-right-color: transparent;
+  border-bottom-color: transparent;
+}
+
+.driver-popover.lactec-tour .driver-popover-arrow-side-right {
+  border-top-color: transparent;
+  border-bottom-color: transparent;
+  border-left-color: transparent;
+}
+
+.driver-popover.lactec-tour .driver-popover-arrow-side-top {
+  border-right-color: transparent;
+  border-bottom-color: transparent;
+  border-left-color: transparent;
+}
+
+.driver-popover.lactec-tour .driver-popover-arrow-side-bottom {
+  border-top-color: transparent;
+  border-right-color: transparent;
+  border-left-color: transparent;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .driver-fade .driver-overlay,
+  .driver-fade .driver-popover {
+    animation: none;
+  }
+}
+
 mat-sidenav-content.mat-drawer-content {
   overflow: hidden;
 }

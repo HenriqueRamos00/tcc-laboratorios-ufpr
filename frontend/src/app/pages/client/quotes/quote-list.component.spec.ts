@@ -1,3 +1,6 @@
+import { API_URL } from '@/app/environment/env';
+import { provideHttpClient } from '@angular/common/http';
+import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { fakeAsync, TestBed, tick } from '@angular/core/testing';
 import { provideRouter, Router } from '@angular/router';
 import { of } from 'rxjs';
@@ -69,6 +72,8 @@ function montarListagem(
   TestBed.configureTestingModule({
     providers: [
       provideRouter([]),
+      provideHttpClient(),
+      provideHttpClientTesting(),
       {
         provide: QuotesService,
         useValue: {
@@ -134,7 +139,7 @@ describe('QuoteListComponent, etapa do laboratório', () => {
     const { fixture } = montarListagem(COM_LABORATORIO.slice(0, 1));
 
     const rotulos = Array.from(
-      (fixture.nativeElement as HTMLElement).querySelectorAll('.quote-status-pill'),
+      (fixture.nativeElement as HTMLElement).querySelectorAll('[data-tour="orcamento-status"]'),
     ).map((rotulo) => rotulo.textContent?.trim());
 
     expect(rotulos).toEqual(['Em Execução']);
@@ -397,7 +402,10 @@ describe('QuoteListComponent, a decisão tomada nesta sessão', () => {
     if (!aprovado) throw new Error('Orçamento aprovado ausente na massa de teste');
 
     TestBed.inject(QuoteDecisionService).confirmSampleShipment(aprovado.id).subscribe();
-    tick(500);
+    TestBed.inject(HttpTestingController)
+      .expectOne(`${API_URL}/api/quotes/${aprovado.id}/sample-shipment`)
+      .flush({ id: 'decisao-1', kind: 'sample-shipment', recordedAt: '2026-11-15T12:00:00Z' });
+    tick();
 
     const depois = componente.quotes().find((item) => item.id === aprovado.id);
     expect(depois?.status).toBe('aguardando-amostra');
@@ -420,7 +428,7 @@ describe('QuoteListComponent, link para o orçamento', () => {
     const { fixture, componente } = montarListagem();
 
     const cartoes = Array.from(
-      (fixture.nativeElement as HTMLElement).querySelectorAll('.quote-card'),
+      (fixture.nativeElement as HTMLElement).querySelectorAll('article'),
     );
     const levaAoOrcamento = cartoes.map(
       (cartao) => !!cartao.querySelector('a[href^="/cliente/quotes/"]'),

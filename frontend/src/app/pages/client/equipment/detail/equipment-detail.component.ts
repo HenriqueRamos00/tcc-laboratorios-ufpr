@@ -23,7 +23,7 @@ import {
 import { MatIconModule } from '@angular/material/icon';
 import { RouterLink } from '@angular/router';
 
-import { readableDate } from '@shared/brazilian-date';
+import { DataPipe } from '@shared/pipes/data.pipe';
 import { handFileToTheBrowser } from '@shared/file-download';
 import { EmptyStateComponent } from '@shared/components/empty-state/empty-state.component';
 import { PageHeaderComponent } from '@shared/components/page-header/page-header.component';
@@ -53,6 +53,9 @@ import {
 import { TAB_BY_ANALYSIS_TYPE, type HealthTab } from '@/app/model/health-navigation';
 import type { Page } from '@/app/model/page';
 import { EquipmentsService } from '@/app/services/equipments.service';
+
+import { registerPageTour } from '@/app/services/tour.service';
+import { equipmentDetailTour } from './equipment-detail.tour';
 
 interface InformationCard {
   readonly icon: string;
@@ -105,7 +108,7 @@ const NAMEPLATE_UNKNOWN =
 function historyRow(report: EquipmentReport): HistoryRow {
   return {
     id: report.id,
-    date: readableDate(report.date),
+    date: dataPipe.transform(report.date),
     analysisType: ANALYSIS_TYPE_LABEL[report.analysisType],
     status: REPORT_STATUS_LABEL[report.status],
     tab: TAB_BY_ANALYSIS_TYPE[report.analysisType],
@@ -113,6 +116,8 @@ function historyRow(report: EquipmentReport): HistoryRow {
     fileName: `relatorio-${report.analysisType}-${report.date}.pdf`,
   };
 }
+
+const dataPipe = new DataPipe();
 
 @Component({
   selector: 'app-equipamento-detalhe',
@@ -188,6 +193,8 @@ export class EquipmentDetailComponent {
   protected readonly trackById = (row: HistoryRow): string => row.id;
 
   constructor() {
+    registerPageTour(equipmentDetailTour);
+
     // O router reaproveita a instância quando só o id muda, e ngOnInit não roda
     // de novo.
     const id = toObservable(this.id);
