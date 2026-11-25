@@ -56,15 +56,16 @@ public class DisponibilidadeRelatorios {
                 && idsPdfValidos.contains(relatorio.getId());
     }
 
+    public static boolean correspondeAoVinculo(RelatorioTecnico relatorio, ExecucaoEnsaio ensaio) {
+        return relatorio.getValidatedQuote() != null && relatorio.getValidatedCompany() != null
+                && relatorio.getValidatedQuote().getId().equals(ensaio.getOrcamento().getId())
+                && relatorio.getValidatedCompany().getId().equals(ensaio.getOrcamento().getEmpresa().getId());
+    }
+
     public boolean existePublicadoDisponivel(Long execucaoId, ExecucaoEnsaio execucaoAtual) {
-        Long quoteIdAtual = execucaoAtual.getOrcamento().getId();
-        Long companyIdAtual = execucaoAtual.getOrcamento().getEmpresa().getId();
         var candidatos = relatorios.buscarPublicadosDaExecucao(execucaoId, StatusValidacaoRelatorio.VALIDATED)
                 .stream()
-                .filter(relatorio -> relatorio.getValidatedQuote() != null
-                        && relatorio.getValidatedCompany() != null
-                        && relatorio.getValidatedQuote().getId().equals(quoteIdAtual)
-                        && relatorio.getValidatedCompany().getId().equals(companyIdAtual))
+                .filter(relatorio -> correspondeAoVinculo(relatorio, execucaoAtual))
                 .toList();
         Set<Long> idsPdfValidos = idsPdfValidos(candidatos.stream().map(RelatorioTecnico::getId).toList());
         return candidatos.stream().anyMatch(relatorio -> publicadoDisponivel(relatorio, idsPdfValidos));
