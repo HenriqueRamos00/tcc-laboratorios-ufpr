@@ -43,8 +43,8 @@ interface EquipmentApiService {
  * API como vieram; o de um relatório do histórico só vale nas rotas do próprio equipamento.
  */
 class EquipmentService(private val api: EquipmentApiService) {
-    /** Todos os equipamentos do cliente, em todas as páginas, para a busca local da lista. */
-    suspend fun getEquipment(): List<Equipment> = collectPages(EQUIPMENT_PAGE_SIZE) { page ->
+    /** Os equipamentos do cliente, página a página, para a busca local da lista. */
+    fun equipment(): PagedList<Equipment> = PagedList(EQUIPMENT_PAGE_SIZE) { page ->
         val response = api.getEquipment(page, EQUIPMENT_PAGE_SIZE)
         val equipment = successBody(response) ?: throw IllegalStateException("Empty equipment response")
         PageResult(equipment, totalCount(response))

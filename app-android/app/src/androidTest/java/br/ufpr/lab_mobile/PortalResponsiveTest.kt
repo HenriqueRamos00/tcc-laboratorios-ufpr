@@ -1,5 +1,6 @@
 package br.ufpr.lab_mobile
 
+import android.app.Activity
 import android.content.Intent
 import android.content.pm.ActivityInfo
 import android.graphics.Bitmap
@@ -11,7 +12,8 @@ import android.view.View
 import android.view.ViewGroup
 import android.widget.TextView
 import androidx.drawerlayout.widget.DrawerLayout
-import androidx.core.widget.NestedScrollView
+import androidx.recyclerview.widget.LinearLayoutManager
+import androidx.recyclerview.widget.RecyclerView
 import androidx.test.core.app.ActivityScenario
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
@@ -85,12 +87,12 @@ class PortalResponsiveTest {
                 originalRequestedOrientation = activity.requestedOrientation
             }
             assertPortalChrome(R.id.resultsRoot, R.id.navReports)
-            await("both reports loaded from the API") { checkActive { it.findViewById<ViewGroup>(R.id.reportsList).childCount == 2 } }
+            scrollResultsToEnd()
+            await("both reports loaded from the API") { checkActive { reportCard(it, 0) != null && reportCard(it, 1) != null } }
             onActive { activity ->
-                assertTrue(activity.findViewById<View>(R.id.resultsScroll) is androidx.core.widget.NestedScrollView)
                 assertMinimumTarget(activity, R.id.menuButton)
-                val first = activity.findViewById<ViewGroup>(R.id.reportsList).getChildAt(0)
-                val second = activity.findViewById<ViewGroup>(R.id.reportsList).getChildAt(1)
+                val first = reportCard(activity, 0)!!
+                val second = reportCard(activity, 1)!!
                 assertEquals(context.getString(R.string.report_download_accessibility, "LACTEC-00307/2026"),
                     first.findViewById<View>(R.id.downloadReport).contentDescription)
                 assertEquals(context.getString(R.string.report_download_accessibility, "LACTEC-00308/2026"),
@@ -103,9 +105,9 @@ class PortalResponsiveTest {
             capture("results-drawer.png")
             closeDrawer()
 
-            onActive { it.findViewById<NestedScrollView>(R.id.resultsScroll).scrollTo(0, 0) }
+            onActive { results(it).scrollToPosition(0) }
             capture("results-top.png")
-            onActive { it.findViewById<NestedScrollView>(R.id.resultsScroll).fullScroll(View.FOCUS_DOWN) }
+            scrollResultsToEnd()
             await("second report and download fully visible at scroll end") { checkResultsScrollEnd() }
             capture("results-bottom.png")
 
@@ -117,7 +119,7 @@ class PortalResponsiveTest {
             await("results recreated at larger font scale") { checkActiveOrNull { it is ResultsActivity && it.resources.configuration.fontScale == 1.5f } }
             setResultsRootWidth(320)
             await("results root constrained to 320dp") { checkActiveOrNull { it.findViewById<View>(R.id.resultsRoot).width == dp(320) } }
-            onActive { it.findViewById<NestedScrollView>(R.id.resultsScroll).fullScroll(View.FOCUS_DOWN) }
+            scrollResultsToEnd()
             await("last report remains fully visible at compact width") { checkResultsScrollEnd() }
             assertCompactResults()
             capture("compact-320-font-150-results.png")
@@ -140,7 +142,7 @@ class PortalResponsiveTest {
                 }
             }
             assertPortalChrome(R.id.resultsRoot, R.id.navReports)
-            onActive { it.findViewById<NestedScrollView>(R.id.resultsScroll).fullScroll(View.FOCUS_DOWN) }
+            scrollResultsToEnd()
             await("landscape report two fully visible") { checkResultsScrollEnd() }
             capture("landscape-results.png")
             onActive { it.requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_PORTRAIT }
@@ -213,11 +215,8 @@ class PortalResponsiveTest {
     private fun assertCompactResults() = onActive { activity ->
         val root = activity.findViewById<View>(R.id.resultsRoot)
         assertEquals("root constrained to a 320dp viewport", dp(320), root.width)
-        val scroll = activity.findViewById<NestedScrollView>(R.id.resultsScroll)
-        scroll.fullScroll(View.FOCUS_DOWN)
-        val rows = activity.findViewById<ViewGroup>(R.id.reportsList)
-        assertEquals(2, rows.childCount)
-        val last = rows.getChildAt(1)
+        assertEquals("header and two reports", 3, results(activity).adapter!!.itemCount)
+        val last = reportCard(activity, 1)!!
         val date = last.findViewById<TextView>(R.id.publishedOn)
         assertTrue("publication date keeps a visible text line", date.lineCount >= 1 && date.height >= date.lineHeight)
         assertTrue("download target stays at least 48dp", targetSize(last.findViewById(R.id.downloadReport), 48))
@@ -226,9 +225,9 @@ class PortalResponsiveTest {
     private fun checkResultsScrollEnd(): Boolean {
         var visible = false
         onActive { activity ->
-            val scroll = activity.findViewById<NestedScrollView>(R.id.resultsScroll)
+            val scroll = results(activity)
             // After recreation the list reloads from the API, so the row may not exist yet.
-            val last = activity.findViewById<ViewGroup>(R.id.reportsList).getChildAt(1) ?: return@onActive
+            val last = reportCard(activity, 1) ?: return@onActive
             val download = last.findViewById<View>(R.id.downloadReport)
             val viewport = Rect()
             val visibleTarget = Rect()
@@ -237,6 +236,17 @@ class PortalResponsiveTest {
             visible = download.getGlobalVisibleRect(visibleTarget) && visibleTarget == target && viewport.contains(target)
         }
         return visible
+    }
+
+    private fun results(activity: Activity): RecyclerView = activity.findViewById(R.id.resultsScroll)
+
+    private fun reportCard(activity: Activity, index: Int): View? =
+        results(activity).findViewHolderForAdapterPosition(index + 1)?.itemView
+
+    /** The list reloads from the API, so the last report may take a moment to exist. */
+    private fun scrollResultsToEnd() {
+        await("both reports in the list") { checkActiveOrNull { it.findViewById<RecyclerView>(R.id.resultsScroll)?.adapter?.itemCount == 3 } }
+        onActive { (results(it).layoutManager as LinearLayoutManager).scrollToPositionWithOffset(2, -dp(10_000)) }
     }
 
     private fun setResultsRootWidth(widthDp: Int?) = onActive { activity ->

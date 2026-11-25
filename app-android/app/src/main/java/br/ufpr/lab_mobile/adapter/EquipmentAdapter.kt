@@ -8,23 +8,13 @@ import br.ufpr.lab_mobile.databinding.ItemEquipmentBinding
 import br.ufpr.lab_mobile.model.Equipment
 
 class EquipmentAdapter(private val onViewEquipment: (Equipment) -> Unit) :
-    RecyclerView.Adapter<EquipmentAdapter.EquipmentViewHolder>() {
-    private var equipment = emptyList<Equipment>()
+    GrowingListAdapter<Equipment, EquipmentAdapter.EquipmentViewHolder>() {
 
     override fun onCreateViewHolder(parent: ViewGroup, viewType: Int) = EquipmentViewHolder(
         ItemEquipmentBinding.inflate(LayoutInflater.from(parent.context), parent, false),
     )
 
-    override fun onBindViewHolder(holder: EquipmentViewHolder, position: Int) = holder.bind(equipment[position])
-
-    override fun getItemCount() = equipment.size
-
-    fun updateEquipment(items: List<Equipment>) {
-        val previousCount = equipment.size
-        equipment = items
-        if (previousCount > 0) notifyItemRangeRemoved(0, previousCount)
-        if (items.isNotEmpty()) notifyItemRangeInserted(0, items.size)
-    }
+    override fun onBindViewHolder(holder: EquipmentViewHolder, position: Int) = holder.bind(items[position])
 
     inner class EquipmentViewHolder(private val binding: ItemEquipmentBinding) : RecyclerView.ViewHolder(binding.root) {
         fun bind(equipment: Equipment) = with(binding) {

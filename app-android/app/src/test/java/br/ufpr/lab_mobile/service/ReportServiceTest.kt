@@ -42,11 +42,11 @@ class ReportServiceTest {
             ]""", total = 3)
         }
 
-        val reports = service.getReports()
+        val reports = service.allReports()
 
         assertEquals("/api/reports", requests.single().url.encodedPath)
         assertEquals("1", requests.single().url.queryParameter("page"))
-        assertEquals("200", requests.single().url.queryParameter("pageSize"))
+        assertEquals("20", requests.single().url.queryParameter("pageSize"))
         assertEquals(listOf("r-1", "r-2"), reports.map(Report::id))
         assertEquals("AM-1 · Óleo", reports[0].sample)
         assertEquals("2026-03-07", reports[0].publishedOn)
@@ -61,22 +61,21 @@ class ReportServiceTest {
         val service = service { request ->
             val page = request.url.queryParameter("page")
             pages += page
-            val ids = if (page == "1") (1..200) else (201..250)
-            FakeResponse(ids.joinToString(",", "[", "]") { """{"id":"r-$it"}""" }, total = 250)
+            val first = (page!!.toInt() - 1) * 20 + 1
+            FakeResponse((first..minOf(first + 19, 45)).joinToString(",", "[", "]") { """{"id":"r-$it"}""" }, total = 45)
         }
 
-        val reports = service.getReports()
+        val reports = service.allReports()
 
-        assertEquals(listOf("1", "2"), pages)
-        assertEquals(250, reports.size)
-        assertEquals("r-250", reports.last().id)
+        assertEquals(listOf("1", "2", "3"), pages)
+        assertEquals((1..45).map { "r-$it" }, reports.map(Report::id))
     }
 
     @Test
     fun `without the total header only the first page is read`() = runBlocking {
         var calls = 0
         val service = service { calls++; FakeResponse("""[{"id":"r-1"}]""") }
-        assertEquals(1, service.getReports().size)
+        assertEquals(1, service.allReports().size)
         assertEquals(1, calls)
     }
 
@@ -100,6 +99,19 @@ class ReportServiceTest {
     }
 
     @Test
+    fun `quote conclusion joins every page of its reports`() = runBlocking {
+        val sizes = mutableListOf<String?>()
+        val service = service { request ->
+            sizes += request.url.queryParameter("pageSize")
+            val first = (request.url.queryParameter("page")!!.toInt() - 1) * 20 + 1
+            val reports = (first..minOf(first + 19, 30)).joinToString(",", "[", "]") { """{"id":"r-$it"}""" }
+            FakeResponse("""{"quoteId":"q-1","reports":$reports}""", total = 30)
+        }
+        assertEquals((1..30).map { "r-$it" }, service.getQuoteReports("q-1")!!.reports.map(Report::id))
+        assertEquals(listOf("20", "20"), sizes)
+    }
+
+    @Test
     fun `204 means the quote has no published report yet`() = runBlocking {
         assertNull(service { FakeResponse("", code = 204) }.getQuoteReports("q-1"))
     }
@@ -108,7 +120,7 @@ class ReportServiceTest {
     fun `HTTP errors remain errors instead of an empty list`() = runBlocking {
         listOf(401, 403, 404, 502).forEach { code ->
             val service = service { FakeResponse("{}", code = code) }
-            listOf<suspend () -> Unit>({ service.getReports() }, { service.getQuoteReports("q-1") }).forEach { call ->
+            listOf<suspend () -> Unit>({ service.allReports() }, { service.getQuoteReports("q-1") }).forEach { call ->
                 try {
                     call()
                     fail("Expected HTTP $code")
@@ -148,6 +160,8 @@ class ReportServiceTest {
             assertFalse(destination.exists())
         }
     }
+
+    private suspend fun ReportService.allReports() = reports().apply { loadRemaining() }.items
 
     private fun service(respond: (Request) -> FakeResponse) = ReportService(api(client { request ->
         val fake = respond(request)

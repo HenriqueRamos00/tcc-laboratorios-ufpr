@@ -1,9 +1,11 @@
 package br.ufpr.lab_mobile.adapter
 
 import android.view.LayoutInflater
+import android.view.ViewGroup
 import android.widget.LinearLayout
 import android.widget.TextView
 import androidx.core.view.isVisible
+import androidx.recyclerview.widget.RecyclerView
 import br.ufpr.lab_mobile.R
 import br.ufpr.lab_mobile.databinding.ItemReportBinding
 import br.ufpr.lab_mobile.databinding.ItemReportedQuoteBinding
@@ -16,11 +18,11 @@ import java.time.format.DateTimeFormatter
 import java.time.format.DateTimeParseException
 
 /**
- * Mostra uma lista de laudos dentro de um [LinearLayout].
+ * Mostra os laudos de um orçamento dentro de um [LinearLayout].
  *
- * As telas de relatório têm um cabeçalho grande (etapas, resumo, busca) que rola junto com a
- * lista; por isso a lista fica num LinearLayout dentro do NestedScrollView da tela, e não num
- * RecyclerView próprio.
+ * A tela do orçamento tem um cabeçalho grande (etapas, resumo, busca) que rola junto com a
+ * lista, que é curta; por isso a lista fica num LinearLayout dentro do NestedScrollView da tela.
+ * A lista de todos os laudos do cliente usa o [ReportAdapter].
  */
 internal class ReportListView(
     private val container: LinearLayout,
@@ -48,6 +50,32 @@ internal class ReportListView(
             bindReport(item, report, downloadingId)
             item.downloadReport.setOnClickListener { onDownload(report) }
             container.addView(item.root)
+        }
+    }
+}
+
+/** Os laudos do cliente, que podem passar de mil: só os visíveis viram views. */
+internal class ReportAdapter(private val onDownload: (Report) -> Unit) :
+    GrowingListAdapter<Report, ReportAdapter.ReportViewHolder>() {
+    private var downloadingId: String? = null
+
+    override fun onCreateViewHolder(parent: ViewGroup, viewType: Int) = ReportViewHolder(
+        ItemReportBinding.inflate(LayoutInflater.from(parent.context), parent, false),
+    )
+
+    override fun onBindViewHolder(holder: ReportViewHolder, position: Int) = holder.bind(items[position])
+
+    /** Marca o laudo que está sendo baixado; os botões ficam bloqueados até o fim do download. */
+    fun setDownloading(reportId: String?) {
+        downloadingId = reportId
+        // Com payload os itens visíveis são reaproveitados, sem piscar.
+        notifyItemRangeChanged(0, itemCount, Unit)
+    }
+
+    inner class ReportViewHolder(private val item: ItemReportBinding) : RecyclerView.ViewHolder(item.root) {
+        fun bind(report: Report) {
+            bindReport(item, report, downloadingId)
+            item.downloadReport.setOnClickListener { onDownload(report) }
         }
     }
 }

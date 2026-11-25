@@ -32,7 +32,7 @@ class EquipmentServiceTest {
             assertEquals("page=1&pageSize=20", request.url.query)
             assertEquals("GET", request.method)
         }
-        val equipment = service.getEquipment()
+        val equipment = service.allEquipment()
         assertEquals(3, equipment.size)
         assertEquals(Equipment("opaque-1", "SN-17", "TR-A", null, null, "TR-PLACA"), equipment[0])
         assertEquals(Equipment("opaque-2", null, "TR-B", "Transformador", "Local"), equipment[1])
@@ -48,36 +48,43 @@ class EquipmentServiceTest {
             val first = (page.toInt() - 1) * 20 + 1
             (first..minOf(first + 19, 45)).joinToString(",", "[", "]") { """{"id":"e-$it"}""" }
         }, total = 45)
-        assertEquals((1..45).map { "e-$it" }, service.getEquipment().map(Equipment::id))
+        assertEquals((1..45).map { "e-$it" }, service.allEquipment().map(Equipment::id))
         assertEquals(listOf("1", "2", "3"), pages)
     }
 
     @Test
-    fun `a failing page fails the whole list instead of hiding equipment`() = runBlocking {
+    fun `a failing page is reported and keeps the equipment that already arrived`() = runBlocking {
+        var failing = true
         val api = object : FakeEquipmentApi() {
             override suspend fun getEquipment(page: Int, pageSize: Int): Response<List<Equipment>> =
-                if (page > 1) Response.error(502, "{}".toResponseBody())
+                if (page > 1 && failing) Response.error(502, "{}".toResponseBody())
                 else Response.success(List(pageSize) { Equipment("e-$it", null, null, null, null) },
                     okhttp3.Headers.headersOf("X-Total-Count", "30"))
         }
+        val equipment = EquipmentService(api).equipment()
         try {
-            EquipmentService(api).getEquipment()
+            equipment.loadRemaining()
             fail("Expected HTTP 502")
         } catch (error: HttpException) {
             assertEquals(502, error.code())
         }
+        assertEquals(20, equipment.items.size)
+        assertFalse(equipment.isComplete)
+        failing = false
+        equipment.loadRemaining()
+        assertTrue(equipment.isComplete)
     }
 
     @Test
     fun `empty array stays empty`() = runBlocking {
-        assertTrue(service("[]").getEquipment().isEmpty())
+        assertTrue(service("[]").allEquipment().isEmpty())
     }
 
     @Test
     fun `HTTP errors remain errors instead of an empty list`() = runBlocking {
         listOf(401, 403, 404, 500, 502, 503).forEach { code ->
             try {
-                service("{}", code = code).getEquipment()
+                service("{}", code = code).allEquipment()
                 fail("Expected HTTP $code")
             } catch (error: HttpException) {
                 assertEquals(code, error.code())
@@ -89,7 +96,7 @@ class EquipmentServiceTest {
     fun `missing or malformed response is a loading failure`() = runBlocking {
         listOf("null", "{}", "not json").forEach { body ->
             try {
-                service(body).getEquipment()
+                service(body).allEquipment()
                 fail("Expected invalid-body failure")
             } catch (error: Exception) {
                 assertFalse(error is HttpException)
@@ -104,7 +111,7 @@ class EquipmentServiceTest {
                 override suspend fun getEquipment(page: Int, pageSize: Int): Response<List<Equipment>> = throw failure
             }
             try {
-                EquipmentService(api).getEquipment()
+                EquipmentService(api).allEquipment()
                 fail("Expected original failure")
             } catch (error: Exception) {
                 assertSame(failure, error)
@@ -129,6 +136,8 @@ class EquipmentServiceTest {
         listOf("", "  ", "\t\n").forEach { assertSame(items, filterEquipment(items, it)) }
         assertTrue(filterEquipment(emptyList(), "123").isEmpty())
     }
+
+    private suspend fun EquipmentService.allEquipment() = equipment().apply { loadRemaining() }.items
 
     private fun service(body: String, code: Int = 200, check: (okhttp3.Request) -> Unit = {}): EquipmentService =
         service({ request -> check(request); body }, code)

@@ -2,6 +2,7 @@ package br.ufpr.lab_mobile.service
 
 import br.ufpr.lab_mobile.session.SessionInterceptor
 import br.ufpr.lab_mobile.session.SessionManager
+import java.util.concurrent.TimeUnit
 import okhttp3.HttpUrl.Companion.toHttpUrl
 import okhttp3.OkHttpClient
 import retrofit2.Retrofit
@@ -19,8 +20,12 @@ object RetrofitProvider {
         retrofit = builder(baseUrl).client(client().addInterceptor(SessionInterceptor(currentBaseUrl!!.toHttpUrl(), sessions)).build()).build()
     }
 
+    /** Some portal pages wait on slow laboratory queries, beyond OkHttp's 10 second default. */
+    private const val READ_TIMEOUT_SECONDS = 30L
+
     // Redirects are deliberately disabled: a portal bearer must never follow a document redirect.
     private fun client() = OkHttpClient.Builder().followRedirects(false).followSslRedirects(false)
+        .readTimeout(READ_TIMEOUT_SECONDS, TimeUnit.SECONDS)
 
     private fun builder(baseUrl: String) = Retrofit.Builder()
         .baseUrl("${baseUrl.trimEnd('/')}/")

@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Fim de uma lista lida página a página, enquanto ela não está completa. -->
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:gravity="center_horizontal"
+    android:orientation="vertical"
+    android:paddingTop="12dp"
+    android:paddingBottom="12dp">
+
+    <ProgressBar
+        android:id="@+id/moreLoading"
+        android:layout_width="32dp"
+        android:layout_height="32dp"
+        android:importantForAccessibility="no"
+        android:indeterminateTint="@color/lactec_primary" />
+
+    <TextView
+        android:id="@+id/moreMessage"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:fontFamily="@font/inter"
+        android:gravity="center"
+        android:padding="8dp"
+        android:textColor="@color/lactec_muted"
+        android:textSize="14sp"
+        tools:text="@string/list_loading_more" />
+
+    <com.google.android.material.button.MaterialButton
+        android:id="@+id/moreRetry"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:minHeight="48dp"
+        android:text="@string/quote_status_retry"
+        android:textAllCaps="false"
+        android:visibility="gone"
+        app:cornerRadius="6dp" />
+</LinearLayout>

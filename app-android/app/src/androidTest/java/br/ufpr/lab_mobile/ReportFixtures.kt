@@ -15,3 +15,10 @@ internal object ReportFixtures {
     fun body(request: Request): String =
         if (request.url.encodedPath == "/api/reports") PUBLISHED_REPORTS else "[]"
 }
+
+/** Uma página de uma lista numerada de 1 a [total], como a API responde. */
+internal fun numberedPage(request: Request, total: Int, item: (Int) -> String): String {
+    val size = request.url.queryParameter("pageSize")!!.toInt()
+    val first = (request.url.queryParameter("page")!!.toInt() - 1) * size + 1
+    return (first..minOf(first + size - 1, total)).joinToString(",", "[", "]") { item(it) }
+}
