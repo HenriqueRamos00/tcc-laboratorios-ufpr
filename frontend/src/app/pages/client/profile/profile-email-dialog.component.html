@@ -1,0 +1,72 @@
+<form class="flex h-full min-h-0 flex-col" [formGroup]="form" (ngSubmit)="submit()" novalidate>
+  <app-dialog-shell
+    title="Alterar e-mail"
+    subtitle="Confirme sua identidade para solicitar a alteração."
+    [closeRequest]="requestClose"
+  >
+    @if (serverError()) {
+      <p class="profile-dialog-error" role="alert">{{ serverError() }}</p>
+    }
+
+    <div class="profile-dialog-fields">
+      <div class="profile-readonly-email">
+        <span>E-mail atual</span>
+        <strong>{{ data.currentEmail }}</strong>
+      </div>
+      <app-text-field
+        label="Novo e-mail"
+        tipo="email"
+        autocomplete="email"
+        [maxlength]="254"
+        [controle]="form.controls.newEmail"
+        [mensagemErro]="emailError()"
+      />
+      <label class="profile-password-label" for="profile-current-password">Senha atual</label>
+      <div class="profile-password-control" [class.profile-password-control--error]="currentPasswordInvalid()">
+        <input
+          id="profile-current-password"
+          [type]="showCurrentPassword() ? 'text' : 'password'"
+          formControlName="currentPassword"
+          autocomplete="current-password"
+          aria-describedby="profile-current-password-hint"
+          [attr.aria-invalid]="currentPasswordInvalid()"
+        />
+        <button
+          mat-icon-button
+          type="button"
+          [attr.aria-label]="showCurrentPassword() ? 'Ocultar senha atual' : 'Mostrar senha atual'"
+          [attr.aria-pressed]="showCurrentPassword()"
+          (click)="toggleCurrentPassword()"
+        >
+          <mat-icon aria-hidden="true">{{ showCurrentPassword() ? 'visibility' : 'visibility_off' }}</mat-icon>
+        </button>
+      </div>
+      <p id="profile-current-password-hint" class="profile-field-hint">A senha não será exibida fora deste campo.</p>
+      @if (currentPasswordInvalid()) {
+        <p class="profile-field-error" role="alert">{{ currentPasswordError() }}</p>
+      }
+
+      <p class="profile-dialog-notice">
+        Você receberá um link no e-mail atual e outro no novo endereço. A alteração será concluída somente depois de confirmar os dois.
+      </p>
+
+      @if (discardConfirmation()) {
+        <section class="profile-discard-warning" aria-labelledby="discard-email-change-title" role="alert">
+          <h3 id="discard-email-change-title">Solicitação não enviada</h3>
+          <p>Você preencheu dados neste formulário. Deseja descartá-los?</p>
+          <div>
+            <button mat-stroked-button type="button" (click)="continueEditing()">Continuar editando</button>
+            <button mat-button type="button" (click)="discardChanges()">Descartar alterações</button>
+          </div>
+        </section>
+      }
+    </div>
+
+    <div dialog-footer class="flex w-full flex-wrap justify-end gap-3">
+      <button mat-stroked-button type="button" [disabled]="saving()" (click)="close()">Cancelar</button>
+      <button mat-flat-button type="submit" [disabled]="saving()">
+        {{ saving() ? 'Enviando solicitação...' : 'Solicitar alteração' }}
+      </button>
+    </div>
+  </app-dialog-shell>
+</form>

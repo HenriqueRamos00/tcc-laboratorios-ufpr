@@ -48,6 +48,17 @@ describe('Interceptors de autorização do portal', () => {
     request.flush({});
   });
 
+  it('confirma o novo e-mail sem anexar ou exigir uma sessão do portal', () => {
+    const url = `${API_URL}/api/profile/email-change/confirm`;
+    client.post(url, { token: 'token-de-confirmacao' }).subscribe({ error: () => {} });
+    const request = http.expectOne(url);
+
+    expect(request.request.headers.has('Authorization')).toBeFalse();
+    request.flush({}, { status: 401, statusText: 'Unauthorized' });
+    expect(logout).not.toHaveBeenCalled();
+    expect(TestBed.inject(Router).navigate).not.toHaveBeenCalled();
+  });
+
   it('um 401 antigo não remove uma sessão de outra conta', () => {
     client.get(API_URL + '/api/quotes').subscribe({ error: () => {} });
     localStorage.setItem(LS_TOKEN, 'new-session-token');

@@ -120,12 +120,15 @@
             </button>
           </div>
         }
-        <button
-          type="button"
+        <a
+          [routerLink]="'/cliente/perfil'"
+          routerLinkActive="bg-white/10 text-white"
+          [routerLinkActiveOptions]="{ exact: true }"
           [attr.data-tour]="tourTarget.profile"
           [matTooltip]="isCollapsed ? 'Perfil' : ''"
           matTooltipPosition="right"
           matTooltipShowDelay="120"
+          (click)="handset && drawer.close()"
           class="flex items-center gap-3 h-11 rounded-lg hover:bg-white/5 hover:text-white transition-colors
                    focus:outline-none focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-lactec-on-primary text-left"
           [class.justify-center]="isCollapsed"
@@ -135,7 +138,7 @@
           @if (showLabels) {
             <span class="font-medium text-sm truncate">Perfil</span>
           }
-        </button>
+        </a>
         @if (handset) {
           <button
             type="button"

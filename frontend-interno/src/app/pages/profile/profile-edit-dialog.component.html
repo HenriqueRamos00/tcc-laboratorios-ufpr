@@ -1,0 +1,44 @@
+<form class="flex h-full min-h-0 flex-col" [formGroup]="form" (ngSubmit)="save()" novalidate>
+  <app-dialog-shell
+    title="Editar dados pessoais"
+    subtitle="Atualize os dados usados para identificar você no portal."
+    [closeDisabled]="saving()"
+    [closeRequest]="requestClose"
+  >
+    @if (serverError()) {
+      <p class="profile-dialog-error" role="alert">{{ serverError() }}</p>
+    }
+
+    <div class="profile-dialog-fields">
+      <div class="flex flex-col gap-2">
+        <label for="profile-name" class="text-xs font-medium tracking-wide text-lactec-ink-soft">Nome</label>
+        <div class="input-field" [class.input-field--error]="form.controls.name.touched && form.controls.name.invalid">
+          <input id="profile-name" formControlName="name" autocomplete="name" class="input-field__input"
+            [attr.aria-invalid]="form.controls.name.touched && form.controls.name.invalid"
+            [attr.aria-describedby]="form.controls.name.touched && form.controls.name.invalid ? 'profile-name-error' : null" />
+        </div>
+        @if (form.controls.name.touched && form.controls.name.invalid) {
+          <p id="profile-name-error" class="profile-field-error" role="alert">{{ nameError() }}</p>
+        }
+      </div>
+
+      @if (discardConfirmation()) {
+        <section class="profile-discard-warning" aria-labelledby="discard-profile-changes-title" role="alert">
+          <h3 id="discard-profile-changes-title">Alterações não salvas</h3>
+          <p>Você tem alterações não salvas. Deseja descartá-las?</p>
+          <div>
+            <button mat-stroked-button type="button" (click)="continueEditing()">Continuar editando</button>
+            <button mat-button type="button" (click)="discardChanges()">Descartar alterações</button>
+          </div>
+        </section>
+      }
+    </div>
+
+    <div dialog-footer class="flex w-full flex-wrap justify-end gap-3">
+      <button mat-stroked-button type="button" [disabled]="saving()" (click)="close()">Cancelar</button>
+      <button mat-flat-button type="submit" [disabled]="saving() || !hasChanges()">
+        {{ saving() ? 'Salvando...' : 'Salvar alterações' }}
+      </button>
+    </div>
+  </app-dialog-shell>
+</form>

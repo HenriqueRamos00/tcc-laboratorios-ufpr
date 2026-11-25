@@ -36,6 +36,13 @@ public class ProblemDetailWriter {
         return ProblemDetail.forStatusAndDetail(status, detail);
     }
 
+    /** Codigo estavel para operacoes novas que precisam ser mapeadas pelo consumidor. */
+    public ProblemDetail bodyOf(HttpStatus status, String detail, String code) {
+        ProblemDetail body = bodyOf(status, detail);
+        body.setProperty("code", code);
+        return body;
+    }
+
     public void write(HttpServletResponse response, HttpStatus status, String detail)
             throws IOException {
         ProblemDetail body = bodyOf(status, detail);

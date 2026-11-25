@@ -3,7 +3,11 @@ using System.Net.Http.Headers;
 
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
+using Microsoft.AspNetCore.TestHost;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.IdentityModel.Tokens;
+using Portal.Application.Authentication;
 
 namespace Portal.Tests.Authentication;
 
@@ -33,7 +37,11 @@ internal static class PortalSessions
         builder.UseSetting("PortalJwt:Audience", Audience);
         builder.UseSetting("PortalJwt:SigningKey", SigningKey);
 
-        return builder;
+        return builder.ConfigureTestServices(services =>
+        {
+            services.RemoveAll<IClientSessionStateVerifier>();
+            services.AddSingleton<IClientSessionStateVerifier, CurrentSessionVerifier>();
+        });
     }
 
     public static string TokenOf(params string[] companyCnpjs)
@@ -51,7 +59,8 @@ internal static class PortalSessions
             ["roles"] = "CLIENTE",
             ["jti"] = Guid.NewGuid().ToString("N"),
             ["authSource"] = "lactec",
-            ["serviceCode"] = ServiceCode
+            ["serviceCode"] = ServiceCode,
+            ["credentialVersion"] = 0
         };
 
         if (companyCnpjs is not null) claims["companyCnpjs"] = companyCnpjs;

@@ -72,6 +72,7 @@ class TecnicosUseCaseTests {
 		original.setSenhaHash(passwordEncoder.encode("senha antiga"));
 		original = usuarioRepository.saveAndFlush(original);
 		String hashAnterior = original.getSenhaHash();
+		assertEquals(0, original.getCredentialVersion());
 
 		updateTecnicoUseCase.execute(original.getId(), new UpdateTecnicoRequest(
 				"Técnico C", "tecnico-c@example.test", "UNIDADE_B", "Compósitos", TecnicoStatus.ACTIVE, ""
@@ -79,11 +80,22 @@ class TecnicosUseCaseTests {
 		Usuario editado = usuarioRepository.findById(original.getId()).orElseThrow();
 		assertEquals(hashAnterior, editado.getSenhaHash());
 		assertEquals("UNIDADE_B", editado.getUnidade());
+		assertEquals(0, editado.getCredentialVersion());
 
 		updateTecnicoUseCase.execute(original.getId(), new UpdateTecnicoRequest(
 				"Técnico C", "tecnico-c@example.test", "UNIDADE_B", "Compósitos", TecnicoStatus.ACTIVE, "senha nova"
 		));
-		assertTrue(passwordEncoder.matches("senha nova", usuarioRepository.findById(original.getId()).orElseThrow().getSenhaHash()));
+		editado = usuarioRepository.findById(original.getId()).orElseThrow();
+		assertTrue(passwordEncoder.matches("senha nova", editado.getSenhaHash()));
+		assertEquals(1, editado.getCredentialVersion());
+
+		updateTecnicoUseCase.execute(original.getId(), new UpdateTecnicoRequest(
+				"Técnico C", "tecnico-c-alterado@example.test", "UNIDADE_B", "Compósitos",
+				TecnicoStatus.ACTIVE, null
+		));
+		Usuario emailAlterado = usuarioRepository.findById(original.getId()).orElseThrow();
+		assertEquals("tecnico-c-alterado@example.test", emailAlterado.getEmail());
+		assertEquals(2, emailAlterado.getCredentialVersion());
 	}
 
 	@Test

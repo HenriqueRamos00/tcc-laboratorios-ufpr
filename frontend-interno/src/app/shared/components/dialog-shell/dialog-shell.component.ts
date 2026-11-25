@@ -20,8 +20,15 @@ export class DialogShellComponent {
   readonly lateral = input(false);
   readonly closeDisabled = input(false);
   readonly closeLabel = input('Fechar diálogo');
+  readonly closeRequest = input<(() => void) | null>(null);
 
   close(): void {
-    if (!this.closeDisabled() && !this.dialogRef?.disableClose) this.dialogRef?.close();
+    if (this.closeDisabled()) return;
+    const request = this.closeRequest();
+    if (request) {
+      request();
+      return;
+    }
+    if (!this.dialogRef?.disableClose) this.dialogRef?.close();
   }
 }

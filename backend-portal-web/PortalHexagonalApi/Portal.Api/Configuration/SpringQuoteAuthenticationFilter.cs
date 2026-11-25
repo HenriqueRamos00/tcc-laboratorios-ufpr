@@ -17,14 +17,19 @@ public sealed class SpringQuoteAuthenticationFilter(IConfiguration configuration
             && action.ControllerTypeInfo.AsType() is Type controllerType
             && (controllerType == typeof(QuotesController)
                 || (controllerType == typeof(ReportsController)
-                    && configuration["ReportDocuments:Source"] != ReportDocumentsOptions.SqlServerSource))
+                    && configuration["ReportDocuments:Source"] != ReportDocumentsOptions.SqlServerSource)
+                || (controllerType == typeof(ProfileController)
+                    && action.ActionName != nameof(ProfileController.ConfirmEmailChange)))
             && !SpringBearerCredential.IsValid(context.HttpContext.Request.Headers["Authorization"].ToString()))
         {
             context.HttpContext.Response.Headers["WWW-Authenticate"] = "Bearer";
             ControllerBase controller = (ControllerBase)context.Controller;
             context.Result = controllerType == typeof(ReportsController)
                 ? controller.ReportAuthenticationRequired()
-                : controller.QuoteAuthenticationRequired();
+                : controllerType == typeof(ProfileController)
+                    ? controller.AsProblem(StatusCodes.Status401Unauthorized, "session-expired",
+                        "Sessão expirada.", "Entre novamente para continuar.")
+                    : controller.QuoteAuthenticationRequired();
             return;
         }
 

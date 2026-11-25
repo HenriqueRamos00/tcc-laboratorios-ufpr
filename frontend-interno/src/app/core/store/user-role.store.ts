@@ -57,6 +57,14 @@ export const UserRole = signalStore(
       otherStorage.removeItem(USER_STORAGE_KEY);
       patchState(store, { user });
     },
+    updateUserName(name: string): void {
+      const user = store.user();
+      if (!user || !name.trim()) return;
+      const updated = { ...user, name };
+      const storage = localStorage.getItem(USER_STORAGE_KEY) !== null ? localStorage : sessionStorage;
+      storage.setItem(USER_STORAGE_KEY, JSON.stringify(updated));
+      patchState(store, { user: updated });
+    },
     clear(): void {
       localStorage.removeItem(USER_STORAGE_KEY);
       sessionStorage.removeItem(USER_STORAGE_KEY);

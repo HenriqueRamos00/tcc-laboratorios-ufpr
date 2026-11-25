@@ -75,6 +75,16 @@ public static class PortalSourceRegistration
                         client.Timeout = TimeSpan.FromSeconds(10);
                     })
                     .ConfigurePrimaryHttpMessageHandler(() => new HttpClientHandler { AllowAutoRedirect = false });
+                services.AddHttpClient<BackendLabClientProfileAdapter>((provider, client) =>
+                    {
+                        BackendLabOptions backendLab = provider.GetRequiredService<IOptions<BackendLabOptions>>().Value;
+                        client.BaseAddress = new Uri(backendLab.BaseUrl.TrimEnd('/') + "/");
+                        client.Timeout = TimeSpan.FromSeconds(10);
+                    })
+                    .ConfigurePrimaryHttpMessageHandler(() => new HttpClientHandler { AllowAutoRedirect = false })
+                    .AddHttpMessageHandler<SpringBearerForwardingHandler>();
+                services.AddTransient<IClientProfileOperations>(provider =>
+                    provider.GetRequiredService<BackendLabClientProfileAdapter>());
                 return services;
 
             case PortalOptions.LactecSource:
@@ -102,13 +112,19 @@ public static class PortalSourceRegistration
                         "BackendAuth:ServiceCode é obrigatório e deve corresponder ao serviço autorizado.")
                     .ValidateOnStart();
                 services.AddSingleton(provider => provider.GetRequiredService<IOptions<BackendAuthOptions>>().Value);
-                services.AddHttpClient<IClientAuthenticator, BackendAuthAdapter>((provider, client) =>
+                services.AddHttpClient<BackendAuthAdapter>((provider, client) =>
                     {
                         BackendAuthOptions backend = provider.GetRequiredService<IOptions<BackendAuthOptions>>().Value;
                         client.BaseAddress = new Uri(backend.BaseUrl.TrimEnd('/') + "/");
                         client.Timeout = TimeSpan.FromSeconds(10);
                     })
                     .ConfigurePrimaryHttpMessageHandler(() => new HttpClientHandler { AllowAutoRedirect = false });
+                services.AddTransient<IClientAuthenticator>(provider =>
+                    provider.GetRequiredService<BackendAuthAdapter>());
+                services.AddTransient<IClientProfileOperations>(provider =>
+                    provider.GetRequiredService<BackendAuthAdapter>());
+                services.AddTransient<IClientSessionStateVerifier>(provider =>
+                    provider.GetRequiredService<BackendAuthAdapter>());
                 services.AddPortalJwt(configuration);
                 return services;
 

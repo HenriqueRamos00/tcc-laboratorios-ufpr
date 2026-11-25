@@ -21,6 +21,7 @@ x-contexto-da-aplicacao: &contexto-da-aplicacao
   # obrigatorio, e a aplicacao recusa a subida sem ele.
   AUTH_NOTIFICATION_CONFIRMATION_LINK: ${AUTH_CONFIRMATION_LINK:?defina AUTH_CONFIRMATION_LINK no .env}
   AUTH_NOTIFICATION_RECOVERY_LINK: ${AUTH_RECOVERY_LINK:?defina AUTH_RECOVERY_LINK no .env}
+  AUTH_NOTIFICATION_EMAIL_CHANGE_LINK: ${AUTH_EMAIL_CHANGE_LINK:-}
 
 services:
   oracle:

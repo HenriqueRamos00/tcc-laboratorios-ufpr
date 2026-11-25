@@ -98,6 +98,8 @@ class SecurityConfiguration {
                         .requestMatchers("/health", "/health/**").permitAll()
                         .requestMatchers(HttpMethod.POST, "/api/admin/auth/login",
                                 "/api/setup/admin").permitAll()
+                        .requestMatchers("/api/self-service/**")
+                        .hasAuthority(ServiceTokenAuthenticationFilter.APPLICATION_AUTHORITY)
                         .requestMatchers("/api/services", "/api/services/**", "/api/admins",
                                 "/api/admins/**", "/api/companies", "/api/companies/**")
                         .hasAuthority(ServiceTokenAuthenticationFilter.ADMINISTRATOR_AUTHORITY)

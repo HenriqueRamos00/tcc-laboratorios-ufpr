@@ -193,14 +193,16 @@ public sealed class DemoPortalContractTests
 
     private static string Identity(params string[] cnpjs) => JsonSerializer.Serialize(new
     {
-        id = "42", name = "Cliente demo", email = "client@lactec.com", role = "CLIENTE",
+        id = "42", name = "Cliente demo", email = "client@lactec.com", role = "CLIENTE", credentialVersion = 0,
         serviceCode = "portal-web", authorizations = new { companyCnpjs = cnpjs }
     });
 
     private static async Task Login(HttpClient client)
     {
         using var response = await client.PostAsJsonAsync("/auth/login", new { email = "client@lactec.com", password = "client@lactec.com" });
-        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        Assert.True(
+            response.StatusCode == HttpStatusCode.OK,
+            await response.Content.ReadAsStringAsync());
         var body = (await response.Content.ReadFromJsonAsync<JsonObject>())!;
         client.DefaultRequestHeaders.Authorization = new("Bearer", (string)body["Token"]!);
     }

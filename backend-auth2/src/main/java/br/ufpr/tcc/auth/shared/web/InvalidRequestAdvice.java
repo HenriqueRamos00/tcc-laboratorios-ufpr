@@ -1,6 +1,7 @@
 package br.ufpr.tcc.auth.shared.web;
 
 import java.util.List;
+import jakarta.servlet.http.HttpServletRequest;
 import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
 import org.slf4j.Logger;
@@ -51,7 +52,8 @@ class InvalidRequestAdvice {
     private final ProblemDetailWriter problemDetailWriter;
 
     @ExceptionHandler(MethodArgumentNotValidException.class)
-    ResponseEntity<ProblemDetail> onInvalidField(MethodArgumentNotValidException refused) {
+    ResponseEntity<ProblemDetail> onInvalidField(MethodArgumentNotValidException refused,
+            HttpServletRequest request) {
         List<String> refusedFields = refused.getBindingResult().getFieldErrors().stream()
                 .map(FieldError::getField)
                 .distinct()
@@ -61,7 +63,7 @@ class InvalidRequestAdvice {
                 .addKeyValue("event", "request_refused_by_validation")
                 .addKeyValue("fields", String.join(",", refusedFields))
                 .log("Pedido recusado pela validacao");
-        return badRequest();
+        return badRequest(request);
     }
 
     /**
@@ -74,14 +76,15 @@ class InvalidRequestAdvice {
      * diferenca entre "corpo errado" e "corpo grande" ainda existe.
      */
     @ExceptionHandler(HttpMessageNotReadableException.class)
-    ResponseEntity<ProblemDetail> onUnreadableBody(HttpMessageNotReadableException refused) {
+    ResponseEntity<ProblemDetail> onUnreadableBody(HttpMessageNotReadableException refused,
+            HttpServletRequest request) {
         if (wasAboveCeiling(refused)) {
             return payloadTooLarge();
         }
         LOGGER.atWarn()
                 .addKeyValue("event", "request_body_refused")
                 .log("Corpo do pedido ilegivel ou com campo que a rota nao declara");
-        return badRequest();
+        return badRequest(request);
     }
 
     private static boolean wasAboveCeiling(Throwable refused) {
@@ -163,7 +166,16 @@ class InvalidRequestAdvice {
                         "Servico sem capacidade no momento"));
     }
 
-    private ResponseEntity<ProblemDetail> badRequest() {
+    private ResponseEntity<ProblemDetail> badRequest(HttpServletRequest request) {
+        String path = request.getRequestURI();
+        if (path.startsWith("/api/self-service/")) {
+            String code = path.endsWith("/password") ? "invalid-password" : "invalid-profile";
+            String detail = path.endsWith("/password")
+                    ? "Dados de senha invalidos" : "Dados de perfil invalidos";
+            return ResponseEntity.badRequest()
+                    .contentType(MediaType.APPLICATION_PROBLEM_JSON)
+                    .body(problemDetailWriter.bodyOf(HttpStatus.BAD_REQUEST, detail, code));
+        }
         return ResponseEntity.badRequest()
                 .contentType(MediaType.APPLICATION_PROBLEM_JSON)
                 .body(problemDetailWriter.bodyOf(HttpStatus.BAD_REQUEST, "Pedido invalido"));

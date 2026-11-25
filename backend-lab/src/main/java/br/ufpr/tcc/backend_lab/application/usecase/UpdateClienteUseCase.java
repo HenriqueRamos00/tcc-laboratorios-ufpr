@@ -24,6 +24,7 @@ public class UpdateClienteUseCase {
     private final ResolvedorVinculosEmpresasCliente resolvedorVinculosEmpresas;
     private final SenhaValidator senhaValidator;
     private final PasswordEncoder encoder;
+    private final EmailChangeService emailChangeService;
 
     @Transactional
     public ClienteResponse execute(Long id, UpdateClienteRequest request) {
@@ -32,7 +33,9 @@ public class UpdateClienteUseCase {
                         .findById(id)
                         .orElseThrow(
                                 () -> RegraNegocioException.naoEncontrado("Cliente não encontrado"));
-        var usuario = cliente.getUsuario();
+        var usuario = usuarios.findByIdForUpdate(cliente.getUsuario().getId())
+                .orElseThrow(() -> RegraNegocioException.naoEncontrado("Usuário do cliente não encontrado"));
+        cliente.setUsuario(usuario);
         if (usuario.getPerfil() != PerfilUsuario.CLIENTE) {
             throw RegraNegocioException.acessoNegado("Perfil inválido para cadastro de cliente");
         }
@@ -40,13 +43,22 @@ public class UpdateClienteUseCase {
                 && usuarios.existsByEmailIgnoreCase(request.email())) {
             throw new EmailJaCadastradoException();
         }
+        boolean emailAlterado = usuario.getEmail() == null
+                || !usuario.getEmail().equalsIgnoreCase(request.email());
+        boolean senhaAlterada = request.password() != null;
         var empresas =
                 resolvedorVinculosEmpresas.resolver(request.companyIds(), cliente.getEmpresas());
         senhaValidator.validar(request.password());
         usuario.setNome(request.name());
         usuario.setEmail(request.email());
         usuario.setAtivo(request.status().toAtivo());
-        if (request.password() != null) usuario.setSenhaHash(encoder.encode(request.password()));
+        if (senhaAlterada) {
+            usuario.setSenhaHash(encoder.encode(request.password()));
+        }
+        if (emailAlterado || senhaAlterada) {
+            usuario.invalidateCredentials();
+            emailChangeService.invalidar(usuario.getId());
+        }
         cliente.setUsuario(usuarios.saveAndFlush(usuario));
         cliente.setPhone(request.phone());
         cliente.setPosition(request.position());

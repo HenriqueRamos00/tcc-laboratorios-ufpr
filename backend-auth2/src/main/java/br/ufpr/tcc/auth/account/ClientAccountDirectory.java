@@ -32,6 +32,6 @@ class ClientAccountDirectory implements ClientCredentialDirectory {
                 .filter(Objects::nonNull).sorted().toList();
         return Optional.of(new StoredClientCredentialView(account.id(), account.name(),
                 account.email(), account.passwordHash(), account.emailConfirmed(),
-                account.active(), companyCnpjs));
+                account.active(), account.credentialVersion(), companyCnpjs));
     }
 }

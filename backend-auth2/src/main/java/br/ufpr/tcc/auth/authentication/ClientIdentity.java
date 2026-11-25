@@ -1,5 +1,6 @@
 package br.ufpr.tcc.auth.authentication;
 
+import io.swagger.v3.oas.annotations.media.Schema;
 import java.util.List;
 
 /**
@@ -13,7 +14,9 @@ import java.util.List;
  * O identificador e texto porque numero de 64 bits perde precisao no navegador.
  */
 public record ClientIdentity(String id, String name, String email, String role,
-        String serviceCode, Authorizations authorizations) {
+        String serviceCode, Authorizations authorizations,
+        @Schema(requiredMode = Schema.RequiredMode.REQUIRED, minimum = "0")
+        long credentialVersion) {
 
     static final String CLIENT_ROLE = "CLIENTE";
 

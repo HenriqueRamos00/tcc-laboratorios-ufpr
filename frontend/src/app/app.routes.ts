@@ -115,7 +115,24 @@ export const routes: Routes = [
           ),
         title: 'Indicadores de saúde - Portal Lactec',
       },
+      {
+        path: 'perfil',
+        loadComponent: () =>
+          import('@/app/pages/client/profile/profile.component').then(
+            (modulo) => modulo.ProfileComponent,
+          ),
+        title: 'Meu perfil - Portal Lactec',
+      },
     ],
+  },
+
+  {
+    path: 'confirmar-alteracao-email',
+    loadComponent: () =>
+      import('@/app/pages/client/profile/confirm-email-change.component').then(
+        (modulo) => modulo.ConfirmEmailChangeComponent,
+      ),
+    title: 'Confirmar alteração de e-mail - Portal Lactec',
   },
 
   {

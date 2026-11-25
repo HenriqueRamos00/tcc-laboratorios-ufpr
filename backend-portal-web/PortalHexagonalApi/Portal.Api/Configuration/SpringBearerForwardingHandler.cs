@@ -10,6 +10,11 @@ public sealed class SpringBearerForwardingHandler(IHttpContextAccessor contextAc
     protected override Task<HttpResponseMessage> SendAsync(
         HttpRequestMessage request, CancellationToken cancellationToken)
     {
+        if (request.Method == HttpMethod.Post
+            && request.RequestUri?.AbsolutePath is "/api/client/profile/email-change/confirm"
+                or "/api/auth/internal/profile/email-change/confirm")
+            return base.SendAsync(request, cancellationToken);
+
         string? authorization = contextAccessor.HttpContext?.Request.Headers["Authorization"].ToString();
         if (!SpringBearerCredential.IsValid(authorization))
             throw new QuoteAuthenticationRequiredException();

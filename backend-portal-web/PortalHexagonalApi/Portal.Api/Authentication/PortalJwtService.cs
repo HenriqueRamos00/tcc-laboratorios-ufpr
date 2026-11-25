@@ -21,7 +21,9 @@ public sealed class PortalJwtService(IOptions<PortalJwtOptions> options, TimePro
             ?? throw new InvalidOperationException("A sessão recém-iniciada deveria estar dentro do limite.");
     }
 
-    public async Task<ClientSession?> RenewAsync(string token, string serviceCode)
+    public async Task<ClientSession?> RenewAsync(string token, string serviceCode,
+        IClientSessionStateVerifier sessions, IClientProfileOperations profiles,
+        CancellationToken cancellationToken = default)
     {
         PortalJwtOptions settings = options.Value;
         DateTimeOffset now = time.GetUtcNow();
@@ -42,7 +44,12 @@ public sealed class PortalJwtService(IOptions<PortalJwtOptions> options, TimePro
             || !long.TryParse(principal.FindFirstValue(SessionStartClaim), out long startedAt))
             return null;
 
-        return IssueWithin(ReadUser(principal), DateTimeOffset.FromUnixTimeSeconds(startedAt), now);
+        ClientUser current = ReadUser(principal);
+        if (!await sessions.IsCurrentAsync(current.Id, current.CredentialVersion!.Value, cancellationToken))
+            return null;
+        ClientProfile profile = await profiles.GetAsync(current.Id, cancellationToken);
+        ClientUser refreshed = current with { Name = profile.Name, Email = profile.Email };
+        return IssueWithin(refreshed, DateTimeOffset.FromUnixTimeSeconds(startedAt), now);
     }
 
     public static TokenValidationParameters ValidationParameters(PortalJwtOptions settings) => new()
@@ -64,15 +71,29 @@ public sealed class PortalJwtService(IOptions<PortalJwtOptions> options, TimePro
 
     public static bool HasPortalIdentity(ClaimsPrincipal user, string serviceCode)
     {
+        string? versionClaim = user.FindFirstValue("credentialVersion");
+        bool validCredentialVersion = versionClaim is null
+            || long.TryParse(versionClaim, out long credentialVersion) && credentialVersion >= 0;
+
         return !RequiredClaims.Any(name => string.IsNullOrWhiteSpace(user.FindFirst(name)?.Value))
             && user.FindFirst("authSource")?.Value == "lactec"
-            && user.FindFirst("serviceCode")?.Value == serviceCode;
+            && user.FindFirst("serviceCode")?.Value == serviceCode
+            && validCredentialVersion;
     }
 
     public static ClientUser ReadUser(ClaimsPrincipal user) => new(
         user.FindFirstValue("sub")!, user.FindFirstValue("nome")!, user.FindFirstValue("email")!,
         user.FindFirstValue("roles")!, null, user.FindFirstValue("serviceCode"),
-        new ClientAuthorizations(user.FindAll("companyCnpjs").Select(claim => claim.Value).Order(StringComparer.Ordinal).ToArray()));
+        new ClientAuthorizations(user.FindAll("companyCnpjs").Select(claim => claim.Value).Order(StringComparer.Ordinal).ToArray()),
+        ReadCredentialVersion(user));
+
+    private static long ReadCredentialVersion(ClaimsPrincipal user)
+    {
+        string? value = user.FindFirstValue("credentialVersion");
+        return value is null
+            ? 0
+            : long.Parse(value, System.Globalization.CultureInfo.InvariantCulture);
+    }
 
     private ClientSession? IssueWithin(ClientUser user, DateTimeOffset sessionStart, DateTimeOffset now)
     {
@@ -105,6 +126,8 @@ public sealed class PortalJwtService(IOptions<PortalJwtOptions> options, TimePro
                 ["authSource"] = "lactec",
                 ["serviceCode"] = user.ServiceCode!,
                 ["companyCnpjs"] = user.Authorizations!.CompanyCnpjs.ToArray(),
+                ["credentialVersion"] = user.CredentialVersion
+                    ?? throw new InvalidOperationException("Versão de credencial ausente na autenticação."),
                 [SessionStartClaim] = sessionStart.ToUnixTimeSeconds(),
                 ["jti"] = Guid.NewGuid().ToString("N")
             }

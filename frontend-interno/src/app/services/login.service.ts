@@ -80,6 +80,12 @@ export class LoginService {
     this.userRole.clear();
   }
 
+  updateProfileName(name: string): void {
+    if (!name.trim()) return;
+    this.userName.set(name);
+    this.userRole.updateUserName(name);
+  }
+
   private saveSession(response: InternalLoginResponse, keepConnected: boolean): void {
     const storage = keepConnected ? localStorage : sessionStorage;
     const otherStorage = keepConnected ? sessionStorage : localStorage;

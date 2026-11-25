@@ -13,6 +13,7 @@ import jakarta.persistence.PreUpdate;
 import jakarta.persistence.Table;
 import jakarta.persistence.UniqueConstraint;
 
+import java.time.OffsetDateTime;
 import java.util.Locale;
 
 import lombok.Getter;
@@ -58,11 +59,23 @@ public class Usuario {
 	@Column(nullable = false)
 	private boolean ativo = true;
 
+	@Column(name = "credential_version", nullable = false, columnDefinition = "bigint default 0")
+	private long credentialVersion;
+
+	@Column(nullable = false, columnDefinition = "integer default 0")
+	private int falhasSenhaAtual;
+
+	private OffsetDateTime limiteSenhaAtualAte;
+
 	@Column(length = 120)
 	private String unidade;
 
 	@Column(length = 160)
 	private String especialidade;
+
+	public void invalidateCredentials() {
+		credentialVersion++;
+	}
 
 	@PrePersist
 	@PreUpdate

@@ -3,7 +3,9 @@ package br.ufpr.tcc.auth.account;
 import java.time.OffsetDateTime;
 import java.util.List;
 import java.util.Optional;
+import jakarta.persistence.LockModeType;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
@@ -20,6 +22,15 @@ interface ClientAccountRepository extends JpaRepository<ClientAccount, Long> {
             @Param("email") String email);
 
     @Query("""
+            select count(account) from ClientAccount account
+             where account.applicationId = :applicationId
+               and account.emailNormalized = lower(:email)
+               and account.id <> :excludedAccountId
+            """)
+    long countOtherAccountsWithinApplicationByEmail(@Param("applicationId") long applicationId,
+            @Param("email") String email, @Param("excludedAccountId") long excludedAccountId);
+
+    @Query("""
             select account from ClientAccount account
              where account.applicationId = :applicationId
                and account.emailNormalized = lower(:email)
@@ -34,7 +45,7 @@ interface ClientAccountRepository extends JpaRepository<ClientAccount, Long> {
     @Query("""
             select new br.ufpr.tcc.auth.account.StoredCredentialRow(
                    account.id, account.name, account.email, account.passwordHash,
-                   account.emailConfirmed, account.active, company.cnpj)
+                   account.emailConfirmed, account.active, account.credentialVersion, company.cnpj)
               from ClientAccount account
               left join ClientAccountCompany link
                 on link.accountId = account.id
@@ -56,6 +67,11 @@ interface ClientAccountRepository extends JpaRepository<ClientAccount, Long> {
     List<ClientAccount> findByOrderByCreatedAtDesc();
 
     Optional<ClientAccount> findByIdAndApplicationId(long id, long applicationId);
+
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("select account from ClientAccount account where account.id = :id and account.applicationId = :applicationId")
+    Optional<ClientAccount> findByIdAndApplicationIdForUpdate(
+            @Param("id") long id, @Param("applicationId") long applicationId);
 
     /** Inclui a aplicacao no UPDATE para garantir o isolamento tambem na gravacao. */
     @Modifying

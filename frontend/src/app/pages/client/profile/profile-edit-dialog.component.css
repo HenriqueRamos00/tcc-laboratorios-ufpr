@@ -1,0 +1,39 @@
+.profile-dialog-fields {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 1.25rem;
+}
+
+.profile-dialog-error,
+.profile-discard-warning {
+  margin: 0;
+  border: 1px solid var(--color-lactec-danger-border);
+  border-radius: 0.75rem;
+  background: var(--color-lactec-danger-bg);
+  padding: 0.75rem 1rem;
+  color: var(--color-lactec-danger-ink);
+  font-size: 0.8125rem;
+}
+
+.profile-discard-warning h3,
+.profile-discard-warning p {
+  margin: 0;
+}
+
+.profile-discard-warning h3 {
+  font-size: 0.875rem;
+  font-weight: 600;
+}
+
+.profile-discard-warning p {
+  margin-top: 0.25rem;
+}
+
+.profile-discard-warning div {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 0.5rem;
+  margin-top: 0.75rem;
+}

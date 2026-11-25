@@ -181,6 +181,12 @@ export class LoginService {
     this.userRole.clear();
   }
 
+  updateProfileName(name: string): void {
+    const current = this.identity();
+    if (!current || !name.trim()) return;
+    this.rememberUser({ ...current, name });
+  }
+
   private rememberUser(user: PortalUser): void {
     this.identity.set(user);
     this.userName.set(user.name);

@@ -18,6 +18,6 @@ public interface ClientCredentialDirectory {
 
     /** Projecao que a funcionalidade de conta preenche sem conhecer o tipo interno daqui. */
     record StoredClientCredentialView(long id, String name, String email, String passwordHash,
-            boolean emailConfirmed, boolean active, List<String> companyCnpjs) {
+            boolean emailConfirmed, boolean active, long credentialVersion, List<String> companyCnpjs) {
     }
 }

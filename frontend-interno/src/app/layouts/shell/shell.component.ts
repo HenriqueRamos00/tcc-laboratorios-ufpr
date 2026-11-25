@@ -139,6 +139,10 @@ export class ShellComponent {
     this.helpOpen.update((open) => !open);
   }
 
+  protected openProfile(): void {
+    void this.router.navigateByUrl('/perfil');
+  }
+
   protected chooseHelp(topic: 'menu' | 'page'): void {
     this.helpOpen.set(false);
 
