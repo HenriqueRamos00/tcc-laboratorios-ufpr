@@ -6,6 +6,7 @@ Portal de laboratórios desenvolvido como TCC na UFPR, com aplicações para cli
 | --- | --- |
 | [Frontend](frontend/README.md) | Portal do Cliente em Angular |
 | [Frontend Interno](frontend-interno/README.md) | Portal Interno em Angular |
+| [Frontend Auth2](frontend-auth2/README.md) | Portal administrativo do Auth2 em Angular |
 | [Backend Portal Web](backend-portal-web/README.md) | API C# consumida pelo Portal do Cliente e Android |
 | [Backend Lab](backend-lab/README.md) | API Spring e PostgreSQL do Portal Interno |
 | [Backend Auth2](backend-auth2/README.md) | Autenticação compartilhada em Spring Boot e Oracle |
@@ -41,13 +42,16 @@ Para incluir o ambiente de build Android, use `docker compose --profile android 
 
 ## Portal do Cliente com Auth2
 
-O `compose.auth.yaml` inicia Auth2 com Oracle, SQL Server para os dados do portal, API C# e
-Portal do Cliente. Exige `backend-portal-web/.env` com a conexão do AutoLAB real e a VPN do Lactec.
+O `compose.auth.yaml` inicia Auth2 com Oracle, SQL Server para os dados do portal, API C#,
+Portal do Cliente e Portal Administrativo Auth2. Exige `backend-portal-web/.env` com a conexão do
+AutoLAB real e a VPN do Lactec; sem `AutoLab__User` e `AutoLab__Password`, a API C# não inicia.
 
 ```bash
 docker compose -f compose.auth.yaml up -d --build --remove-orphans
 ```
 
+O Portal Administrativo Auth2 fica em http://localhost:4202. Ele não depende do AutoLAB; para
+subir só esse portal, veja o [README do Frontend Auth2](frontend-auth2/README.md#docker-compose).
 As contas, senhas, vínculos de empresas e configurações da demonstração estão no
 [README do Auth2](backend-auth2/README.md#demonstração-do-portal).
 Os dois arquivos Compose são independentes; encerre o outro ambiente antes de iniciar.

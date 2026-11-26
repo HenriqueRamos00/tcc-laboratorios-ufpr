@@ -1,0 +1,187 @@
+<div class="access-page">
+  <app-page-header
+    [title]="id() && resource === 'services' ? record()?.name || 'Aplicação' : title"
+    [breadcrumbs]="breadcrumbs"
+  />
+  @if (loading()) {
+    <p class="access-card access-empty" role="status">Carregando formulário…</p>
+  } @else if (loadError()) {
+    <div class="access-card access-empty" role="alert">
+      {{ loadError() }}
+      <button mat-button (click)="reload()">Tentar novamente</button>
+      <a mat-button [routerLink]="basePath">Voltar à lista</a>
+    </div>
+  } @else {
+    @if (resource === 'services' && id()) {
+      <nav class="access-tabs" aria-label="Seções da aplicação">
+        <a [routerLink]="[]" [attr.aria-current]="!tokensTab() ? 'page' : null"
+          >Dados da aplicação</a
+        >
+        <a
+          [routerLink]="[]"
+          [queryParams]="{ aba: 'tokens' }"
+          [attr.aria-current]="tokensTab() ? 'page' : null"
+          >Tokens</a
+        >
+      </nav>
+    }
+    @if (resource === 'services' && tokensTab() && id(); as serviceId) {
+      <app-application-tokens [serviceId]="serviceId" />
+    } @else {
+      <form class="access-card access-form" ngNativeValidate (ngSubmit)="save()">
+        <fieldset [disabled]="saving()" class="access-fields">
+          <label
+            >Nome
+            <input
+              class="access-input"
+              name="name"
+              [(ngModel)]="form.name"
+              required
+              maxlength="150"
+            />
+          </label>
+          @if (resource === 'services') {
+            <label
+              >Código
+              <input
+                class="access-input"
+                name="code"
+                [(ngModel)]="form.code"
+                required
+                maxlength="80"
+                pattern="[a-z0-9]+(?:-[a-z0-9]+)*"
+                aria-describedby="code-hint"
+              />
+              <small id="code-hint"
+                >Use letras minúsculas, números e hífens simples. Exemplo: portal-web.</small
+              >
+            </label>
+          }
+          @if (resource === 'companies') {
+            <label
+              >CNPJ
+              <input
+                class="access-input"
+                name="cnpj"
+                [(ngModel)]="form.cnpj"
+                required
+                inputmode="numeric"
+                maxlength="18"
+                pattern="(?:[0-9]{14}|[0-9]{2}\.[0-9]{3}\.[0-9]{3}/[0-9]{4}-[0-9]{2})"
+                placeholder="00.000.000/0000-00"
+                aria-describedby="cnpj-hint"
+              />
+              <small id="cnpj-hint">Informe os 14 dígitos, com ou sem pontuação.</small>
+            </label>
+          }
+          @if (resource === 'users' || resource === 'admins') {
+            <label
+              >E-mail
+              <input
+                class="access-input"
+                type="email"
+                name="email"
+                autocomplete="off"
+                [(ngModel)]="form.email"
+                required
+                maxlength="254"
+                [readOnly]="resource === 'users' && !!id()"
+              />
+            </label>
+            @if (resource === 'users' && id()) {
+              <p class="access-readout">
+                Confirmação do e-mail
+                <strong>{{ confirmedEmail ? 'Confirmado' : 'Pendente' }}</strong>
+              </p>
+            } @else {
+              <label
+                >{{ id() ? 'Nova senha (opcional)' : 'Senha inicial' }}
+                <input
+                  class="access-input"
+                  type="password"
+                  autocomplete="new-password"
+                  name="password"
+                  [(ngModel)]="form.password"
+                  [required]="!id()"
+                  maxlength="72"
+                  aria-describedby="password-hint"
+                />
+                <small id="password-hint"
+                  >Use ao menos 8 caracteres, com maiúscula, minúscula e número.
+                  @if (id()) {
+                    A troca encerra todas as sessões desta conta.
+                  }
+                </small>
+              </label>
+            }
+          }
+          @if (resource === 'users') {
+            <label
+              >Aplicação
+              <select
+                class="access-input"
+                [(ngModel)]="form.serviceId"
+                name="serviceId"
+                required
+                [disabled]="!!id()"
+              >
+                <option value="" disabled>Selecione uma aplicação ativa</option>
+                @for (app of apps; track app.id) {
+                  @if (app.active || app.id === form.serviceId) {
+                    <option [value]="app.id">{{ app.name }} ({{ app.code }})</option>
+                  }
+                }
+              </select>
+              @if (!id() && !hasActiveApplication) {
+                <small>Cadastre ou reative uma aplicação em Aplicações para criar a conta.</small>
+              }
+            </label>
+            <fieldset class="access-companies">
+              <legend>Empresas representadas (opcional)</legend>
+              @for (company of companies; track company.id) {
+                <label
+                  ><input
+                    #check
+                    type="checkbox"
+                    [checked]="form.companyIds.includes(company.id)"
+                    [disabled]="
+                      form.companyIds.length >= 100 && !form.companyIds.includes(company.id)
+                    "
+                    (change)="selectCompany(company.id, check.checked)"
+                  />
+                  <span
+                    >{{ company.name }} <small>{{ formatCnpj(company.cnpj) }}</small></span
+                  >
+                </label>
+              } @empty {
+                <p>Nenhuma empresa cadastrada.</p>
+              }
+            </fieldset>
+          }
+          @if (id() && resource !== 'companies') {
+            <label
+              >Situação
+              <select class="access-input" name="active" [(ngModel)]="form.active">
+                <option [ngValue]="true">{{ resource === 'services' ? 'Ativa' : 'Ativo' }}</option>
+                <option [ngValue]="false">
+                  {{ resource === 'services' ? 'Inativa' : 'Inativo' }}
+                </option>
+              </select>
+            </label>
+          }
+        </fieldset>
+        @if (saveError()) {
+          <p class="access-error" role="alert">{{ saveError() }}</p>
+        }
+        <div class="access-form-actions">
+          <button mat-stroked-button type="button" [routerLink]="basePath" [disabled]="saving()">
+            Cancelar
+          </button>
+          <button mat-flat-button type="submit" [disabled]="saving()">
+            {{ saving() ? 'Salvando…' : 'Salvar' }}
+          </button>
+        </div>
+      </form>
+    }
+  }
+</div>

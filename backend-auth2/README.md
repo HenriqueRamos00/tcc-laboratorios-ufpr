@@ -19,13 +19,15 @@ docker compose -f compose.auth.yaml up -d --build --remove-orphans
 ```
 
 O Compose inicia Oracle para autenticação, migrações Flyway, Auth2, SQL Server com o
-banco `portal`, API C# e frontend. Equipamentos, ensaios e relatórios vêm do AutoLAB real.
+banco `portal`, API C#, Portal do Cliente e Portal Administrativo Auth2.
+Equipamentos, ensaios e relatórios vêm do AutoLAB real.
 Os orçamentos de demonstração dispensam Salesforce. Este arquivo é independente do
 `compose.yaml`; encerre outros ambientes que usem as mesmas portas antes de iniciar.
 
 | Aplicação | Endereço |
 | --- | --- |
 | Portal do Cliente | http://localhost:4200 |
+| Portal Administrativo Auth2 | http://localhost:4202 |
 | API C# | http://localhost:5125 |
 | Backend Auth2 | http://localhost:8081 |
 | Prontidão do Auth2 | http://localhost:8081/health/readiness |
@@ -38,14 +40,13 @@ O seed cria a aplicação `portal-web`, seu token de integração e as seguintes
 
 | Conta | Senha inicial | Acesso |
 | --- | --- | --- |
-| `lactec@lactec.com` | `Lactec!7uQ2mN9xR4pK` | Administrador do Auth2, pela API |
+| `lactec@lactec.com` | `Lactec!7uQ2mN9xR4pK` | Portal Administrativo Auth2 |
 | `client1@lactec.com` | `Cliente1!6vT9qL2nW8sD` | Portal do Cliente: EMPRESA DE ENERGIA / `30960572000183` |
 | `client2@lactec.com` | `Cliente2!3rK7wP5mH9zF` | Portal do Cliente: DISTRIBUIDORA DE ENERGIA / `11222333000181` |
 
-O administrador gerencia somente o Auth2, sem acesso de cliente ao portal ou permissões
-no Portal Interno. Entre pela rota `POST /api/admin/auth/login`; as operações estão no
-[guia administrativo](docs/registrar-aplicacao.md). Os clientes já nascem ativos e com
-e-mail confirmado e entram pelo Portal do Cliente.
+O administrador gerencia o Auth2 e entra em http://localhost:4202. A autenticação usa
+`POST /api/admin/auth/login`. As operações da API estão no [guia administrativo](docs/registrar-aplicacao.md).
+Os clientes já nascem ativos e com e-mail confirmado e entram pelo Portal do Cliente.
 
 Cada cliente vê nove orçamentos de demonstração, identificados pelo prefixo `quote-`:
 

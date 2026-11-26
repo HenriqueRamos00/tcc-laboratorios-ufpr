@@ -1,0 +1,91 @@
+@if (user(); as administrator) {
+  <div class="access-page wrap-anywhere">
+    <app-page-header
+      [title]="'Olá, ' + administrator.name"
+      [subtitle]="administrator.email"
+      [breadcrumbs]="breadcrumbs"
+    />
+
+    @if (overview(); as data) {
+      <section class="grid gap-4 sm:grid-cols-2" aria-label="Indicadores de acesso">
+        <article class="access-card p-5">
+          <div class="flex items-center justify-between gap-3">
+            <h2 class="text-sm font-semibold text-lactec-ink-soft">Usuários cadastrados</h2>
+            <span class="grid size-9 shrink-0 place-items-center rounded-lg bg-lactec-primary/10 text-lactec-nav">
+              <mat-icon aria-hidden="true">groups</mat-icon>
+            </span>
+          </div>
+          <p class="display mt-2 text-4xl font-semibold tabular-nums">
+            {{ data.clientCount + data.adminCount | number }}
+          </p>
+          <div class="mt-3 flex flex-wrap items-baseline gap-x-2 text-sm text-lactec-muted">
+            <a class="access-link" routerLink="/admin/clientes">
+              {{ data.clientCount | number }} {{ data.clientCount === 1 ? 'cliente' : 'clientes' }}
+            </a>
+            <span aria-hidden="true">·</span>
+            <a class="access-link" routerLink="/admin/administradores">
+              {{ data.adminCount | number }} {{ data.adminCount === 1 ? 'administrador' : 'administradores' }}
+            </a>
+          </div>
+        </article>
+
+        <article class="access-card p-5">
+          <div class="flex items-center justify-between gap-3">
+            <h2 class="text-sm font-semibold text-lactec-ink-soft">Aplicações ativas</h2>
+            <span class="grid size-9 shrink-0 place-items-center rounded-lg bg-lactec-primary/10 text-lactec-nav">
+              <mat-icon aria-hidden="true">apps</mat-icon>
+            </span>
+          </div>
+          <p class="display mt-2 text-4xl font-semibold tabular-nums">
+            {{ data.activeApplicationCount | number }}
+          </p>
+          <p class="mt-3 text-sm text-lactec-muted">
+            {{ data.applicationCount | number }} {{ data.applicationCount === 1 ? 'aplicação cadastrada' : 'aplicações cadastradas' }}
+          </p>
+        </article>
+      </section>
+
+      <section class="access-card" aria-labelledby="overview-applications">
+        <div class="access-toolbar">
+          <div>
+            <h2 id="overview-applications" class="display text-lg font-semibold">Aplicações por número de clientes</h2>
+            @if (data.applicationCount > data.topApplications.length) {
+              <p class="mt-1 text-sm text-lactec-muted">Exibindo as {{ data.topApplications.length }} com mais clientes.</p>
+            }
+          </div>
+          <a mat-button routerLink="/admin/aplicacoes">Ver todas</a>
+        </div>
+        <ul class="divide-y divide-lactec-line-soft">
+          @for (app of data.topApplications; track app.id) {
+            <li>
+              <a
+                [routerLink]="['/admin/aplicacoes', app.id]"
+                class="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-x-3 gap-y-1 px-5 py-4 hover:bg-lactec-surface focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-lactec-primary-dark sm:grid-cols-[minmax(0,1fr)_6rem_5rem]"
+              >
+                <span class="min-w-0">
+                  <span class="block font-semibold text-lactec-nav">{{ app.name }}</span>
+                  <span class="mono block text-xs text-lactec-muted">{{ app.code }}</span>
+                </span>
+                <span class="col-start-1 row-start-2 text-sm text-lactec-ink-soft tabular-nums sm:col-auto sm:row-auto">
+                  {{ app.clientCount | number }} {{ app.clientCount === 1 ? 'cliente' : 'clientes' }}
+                </span>
+                <span class="access-badge col-start-2 row-start-1 justify-self-end sm:col-auto sm:row-auto" [attr.data-tone]="app.active ? 'positive' : 'neutral'">
+                  {{ app.active ? 'Ativa' : 'Inativa' }}
+                </span>
+              </a>
+            </li>
+          } @empty {
+            <li class="access-empty">Nenhuma aplicação cadastrada.</li>
+          }
+        </ul>
+      </section>
+    } @else if (error()) {
+      <div class="access-card flex flex-wrap items-center justify-between gap-3 p-5">
+        <p role="alert">{{ error() }}</p>
+        <button mat-stroked-button type="button" (click)="load()">Tentar novamente</button>
+      </div>
+    } @else {
+      <p class="access-card p-5 text-lactec-muted" role="status">Carregando visão geral…</p>
+    }
+  </div>
+}

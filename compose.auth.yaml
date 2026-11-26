@@ -159,6 +159,23 @@ services:
     stdin_open: true
     tty: true
 
+  frontend-auth2:
+    restart: unless-stopped
+    build:
+      context: ./frontend-auth2
+      target: dev
+    environment:
+      API_PROXY_TARGET: http://backend-auth2:8081
+    ports:
+      - "127.0.0.1:4202:4202"
+    volumes:
+      - ./frontend-auth2:/app
+      - /app/node_modules
+      - /app/.angular
+    depends_on:
+      backend-auth2:
+        condition: service_healthy
+
 volumes:
   auth-oracle-data:
   auth-sqlserver-data:
