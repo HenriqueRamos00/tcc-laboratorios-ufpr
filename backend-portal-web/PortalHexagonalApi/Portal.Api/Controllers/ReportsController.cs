@@ -89,7 +89,8 @@ public sealed class ReportsController(
         if (UsesAutoLab)
             return AnswerAutoLabAsync(async scope =>
             {
-                // Resolve the authorized quote first; an arbitrary quote code must not select another quote's reports.
+                // Resolve primeiro o orcamento autorizado: um codigo de orcamento arbitrario
+                // nao pode selecionar os laudos de outro orcamento.
                 Quote? quote = await quotes.GetQuoteByIdAsync(quoteId, cancellationToken);
                 if (quote is null) return this.QuoteNotFound();
                 // O AutoLAB conhece o orcamento pela chave de laboratorio, e nao pelo codigo publico.

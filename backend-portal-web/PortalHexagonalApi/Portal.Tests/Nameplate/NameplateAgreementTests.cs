@@ -75,6 +75,24 @@ public sealed class NameplateAgreementTests
     }
 
     /// <summary>
+    /// A comparacao e binaria e nao dobra caixa: duas linhas que escrevem o mesmo campo com
+    /// grafia diferente se contradizem, e o campo cai. Dobrar caixa faria o portal eleger uma
+    /// das duas grafias e publicar como se o cadastro tivesse dito so ela.
+    /// </summary>
+    [Fact]
+    public void TwoSpellingsOfTheSameFieldContradictInsteadOfAgreeing()
+    {
+        EquipmentNameplate? nameplate = NameplateAgreement.Of("9000001", [
+            NameplateBuilder.Valid(equipmentType: "REATOR", manufacturer: "FABRICANTE DE REATORES"),
+            NameplateBuilder.Valid(equipmentType: "Reator", manufacturer: "Fabricante de Reatores")]);
+
+        Assert.NotNull(nameplate);
+        Assert.Null(nameplate.EquipmentType);
+        Assert.Null(nameplate.Manufacturer);
+        Assert.Equal("525", nameplate.Voltage);
+    }
+
+    /// <summary>
     /// O caso medido de 257373, que tem uma linha com tres colunas em branco. Branco quer
     /// dizer "o cadastro nao diz", e nao "o cadastro diz outra coisa": tratar branco como
     /// divergencia jogaria fora tres campos bons por nada.

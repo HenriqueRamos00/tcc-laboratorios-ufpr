@@ -69,7 +69,7 @@ public sealed class AutoLabSqlServerQueryTextTests
     public void TheIdentityComparisonsCarryTheOrdinalCollation(string name)
     {
         Assert.Contains(
-            "COLLATE " + AutoLabQueries.OrdinalCollation,
+            "COLLATE Latin1_General_BIN2",
             SqlOf(name),
             StringComparison.Ordinal);
     }
