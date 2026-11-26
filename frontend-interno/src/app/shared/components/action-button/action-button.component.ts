@@ -120,13 +120,13 @@ export class ActionButtonComponent {
   readonly disabled = input(false);
   readonly loading = input(false);
   readonly fullWidthOnMobile = input(false);
-  readonly routerLink = input<RouterLink['routerLink'] | undefined>(undefined);
+  readonly linkTo = input<RouterLink['routerLink'] | undefined>(undefined);
   readonly queryParams = input<Params | null>(null);
   readonly ariaLabel = input<string | null>(null);
 
-  readonly hasLink = computed(() => this.routerLink() !== undefined && this.routerLink() !== null);
+  readonly hasLink = computed(() => this.linkTo() !== undefined && this.linkTo() !== null);
   readonly unavailable = computed(() => this.disabled() || this.loading());
-  readonly linkDestination = computed(() => this.unavailable() ? null : this.routerLink());
+  readonly linkDestination = computed(() => this.unavailable() ? null : this.linkTo());
 
   readonly activated = output<void>();
 

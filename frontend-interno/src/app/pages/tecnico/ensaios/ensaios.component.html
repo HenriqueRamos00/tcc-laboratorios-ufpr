@@ -20,7 +20,7 @@
   <app-action-button
     label="Novo ensaio"
     icon="add"
-    routerLink="/tecnico/ensaios/novo"
+    linkTo="/tecnico/ensaios/novo"
     [queryParams]="quoteId() ? { quoteId: quoteId(), quoteCode: quoteCode() } : {}"
   />
 </header>
@@ -75,7 +75,7 @@
     <app-action-button
       label="Cadastrar ensaio"
       variant="secondary"
-      routerLink="/tecnico/ensaios/novo"
+      linkTo="/tecnico/ensaios/novo"
     />
   </section>
 } @else {
@@ -120,14 +120,14 @@
                     label="Acompanhar"
                     icon="timeline"
                     variant="text"
-                    [routerLink]="['/tecnico/ensaios', item.id, 'status']"
+                    [linkTo]="['/tecnico/ensaios', item.id, 'status']"
                     [ariaLabel]="'Acompanhar status do ensaio ' + item.code"
                   />
                   <app-action-button
                     label="Editar"
                     icon="edit"
                     variant="text"
-                    [routerLink]="['/tecnico/ensaios', item.id, 'editar']"
+                    [linkTo]="['/tecnico/ensaios', item.id, 'editar']"
                     [ariaLabel]="'Editar ensaio ' + item.code"
                   />
                 </div>

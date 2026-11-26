@@ -13,7 +13,7 @@ import { ActionButtonComponent } from '@shared/components/action-button/action-b
           Página não encontrada
         </h1>
         <p class="text-lactec-muted text-sm m-0">O endereço acessado não existe ou foi movido.</p>
-        <app-action-button label="Voltar ao início" routerLink="/" class="mt-6" />
+        <app-action-button label="Voltar ao início" linkTo="/" class="mt-6" />
       </div>
     </main>
   `,
