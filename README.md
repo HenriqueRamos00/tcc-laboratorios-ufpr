@@ -69,6 +69,8 @@ Nos dois grupos, preencha `HOST`, `PORT`, `USERNAME`, `PASSWORD` e `SENDER`. `US
 
 No Auth2, o Compose passa `AUTH_MAIL_USERNAME` e `AUTH_MAIL_PASSWORD` como `SPRING_MAIL_USERNAME` e `SPRING_MAIL_PASSWORD` dentro do container. O remetente `AUTH_MAIL_SENDER` vira `AUTH_NOTIFICATION_SENDER`. Os nomes separados no `.env` permitem configurar os dois serviços sem misturar as contas.
 
+Sem `AUTH_MAIL_*`, o `compose.auth.yaml` entrega o e-mail do Auth2 ao Mailpit, sem STARTTLS, e as mensagens aparecem em http://localhost:8025. Para um provedor real, preencha os cinco valores e `AUTH_MAIL_STARTTLS=true`.
+
 No Backend Lab, habilite `SPRING_MAIL_ENABLED=true`. Essa opção não se aplica ao Auth2. Para Gmail, use uma [senha de app com verificação em duas etapas](https://support.google.com/accounts/answer/185833?hl=pt-BR). Mantenha as credenciais no `.env` local.
 
 Os links do Backend Lab usam `INTERNAL_PORTAL_RECOVERY_URL` e `CLIENT_PORTAL_RECOVERY_URL`; o Spring acrescenta o token. No Auth2, mantenha `{token}` em `AUTH_RECOVERY_LINK` e `AUTH_CONFIRMATION_LINK`. Os exemplos estão no `.env.example`.

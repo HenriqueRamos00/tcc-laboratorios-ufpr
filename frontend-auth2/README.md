@@ -42,6 +42,20 @@ O primeiro administrador é criado pelo [procedimento de instalação do Auth2](
 
 `npm run build` gera o site estático em `dist/frontend-auth2/browser`.
 
+## Imagem de produção
+
+O alvo `prod` do Dockerfile compila o portal e o serve por nginx na porta 80. O nginx devolve
+`index.html` para as rotas do Angular e encaminha `/api/` ao Auth2 indicado em
+`API_PROXY_TARGET`, que por padrão é `http://backend-auth2:8081`.
+
+```bash
+docker build --target prod -t frontend-auth2 frontend-auth2
+docker run --rm -p 8091:80 -e API_PROXY_TARGET=http://backend-auth2:8081 frontend-auth2
+```
+
+O container precisa alcançar o Auth2 pelo endereço informado, por exemplo na mesma rede do
+Compose. Na frente dele, sirva o portal por HTTPS.
+
 ## Administração de acessos
 
 | Área | Rota | Operações |
@@ -52,5 +66,3 @@ O primeiro administrador é criado pelo [procedimento de instalação do Auth2](
 | Administradores | `/admin/administradores` | Criar, atualizar e excluir administradores. A troca de senha encerra as sessões da conta. O serviço exige pelo menos um administrador ativo. |
 
 Cada listagem oferece busca local. O portal usa as operações descritas no [contrato OpenAPI](../backend-auth2/docs/openapi.json).
-
-Em produção, sirva a compilação por HTTPS, encaminhe `/api/**` ao Auth2 na mesma origem e devolva `index.html` para as rotas do Angular.

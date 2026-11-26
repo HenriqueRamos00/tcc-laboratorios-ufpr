@@ -28,6 +28,7 @@ Os orçamentos de demonstração dispensam Salesforce. Este arquivo é independe
 | --- | --- |
 | Portal do Cliente | http://localhost:4200 |
 | Portal Administrativo Auth2 | http://localhost:4202 |
+| E-mails enviados (Mailpit) | http://localhost:8025 |
 | API C# | http://localhost:5125 |
 | Backend Auth2 | http://localhost:8081 |
 | Prontidão do Auth2 | http://localhost:8081/health/readiness |
@@ -162,6 +163,7 @@ uma senha aleatoria na criacao do banco. No modo externo ela nao e usada.
 | `AUTH_SCHEMA_OWNER_PASSWORD` | Senha do dono do esquema |
 | `AUTH_DATASOURCE_USERNAME` | Usuario da aplicacao, usado pela `api` |
 | `AUTH_DATASOURCE_PASSWORD` | Senha do usuario da aplicacao |
+| `AUTH_FLYWAY_LOCATIONS` | `classpath:db/migration` com um usuario so; acrescente `,classpath:db/application-role` com dono e aplicacao separados |
 
 As duas formas de endereco sao aceitas:
 
@@ -179,6 +181,7 @@ AUTH_SCHEMA_OWNER_USERNAME=AUTH_LACTEC
 AUTH_SCHEMA_OWNER_PASSWORD=<senha do AUTH_LACTEC>
 AUTH_DATASOURCE_USERNAME=AUTH_LACTEC
 AUTH_DATASOURCE_PASSWORD=<senha do AUTH_LACTEC>
+AUTH_FLYWAY_LOCATIONS=classpath:db/migration
 ```
 
 Em producao muda so o SID: `jdbc:oracle:thin:@192.168.250.14:1521:PROD`. As senhas ficam
@@ -193,17 +196,16 @@ O script `docker/oracle/init/01-create-schema-users.sh` so roda no contentor do 
 banco externo, quem prepara os usuarios e o DBA, antes da primeira subida:
 
 ```sql
-CREATE ROLE AUTH_READWRITE;
 GRANT CREATE SESSION, CREATE TABLE TO AUTH_LACTEC;
 ALTER USER AUTH_LACTEC QUOTA UNLIMITED ON USERS;
-GRANT AUTH_READWRITE TO AUTH_LACTEC;
 ```
 
-- O papel `AUTH_READWRITE` precisa existir antes da migracao, porque toda migracao que cria
-  tabela concede `SELECT, INSERT, UPDATE, DELETE` a ele, e sem o papel a migracao falha.
 - O dono do esquema precisa de `CREATE SESSION`, `CREATE TABLE` e cota na tablespace dele.
-- O usuario da aplicacao precisa de `CREATE SESSION` e do papel `AUTH_READWRITE`. Com dois
-  usuarios separados, ele nao recebe `CREATE TABLE` nem cota.
+- Com um usuario so, nenhum papel e necessario: o dono ja le e grava nas proprias tabelas.
+- Com dois usuarios separados, o DBA cria tambem o papel `AUTH_READWRITE` e o concede ao
+  usuario da aplicacao, que recebe so `CREATE SESSION`, sem `CREATE TABLE` nem cota. Nesse
+  caso `AUTH_FLYWAY_LOCATIONS` inclui `classpath:db/application-role`, que concede
+  `SELECT, INSERT, UPDATE, DELETE` de toda tabela do dono ao papel depois de cada migracao.
 - A senha de servico nao pode vencer pelo perfil do banco: senha expirada derruba o pool com
   `ORA-28001`.
 

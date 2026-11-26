@@ -61,6 +61,7 @@ services:
     environment:
       <<: *auth-context
       SPRING_MAIN_WEB_APPLICATION_TYPE: none
+      SPRING_FLYWAY_LOCATIONS: classpath:db/migration,classpath:db/application-role
       SPRING_DATASOURCE_USERNAME: auth_owner
       SPRING_DATASOURCE_PASSWORD: *demo-schema-password
     depends_on:
@@ -85,11 +86,13 @@ services:
       AUTH_DEMO_CLIENT2_PASSWORD: ${AUTH_DEMO_CLIENT2_PASSWORD:-Cliente2!3rK7wP5mH9zF}
       BACKEND_AUTH_SERVICE_TOKEN: *demo-service-token
       SERVICE_TOKEN_EXPIRATION_SECONDS: ${SERVICE_TOKEN_EXPIRATION_SECONDS:-2592000}
-      SPRING_MAIL_HOST: ${AUTH_MAIL_HOST:-smtp.gmail.com}
-      SPRING_MAIL_PORT: ${AUTH_MAIL_PORT:-587}
-      SPRING_MAIL_USERNAME: ${AUTH_MAIL_USERNAME:-}
-      SPRING_MAIL_PASSWORD: ${AUTH_MAIL_PASSWORD:-}
-      AUTH_NOTIFICATION_SENDER: ${AUTH_MAIL_SENDER:-}
+      SPRING_MAIL_HOST: ${AUTH_MAIL_HOST:-mailpit}
+      SPRING_MAIL_PORT: ${AUTH_MAIL_PORT:-1025}
+      SPRING_MAIL_USERNAME: ${AUTH_MAIL_USERNAME:-demo}
+      SPRING_MAIL_PASSWORD: ${AUTH_MAIL_PASSWORD:-demo}
+      SPRING_MAIL_PROPERTIES_MAIL_SMTP_STARTTLS_ENABLE: ${AUTH_MAIL_STARTTLS:-false}
+      SPRING_MAIL_PROPERTIES_MAIL_SMTP_STARTTLS_REQUIRED: ${AUTH_MAIL_STARTTLS:-false}
+      AUTH_NOTIFICATION_SENDER: ${AUTH_MAIL_SENDER:-nao-responda@lactec.local}
       AUTH_NOTIFICATION_CONFIRMATION_LINK: ${AUTH_CONFIRMATION_LINK:-http://localhost:4200/confirmar-email?token={token}}
       AUTH_NOTIFICATION_RECOVERY_LINK: ${AUTH_RECOVERY_LINK:-http://localhost:4200/recuperar-senha?token={token}}
     ports:
@@ -97,6 +100,8 @@ services:
     depends_on:
       auth-migrate:
         condition: service_completed_successfully
+      mailpit:
+        condition: service_started
     healthcheck:
       test: ["CMD", "wget", "-qO-", "http://localhost:8081/health/readiness"]
       interval: 10s
@@ -158,6 +163,15 @@ services:
         condition: service_started
     stdin_open: true
     tty: true
+
+  mailpit:
+    image: axllent/mailpit:v1.27.11
+    restart: unless-stopped
+    environment:
+      MP_SMTP_AUTH_ACCEPT_ANY: "1"
+      MP_SMTP_AUTH_ALLOW_INSECURE: "1"
+    ports:
+      - "127.0.0.1:${MAILPIT_PORT:-8025}:8025"
 
   frontend-auth2:
     restart: unless-stopped

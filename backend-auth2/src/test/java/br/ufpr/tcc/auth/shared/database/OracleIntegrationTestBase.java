@@ -64,6 +64,8 @@ public abstract class OracleIntegrationTestBase {
     static void migrationRunsAsSchemaOwner(DynamicPropertyRegistry registry) {
         registry.add("spring.flyway.user", () -> SCHEMA_OWNER_USERNAME);
         registry.add("spring.flyway.password", () -> CONTAINER_PASSWORD);
+        registry.add("spring.flyway.locations",
+                () -> "classpath:db/migration,classpath:db/application-role");
     }
 
     /**
