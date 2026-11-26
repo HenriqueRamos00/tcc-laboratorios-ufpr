@@ -10,6 +10,7 @@ import { DashboardTecnico } from '@/app/model/dashboard-tecnico';
 import { validationStatusLabel } from '@/app/model/relatorio-presentation';
 import { DashboardTecnicoService } from '@/app/services/dashboard-tecnico.service';
 import { EmptyStateComponent } from '@shared/components/empty-state/empty-state.component';
+import { ActionButtonComponent } from '@shared/components/action-button/action-button.component';
 import { PageHeaderComponent } from '@shared/components/page-header/page-header.component';
 import { BarChartComponent } from '@shared/components/bar-chart/bar-chart.component';
 import {
@@ -33,6 +34,7 @@ type EstadoCarregamento = 'carregando' | 'erro' | 'sucesso';
     DatePipe,
     BarChartComponent,
     EmptyStateComponent,
+    ActionButtonComponent,
     MatButtonModule,
     MatIconModule,
     PageHeaderComponent,
