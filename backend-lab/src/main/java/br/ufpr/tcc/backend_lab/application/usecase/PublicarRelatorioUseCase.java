@@ -12,6 +12,8 @@ import br.ufpr.tcc.backend_lab.domain.model.enums.StatusValidacaoRelatorio;
 import br.ufpr.tcc.backend_lab.domain.repository.RelatorioTecnicoRepository;
 import br.ufpr.tcc.backend_lab.domain.repository.ExecucaoEnsaioRepository;
 import br.ufpr.tcc.backend_lab.domain.repository.UsuarioRepository;
+import jakarta.persistence.EntityManager;
+import jakarta.persistence.LockModeType;
 import java.time.OffsetDateTime;
 import java.time.ZoneOffset;
 import org.springframework.stereotype.Service;
@@ -24,15 +26,18 @@ public class PublicarRelatorioUseCase {
     private final DisponibilidadeRelatorios disponibilidade;
     private final ExecucaoEnsaioRepository ensaios;
     private final AtualizarStatusEnsaioUseCase atualizarStatus;
+    private final EntityManager entityManager;
 
     public PublicarRelatorioUseCase(RelatorioTecnicoRepository relatorios,
             UsuarioRepository usuarios, DisponibilidadeRelatorios disponibilidade,
-            ExecucaoEnsaioRepository ensaios, AtualizarStatusEnsaioUseCase atualizarStatus) {
+            ExecucaoEnsaioRepository ensaios, AtualizarStatusEnsaioUseCase atualizarStatus,
+            EntityManager entityManager) {
         this.relatorios = relatorios;
         this.usuarios = usuarios;
         this.disponibilidade = disponibilidade;
         this.ensaios = ensaios;
         this.atualizarStatus = atualizarStatus;
+        this.entityManager = entityManager;
     }
 
     @Transactional
@@ -63,6 +68,12 @@ public class PublicarRelatorioUseCase {
         if (relatorio.getValidationStatus() != StatusValidacaoRelatorio.VALIDATED) {
             throw new ConflitoRelatorioException("Somente relatório validado pode ser publicado",
                     "report-not-validated");
+        }
+        entityManager.refresh(ensaio.getOrcamento(), LockModeType.PESSIMISTIC_WRITE);
+        if (!DisponibilidadeRelatorios.correspondeAoVinculo(relatorio, ensaio)) {
+            throw new ConflitoRelatorioException(
+                    "O vínculo do ensaio mudou. Prepare e valide um novo relatório",
+                    "report-commercial-link-changed");
         }
         var documento = disponibilidade.documentoPersistido(relatorio)
                 .orElseThrow(() -> new ConflitoRelatorioException(

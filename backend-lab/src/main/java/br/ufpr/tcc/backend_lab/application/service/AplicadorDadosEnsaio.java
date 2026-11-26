@@ -2,6 +2,8 @@ package br.ufpr.tcc.backend_lab.application.service;
 
 import br.ufpr.tcc.backend_lab.application.dto.request.EnsaioRequest;
 import br.ufpr.tcc.backend_lab.application.validation.ValidadorDadosEnsaio;
+import br.ufpr.tcc.backend_lab.domain.exception.RegraNegocioException;
+import br.ufpr.tcc.backend_lab.domain.repository.RelatorioTecnicoRepository;
 import br.ufpr.tcc.backend_lab.domain.model.entity.ExecucaoEnsaio;
 import br.ufpr.tcc.backend_lab.domain.model.entity.MedicaoEnsaio;
 import br.ufpr.tcc.backend_lab.domain.repository.ExecucaoEnsaioRepository;
@@ -16,11 +18,15 @@ public class AplicadorDadosEnsaio {
     private final ValidadorDadosEnsaio validador;
     private final ExecucaoEnsaioRepository ensaios;
 
+    private final RelatorioTecnicoRepository relatorios;
+
     public AplicadorDadosEnsaio(ResolvedorReferenciasEnsaio referencias,
-            ValidadorDadosEnsaio validador, ExecucaoEnsaioRepository ensaios) {
+            ValidadorDadosEnsaio validador, ExecucaoEnsaioRepository ensaios,
+            RelatorioTecnicoRepository relatorios) {
         this.referencias = referencias;
         this.validador = validador;
         this.ensaios = ensaios;
+        this.relatorios = relatorios;
     }
 
     public void aplicar(ExecucaoEnsaio ensaio, EnsaioRequest request, boolean atualizar) {
@@ -29,6 +35,11 @@ public class AplicadorDadosEnsaio {
         Long orcamentoOriginalId = atualizar ? ensaio.getOrcamento().getId() : null;
         var referenciasResolvidas = referencias.resolver(
                 request, atualizar ? ensaio.getResponsavel() : null, orcamentoOriginalId);
+        if (atualizar && !orcamentoOriginalId.equals(referenciasResolvidas.amostra().getOrcamento().getId())
+                && relatorios.existsByExecucaoIdAndPublishedTrue(ensaio.getId())) {
+            throw RegraNegocioException.conflito(
+                    "Não é possível trocar o orçamento de um ensaio com relatório publicado");
+        }
         ensaio.setAmostra(referenciasResolvidas.amostra());
         ensaio.setOrcamento(referenciasResolvidas.amostra().getOrcamento());
         ensaio.setResponsavel(referenciasResolvidas.responsavel());

@@ -146,6 +146,10 @@ public interface RelatorioTecnicoRepository extends JpaRepository<RelatorioTecni
             "execucao.orcamento.empresa"})
     List<RelatorioTecnico> findByExecucaoIdOrderByIdAsc(Long execucaoId);
 
+    boolean existsByExecucaoIdAndPublishedTrue(Long execucaoId);
+
+    boolean existsByValidatedQuoteIdAndPublishedTrue(Long quoteId);
+
     // Lista relatórios publicados da execução que já têm documento associado e vínculos comerciais.
     @EntityGraph(attributePaths = {"validatedCompany", "validatedQuote"})
     @Query("""

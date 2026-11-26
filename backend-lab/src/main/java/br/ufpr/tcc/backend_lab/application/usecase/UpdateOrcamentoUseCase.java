@@ -16,6 +16,7 @@ import br.ufpr.tcc.backend_lab.domain.repository.DocumentoOrcamentoRepository;
 import br.ufpr.tcc.backend_lab.domain.repository.EmpresaRepository;
 import br.ufpr.tcc.backend_lab.domain.repository.ExecucaoEnsaioRepository;
 import br.ufpr.tcc.backend_lab.domain.repository.OrcamentoRepository;
+import br.ufpr.tcc.backend_lab.domain.repository.RelatorioTecnicoRepository;
 import br.ufpr.tcc.backend_lab.infrastructure.persistence.ViolacaoUnicidade;
 import java.util.List;
 
@@ -37,6 +38,7 @@ public class UpdateOrcamentoUseCase {
     private final ValidadorOrcamento validadorOrcamento;
     private final ExecucaoEnsaioRepository execucoes;
     private final AcompanhamentoOrcamentosCliente acompanhamentoCliente;
+    private final RelatorioTecnicoRepository relatorios;
 
     @Transactional
     public OrcamentoDetalheInternoResponse execute(
@@ -61,6 +63,11 @@ public class UpdateOrcamentoUseCase {
         }
 
         Empresa empresa = resolverEmpresa(request.companyId(), orcamento.getEmpresa());
+        if (!empresa.getId().equals(orcamento.getEmpresa().getId())
+                && relatorios.existsByValidatedQuoteIdAndPublishedTrue(orcamentoId)) {
+            throw RegraNegocioException.conflito(
+                    "Não é possível trocar a empresa de um orçamento com relatório publicado");
+        }
         var totalPrice = validadorOrcamento.calcularTotal(request);
         var conteudoDocumento = validadorDocumentoOrcamento.validar(documento);
 

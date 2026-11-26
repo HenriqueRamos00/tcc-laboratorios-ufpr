@@ -359,22 +359,26 @@ class FluxoClienteTests {
     }
 
     @Test
-    void mantemVinculosDoDocumentoValidadoQuandoExecucaoMudaDeOrcamento() throws Exception {
+    void exigeNovoRelatorioQuandoEnsaioMudaDeOrcamentoAntesDaPublicacao() throws Exception {
         Long relatorioId = criarRelatorioValidado(orcamentoA, "AMOSTRA-ORIGINAL");
         RelatorioTecnico relatorio = relatorios.findById(relatorioId).orElseThrow();
         ExecucaoEnsaio ensaio = ensaios.findById(relatorio.getExecucao().getId()).orElseThrow();
+        orcamentoB.setStatus(StatusComercialOrcamento.IN_PROGRESS);
+        orcamentos.saveAndFlush(orcamentoB);
         Amostra amostraDaEmpresaB = new Amostra();
         amostraDaEmpresaB.setCodigo("AMOSTRA-NOVA");
         amostraDaEmpresaB.setDescricao("Amostra da empresa B");
         amostraDaEmpresaB.setOrcamento(orcamentoB);
         amostraDaEmpresaB = amostras.saveAndFlush(amostraDaEmpresaB);
 
-        ensaio.setAmostra(amostraDaEmpresaB);
-        ensaio.setOrcamento(orcamentoB);
-        ensaios.saveAndFlush(ensaio);
+        String tokenTecnico = "Bearer " + jwtService.generateToken(tecnico);
+        mockMvc.perform(put("/api/tests/{id}", ensaio.getId())
+                        .header("Authorization", tokenTecnico)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(edicaoComAmostra(ensaio, amostraDaEmpresaB)))
+                .andExpect(status().isOk());
         entityManager.clear();
 
-        String tokenTecnico = "Bearer " + jwtService.generateToken(tecnico);
         mockMvc.perform(get("/api/reports/{id}", relatorioId).header("Authorization", tokenTecnico))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.company.id").value(empresaA.getId().toString()))
@@ -386,56 +390,54 @@ class FluxoClienteTests {
                         .header("Authorization", tokenTecnico)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"version\":" + relatorio.getVersion() + "}"))
-                .andExpect(status().isOk());
-
-        Cliente clienteB = cliente("cliente-b@example.test", empresaB);
-        String tokenClienteB = "Bearer " + loginCliente.execute(
-                new LoginRequest(clienteB.getUsuario().getEmail(), " senha ")).accessToken();
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.code").value("report-commercial-link-changed"));
 
         mockMvc.perform(get("/api/client/reports").header("Authorization", tokenClienteA))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$[0].id").value(relatorioId.toString()))
-                .andExpect(jsonPath("$[0].sample").value("AMOSTRA-ORIGINAL - Amostra AMOSTRA-ORIGINAL"));
-        mockMvc.perform(get("/api/client/reports").header("Authorization", tokenClienteB))
-                .andExpect(status().isOk())
                 .andExpect(jsonPath("$.length()").value(0));
-        mockMvc.perform(get("/api/client/quotes/{id}/reports", orcamentoA.getId())
-                        .header("Authorization", tokenClienteA))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.reports[0].id").value(relatorioId.toString()));
-        mockMvc.perform(get("/api/client/reports/{id}/file", relatorioId)
-                        .header("Authorization", tokenClienteA))
-                .andExpect(status().isOk());
-        mockMvc.perform(get("/api/client/reports/{id}/file", relatorioId)
-                        .header("Authorization", tokenClienteB))
-                .andExpect(status().isForbidden());
 
-        ensaio = ensaios.findById(ensaio.getId()).orElseThrow();
-        mockMvc.perform(patch("/api/tests/{id}/status", ensaio.getId())
+        mockMvc.perform(post("/api/tests/{id}/reports/preparation", ensaio.getId())
+                        .header("Authorization", tokenTecnico))
+                .andExpect(status().isCreated());
+        mockMvc.perform(post("/api/tests/{id}/reports/preparation", ensaio.getId())
+                        .header("Authorization", tokenTecnico))
+                .andExpect(status().isOk());
+        var documentos = relatorios.findByExecucaoIdOrderByIdAsc(ensaio.getId());
+        assertEquals(2, documentos.size());
+        var novo = documentos.getLast();
+        validarRelatorio(novo, tokenTecnico);
+        long versaoValidada = relatorios.findById(novo.getId()).orElseThrow().getVersion();
+        mockMvc.perform(post("/api/reports/{id}/publication", novo.getId())
                         .header("Authorization", tokenTecnico)
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"action\":\"set-status\",\"targetStatus\":\"report-published\",\"version\":"
-                                + ensaio.getVersion() + "}"))
-                .andExpect(status().isConflict())
-                .andExpect(jsonPath("$.code").value("published-report-unavailable"));
+                        .content("{\"version\":" + versaoValidada + "}"))
+                .andExpect(status().isOk());
     }
 
     @Test
-    void mantemVinculosDoDocumentoPublicadoQuandoExecucaoMudaDeOrcamento() throws Exception {
+    void bloqueiaTrocaDeOrcamentoDoEnsaioDepoisDaPublicacao() throws Exception {
         Long relatorioId = criarRelatorioPublicado(orcamentoA, "AMOSTRA-ORIGINAL-APOS-PUBLICACAO");
         RelatorioTecnico relatorio = relatorios.findById(relatorioId).orElseThrow();
         ExecucaoEnsaio ensaio = ensaios.findById(relatorio.getExecucao().getId()).orElseThrow();
+        orcamentoB.setStatus(StatusComercialOrcamento.IN_PROGRESS);
+        orcamentos.saveAndFlush(orcamentoB);
         Amostra amostraDaEmpresaB = new Amostra();
         amostraDaEmpresaB.setCodigo("AMOSTRA-B-APOS-PUBLICACAO");
         amostraDaEmpresaB.setDescricao("Amostra B após publicação");
         amostraDaEmpresaB.setOrcamento(orcamentoB);
         amostraDaEmpresaB = amostras.saveAndFlush(amostraDaEmpresaB);
-        ensaio.setAmostra(amostraDaEmpresaB);
-        ensaio.setOrcamento(orcamentoB);
+        String tokenTecnico = "Bearer " + jwtService.generateToken(tecnico);
+        ensaio.setStatus(StatusEnsaio.DRAFTING_REPORT);
         ensaios.saveAndFlush(ensaio);
+        mockMvc.perform(put("/api/tests/{id}", ensaio.getId())
+                        .header("Authorization", tokenTecnico)
+                        .contentType(MediaType.APPLICATION_JSON).content(edicaoComAmostra(ensaio, amostraDaEmpresaB)))
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.message").value(
+                        "Não é possível trocar o orçamento de um ensaio com relatório publicado"));
         entityManager.clear();
 
-        String tokenTecnico = "Bearer " + jwtService.generateToken(tecnico);
         mockMvc.perform(get("/api/reports/{id}", relatorioId).header("Authorization", tokenTecnico))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.company.id").value(empresaA.getId().toString()))
@@ -460,25 +462,19 @@ class FluxoClienteTests {
                         .header("Authorization", tokenClienteB))
                 .andExpect(status().isForbidden());
 
-        ensaio = ensaios.findById(ensaio.getId()).orElseThrow();
-        mockMvc.perform(patch("/api/tests/{id}/status", ensaio.getId())
-                        .header("Authorization", tokenTecnico)
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"action\":\"set-status\",\"targetStatus\":\"report-published\",\"version\":"
-                                + ensaio.getVersion() + "}"))
-                .andExpect(status().isConflict())
-                .andExpect(jsonPath("$.code").value("published-report-unavailable"));
     }
 
     @Test
-    void naoEntregaPorOrcamentoQuandoEmpresaDoMesmoOrcamentoMuda() throws Exception {
+    void bloqueiaTrocaDeEmpresaDoOrcamentoDepoisDaPublicacao() throws Exception {
         Long relatorioId = criarRelatorioPublicado(orcamentoA, "AMOSTRA-EMPRESA-ORCAMENTO-TROCADA");
         OrcamentoRequest dados = requestAceite(orcamentoA);
         OrcamentoRequest transferido = new OrcamentoRequest(dados.code(), empresaB.getId().toString(),
                 dados.name(), dados.laboratoryName(), dados.protocol(), dados.description(), dados.scope(),
                 dados.externalContactName(), dados.externalContactEmail(), dados.status(),
                 dados.totalPrice(), dados.items());
-        editarOrcamento.execute(orcamentoA.getId(), transferido, null);
+        var erro = assertThrows(RegraNegocioException.class,
+                () -> editarOrcamento.execute(orcamentoA.getId(), transferido, null));
+        assertEquals("Não é possível trocar a empresa de um orçamento com relatório publicado", erro.getMessage());
         entityManager.clear();
 
         Cliente clienteB = cliente("cliente-b-orcamento-trocado@example.test", empresaB);
@@ -486,11 +482,11 @@ class FluxoClienteTests {
                 new LoginRequest(clienteB.getUsuario().getEmail(), " senha ")).accessToken();
         mockMvc.perform(get("/api/client/quotes/{id}/reports", orcamentoA.getId())
                         .header("Authorization", tokenClienteB))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.reports.length()").value(0));
+                .andExpect(status().isForbidden());
         mockMvc.perform(get("/api/client/quotes/{id}/reports", orcamentoA.getId())
                         .header("Authorization", tokenClienteA))
-                .andExpect(status().isForbidden());
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.reports[0].id").value(relatorioId.toString()));
         mockMvc.perform(get("/api/client/reports").header("Authorization", tokenClienteA))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$[0].id").value(relatorioId.toString()));
@@ -505,19 +501,10 @@ class FluxoClienteTests {
                         .header("Authorization", tokenClienteB))
                 .andExpect(status().isForbidden());
 
-        RelatorioTecnico relatorio = relatorios.findById(relatorioId).orElseThrow();
-        ExecucaoEnsaio ensaio = ensaios.findById(relatorio.getExecucao().getId()).orElseThrow();
-        mockMvc.perform(patch("/api/tests/{id}/status", ensaio.getId())
-                        .header("Authorization", "Bearer " + jwtService.generateToken(tecnico))
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"action\":\"set-status\",\"targetStatus\":\"report-published\",\"version\":"
-                                + ensaio.getVersion() + "}"))
-                .andExpect(status().isConflict())
-                .andExpect(jsonPath("$.code").value("published-report-unavailable"));
     }
 
     @Test
-    void mantemEmpresaValidadaQuandoMesmoOrcamentoMudaAntesDaPublicacao() throws Exception {
+    void exigeNovoRelatorioQuandoEmpresaMudaAntesDaPublicacao() throws Exception {
         Long relatorioId = criarRelatorioValidado(orcamentoA, "AMOSTRA-VALIDADA-ANTES-TROCA-EMPRESA");
         String tokenTecnico = "Bearer " + jwtService.generateToken(tecnico);
         OrcamentoRequest dados = requestAceite(orcamentoA);
@@ -554,21 +541,12 @@ class FluxoClienteTests {
                         .header("Authorization", tokenTecnico)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"version\":1}"))
-                .andExpect(status().isOk());
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.code").value("report-commercial-link-changed"));
 
         mockMvc.perform(get("/api/client/reports").header("Authorization", tokenClienteA))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$[0].id").value(relatorioId.toString()));
-        mockMvc.perform(get("/api/client/reports").header("Authorization", tokenClienteB))
-                .andExpect(status().isOk())
                 .andExpect(jsonPath("$.length()").value(0));
-        mockMvc.perform(get("/api/client/reports/{id}/file", relatorioId)
-                        .header("Authorization", tokenClienteA))
-                .andExpect(status().isOk())
-                .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_PDF));
-        mockMvc.perform(get("/api/client/reports/{id}/file", relatorioId)
-                        .header("Authorization", tokenClienteB))
-                .andExpect(status().isForbidden());
     }
 
     @Test
@@ -645,6 +623,14 @@ class FluxoClienteTests {
                         .contentType(MediaType.APPLICATION_JSON).content("{\"version\":1}"))
                 .andExpect(status().isOk());
         return relatorio.getId();
+    }
+
+    private String edicaoComAmostra(ExecucaoEnsaio ensaio, Amostra amostra) {
+        return """
+                {"sampleId":"%s","type":"Análise revisada","analysisType":"chromatography",
+                 "method":"Método","standard":"Norma","scheduledDate":"2026-11-01",
+                 "responsibleId":"%s","equipmentIds":[],"measurements":[],"version":%s}
+                """.formatted(amostra.getId(), tecnico.getId(), ensaio.getVersion());
     }
 
     private Long criarRelatorioValidado(Orcamento orcamento, String codigoAmostra) throws Exception {

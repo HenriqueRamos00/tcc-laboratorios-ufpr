@@ -2,6 +2,8 @@ package br.ufpr.tcc.backend_lab.application.usecase;
 
 import br.ufpr.tcc.backend_lab.application.dto.response.RelatorioDtos;
 import br.ufpr.tcc.backend_lab.application.service.ResolvedorReferenciasEnsaio;
+import br.ufpr.tcc.backend_lab.application.service.DisponibilidadeRelatorios;
+import br.ufpr.tcc.backend_lab.domain.model.enums.StatusValidacaoRelatorio;
 import br.ufpr.tcc.backend_lab.domain.exception.ConflitoRelatorioException;
 import br.ufpr.tcc.backend_lab.domain.exception.ExecucaoRelatorioNaoEncontradaException;
 import br.ufpr.tcc.backend_lab.domain.model.entity.RelatorioTecnico;
@@ -30,7 +32,10 @@ public class PrepararRelatorioUseCase {
                 .orElseThrow(() -> new ExecucaoRelatorioNaoEncontradaException("Ensaio não encontrado"));
 
         List<RelatorioTecnico> existentes = relatorios.findByExecucaoIdOrderByIdAsc(id);
-        if (!existentes.isEmpty()) {
+        boolean precisaSubstituir = !existentes.isEmpty() && existentes.stream().allMatch(relatorio ->
+                !relatorio.isPublished() && relatorio.getValidationStatus() == StatusValidacaoRelatorio.VALIDATED
+                        && !DisponibilidadeRelatorios.correspondeAoVinculo(relatorio, ensaio));
+        if (!existentes.isEmpty() && (!precisaSubstituir || ensaio.getStatus() != StatusEnsaio.DRAFTING_REPORT)) {
             return prepararResposta("existing", existentes);
         }
         if (ensaio.getStatus() != StatusEnsaio.DRAFTING_REPORT) {
