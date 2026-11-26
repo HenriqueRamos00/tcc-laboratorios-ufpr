@@ -63,22 +63,32 @@ public sealed class ClientDecisionContractTests
     }
 
     [Fact]
-    public async Task AOrdemDeCompraPrecisaSerPdfEFicaGuardadaComOArquivo()
+    public async Task AOrdemDeCompraAceitaOsFormatosOferecidosNaTela()
     {
-        InMemoryClientDecisionRepository store = new();
-        using var backend = new AuthHandler(HttpStatusCode.OK, Identity());
-        using var portal = PortalWith(backend, store);
-        using HttpClient client = await LoggedInAsync(portal);
+        (string Name, byte[] Content)[] files =
+        [
+            ("oc.pdf", "%PDF-1.7 ordem de compra"u8.ToArray()),
+            ("oc.doc", [0xD0, 0xCF, 0x11, 0xE0, 0xA1, 0xB1, 0x1A, 0xE1, 0x01]),
+            ("oc.docx", [(byte)'P', (byte)'K', 0x03, 0x04, 0x01])
+        ];
 
-        using var notPdf = await client.PostAsync("/api/quotes/quote-3/purchase-order", FileForm("oc.pdf", "nao sou pdf"u8.ToArray()));
-        byte[] pdf = "%PDF-1.7 ordem de compra"u8.ToArray();
-        using var created = await client.PostAsync("/api/quotes/quote-3/purchase-order", FileForm("../../oc final.pdf", pdf));
+        foreach ((string name, byte[] content) in files)
+        {
+            InMemoryClientDecisionRepository store = new();
+            using var backend = new AuthHandler(HttpStatusCode.OK, Identity());
+            using var portal = PortalWith(backend, store);
+            using HttpClient client = await LoggedInAsync(portal);
 
-        Assert.Equal(HttpStatusCode.BadRequest, notPdf.StatusCode);
-        Assert.Equal(HttpStatusCode.Created, created.StatusCode);
-        ClientDecision saved = Assert.Single(store.Recorded);
-        Assert.Equal("oc final.pdf", saved.PurchaseOrder!.FileName);
-        Assert.Equal(pdf, saved.PurchaseOrder.Content);
+            using var invalid = await client.PostAsync(
+                "/api/quotes/quote-3/purchase-order", FileForm(Path.ChangeExtension(name, ".pdf"), "conteudo incorreto"u8.ToArray()));
+            using var created = await client.PostAsync("/api/quotes/quote-3/purchase-order", FileForm(name, content));
+
+            Assert.Equal(HttpStatusCode.BadRequest, invalid.StatusCode);
+            Assert.Equal(HttpStatusCode.Created, created.StatusCode);
+            ClientDecision saved = Assert.Single(store.Recorded);
+            Assert.Equal(name, saved.PurchaseOrder!.FileName);
+            Assert.Equal(content, saved.PurchaseOrder.Content);
+        }
     }
 
     [Fact]

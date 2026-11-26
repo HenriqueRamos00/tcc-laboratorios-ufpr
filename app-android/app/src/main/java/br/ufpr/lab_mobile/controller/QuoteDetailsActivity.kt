@@ -11,7 +11,6 @@ import android.net.Uri
 import android.widget.Toast
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.contract.ActivityResultContracts
-import androidx.appcompat.app.AppCompatActivity
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowInsetsCompat
 import androidx.core.view.isVisible
@@ -20,8 +19,8 @@ import br.ufpr.lab_mobile.R
 import br.ufpr.lab_mobile.adapter.formatQuotePrice
 import br.ufpr.lab_mobile.databinding.ActivityQuoteDetailsBinding
 import br.ufpr.lab_mobile.model.Quote
-import br.ufpr.lab_mobile.model.QuoteSimulations
 import br.ufpr.lab_mobile.model.QuoteStatusRules
+import br.ufpr.lab_mobile.model.displayText
 import br.ufpr.lab_mobile.service.InvalidQuoteDocumentException
 import br.ufpr.lab_mobile.service.QuoteApiService
 import br.ufpr.lab_mobile.service.QuoteService
@@ -36,10 +35,9 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import retrofit2.HttpException
 
-class QuoteDetailsActivity : AppCompatActivity() {
+class QuoteDetailsActivity : PortalActivity() {
     private lateinit var binding: ActivityQuoteDetailsBinding
     private lateinit var service: QuoteService
-    private lateinit var token: String
     private lateinit var quoteId: String
     private var quote: Quote? = null
     private var quoteJob: Job? = null
@@ -92,6 +90,7 @@ class QuoteDetailsActivity : AppCompatActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        if (!hasSession) return
         enableEdgeToEdge()
         binding = ActivityQuoteDetailsBinding.inflate(layoutInflater)
         setContentView(binding.root)
@@ -102,8 +101,6 @@ class QuoteDetailsActivity : AppCompatActivity() {
         }
         binding.backButton.setOnClickListener { finish() }
         quoteId = intent.getStringExtra(EXTRA_QUOTE_ID)?.trim().orEmpty()
-        token = intent.getStringExtra(LoginActivity.EXTRA_ACCESS_TOKEN)
-            ?: getSharedPreferences(LoginActivity.SESSION_PREFERENCES, MODE_PRIVATE).getString(LoginActivity.ACCESS_TOKEN, null).orEmpty()
         currentPage = savedInstanceState?.getInt("pdf_page") ?: 0
         pendingExportUri = savedInstanceState?.getString("export_uri")?.let(Uri::parse)
         binding.retryButton.setOnClickListener { loadQuote() }
@@ -113,12 +110,14 @@ class QuoteDetailsActivity : AppCompatActivity() {
         binding.downloadPdf.setOnClickListener {
             exportDocument.launch("orcamento-${quote?.code.orEmpty().replace(Regex("[^a-zA-Z0-9_-]"), "_")}.pdf")
         }
-        binding.acceptQuote.setOnClickListener { quote?.let { QuoteDecisionDialogFragment.show(supportFragmentManager, it, false) } }
-        binding.rejectQuote.setOnClickListener { quote?.let { QuoteDecisionDialogFragment.show(supportFragmentManager, it, true) } }
-        supportFragmentManager.setFragmentResultListener(QuoteDecisionDialogFragment.RESULT, this) { _, _ -> renderSimulation() }
-        if (token.isBlank()) { showError(R.string.session_expired, false); return }
-        QuoteSimulations.startSession(token)
-        service = QuoteService(RetrofitProvider.retrofit(getString(R.string.api_base_url)).create(QuoteApiService::class.java))
+        binding.acceptQuote.setOnClickListener { quote?.let { showQuoteAcceptanceOptions(this, supportFragmentManager, it) } }
+        binding.rejectQuote.setOnClickListener { quote?.let { QuoteDecisionDialogFragment.show(supportFragmentManager, it) } }
+        supportFragmentManager.setFragmentResultListener(QuoteDecisionDialogFragment.RESULT, this) { _, result ->
+            if (result.getBoolean(QuoteDecisionDialogFragment.REJECTED)) finish()
+            else loadQuote()
+        }
+        val retrofit = RetrofitProvider.retrofit(getString(R.string.api_base_url))
+        service = QuoteService(retrofit.create(QuoteApiService::class.java))
         loadQuote()
     }
 
@@ -127,6 +126,9 @@ class QuoteDetailsActivity : AppCompatActivity() {
         pdfJob?.cancel()
         renderJob?.cancel()
         resetDocument()
+        binding.pdfLoading.isVisible = false
+        binding.pdfMessage.isVisible = false
+        binding.pdfRetryButton.isVisible = false
         quote = null
         binding.detailsContent.isVisible = false
         binding.stateMessage.isVisible = false
@@ -135,7 +137,7 @@ class QuoteDetailsActivity : AppCompatActivity() {
         binding.loading.isVisible = true
         quoteJob = lifecycleScope.launch {
             try {
-                val result = service.getQuote(token, quoteId)
+                val result = service.getQuote(quoteId)
                 quote = result
                 binding.loading.isVisible = false
                 binding.detailsContent.isVisible = true
@@ -144,21 +146,22 @@ class QuoteDetailsActivity : AppCompatActivity() {
                 binding.clientName.text = getString(R.string.quote_client, result.companyName ?: "—")
                 binding.description.text = result.description ?: "—"
                 binding.totalPrice.text = getString(R.string.quote_total, formatQuotePrice(result.totalPrice))
-                binding.serverStatus.text = getString(R.string.quote_status_current, result.status ?: getString(R.string.quote_status_unavailable))
-                renderSimulation()
-                loadDocument()
+                val status = QuoteStatusRules.resolve(result)
+                binding.serverStatus.text = getString(R.string.quote_status_current, status.displayText(resources))
+                renderDecisionActions()
+                val hasProposal = QuoteStatusRules.hasProposal(status)
+                binding.proposalDocument.isVisible = hasProposal
+                if (hasProposal) loadDocument()
             } catch (error: CancellationException) { throw error
             } catch (error: HttpException) {
-                if (error.code() == 401) LoginActivity.clearSession(this@QuoteDetailsActivity)
-                showError(when (error.code()) { 401 -> R.string.session_expired; 404 -> R.string.quote_status_not_found; else -> R.string.quote_details_error }, error.code() !in listOf(401,404))
+                showError(when (error.code()) { 401 -> if (sessions.current == null) R.string.session_expired else R.string.quote_details_error; 404 -> R.string.quote_status_not_found; else -> R.string.quote_details_error }, error.code() !in listOf(401,404))
             } catch (_: Exception) { showError(R.string.quote_details_error, true) }
         }
     }
 
-    private fun renderSimulation() {
-        val result = QuoteSimulations.get(quoteId)
-        val eligible = QuoteSimulations.isSessionActive(token) &&
-            quote?.let { QuoteStatusRules.canDecide(it.stage, it.status) } == true && result == null
+    private fun renderDecisionActions() {
+        val eligible = sessions.current != null &&
+            quote?.let(QuoteStatusRules::canDecide) == true
         binding.acceptQuote.isVisible = eligible
         binding.rejectQuote.isVisible = eligible
     }
@@ -197,7 +200,7 @@ class QuoteDetailsActivity : AppCompatActivity() {
             try {
                 val downloaded = File.createTempFile("quote-", ".pdf", cacheDir)
                 file = downloaded
-                service.downloadDocument(token, quoteId, downloaded)
+                service.downloadDocument(quoteId, downloaded)
                 val count = withContext(Dispatchers.IO) {
                     try {
                         ParcelFileDescriptor.open(downloaded, ParcelFileDescriptor.MODE_READ_ONLY).use { descriptor ->
@@ -212,8 +215,7 @@ class QuoteDetailsActivity : AppCompatActivity() {
                 renderPage(currentPage.coerceIn(0, count - 1))
             } catch (error: CancellationException) { throw error
             } catch (error: HttpException) {
-                if (error.code() == 401) { LoginActivity.clearSession(this@QuoteDetailsActivity); renderSimulation() }
-                pdfError(when (error.code()) { 401 -> R.string.session_expired; 404 -> R.string.quote_document_missing; else -> R.string.quote_document_error }, error.code() !in listOf(401,404))
+                pdfError(when (error.code()) { 401 -> if (sessions.current == null) R.string.session_expired else R.string.quote_document_error; 404 -> R.string.quote_document_missing; else -> R.string.quote_document_error }, error.code() !in listOf(401,404))
             } catch (_: InvalidQuoteDocumentException) { pdfError(R.string.quote_document_invalid, true)
             } catch (_: Exception) { pdfError(R.string.quote_document_error, true)
             } finally { if (!retained) file?.delete() }
@@ -289,19 +291,19 @@ class QuoteDetailsActivity : AppCompatActivity() {
         quoteJob?.cancel()
         pdfJob?.cancel()
         renderJob?.cancel()
-        resetDocument()
+        if (::binding.isInitialized) resetDocument()
         super.onDestroy()
     }
 
     companion object {
         const val EXTRA_QUOTE_ID = "quote_id"
-        fun open(context: Context, id: String?, token: String?) {
+        fun open(context: Context, id: String?) {
             if (id.isNullOrBlank()) {
                 Toast.makeText(context, R.string.quote_status_invalid_id, Toast.LENGTH_SHORT).show()
                 return
             }
             context.startActivity(Intent(context, QuoteDetailsActivity::class.java)
-                .putExtra(EXTRA_QUOTE_ID, id.trim()).putExtra(LoginActivity.EXTRA_ACCESS_TOKEN, token))
+                .putExtra(EXTRA_QUOTE_ID, id.trim()))
         }
     }
 }

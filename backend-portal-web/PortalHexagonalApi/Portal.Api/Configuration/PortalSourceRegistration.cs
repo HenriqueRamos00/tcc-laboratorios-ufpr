@@ -31,6 +31,7 @@ public static class PortalSourceRegistration
         switch (portal.DataSource)
         {
             case PortalOptions.BackendLabSource:
+                services.AddScoped<IForRecordingClientDecisions, BackendLabClientDecisionRecording>();
                 services.AddTransient<SpringBearerForwardingHandler>();
                 services.AddScoped<SpringQuoteAuthenticationFilter>();
                 services.Configure<MvcOptions>(options => options.Filters.AddService<SpringQuoteAuthenticationFilter>());
@@ -59,7 +60,22 @@ public static class PortalSourceRegistration
                     })
                     .ConfigurePrimaryHttpMessageHandler(() => new HttpClientHandler { AllowAutoRedirect = false })
                     .AddHttpMessageHandler<SpringBearerForwardingHandler>();
+                services.AddHttpClient<IClientDecisionSubmission, SpringClientDecisionSubmission>((provider, client) =>
+                    {
+                        BackendLabOptions backendLab = provider.GetRequiredService<IOptions<BackendLabOptions>>().Value;
+                        client.BaseAddress = new Uri(backendLab.BaseUrl.TrimEnd('/') + "/");
+                        client.Timeout = TimeSpan.FromSeconds(10);
+                    })
+                    .ConfigurePrimaryHttpMessageHandler(() => new HttpClientHandler { AllowAutoRedirect = false })
+                    .AddHttpMessageHandler<SpringBearerForwardingHandler>();
                 services.AddHttpClient<IClientAuthenticator, BackendLabAdapter>((provider, client) =>
+                    {
+                        BackendLabOptions backendLab = provider.GetRequiredService<IOptions<BackendLabOptions>>().Value;
+                        client.BaseAddress = new Uri(backendLab.BaseUrl.TrimEnd('/') + "/");
+                        client.Timeout = TimeSpan.FromSeconds(10);
+                    })
+                    .ConfigurePrimaryHttpMessageHandler(() => new HttpClientHandler { AllowAutoRedirect = false });
+                services.AddHttpClient<IClientPasswordRecovery, BackendLabPasswordRecoveryAdapter>((provider, client) =>
                     {
                         BackendLabOptions backendLab = provider.GetRequiredService<IOptions<BackendLabOptions>>().Value;
                         client.BaseAddress = new Uri(backendLab.BaseUrl.TrimEnd('/') + "/");
@@ -69,6 +85,7 @@ public static class PortalSourceRegistration
                 return services;
 
             case PortalOptions.LactecSource:
+                services.AddScoped<IForRecordingClientDecisions, ClientDecisionRecording>();
                 // A proposta escrita a mao continua valendo; o orcamento sem arquivo recebe a pagina
                 // gerada a partir dele mesmo, para o botao de baixar nunca cair no vazio na demonstracao.
                 services.AddScoped<IQuoteDocumentRepository>(provider =>
@@ -93,6 +110,20 @@ public static class PortalSourceRegistration
                     .ValidateOnStart();
                 services.AddSingleton(provider => provider.GetRequiredService<IOptions<BackendAuthOptions>>().Value);
                 services.AddHttpClient<IClientAuthenticator, BackendAuthAdapter>((provider, client) =>
+                    {
+                        BackendAuthOptions backend = provider.GetRequiredService<IOptions<BackendAuthOptions>>().Value;
+                        client.BaseAddress = new Uri(backend.BaseUrl.TrimEnd('/') + "/");
+                        client.Timeout = TimeSpan.FromSeconds(10);
+                    })
+                    .ConfigurePrimaryHttpMessageHandler(() => new HttpClientHandler { AllowAutoRedirect = false });
+                services.AddHttpClient<IClientPasswordRecovery, BackendAuthPasswordRecoveryAdapter>((provider, client) =>
+                    {
+                        BackendAuthOptions backend = provider.GetRequiredService<IOptions<BackendAuthOptions>>().Value;
+                        client.BaseAddress = new Uri(backend.BaseUrl.TrimEnd('/') + "/");
+                        client.Timeout = TimeSpan.FromSeconds(10);
+                    })
+                    .ConfigurePrimaryHttpMessageHandler(() => new HttpClientHandler { AllowAutoRedirect = false });
+                services.AddHttpClient<IClientEmailConfirmation, BackendAuthEmailConfirmationAdapter>((provider, client) =>
                     {
                         BackendAuthOptions backend = provider.GetRequiredService<IOptions<BackendAuthOptions>>().Value;
                         client.BaseAddress = new Uri(backend.BaseUrl.TrimEnd('/') + "/");

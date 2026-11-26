@@ -270,6 +270,11 @@ CNPJs autenticado; orçamento de outra conta retorna 404. Requisições sem JWT
 continuam retornando 401. Equipamentos, laudos e relatórios vêm do AutoLAB real,
 filtrados pelos mesmos CNPJs. As decisões do cliente ficam no banco `portal` local.
 
+O C# encaminha `POST /auth/recoveries` e `POST /auth/password-resets` ao Spring no
+modo `backend-lab` ou ao Auth2 no modo `lactec`. O backend escolhido envia o e-mail.
+Configure `SPRING_MAIL_*` para Backend Lab ou `AUTH_MAIL_*` para Auth2, conforme o
+[guia de e-mail](../README.md#e-mail-e-recuperação-de-senha).
+
 ### Configuração e execução em lactec
 
 1. Suba o serviço independente seguindo o [README do Backend Auth2](../backend-auth2/README.md).

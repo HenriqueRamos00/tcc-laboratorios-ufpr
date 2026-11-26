@@ -37,7 +37,7 @@ public class RecusaOrcamento {
     @JoinColumn(name = "cliente_id", nullable = false)
     private Cliente cliente;
 
-    @Column(length = 200)
+    @Column(length = 1000)
     private String justification;
 
     @Column(nullable = false)

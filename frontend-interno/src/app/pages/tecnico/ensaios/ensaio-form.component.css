@@ -141,6 +141,11 @@ td textarea {
   box-shadow: 0 -4px 12px rgb(11 34 48 / 6%);
 }
 
+:host-context(body.tour-formulario-ensaio) .ensaio-actions {
+  position: static;
+  z-index: auto;
+}
+
 .ensaio-actions__primary {
   display: flex;
   flex-wrap: wrap;

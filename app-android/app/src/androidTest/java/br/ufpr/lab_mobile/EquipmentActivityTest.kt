@@ -1,5 +1,7 @@
 package br.ufpr.lab_mobile
 
+import android.app.Activity
+import android.app.Instrumentation
 import android.content.Intent
 import android.graphics.Bitmap
 import android.graphics.Canvas
@@ -21,6 +23,7 @@ import androidx.test.platform.app.InstrumentationRegistry
 import androidx.test.runner.lifecycle.ActivityLifecycleMonitorRegistry
 import androidx.test.runner.lifecycle.Stage
 import br.ufpr.lab_mobile.controller.EquipmentActivity
+import br.ufpr.lab_mobile.controller.EquipmentDetailsActivity
 import br.ufpr.lab_mobile.controller.LoginActivity
 import br.ufpr.lab_mobile.service.RetrofitProvider
 import java.io.File
@@ -56,10 +59,10 @@ class EquipmentActivityTest {
 
     @Before
     fun installResponses() {
-        context.getSharedPreferences(LoginActivity.SESSION_PREFERENCES, 0).edit().clear().commit()
+        TestSession.clear(context)
         oldRetrofit = retrofitField.get(null)
         oldBaseUrl = baseUrlField.get(null)
-        val client = OkHttpClient.Builder().addInterceptor { chain ->
+        val client = OkHttpClient.Builder().addInterceptor(TestSession.interceptor(context)).addInterceptor { chain ->
             requests.add(chain.request())
             responseGate?.await(10, TimeUnit.SECONDS)
             if (offline) throw IOException("Offline test")
@@ -75,18 +78,20 @@ class EquipmentActivityTest {
         scenario?.close()
         retrofitField.set(null, oldRetrofit)
         baseUrlField.set(null, oldBaseUrl)
-        context.getSharedPreferences(LoginActivity.SESSION_PREFERENCES, 0).edit().clear().commit()
+        TestSession.clear(context)
     }
 
     @Test
-    fun loadingContentPlaceholdersLocalSearchAndDetailsNotice() {
+    fun loadingContentPlaceholdersLocalSearchAndDetailsNavigation() {
         responseGate = CountDownLatch(1)
         launch()
         await("loading visible") { check { it.findViewById<View>(R.id.loading)?.visibility == View.VISIBLE } }
         responseGate!!.countDown()
         awaitItems(3)
-        assertEquals("Bearer equipment-session", requests.single().header("Authorization"))
+        assertEquals("Bearer ${context.portalApplication.sessions.current!!.token}", requests.single().header("Authorization"))
         assertEquals("/api/equipments", requests.single().url.encodedPath)
+        val opened = OpenedDetails()
+        instrumentation.addMonitor(opened)
         onActivity { activity ->
             val card = list(activity).findViewHolderForAdapterPosition(1)!!.itemView
             assertEquals("SN-17", card.findViewById<TextView>(R.id.serialNumber).text.toString())
@@ -95,9 +100,8 @@ class EquipmentActivityTest {
             assertEquals(context.getString(R.string.equipment_not_informed), card.findViewById<TextView>(R.id.location).text.toString())
             card.findViewById<View>(R.id.viewEquipment).performClick()
         }
-        await("temporary details notice shown") {
-            check { it.findViewById<TextView>(com.google.android.material.R.id.snackbar_text)?.text == context.getString(R.string.equipment_details_soon) }
-        }
+        await("details opened with the equipment id") { opened.ids.toList() == listOf("a") }
+        instrumentation.removeMonitor(opened)
         setSearch("  sn-17 ")
         awaitItems(1)
         setSearch(" tr-b ")
@@ -115,6 +119,19 @@ class EquipmentActivityTest {
         setSearch("   ")
         awaitItems(3)
         assertEquals("search never fetches again", 1, requests.size)
+    }
+
+    @Test
+    fun nameplateTagIsShownAndSearchableInsteadOfTheSerialNumber() {
+        body = """[{"id":"a","serialNumber":"SN-17","tag":"SN-17","equipmentTag":"TR-PLACA"},{"id":"b","serialNumber":"SN-18","tag":"SN-18"}]"""
+        launch()
+        awaitItems(2)
+        setSearch("tr-placa")
+        awaitItems(1)
+        onActivity { activity ->
+            val card = list(activity).findViewHolderForAdapterPosition(1)!!.itemView
+            assertEquals("TR-PLACA", card.findViewById<TextView>(R.id.tag).text.toString())
+        }
     }
 
     @Test
@@ -166,15 +183,11 @@ class EquipmentActivityTest {
     }
 
     @Test
-    fun unauthorizedClearsSessionShowsExistingMessageAndDisablesRetry() {
-        context.getSharedPreferences(LoginActivity.SESSION_PREFERENCES, 0).edit()
-            .putString(LoginActivity.ACCESS_TOKEN, "equipment-session").commit()
+    fun unauthorizedClearsSessionAndReturnsToLogin() {
         status = 401
         launch()
-        awaitState(R.string.session_expired)
-        awaitItems(0)
-        assertNull(context.getSharedPreferences(LoginActivity.SESSION_PREFERENCES, 0).getString(LoginActivity.ACCESS_TOKEN, null))
-        onActivity { assertEquals(View.GONE, it.findViewById<View>(R.id.retry).visibility) }
+        await("Login shown after unauthorized response") { TestSession.loginVisible() }
+        assertNull(context.portalApplication.sessions.current)
     }
 
     @Test
@@ -288,7 +301,7 @@ class EquipmentActivityTest {
 
     private fun launch(token: String? = "equipment-session") {
         val intent = Intent(context, EquipmentActivity::class.java)
-        token?.let { intent.putExtra(LoginActivity.EXTRA_ACCESS_TOKEN, it) }
+        TestSession.start(context, token)
         scenario = ActivityScenario.launch(intent)
     }
 
@@ -330,6 +343,16 @@ class EquipmentActivityTest {
             assertTrue(output.exists() || output.mkdirs())
             File(output, name).outputStream().use { assertTrue(bitmap.compress(Bitmap.CompressFormat.PNG, 100, it)) }
             bitmap.recycle()
+        }
+    }
+
+    /** Records the details intents and keeps the list on screen. */
+    private class OpenedDetails : Instrumentation.ActivityMonitor() {
+        val ids = ConcurrentLinkedQueue<String>()
+        override fun onStartActivity(intent: Intent): Instrumentation.ActivityResult? {
+            if (intent.component?.className != EquipmentDetailsActivity::class.java.name) return null
+            ids.add(intent.getStringExtra(EquipmentDetailsActivity.EXTRA_EQUIPMENT_ID).orEmpty())
+            return Instrumentation.ActivityResult(Activity.RESULT_CANCELED, null)
         }
     }
 

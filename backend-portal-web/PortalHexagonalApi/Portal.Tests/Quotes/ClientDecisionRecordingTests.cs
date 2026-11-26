@@ -18,7 +18,7 @@ public sealed class ClientDecisionRecordingTests
         ClientDecisionRecording recording = new(new OneQuote(null), store, TimeProvider.System);
 
         ClientDecisionResult result = await recording.RecordAsync(
-            "quote-x", new ClientDecisionRequest(ClientDecisionKind.Acceptance, Author), CancellationToken.None);
+            "quote-x", new LactecClientDecisionRequest(ClientDecisionKind.Acceptance, Author), CancellationToken.None);
 
         Assert.Equal(ClientDecisionOutcome.QuoteNotFound, result.Outcome);
         Assert.Empty(store.Recorded);
@@ -32,9 +32,9 @@ public sealed class ClientDecisionRecordingTests
         ClientDecisionRecording recording = new(new OneQuote(QuoteAt("Negociação")), store, new FixedTime(now));
 
         ClientDecisionResult first = await recording.RecordAsync(
-            "quote-3", new ClientDecisionRequest(ClientDecisionKind.Acceptance, Author), CancellationToken.None);
+            "quote-3", new LactecClientDecisionRequest(ClientDecisionKind.Acceptance, Author), CancellationToken.None);
         ClientDecisionResult second = await recording.RecordAsync(
-            "quote-3", new ClientDecisionRequest(ClientDecisionKind.PurchaseOrder, Author), CancellationToken.None);
+            "quote-3", new LactecClientDecisionRequest(ClientDecisionKind.PurchaseOrder, Author), CancellationToken.None);
 
         Assert.Equal(ClientDecisionOutcome.Recorded, first.Outcome);
         ClientDecision saved = Assert.Single(store.Recorded);
@@ -49,9 +49,21 @@ public sealed class ClientDecisionRecordingTests
         ClientDecisionRecording recording = new(new OneQuote(QuoteAt("Negociação")), store, TimeProvider.System);
 
         ClientDecisionResult result = await recording.RecordAsync(
-            "quote-3", new ClientDecisionRequest(ClientDecisionKind.SampleShipment, Author), CancellationToken.None);
+            "quote-3", new LactecClientDecisionRequest(ClientDecisionKind.SampleShipment, Author), CancellationToken.None);
 
         Assert.Equal(ClientDecisionOutcome.NotAllowed, result.Outcome);
+        Assert.Empty(store.Recorded);
+    }
+
+    [Fact]
+    public async Task PedidoBackendLabNaoPodeSerGravadoPeloFluxoLactec()
+    {
+        InMemoryClientDecisionRepository store = new();
+        ClientDecisionRecording recording = new(new OneQuote(QuoteAt("Negociação")), store, TimeProvider.System);
+
+        await Assert.ThrowsAsync<ArgumentException>(() => recording.RecordAsync(
+            "quote-3", new BackendLabClientDecisionRequest(ClientDecisionKind.Acceptance), CancellationToken.None));
+
         Assert.Empty(store.Recorded);
     }
 

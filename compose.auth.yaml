@@ -85,6 +85,13 @@ services:
       AUTH_DEMO_CLIENT2_PASSWORD: ${AUTH_DEMO_CLIENT2_PASSWORD:-Cliente2!3rK7wP5mH9zF}
       BACKEND_AUTH_SERVICE_TOKEN: *demo-service-token
       SERVICE_TOKEN_EXPIRATION_SECONDS: ${SERVICE_TOKEN_EXPIRATION_SECONDS:-2592000}
+      SPRING_MAIL_HOST: ${AUTH_MAIL_HOST:-smtp.gmail.com}
+      SPRING_MAIL_PORT: ${AUTH_MAIL_PORT:-587}
+      SPRING_MAIL_USERNAME: ${AUTH_MAIL_USERNAME:-}
+      SPRING_MAIL_PASSWORD: ${AUTH_MAIL_PASSWORD:-}
+      AUTH_NOTIFICATION_SENDER: ${AUTH_MAIL_SENDER:-}
+      AUTH_NOTIFICATION_CONFIRMATION_LINK: ${AUTH_CONFIRMATION_LINK:-http://localhost:4200/confirmar-email?token={token}}
+      AUTH_NOTIFICATION_RECOVERY_LINK: ${AUTH_RECOVERY_LINK:-http://localhost:4200/recuperar-senha?token={token}}
     ports:
       - "127.0.0.1:${AUTH_PORT:-8081}:8081"
     depends_on:
@@ -151,6 +158,23 @@ services:
         condition: service_started
     stdin_open: true
     tty: true
+
+  frontend-auth2:
+    restart: unless-stopped
+    build:
+      context: ./frontend-auth2
+      target: dev
+    environment:
+      API_PROXY_TARGET: http://backend-auth2:8081
+    ports:
+      - "127.0.0.1:4202:4202"
+    volumes:
+      - ./frontend-auth2:/app
+      - /app/node_modules
+      - /app/.angular
+    depends_on:
+      backend-auth2:
+        condition: service_healthy
 
 volumes:
   auth-oracle-data:

@@ -1,4 +1,4 @@
-import { HttpClient, HttpParams } from '@angular/common/http';
+import { HttpClient, HttpParams, HttpResponse } from '@angular/common/http';
 import { inject, Injectable } from '@angular/core';
 import { Observable } from 'rxjs';
 
@@ -41,6 +41,13 @@ export class OrcamentosService {
 
   downloadDocument(id: string): Observable<Blob> {
     return this.http.get(`${this.endpoint}/${encodeURIComponent(id)}/document`, {
+      responseType: 'blob',
+    });
+  }
+
+  downloadPurchaseOrder(id: string): Observable<HttpResponse<Blob>> {
+    return this.http.get(`${this.endpoint}/${encodeURIComponent(id)}/purchase-order`, {
+      observe: 'response',
       responseType: 'blob',
     });
   }

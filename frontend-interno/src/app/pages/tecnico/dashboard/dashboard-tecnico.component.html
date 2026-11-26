@@ -1,12 +1,13 @@
 <div class="space-y-8 [overflow-wrap:anywhere]">
   <app-page-header
+    data-tour="pagina-cabecalho"
     [title]="saudacao()"
     subtitle="Dashboard de técnico"
     [breadcrumbs]="trilha"
   />
 
   @if (estado() === 'carregando') {
-    <section aria-label="Indicadores do dashboard" aria-busy="true">
+    <section data-tour="pagina-indicadores" aria-label="Indicadores do dashboard" aria-busy="true">
       <p class="sr-only" role="status">Carregando indicadores do painel técnico.</p>
       <div class="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
         @for (indicador of indicadores; track indicador.chave) {
@@ -32,6 +33,7 @@
   } @else {
     @if (dados(); as painel) {
       <section
+        data-tour="pagina-indicadores"
         class="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3"
         aria-label="Indicadores do dashboard"
       >
@@ -61,6 +63,7 @@
   }
 
   <nav
+    data-tour="pagina-atalhos"
     class="mx-auto grid w-full max-w-5xl grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4"
     aria-label="Acesso rápido aos módulos técnicos"
   >
@@ -87,6 +90,7 @@
 
   @if (estado() === 'sucesso' && dados(); as painel) {
     <section
+      data-tour="pagina-pendencias"
       class="min-w-0 rounded-xl border border-lactec-line bg-lactec-paper shadow-sm"
       aria-labelledby="laudos-pendentes-titulo"
     >

@@ -28,6 +28,17 @@ services:
       JPA_DDL_AUTO: ${JPA_DDL_AUTO:-update}
       JWT_SECRET: ${JWT_SECRET:-change-this-secret-with-at-least-32-characters}
       JWT_EXPIRATION_SECONDS: ${JWT_EXPIRATION_SECONDS:-3600}
+      SPRING_MAIL_ENABLED: ${SPRING_MAIL_ENABLED:-false}
+      SPRING_MAIL_HOST: ${SPRING_MAIL_HOST:-}
+      SPRING_MAIL_PORT: ${SPRING_MAIL_PORT:-587}
+      SPRING_MAIL_USERNAME: ${SPRING_MAIL_USERNAME:-}
+      SPRING_MAIL_PASSWORD: ${SPRING_MAIL_PASSWORD:-}
+      SPRING_MAIL_SENDER: ${SPRING_MAIL_SENDER:-}
+      SPRING_MAIL_AUTH: ${SPRING_MAIL_AUTH:-true}
+      SPRING_MAIL_STARTTLS_ENABLE: ${SPRING_MAIL_STARTTLS_ENABLE:-true}
+      SPRING_MAIL_STARTTLS_REQUIRED: ${SPRING_MAIL_STARTTLS_REQUIRED:-true}
+      INTERNAL_PORTAL_RECOVERY_URL: ${INTERNAL_PORTAL_RECOVERY_URL:-http://localhost:4201/recuperar-senha}
+      CLIENT_PORTAL_RECOVERY_URL: ${CLIENT_PORTAL_RECOVERY_URL:-http://localhost:4200/recuperar-senha}
       DEMO_SEED_ENABLED: ${DEMO_SEED_ENABLED:-false}
       AUTH_SEED_ADMIN_NAME: ${AUTH_SEED_ADMIN_NAME:-}
       AUTH_SEED_ADMIN_EMAIL: ${AUTH_SEED_ADMIN_EMAIL:-}
@@ -101,6 +112,7 @@ services:
 
   app-android:
     profiles: [android]
+    network_mode: host
     build:
       context: ./app-android
       args:
@@ -110,6 +122,8 @@ services:
     environment:
       GRADLE_OPTS: -Dorg.gradle.daemon=false
       ADB_DEVICE: ${ADB_DEVICE:-}
+      ADB_REVERSE_PORT: ${ADB_REVERSE_PORT:-5125}
+      PORTAL_API_URL: ${ANDROID_PORTAL_API_URL:-}
     volumes:
       - ./app-android:/workspace
       - app-android-gradle-home:/home/dev/.gradle

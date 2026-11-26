@@ -28,20 +28,18 @@ import org.junit.Test
 import retrofit2.HttpException
 import retrofit2.Response
 import retrofit2.http.GET
-import retrofit2.http.Header
 import retrofit2.http.Path
 
 class QuoteDocumentServiceTest {
     @Test
-    fun `downloads raw PDF bytes with bearer token and trimmed quote id`(): Unit = runBlocking {
+    fun `downloads raw PDF bytes with trimmed quote id`(): Unit = runBlocking {
         val bytes = "%PDF-1.4\nfictional quote".toByteArray()
         val body = TrackedBody(bytes, "application/pdf".toMediaType())
         val api = FakeQuoteApi(Response.success(body))
         val destination = tempFile()
 
-        QuoteService(api).downloadDocument("secret", " q-17 ", destination)
+        QuoteService(api).downloadDocument(" q-17 ", destination)
 
-        assertEquals("Bearer secret", api.authorization)
         assertEquals("q-17", api.id)
         assertArrayEquals(bytes, destination.readBytes())
         assertTrue(body.closed)
@@ -59,7 +57,7 @@ class QuoteDocumentServiceTest {
         responses.forEach { response ->
             val destination = tempFile()
             try {
-                QuoteService(FakeQuoteApi(response)).downloadDocument("token", "q", destination)
+                QuoteService(FakeQuoteApi(response)).downloadDocument("q", destination)
                 fail("Expected invalid PDF")
             } catch (_: InvalidQuoteDocumentException) {
                 assertFalse(destination.exists())
@@ -72,7 +70,7 @@ class QuoteDocumentServiceTest {
         listOf(401, 404, 502).forEach { code ->
             val destination = tempFile()
             try {
-                QuoteService(FakeQuoteApi(Response.error<ResponseBody>(code, "error".toResponseBody()))).downloadDocument("token", "q", destination)
+                QuoteService(FakeQuoteApi(Response.error<ResponseBody>(code, "error".toResponseBody()))).downloadDocument("q", destination)
                 fail("Expected HTTP $code")
             } catch (error: HttpException) {
                 assertEquals(code, error.code())
@@ -92,12 +90,12 @@ class QuoteDocumentServiceTest {
         val destination = tempFile()
 
         try {
-            service.downloadDocument("token", "q", destination)
+            service.downloadDocument("q", destination)
             fail("Expected network failure")
         } catch (_: IOException) {
             assertFalse(destination.exists())
         }
-        service.downloadDocument("token", "q", destination)
+        service.downloadDocument("q", destination)
         assertArrayEquals(bytes, destination.readBytes())
         assertEquals(2, api.calls)
         destination.delete()
@@ -108,7 +106,7 @@ class QuoteDocumentServiceTest {
         val body = BlockingBody()
         val destination = tempFile()
         val job = async(Dispatchers.Default) {
-            QuoteService(FakeQuoteApi(Response.success(body))).downloadDocument("token", "q", destination)
+            QuoteService(FakeQuoteApi(Response.success(body))).downloadDocument("q", destination)
         }
 
         assertTrue("body read did not start", body.reading.await(3, TimeUnit.SECONDS))
@@ -121,22 +119,19 @@ class QuoteDocumentServiceTest {
     @Test
     fun `Retrofit contract uses document endpoint authorization and quote id`() {
         val method = QuoteApiService::class.java.methods.single { it.name == "getDocument" }
-        assertEquals("quotes/{id}/document", requireNotNull(method.getAnnotation(GET::class.java)).value)
-        assertEquals("Authorization", method.parameterAnnotations[0].filterIsInstance<Header>().single().value)
-        assertEquals("id", method.parameterAnnotations[1].filterIsInstance<Path>().single().value)
+        assertEquals("api/quotes/{id}/document", requireNotNull(method.getAnnotation(GET::class.java)).value)
+        assertEquals("id", method.parameterAnnotations[0].filterIsInstance<Path>().single().value)
     }
 
     private fun tempFile() = File.createTempFile("quote-document-", ".pdf")
 
     private class FakeQuoteApi(vararg results: Any) : QuoteApiService {
         private val results = results.toMutableList()
-        var authorization: String? = null
         var id: String? = null
         var calls = 0
 
         @Suppress("UNCHECKED_CAST")
-        override suspend fun getDocument(authorization: String, id: String): Response<ResponseBody> {
-            this.authorization = authorization
+        override suspend fun getDocument(id: String): Response<ResponseBody> {
             this.id = id
             calls++
             val result = results.removeAt(0)
@@ -144,13 +139,12 @@ class QuoteDocumentServiceTest {
             return result as Response<ResponseBody>
         }
 
-        override suspend fun getQuote(authorization: String, id: String): Response<Quote> =
+        override suspend fun getQuote(id: String): Response<Quote> =
             error("Unexpected quote request")
 
         override suspend fun getQuotes(
-            authorization: String,
-            search: String?,
-            status: String?,
+            page: Int,
+            pageSize: Int,
         ): Response<JsonElement> = error("Unexpected list request")
     }
 

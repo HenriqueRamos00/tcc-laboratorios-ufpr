@@ -2,6 +2,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
 
 using Portal.Adapters.PortalStore;
+using Portal.Api.Configuration;
 using Portal.Application.Quotes;
 
 namespace Portal.Api.PortalStore;
@@ -10,6 +11,12 @@ public static class PortalStoreRegistration
 {
     public static IServiceCollection AddPortalStore(this IServiceCollection services, IConfiguration configuration)
     {
+        if (configuration[$"{PortalOptions.SectionName}:DataSource"] == PortalOptions.BackendLabSource)
+        {
+            services.AddScoped<IClientDecisionRepository, NotConnectedClientDecisionRepository>();
+            return services;
+        }
+
         string source = configuration[$"{PortalStoreOptions.SectionName}:Source"] is { Length: > 0 } configured
             ? configured
             : PortalStoreOptions.NotConnectedSource;

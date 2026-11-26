@@ -51,7 +51,6 @@ builder.Services
     });
 
 builder.Services.AddScoped<IQuoteUseCase, QuoteService>();
-builder.Services.AddScoped<IForRecordingClientDecisions, ClientDecisionRecording>();
 builder.Services.TryAddSingleton(TimeProvider.System);
 builder.Services.AddScoped<ILoginUseCase, LoginService>();
 builder.Services.AddScoped<IForConsultingLabResults, LabResultsConsultation>();

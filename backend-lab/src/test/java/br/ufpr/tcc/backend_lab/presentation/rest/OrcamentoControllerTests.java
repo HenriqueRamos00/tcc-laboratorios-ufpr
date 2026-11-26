@@ -1,5 +1,6 @@
 package br.ufpr.tcc.backend_lab.presentation.rest;
 
+import static org.hamcrest.Matchers.containsString;
 import static org.hamcrest.Matchers.everyItem;
 import static org.hamcrest.Matchers.is;
 import static org.hamcrest.Matchers.nullValue;
@@ -11,23 +12,35 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.header;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import br.ufpr.tcc.backend_lab.domain.model.entity.DocumentoOrcamento;
+import br.ufpr.tcc.backend_lab.domain.model.entity.AceiteOrcamento;
+import br.ufpr.tcc.backend_lab.domain.model.entity.Cliente;
 import br.ufpr.tcc.backend_lab.domain.model.entity.ExecucaoEnsaio;
 import br.ufpr.tcc.backend_lab.domain.model.entity.Amostra;
 import br.ufpr.tcc.backend_lab.domain.model.entity.Empresa;
 import br.ufpr.tcc.backend_lab.domain.model.entity.Orcamento;
 import br.ufpr.tcc.backend_lab.domain.model.entity.OrcamentoItem;
+import br.ufpr.tcc.backend_lab.domain.model.entity.OrdemCompraOrcamento;
 import br.ufpr.tcc.backend_lab.domain.model.entity.PerfilUsuario;
+import br.ufpr.tcc.backend_lab.domain.model.entity.RecusaOrcamento;
+import br.ufpr.tcc.backend_lab.domain.model.entity.TermoAceiteOrcamento;
 import br.ufpr.tcc.backend_lab.domain.model.entity.Usuario;
+import br.ufpr.tcc.backend_lab.domain.model.enums.FormaAceiteOrcamento;
 import br.ufpr.tcc.backend_lab.domain.model.enums.StatusComercialOrcamento;
+import br.ufpr.tcc.backend_lab.domain.repository.AceiteOrcamentoRepository;
+import br.ufpr.tcc.backend_lab.domain.repository.ClienteRepository;
 import br.ufpr.tcc.backend_lab.domain.repository.DocumentoOrcamentoRepository;
 import br.ufpr.tcc.backend_lab.domain.repository.ExecucaoEnsaioRepository;
 import br.ufpr.tcc.backend_lab.domain.repository.AmostraRepository;
 import br.ufpr.tcc.backend_lab.domain.repository.EmpresaRepository;
 import br.ufpr.tcc.backend_lab.domain.repository.OrcamentoRepository;
+import br.ufpr.tcc.backend_lab.domain.repository.OrdemCompraOrcamentoRepository;
+import br.ufpr.tcc.backend_lab.domain.repository.RecusaOrcamentoRepository;
+import br.ufpr.tcc.backend_lab.domain.repository.TermoAceiteOrcamentoRepository;
 import br.ufpr.tcc.backend_lab.domain.repository.UsuarioRepository;
 import br.ufpr.tcc.backend_lab.domain.model.enums.StatusEnsaio;
 import br.ufpr.tcc.backend_lab.infrastructure.security.JwtService;
@@ -41,6 +54,7 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.mock.web.MockMultipartFile;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -66,6 +80,11 @@ class OrcamentoControllerTests {
     @Autowired EmpresaRepository empresas;
     @Autowired OrcamentoRepository orcamentos;
     @Autowired DocumentoOrcamentoRepository documentos;
+    @Autowired AceiteOrcamentoRepository aceites;
+    @Autowired OrdemCompraOrcamentoRepository ordensCompra;
+    @Autowired TermoAceiteOrcamentoRepository termos;
+    @Autowired RecusaOrcamentoRepository recusas;
+    @Autowired ClienteRepository clientes;
     @Autowired ExecucaoEnsaioRepository execucoes;
     @Autowired AmostraRepository amostras;
     @Autowired JwtService jwtService;
@@ -724,6 +743,122 @@ class OrcamentoControllerTests {
     }
 
     @Test
+    @DisplayName("exibe ao administrador o termo preenchido e a justificativa da recusa")
+    void consultaDecisoesDoClienteNoDetalheAdministrativo() throws Exception {
+        Cliente cliente = criarClienteDoUsuarioAutenticado();
+
+        orcamentoMaisNovo.registrarAceite();
+        orcamentos.saveAndFlush(orcamentoMaisNovo);
+        AceiteOrcamento aceite = new AceiteOrcamento();
+        aceite.setOrcamento(orcamentoMaisNovo);
+        aceite.setCliente(cliente);
+        aceite.setMethod(FormaAceiteOrcamento.TERMO_DE_ACEITE);
+        aceite.setAcceptedAt(OffsetDateTime.parse("2026-11-20T14:30:00Z"));
+        AceiteOrcamento aceiteSalvo = aceites.saveAndFlush(aceite);
+
+        TermoAceiteOrcamento termo = new TermoAceiteOrcamento();
+        termo.setAceite(aceiteSalvo);
+        termo.setCompany("Copel Distribuição");
+        termo.setCnpj("00000001000136");
+        termo.setStreet("Rua de Cobrança, 123");
+        termo.setCity("Curitiba");
+        termo.setState("PR");
+        termo.setPostalCode("80000-000");
+        termo.setRequesterName("Ana Solicitante");
+        termo.setResponsibleName("Carlos Responsável");
+        termo.setJobTitle("Gerente");
+        termo.setApprovalDate(LocalDate.of(2026, 11, 19));
+        termo.setAllowsResultsByEmail(true);
+        termo.setResultsEmail("resultados@example.test");
+        termos.saveAndFlush(termo);
+
+        orcamentoMesmoDia.setStatus(StatusComercialOrcamento.PENDING_ACCEPTANCE);
+        orcamentoMesmoDia.setStage("Negociação");
+        orcamentoMesmoDia.registrarRecusa();
+        orcamentos.saveAndFlush(orcamentoMesmoDia);
+        RecusaOrcamento recusa = new RecusaOrcamento();
+        recusa.setOrcamento(orcamentoMesmoDia);
+        recusa.setCliente(cliente);
+        recusa.setJustification("Prazo de entrega incompatível com a necessidade da empresa.");
+        recusa.setRefusedAt(OffsetDateTime.parse("2026-11-21T09:15:00Z"));
+        recusas.saveAndFlush(recusa);
+
+        mockMvc.perform(
+                        get("/api/quotes/{id}", orcamentoMaisNovo.getId())
+                                .header("Authorization", tokenAdministrador))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.clientDecision.acceptance.method").value("TERMO_DE_ACEITE"))
+                .andExpect(jsonPath("$.clientDecision.acceptance.terms.billing.company")
+                        .value("Copel Distribuição"))
+                .andExpect(jsonPath("$.clientDecision.acceptance.terms.billing.cnpj")
+                        .value("00000001000136"))
+                .andExpect(jsonPath("$.clientDecision.acceptance.terms.approval.responsibleName")
+                        .value("Carlos Responsável"))
+                .andExpect(jsonPath("$.clientDecision.acceptance.terms.approval.allowsResultsByEmail")
+                        .value(true))
+                .andExpect(jsonPath("$.clientDecision.rejection").value(nullValue()));
+
+        mockMvc.perform(
+                        get("/api/quotes/{id}", orcamentoMesmoDia.getId())
+                                .header("Authorization", tokenAdministrador))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.status").value("Refused"))
+                .andExpect(jsonPath("$.clientDecision.rejection.justification")
+                        .value("Prazo de entrega incompatível com a necessidade da empresa."))
+                .andExpect(jsonPath("$.clientDecision.acceptance").value(nullValue()));
+    }
+
+    @Test
+    @DisplayName("permite ao administrador abrir a ordem de compra do orçamento")
+    void consultaArquivoDaOrdemDeCompra() throws Exception {
+        Cliente cliente = criarClienteDoUsuarioAutenticado();
+        orcamentoMaisNovo.registrarAceite();
+        orcamentos.saveAndFlush(orcamentoMaisNovo);
+
+        AceiteOrcamento aceite = new AceiteOrcamento();
+        aceite.setOrcamento(orcamentoMaisNovo);
+        aceite.setCliente(cliente);
+        aceite.setMethod(FormaAceiteOrcamento.ORDEM_DE_COMPRA);
+        aceite.setAcceptedAt(OffsetDateTime.parse("2026-11-22T21:52:00Z"));
+        AceiteOrcamento aceiteSalvo = aceites.saveAndFlush(aceite);
+
+        byte[] conteudo = "%PDF-1.7 ordem de compra".getBytes(StandardCharsets.US_ASCII);
+        OrdemCompraOrcamento ordem = new OrdemCompraOrcamento();
+        ordem.setAceite(aceiteSalvo);
+        ordem.setFileName("ordem de compra.pdf");
+        ordem.setContentType(MediaType.APPLICATION_PDF_VALUE);
+        ordem.setContent(conteudo);
+        ordensCompra.saveAndFlush(ordem);
+
+        mockMvc.perform(
+                        get("/api/quotes/{id}", orcamentoMaisNovo.getId())
+                                .header("Authorization", tokenAdministrador))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.clientDecision.acceptance.hasPurchaseOrder").value(true));
+
+        mockMvc.perform(
+                        get("/api/quotes/{id}/purchase-order", orcamentoMaisNovo.getId())
+                                .header("Authorization", tokenAdministrador))
+                .andExpect(status().isOk())
+                .andExpect(content().contentType(MediaType.APPLICATION_PDF))
+                .andExpect(header().string(HttpHeaders.CONTENT_DISPOSITION, containsString("inline")))
+                .andExpect(header().string(HttpHeaders.CONTENT_DISPOSITION, containsString("ordem")))
+                .andExpect(header().string("X-Content-Type-Options", "nosniff"))
+                .andExpect(content().bytes(conteudo));
+
+        mockMvc.perform(
+                        get("/api/quotes/{id}/purchase-order", orcamentoMaisNovo.getId())
+                                .header("Authorization", tokenTecnico))
+                .andExpect(status().isForbidden());
+        mockMvc.perform(get("/api/quotes/{id}/purchase-order", orcamentoMaisNovo.getId()))
+                .andExpect(status().isUnauthorized());
+        mockMvc.perform(
+                        get("/api/quotes/{id}/purchase-order", orcamentoMesmoDia.getId())
+                                .header("Authorization", tokenAdministrador))
+                .andExpect(status().isNotFound());
+    }
+
+    @Test
     @DisplayName("cria orçamento em JSON com contato próprio e itens calculados")
     void criaOrcamentoJsonComContatoProprioEItens() throws Exception {
         String corpo = corpoOrcamento("NOVO-001", copel, "PendingAcceptance", "2", "15.00", "30.00");
@@ -1028,6 +1163,16 @@ class OrcamentoControllerTests {
         empresa.setContactPhone("41999990000");
         empresa.setContactEmail("contato@example.test");
         return empresas.saveAndFlush(empresa);
+    }
+
+    private Cliente criarClienteDoUsuarioAutenticado() {
+        Usuario usuario = usuarios.findByEmailIgnoreCase("cliente-orcamentos@example.test").orElseThrow();
+        Cliente cliente = new Cliente();
+        cliente.setUsuario(usuario);
+        cliente.setPhone("41999990000");
+        cliente.setPosition("Analista");
+        cliente.getEmpresas().add(copel);
+        return clientes.saveAndFlush(cliente);
     }
 
     private Orcamento criarOrcamento(

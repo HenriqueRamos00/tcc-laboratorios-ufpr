@@ -1,6 +1,22 @@
+import java.net.URI
+
 plugins {
     alias(libs.plugins.android.application)
 }
+
+// This is the portal server root, without /api. Login lives at /auth/login.
+val configuredApiUrl = providers.gradleProperty("portalApiUrl")
+    .orElse(providers.environmentVariable("PORTAL_API_URL")).orNull?.trim()?.takeIf { it.isNotEmpty() }
+fun apiRoot(value: String): String {
+    val uri = URI(value)
+    require(uri.scheme in listOf("http", "https") && !uri.host.isNullOrBlank() &&
+        uri.userInfo == null && uri.query == null && uri.fragment == null &&
+        !uri.path.orEmpty().trimEnd('/').endsWith("/api")) {
+        "portalApiUrl / PORTAL_API_URL must be a server root (http[s]://host[:port]/), without /api, credentials, query or fragment."
+    }
+    return value.trimEnd('/') + "/"
+}
+val debugApiUrl = apiRoot(configuredApiUrl ?: "http://127.0.0.1:5125/")
 
 android {
     namespace = "br.ufpr.lab_mobile"
@@ -21,7 +37,11 @@ android {
     }
 
     buildTypes {
+        debug {
+            resValue("string", "api_base_url", debugApiUrl)
+        }
         release {
+            resValue("string", "api_base_url", configuredApiUrl?.let(::apiRoot) ?: "https://configure-api-url.invalid/")
             isMinifyEnabled = false
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
@@ -35,7 +55,16 @@ android {
     }
     buildFeatures {
         buildConfig = true
+        resValues = true
         viewBinding = true
+    }
+}
+
+tasks.matching { it.name == "preReleaseBuild" }.configureEach {
+    doFirst {
+        require(configuredApiUrl != null && URI(apiRoot(configuredApiUrl)).scheme == "https") {
+            "Release requires an HTTPS portal root: -PportalApiUrl=https://your-api/ or PORTAL_API_URL."
+        }
     }
 }
 
