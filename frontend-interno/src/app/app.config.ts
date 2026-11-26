@@ -35,7 +35,11 @@ export const appConfig: ApplicationConfig = {
         config: {
           tokenGetter,
           allowedDomains: [],
-          disallowedRoutes: ['/api/auth/internal/login'],
+          disallowedRoutes: [
+            '/api/auth/internal/login',
+            '/api/auth/password/forgot',
+            '/api/auth/password/reset',
+          ],
         },
       }),
     ),

@@ -25,6 +25,8 @@ import java.util.List;
 @Component
 public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
+    private static final String BEARER_PREFIX = "Bearer ";
+
     private final JwtService jwtService;
     private final UsuarioRepository usuarioRepository;
 
@@ -39,8 +41,12 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
             throws ServletException, IOException {
         String authorization = request.getHeader(HttpHeaders.AUTHORIZATION);
 
-        if (authorization != null && authorization.startsWith("Bearer ")) {
-            String token = authorization.substring(7);
+        if (authorization != null && authorization.regionMatches(true, 0, BEARER_PREFIX, 0, BEARER_PREFIX.length())) {
+            String token = authorization.substring(BEARER_PREFIX.length());
+            if (token.isBlank()) {
+                filterChain.doFilter(request, response);
+                return;
+            }
             try {
                 boolean clientRoute =
                         request.getRequestURI()

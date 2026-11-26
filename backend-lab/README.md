@@ -99,6 +99,19 @@ APP_BIND_ADDRESS=0.0.0.0 docker compose up --build -d
 Essa configuração permite acesso pelas interfaces do host. O Compose integrado
 da raiz usa a rede Docker entre os serviços e dispensa esse ajuste.
 
+## Recuperação de senha e SMTP
+
+Administradores e Técnicos recuperam o acesso pelo Portal Interno, que chama o Spring diretamente. Clientes ativos com cadastro vinculado usam o Portal do Cliente, passando pela API C#.
+
+| Rota | Corpo JSON | Resposta |
+| --- | --- | --- |
+| `POST /api/auth/password/forgot` | `email` | 204 para solicitações válidas, inclusive quando a conta não existe ou está inativa |
+| `POST /api/auth/password/reset` | `token`, `password` | 204 ao trocar a senha; 400 para token inválido, expirado ou já usado |
+
+O token vale uma hora e só pode ser usado uma vez. Uma nova solicitação invalida os tokens anteriores; trocar a senha encerra as sessões anteriores. O link aponta para `INTERNAL_PORTAL_RECOVERY_URL` ou `CLIENT_PORTAL_RECOVERY_URL`, conforme o perfil.
+
+No Compose da raiz, preencha `SPRING_MAIL_*` no `.env` e habilite `SPRING_MAIL_ENABLED=true`. Na execução direta do Java, exporte as variáveis no processo. Veja a [configuração de e-mail](../README.md#e-mail-e-recuperação-de-senha). Falhas de envio aparecem nos logs de `PasswordRecoveryMailListener`.
+
 ## API disponível
 
 ### Health check

@@ -14,7 +14,7 @@ namespace Portal.Api.Controllers;
 [ApiController]
 [Route("auth")]
 public sealed class AuthController(
-    ILoginUseCase loginUseCase, PortalOptions source, ILogger<AuthController> logger,
+    ILoginUseCase loginUseCase, IClientPasswordRecovery passwordRecovery, PortalOptions source, ILogger<AuthController> logger,
     IClientProfileOperations profiles, IClientSessionStateVerifier? sessionVerifier = null) : ControllerBase
 {
     [HttpPost("login")]
@@ -57,6 +57,92 @@ public sealed class AuthController(
             return this.AsProblem(
                 StatusCodes.Status502BadGateway, "authentication-source-unavailable",
                 "Login indisponível.", "Não foi possível entrar no momento. Tente novamente em instantes.");
+        }
+    }
+
+    [HttpPost("recoveries")]
+    [AllowAnonymous]
+    [NoStore]
+    [ProducesResponseType(StatusCodes.Status202Accepted)]
+    [ProducesResponseType<ProblemDetails>(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType<ProblemDetails>(StatusCodes.Status502BadGateway)]
+    public async Task<IActionResult> RequestRecovery(
+        PasswordRecoveryRequest request, CancellationToken cancellationToken)
+    {
+        try
+        {
+            await passwordRecovery.RequestAsync(request.Email, cancellationToken);
+            return Accepted();
+        }
+        catch (AuthenticationSourceUnavailableException failure)
+        {
+            logger.LogWarning(failure, "A fonte de recuperação de senha está indisponível.");
+            return this.AsProblem(StatusCodes.Status502BadGateway,
+                "password-recovery-source-unavailable", "Recuperação indisponível.",
+                "Não foi possível solicitar a recuperação agora. Tente novamente em instantes.");
+        }
+    }
+
+    [HttpPost("password-resets")]
+    [AllowAnonymous]
+    [NoStore]
+    [ProducesResponseType(StatusCodes.Status204NoContent)]
+    [ProducesResponseType<ProblemDetails>(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType<ProblemDetails>(StatusCodes.Status502BadGateway)]
+    public async Task<IActionResult> ResetPassword(
+        PasswordResetRequest request, CancellationToken cancellationToken)
+    {
+        try
+        {
+            bool changed = await passwordRecovery.ResetAsync(
+                request.Token, request.Password, cancellationToken);
+            if (!changed)
+                return this.AsProblem(StatusCodes.Status400BadRequest,
+                    "invalid-password-reset", "Não foi possível redefinir a senha.",
+                    "O link pode ter expirado, já ter sido usado ou a senha não atender aos requisitos.");
+            return NoContent();
+        }
+        catch (AuthenticationSourceUnavailableException failure)
+        {
+            logger.LogWarning(failure, "A fonte de recuperação de senha está indisponível.");
+            return this.AsProblem(StatusCodes.Status502BadGateway,
+                "password-recovery-source-unavailable", "Recuperação indisponível.",
+                "Não foi possível redefinir a senha agora. Tente novamente em instantes.");
+        }
+    }
+
+    [HttpPost("confirmations")]
+    [AllowAnonymous]
+    [NoStore]
+    [ProducesResponseType(StatusCodes.Status204NoContent)]
+    [ProducesResponseType<ProblemDetails>(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType<ProblemDetails>(StatusCodes.Status501NotImplemented)]
+    [ProducesResponseType<ProblemDetails>(StatusCodes.Status502BadGateway)]
+    public async Task<IActionResult> ConfirmEmail(
+        EmailConfirmationRequest request, CancellationToken cancellationToken)
+    {
+        IClientEmailConfirmation? confirmation =
+            HttpContext.RequestServices.GetService<IClientEmailConfirmation>();
+        if (confirmation is null)
+            return this.AsProblem(StatusCodes.Status501NotImplemented,
+                "email-confirmation-not-available", "Confirmação indisponível.",
+                "Esta operação não está disponível para a fonte de autenticação configurada.");
+
+        try
+        {
+            bool confirmed = await confirmation.ConfirmAsync(request.Token, cancellationToken);
+            if (!confirmed)
+                return this.AsProblem(StatusCodes.Status400BadRequest,
+                    "invalid-email-confirmation", "Não foi possível confirmar o e-mail.",
+                    "O link pode ter expirado ou já ter sido utilizado.");
+            return NoContent();
+        }
+        catch (AuthenticationSourceUnavailableException failure)
+        {
+            logger.LogWarning(failure, "A fonte de confirmação de e-mail está indisponível.");
+            return this.AsProblem(StatusCodes.Status502BadGateway,
+                "email-confirmation-source-unavailable", "Confirmação indisponível.",
+                "Não foi possível confirmar o e-mail agora. Tente novamente em instantes.");
         }
     }
 

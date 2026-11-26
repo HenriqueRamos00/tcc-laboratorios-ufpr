@@ -36,7 +36,9 @@ public class SecurityConfig {
                                         .requestMatchers(
                                                 "/health",
                                                 "/api/auth/internal/login",
-                                                "/api/auth/login")
+                                                "/api/auth/login",
+                                                "/api/auth/password/forgot",
+                                                "/api/auth/password/reset")
                                         .permitAll()
                                         .requestMatchers(
                                                 "/api/auth/internal/profile/email-change/confirm",

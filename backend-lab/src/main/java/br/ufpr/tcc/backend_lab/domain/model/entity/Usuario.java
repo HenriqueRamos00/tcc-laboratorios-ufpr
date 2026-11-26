@@ -59,8 +59,12 @@ public class Usuario {
 	@Column(nullable = false)
 	private boolean ativo = true;
 
-	@Column(name = "credential_version", nullable = false, columnDefinition = "bigint default 0")
-	private long credentialVersion;
+	@Column(name = "senha_versao")
+	private Long credentialVersion;
+
+	public long getCredentialVersion() {
+		return credentialVersion == null ? 0L : credentialVersion;
+	}
 
 	@Column(nullable = false, columnDefinition = "integer default 0")
 	private int falhasSenhaAtual;
@@ -74,7 +78,7 @@ public class Usuario {
 	private String especialidade;
 
 	public void invalidateCredentials() {
-		credentialVersion++;
+		credentialVersion = getCredentialVersion() + 1;
 	}
 
 	@PrePersist

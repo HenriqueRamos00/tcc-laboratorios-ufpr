@@ -63,6 +63,20 @@ class MeuPerfilControllerTests {
     }
 
     @Test
+    void aceitaPrefixoBearerEmMinusculas() throws Exception {
+        Usuario tecnico = conta(PerfilUsuario.TECNICO);
+        mockMvc.perform(get("/api/auth/internal/profile")
+                        .header("Authorization", "bearer " + jwtService.generateToken(tecnico)))
+                .andExpect(status().isOk());
+    }
+
+    @Test
+    void rejeitaCabecalhoBearerSemToken() throws Exception {
+        mockMvc.perform(get("/api/auth/internal/profile").header("Authorization", "Bearer "))
+                .andExpect(status().isUnauthorized());
+    }
+
+    @Test
     void tecnicoConsultaEEditaSomenteOsDadosPessoaisPermitidos() throws Exception {
         Usuario tecnico = conta(PerfilUsuario.TECNICO);
         String token = jwtService.generateToken(tecnico);

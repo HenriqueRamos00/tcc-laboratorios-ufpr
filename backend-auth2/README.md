@@ -295,6 +295,13 @@ O C# expõe ao Portal do Cliente `GET` e `PATCH /api/profile`, `POST /api/profil
 
 ## Envio de e-mail
 
+Preencha `AUTH_MAIL_HOST`, `AUTH_MAIL_PORT`, `AUTH_MAIL_USERNAME`, `AUTH_MAIL_PASSWORD`
+e `AUTH_MAIL_SENDER` no `.env` da raiz, para `compose.auth.yaml`, ou no `.env` desta
+pasta, para o Compose isolado. Esses valores viram `SPRING_MAIL_*` no container;
+o remetente vira `AUTH_NOTIFICATION_SENDER`. Na execução direta do Java, exporte
+os nomes usados dentro do container. `SPRING_MAIL_ENABLED` só se aplica ao Backend Lab.
+Veja a [configuração de e-mail](../README.md#e-mail-e-recuperação-de-senha).
+
 O adaptador de servidor de e-mail existe: `notification/SmtpMessageTransport`, por SMTP, com
 os tres tempos limite da biblioteca declarados e STARTTLS obrigatorio.
 
