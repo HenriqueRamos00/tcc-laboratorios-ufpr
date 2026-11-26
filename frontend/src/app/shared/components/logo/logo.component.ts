@@ -17,8 +17,9 @@ import { ChangeDetectionStrategy, Component, computed, input } from '@angular/co
       @if (showWordmark()) {
         <span
           class="font-display font-semibold tracking-tight"
+          [class.text-lactec-paper]="variant() === 'light'"
+          [class.text-lactec-primary-deep]="variant() === 'dark'"
           [style.font-size.px]="size()"
-          [style.color]="wordmarkColor()"
         >Lactec</span>
       }
     </span>
@@ -32,7 +33,6 @@ export class LogoComponent {
   readonly showWordmark = input(true);
 
   readonly imgSize = computed(() => this.iconSize() ?? Math.round(this.size() * 1.15));
-  readonly wordmarkColor = computed(() => (this.variant() === 'light' ? '#FFFFFF' : '#0F4C5C'));
   readonly filter = computed(() =>
     this.variant() === 'light'
       ? 'brightness(0) invert(1)'

@@ -33,12 +33,12 @@ builder.Services.AddCors(options =>
             .WithExposedHeaders(["Retry-After", "Content-Disposition", .. PageQuery.ExposedHeaders]));
 });
 
-// The portal's camelCase used to be a default inherited from the host, not a declared
-// contract: it was enough for someone to serialize from outside for the body to turn
-// PascalCase, and the screen would not error, it would say there is no test data at all.
-// An enum as a number fails the same silent way, because the classification label and
-// color disappear without a message. Ignoring nulls also erases the field the screen uses
-// to tell an overview from a selected analysis.
+// O camelCase do portal era um padrao herdado do hospedeiro, e nao um contrato declarado:
+// bastava alguem serializar de fora para o corpo virar PascalCase, e a tela nao daria erro,
+// ela diria que nao existe nenhum dado de ensaio. Enum como numero falha do mesmo jeito
+// silencioso, porque o rotulo da classificacao e a cor desaparecem sem mensagem. Ignorar
+// nulo tambem apaga o campo que a tela usa para distinguir a visao geral da analise
+// selecionada.
 builder.Services
     .AddControllers()
     .AddJsonOptions(options =>
@@ -91,10 +91,10 @@ app.MapControllers();
 app.Run();
 
 /// <summary>
-/// The contract suite boots the real application with
-/// <c>WebApplicationFactory&lt;Program&gt;</c> and asserts on the HTTP body, not on
-/// isolated serialization. For that, the generated type of the top level file has to be
-/// reachable from outside the assembly.
+/// A suite de contrato sobe a aplicacao de verdade com
+/// <c>WebApplicationFactory&lt;Program&gt;</c> e afirma sobre o corpo HTTP, e nao sobre
+/// serializacao isolada. Para isso, o tipo gerado do arquivo de nivel superior precisa ser
+/// alcancavel de fora do assembly.
 /// </summary>
 public partial class Program
 {

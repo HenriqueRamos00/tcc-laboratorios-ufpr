@@ -6,7 +6,10 @@ using Portal.Domain.LabResults;
 
 namespace Portal.Adapters.LabResults;
 
-/// <summary>Explicitly disconnected until the client laboratory endpoints exist in Spring.</summary>
+/// <summary>
+/// Explicitamente desconectado enquanto os endpoints de laboratorio do cliente nao
+/// existirem no Spring.
+/// </summary>
 public sealed class NotConnectedLabTestRepository : ILabTestRepository
 {
     public Task<Page<SampleAnalysis>> GetAnalysesAsync(
