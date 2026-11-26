@@ -56,6 +56,12 @@ class EquipmentActivityTest {
     @Volatile private var status = 200
     @Volatile private var offline = false
     @Volatile private var responseGate: CountDownLatch? = null
+    /** Total de equipamentos numerados servidos em páginas; `null` responde sempre [body]. */
+    @Volatile private var numberedTotal: Int? = null
+    /** Página em que a API passa a falhar. */
+    @Volatile private var failingPage: Int? = null
+    /** Página que espera o portão aberto. */
+    @Volatile private var gatedPage: Int? = null
 
     @Before
     fun installResponses() {
@@ -64,10 +70,16 @@ class EquipmentActivityTest {
         oldBaseUrl = baseUrlField.get(null)
         val client = OkHttpClient.Builder().addInterceptor(TestSession.interceptor(context)).addInterceptor { chain ->
             requests.add(chain.request())
-            responseGate?.await(10, TimeUnit.SECONDS)
-            if (offline) throw IOException("Offline test")
+            val page = chain.request().url.queryParameter("page")?.toInt()
+            if (gatedPage == null || gatedPage == page) responseGate?.await(10, TimeUnit.SECONDS)
+            if (offline || (failingPage != null && page == failingPage)) throw IOException("Offline test")
+            val total = numberedTotal
+            val content = if (total == null) body else numberedPage(chain.request(), total) {
+                """{"id":"$it","serialNumber":"SN-$it","tag":"TR-$it"}"""
+            }
             Response.Builder().request(chain.request()).protocol(Protocol.HTTP_1_1).code(status)
-                .message("Instrumented response").body(body.toResponseBody()).build()
+                .message("Instrumented response").apply { total?.let { header("X-Total-Count", "$it") } }
+                .body(content.toResponseBody()).build()
         }.build()
         retrofitField.set(null, RetrofitProvider.retrofit(context.getString(R.string.api_base_url)).newBuilder().client(client).build())
     }
@@ -180,6 +192,97 @@ class EquipmentActivityTest {
         onActivity { it.findViewById<View>(R.id.retry).performClick() }
         awaitItems(3)
         assertEquals(4, requests.size)
+    }
+
+    @Test
+    fun firstPageIsShownWhileTheNextOnesArriveWithoutMovingTheList() {
+        numberedTotal = 45
+        gatedPage = 2
+        responseGate = CountDownLatch(1)
+        launch()
+        // Cabeçalho + 20 equipamentos + rodapé com o andamento.
+        await("first page shown before the second arrives") { check {
+            list(it).adapter!!.itemCount == 22 && it.findViewById<View>(R.id.loading)?.visibility == View.GONE
+        } }
+        onActivity { (list(it).layoutManager as LinearLayoutManager).scrollToPositionWithOffset(21, 0) }
+        await("footer tells the progress") { check {
+            it.findViewById<TextView>(R.id.moreMessage)?.text == context.getString(R.string.list_loading_more, 20, 45) &&
+                it.findViewById<View>(R.id.moreRetry)?.visibility == View.GONE
+        } }
+        onActivity { (list(it).layoutManager as LinearLayoutManager).scrollToPositionWithOffset(8, -15) }
+        await("scrolled to equipment 8") { check { (list(it).layoutManager as LinearLayoutManager).findFirstVisibleItemPosition() == 8 } }
+        var top = 0
+        onActivity { top = list(it).findViewHolderForAdapterPosition(8)!!.itemView.top }
+        responseGate!!.countDown()
+        awaitItems(45)
+        onActivity {
+            assertEquals(8, (list(it).layoutManager as LinearLayoutManager).findFirstVisibleItemPosition())
+            assertEquals("arriving pages never move what the client reads", top, list(it).findViewHolderForAdapterPosition(8)!!.itemView.top)
+        }
+        assertEquals(listOf("1", "2", "3"), requests.map { it.url.queryParameter("page") })
+    }
+
+    @Test
+    fun searchWhilePagesArriveOnlySaysNoMatchWhenTheListIsComplete() {
+        numberedTotal = 45
+        gatedPage = 2
+        responseGate = CountDownLatch(1)
+        launch()
+        await("first page shown") { check { list(it).adapter!!.itemCount == 22 } }
+        setSearch("SN-45")
+        await("no match yet, but still loading") { check {
+            list(it).adapter!!.itemCount == 2 && it.findViewById<View>(R.id.equipmentState).visibility == View.GONE &&
+                it.findViewById<TextView>(R.id.moreMessage)?.text == context.getString(R.string.list_loading_more, 20, 45)
+        } }
+        responseGate!!.countDown()
+        awaitItems(1)
+        setSearch("SN-99")
+        awaitState(R.string.equipment_no_matches)
+    }
+
+    @Test
+    fun failedPageKeepsWhatArrivedAndRetryResumesFromIt() {
+        numberedTotal = 45
+        failingPage = 2
+        launch()
+        await("first page kept after the second failed") { check { list(it).adapter!!.itemCount == 22 } }
+        onActivity {
+            assertEquals(View.GONE, it.findViewById<View>(R.id.equipmentState).visibility)
+            assertEquals(View.GONE, it.findViewById<View>(R.id.retry).visibility)
+            (list(it).layoutManager as LinearLayoutManager).scrollToPositionWithOffset(21, 0)
+        }
+        await("footer reports the failure and offers retry") { check {
+            it.findViewById<TextView>(R.id.moreMessage)?.text == context.getString(R.string.list_partial_error, 20, 45) &&
+                it.findViewById<View>(R.id.moreLoading)?.visibility == View.GONE &&
+                it.findViewById<View>(R.id.moreRetry)?.visibility == View.VISIBLE
+        } }
+        failingPage = null
+        onActivity { it.findViewById<View>(R.id.moreRetry).performClick() }
+        awaitItems(45)
+        assertEquals(listOf("1", "2", "2", "3"), requests.map { it.url.queryParameter("page") })
+    }
+
+    @Test
+    fun recreationRestoresAPositionBeyondTheFirstPage() {
+        numberedTotal = 45
+        launch()
+        awaitItems(45)
+        onActivity { (list(it).layoutManager as LinearLayoutManager).scrollToPositionWithOffset(35, -20) }
+        await("scrolled to equipment 35") { check { (list(it).layoutManager as LinearLayoutManager).findFirstVisibleItemPosition() == 35 } }
+        scenario!!.recreate()
+        awaitItems(45)
+        await("position restored once its page arrived") { check {
+            (list(it).layoutManager as LinearLayoutManager).findFirstVisibleItemPosition() == 35
+        } }
+    }
+
+    @Test
+    fun headerGreetsTheSignedInClient() {
+        launch()
+        awaitItems(3)
+        onActivity {
+            assertEquals(context.getString(R.string.portal_greeting, "Test Client"), it.findViewById<TextView>(R.id.quotes_greeting).text.toString())
+        }
     }
 
     @Test

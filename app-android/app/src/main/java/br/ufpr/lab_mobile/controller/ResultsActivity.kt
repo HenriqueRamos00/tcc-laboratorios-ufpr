@@ -1,23 +1,30 @@
 package br.ufpr.lab_mobile.controller
 
 import android.os.Bundle
+import android.widget.TextView
 import androidx.activity.enableEdgeToEdge
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowInsetsCompat
 import androidx.core.view.isVisible
 import androidx.core.widget.doAfterTextChanged
 import androidx.lifecycle.lifecycleScope
+import androidx.recyclerview.widget.ConcatAdapter
+import androidx.recyclerview.widget.LinearLayoutManager
 import br.ufpr.lab_mobile.R
-import br.ufpr.lab_mobile.adapter.ReportListView
+import br.ufpr.lab_mobile.adapter.FixedViewAdapter
+import br.ufpr.lab_mobile.adapter.ListFooterAdapter
+import br.ufpr.lab_mobile.adapter.ReportAdapter
 import br.ufpr.lab_mobile.adapter.bindReportedQuote
 import br.ufpr.lab_mobile.databinding.ActivityResultsBinding
 import br.ufpr.lab_mobile.databinding.ItemReportedQuoteBinding
+import br.ufpr.lab_mobile.databinding.ResultsListHeaderBinding
 import br.ufpr.lab_mobile.model.Quote
 import br.ufpr.lab_mobile.model.QuoteStage
 import br.ufpr.lab_mobile.model.QuoteStatusRules
 import br.ufpr.lab_mobile.model.Report
 import br.ufpr.lab_mobile.model.ResolvedQuoteStatus
 import br.ufpr.lab_mobile.model.filterReports
+import br.ufpr.lab_mobile.service.PagedList
 import br.ufpr.lab_mobile.service.QuoteApiService
 import br.ufpr.lab_mobile.service.QuoteService
 import br.ufpr.lab_mobile.service.ReportApiService
@@ -28,7 +35,6 @@ import java.util.Locale
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
-import retrofit2.HttpException
 
 /**
  * Tela "Relatórios" do menu, como a página de relatórios do portal web. Tem duas abas:
@@ -39,25 +45,24 @@ import retrofit2.HttpException
 class ResultsActivity : PortalActivity() {
     private enum class Tab { REPORTS, QUOTES }
 
-    /** Situação de uma lista vinda da API. */
-    private sealed interface ListState<out T> {
-        data object Loading : ListState<Nothing>
-        data class Loaded<T>(val items: List<T>) : ListState<T>
-        data class Failed(val message: Int, val retryable: Boolean) : ListState<Nothing>
-    }
-
     private lateinit var binding: ActivityResultsBinding
+    private lateinit var header: ResultsListHeaderBinding
     private lateinit var reportService: ReportService
     private lateinit var quoteService: QuoteService
-    private lateinit var reportList: ReportListView
     private lateinit var downloader: ReportDownloader
     private var portalDrawer: PortalDrawer? = null
     private var tab = Tab.REPORTS
-    private var reports: ListState<Report> = ListState.Loading
+    private lateinit var reports: PagedList<Report>
+    private var reportsStatus: LoadStatus = LoadStatus.Loading
+    private var quotes: List<Quote> = emptyList()
     /** `null` até a aba de orçamentos ser aberta pela primeira vez. */
-    private var quotes: ListState<Quote>? = null
+    private var quotesStatus: LoadStatus? = null
     private var reportsJob: Job? = null
     private var quotesJob: Job? = null
+    private val reportAdapter = ReportAdapter { report -> downloader.start(report) }
+    private val footerAdapter = ListFooterAdapter { loadReports() }
+
+    override val greeting: TextView? get() = if (::header.isInitialized) header.quotesGreeting else null
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -72,24 +77,28 @@ class ResultsActivity : PortalActivity() {
             insets
         }
         portalDrawer = PortalDrawer(this, PortalDestination.REPORTS)
+        binding.resultsScroll.layoutManager = LinearLayoutManager(this)
+        // O cabeçalho rola junto com os laudos, como na tela de equipamentos.
+        header = ResultsListHeaderBinding.inflate(layoutInflater, binding.resultsScroll, false)
+        binding.resultsScroll.adapter = ConcatAdapter(FixedViewAdapter(header.root), reportAdapter, footerAdapter)
 
         val retrofit = RetrofitProvider.retrofit(getString(R.string.api_base_url))
         reportService = ReportService(retrofit.create(ReportApiService::class.java))
         quoteService = QuoteService(retrofit.create(QuoteApiService::class.java))
-        reportList = ReportListView(binding.reportsList) { report -> downloader.start(report) }
-        downloader = ReportDownloader(this, reportService::downloadReport) { reportId -> reportList.setDownloading(reportId) }
+        reports = reportService.reports()
+        downloader = ReportDownloader(this, reportService::downloadReport) { reportId -> reportAdapter.setDownloading(reportId) }
         downloader.restoreState(savedInstanceState)
 
         tab = savedInstanceState?.getString(STATE_TAB)?.let(Tab::valueOf) ?: Tab.REPORTS
-        binding.resultsTabs.getTabAt(tab.ordinal)?.select()
-        binding.resultsTabs.addOnTabSelectedListener(object : TabLayout.OnTabSelectedListener {
+        header.resultsTabs.getTabAt(tab.ordinal)?.select()
+        header.resultsTabs.addOnTabSelectedListener(object : TabLayout.OnTabSelectedListener {
             override fun onTabSelected(selected: TabLayout.Tab) = selectTab(Tab.entries[selected.position])
             override fun onTabUnselected(unselected: TabLayout.Tab) = Unit
             override fun onTabReselected(reselected: TabLayout.Tab) = Unit
         })
-        binding.search.setText(savedInstanceState?.getString(STATE_SEARCH).orEmpty())
-        binding.search.doAfterTextChanged { render() }
-        binding.retry.setOnClickListener { if (tab == Tab.REPORTS) loadReports() else loadQuotes() }
+        header.search.setText(savedInstanceState?.getString(STATE_SEARCH).orEmpty())
+        header.search.doAfterTextChanged { render() }
+        header.retry.setOnClickListener { if (tab == Tab.REPORTS) loadReports() else loadQuotes() }
 
         loadReports()
         if (tab == Tab.QUOTES) loadQuotes()
@@ -99,7 +108,7 @@ class ResultsActivity : PortalActivity() {
     override fun onSaveInstanceState(outState: Bundle) {
         if (::binding.isInitialized) {
             outState.putString(STATE_TAB, tab.name)
-            outState.putString(STATE_SEARCH, binding.search.text?.toString())
+            outState.putString(STATE_SEARCH, header.search.text?.toString())
             downloader.saveState(outState)
         }
         super.onSaveInstanceState(outState)
@@ -114,93 +123,102 @@ class ResultsActivity : PortalActivity() {
         if (selected == tab) return
         tab = selected
         // Cada aba busca por campos diferentes, então o termo não é reaproveitado.
-        binding.search.setText("")
-        if (selected == Tab.QUOTES && quotes == null) loadQuotes()
+        header.search.setText("")
+        if (selected == Tab.QUOTES && quotesStatus == null) loadQuotes()
         render()
     }
 
+    /** Lê as páginas que faltam; depois de uma falha, continua de onde parou. */
     private fun loadReports() {
         reportsJob?.cancel()
-        reports = ListState.Loading
-        render()
+        reportsStatus = LoadStatus.Loading
+        renderReports()
         reportsJob = lifecycleScope.launch {
-            reports = try {
-                ListState.Loaded(reportService.getReports())
+            reportsStatus = try {
+                reports.loadRemaining(::renderReports)
+                LoadStatus.Complete
             } catch (error: CancellationException) {
                 throw error
             } catch (error: Exception) {
-                failure(error, R.string.reports_loading_error)
+                loadFailure(error, R.string.reports_loading_error, hasSession = sessions.current != null)
             }
-            render()
+            renderReports()
         }
     }
 
     private fun loadQuotes() {
         quotesJob?.cancel()
-        quotes = ListState.Loading
-        render()
+        quotesStatus = LoadStatus.Loading
+        renderQuotes()
         quotesJob = lifecycleScope.launch {
-            quotes = try {
+            quotesStatus = try {
                 // Igual ao web: só entram os orçamentos cuja etapa real é "Relatório publicado".
-                val published = quoteService.getQuotes(search = null, status = null).filter { quote ->
+                quotes = quoteService.getQuotes(search = null, status = null).filter { quote ->
                     QuoteStatusRules.resolve(quote) == ResolvedQuoteStatus.Progress(QuoteStage.PUBLISHED)
                 }
-                ListState.Loaded(published)
+                LoadStatus.Complete
             } catch (error: CancellationException) {
                 throw error
             } catch (error: Exception) {
-                failure(error, R.string.reported_quotes_loading_error)
+                loadFailure(error, R.string.reported_quotes_loading_error, hasSession = sessions.current != null)
             }
-            render()
+            renderQuotes()
         }
     }
-
-    private fun failure(error: Exception, message: Int): ListState.Failed =
-        if (error is HttpException && error.code() == 401) {
-            ListState.Failed(if (sessions.current == null) R.string.session_expired else message, retryable = false)
-        } else {
-            ListState.Failed(message, retryable = true)
-        }
 
     /** Redesenha a aba ativa a partir do estado atual e do termo de busca. */
     private fun render() {
-        val search = binding.search.text?.toString().orEmpty()
-        binding.search.setHint(if (tab == Tab.REPORTS) R.string.reports_search_hint else R.string.reported_quotes_search_hint)
-        binding.reportsList.isVisible = tab == Tab.REPORTS
-        binding.quotesList.isVisible = tab == Tab.QUOTES
-        when (tab) {
-            Tab.REPORTS -> {
-                val visible = (reports as? ListState.Loaded)?.items?.let { filterReports(it, search) }.orEmpty()
-                reportList.show(visible)
-                showState(reports, visible.isEmpty(), search, R.string.reports_empty, R.string.reports_no_matches)
-            }
-            Tab.QUOTES -> {
-                val state = quotes ?: ListState.Loading
-                val visible = (state as? ListState.Loaded)?.items?.let { filterQuotes(it, search) }.orEmpty()
-                showQuotes(visible)
-                showState(state, visible.isEmpty(), search, R.string.reported_quotes_empty, R.string.reported_quotes_no_matches)
-            }
+        header.search.setHint(if (tab == Tab.REPORTS) R.string.reports_search_hint else R.string.reported_quotes_search_hint)
+        header.quotesList.isVisible = tab == Tab.QUOTES
+        if (tab == Tab.REPORTS) {
+            renderReports()
+        } else {
+            reportAdapter.show(emptyList())
+            footerAdapter.show(null)
+            renderQuotes()
         }
     }
 
-    private fun showState(state: ListState<*>, nothingVisible: Boolean, search: String, empty: Int, noMatches: Int) {
-        binding.loading.isVisible = state is ListState.Loading
-        binding.retry.isVisible = state is ListState.Failed && state.retryable
+    private fun renderReports() {
+        if (tab != Tab.REPORTS) return
+        val search = header.search.text?.toString().orEmpty()
+        val loaded = reports.items
+        val visible = filterReports(loaded, search)
+        reportAdapter.show(visible)
+        footerAdapter.show(listFooter(reports, reportsStatus))
+        showState(reportsStatus, loaded.isEmpty(), visible.isEmpty(), search, R.string.reports_empty, R.string.reports_no_matches)
+    }
+
+    private fun renderQuotes() {
+        if (tab != Tab.QUOTES) return
+        val search = header.search.text?.toString().orEmpty()
+        val visible = filterQuotes(quotes, search)
+        showQuotes(visible)
+        showState(quotesStatus ?: LoadStatus.Loading, quotes.isEmpty(), visible.isEmpty(), search,
+            R.string.reported_quotes_empty, R.string.reported_quotes_no_matches)
+    }
+
+    /** O que aparece no lugar da lista. Com parte dela na tela, o andamento e a falha ficam no rodapé. */
+    private fun showState(status: LoadStatus, nothingLoaded: Boolean, nothingVisible: Boolean, search: String, empty: Int, noMatches: Int) {
+        val failure = (status as? LoadStatus.Failed)?.takeIf { nothingLoaded }
         val message = when {
-            state is ListState.Failed -> state.message
-            state is ListState.Loaded && nothingVisible -> if (search.isBlank()) empty else noMatches
-            else -> null
+            failure != null -> failure.message
+            status != LoadStatus.Complete || !nothingVisible -> null
+            search.isBlank() -> empty
+            else -> noMatches
         }
-        binding.resultsState.isVisible = message != null
-        if (message != null) binding.resultsState.setText(message)
+        header.loading.isVisible = status == LoadStatus.Loading && nothingLoaded
+        header.retry.isVisible = failure?.retryable == true
+        header.resultsState.isVisible = message != null
+        if (message != null) header.resultsState.setText(message)
     }
 
     private fun showQuotes(visible: List<Quote>) {
-        binding.quotesList.removeAllViews()
+        header.quotesList.removeAllViews()
         visible.forEach { quote ->
-            val item = ItemReportedQuoteBinding.inflate(layoutInflater, binding.quotesList, false)
+            val item = ItemReportedQuoteBinding.inflate(layoutInflater, header.quotesList, false)
             bindReportedQuote(item, quote) { QuoteReportsActivity.open(this, it.id) }
-            binding.quotesList.addView(item.root)
+            header.quotesList.addView(item.root)
         }
     }
 

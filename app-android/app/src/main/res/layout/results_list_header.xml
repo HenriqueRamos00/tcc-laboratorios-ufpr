@@ -1,0 +1,124 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Cabeçalho da tela "Relatórios": rola junto com a lista de laudos da primeira aba. -->
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:orientation="vertical">
+
+    <TextView
+        android:id="@+id/quotes_greeting"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:fontFamily="@font/instrument_sans"
+        android:text="@string/quotes_greeting"
+        android:textColor="@color/lactec_ink"
+        android:textSize="22sp"
+        android:textStyle="bold" />
+
+    <TextView
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="12dp"
+        android:accessibilityHeading="true"
+        android:fontFamily="@font/instrument_sans"
+        android:text="@string/results_title"
+        android:textColor="@color/lactec_ink"
+        android:textSize="19sp"
+        android:textStyle="bold" />
+
+    <TextView
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="3dp"
+        android:fontFamily="@font/inter"
+        android:text="@string/results_subtitle"
+        android:textColor="@color/lactec_muted"
+        android:textSize="13sp" />
+
+    <com.google.android.material.tabs.TabLayout
+        android:id="@+id/resultsTabs"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="12dp"
+        android:background="@android:color/transparent"
+        android:contentDescription="@string/results_tabs_description"
+        app:tabGravity="fill"
+        app:tabIndicatorColor="@color/lactec_primary"
+        app:tabMode="fixed"
+        app:tabSelectedTextColor="@color/lactec_ink"
+        app:tabTextAppearance="@style/TextAppearance.Lactec.Tab"
+        app:tabTextColor="@color/lactec_muted">
+
+        <com.google.android.material.tabs.TabItem
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="@string/results_tab_reports" />
+
+        <com.google.android.material.tabs.TabItem
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="@string/results_tab_quotes" />
+    </com.google.android.material.tabs.TabLayout>
+
+    <com.google.android.material.textfield.TextInputLayout
+        style="@style/Widget.Lactec.TextInputLayout"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="12dp"
+        app:hintEnabled="false"
+        app:startIconDrawable="@drawable/ic_search">
+        <com.google.android.material.textfield.TextInputEditText
+            android:id="@+id/search"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:hint="@string/reports_search_hint"
+            android:imeOptions="actionSearch"
+            android:inputType="text"
+            android:maxLines="1"
+            android:minHeight="48dp"
+            android:saveEnabled="false" />
+    </com.google.android.material.textfield.TextInputLayout>
+
+    <ProgressBar
+        android:id="@+id/loading"
+        android:layout_width="48dp"
+        android:layout_height="48dp"
+        android:layout_gravity="center_horizontal"
+        android:layout_marginTop="24dp"
+        android:contentDescription="@string/reports_loading"
+        android:indeterminateTint="@color/lactec_primary" />
+
+    <TextView
+        android:id="@+id/resultsState"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:accessibilityLiveRegion="polite"
+        android:fontFamily="@font/inter"
+        android:gravity="center"
+        android:padding="24dp"
+        android:textColor="@color/lactec_muted"
+        android:textSize="14sp"
+        android:visibility="gone"
+        tools:text="@string/reports_empty"
+        tools:visibility="visible" />
+
+    <com.google.android.material.button.MaterialButton
+        android:id="@+id/retry"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:minHeight="48dp"
+        android:text="@string/quote_status_retry"
+        android:textAllCaps="false"
+        android:visibility="gone"
+        app:cornerRadius="6dp" />
+
+    <!-- Aba "Orçamentos com relatório": cada orçamento vira um item_reported_quote. -->
+    <LinearLayout
+        android:id="@+id/quotesList"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:visibility="gone" />
+</LinearLayout>

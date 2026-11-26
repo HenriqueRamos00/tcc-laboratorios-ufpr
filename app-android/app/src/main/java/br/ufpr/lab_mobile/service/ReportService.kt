@@ -36,15 +36,15 @@ interface ReportApiService {
  * Consulta os laudos publicados do cliente no portal.
  *
  * A API pagina as listas e informa o total no header X-Total-Count. O app mostra tudo numa
- * lista rolável com busca local, então este serviço percorre as páginas e junta os itens.
+ * lista rolável com busca local, então este serviço percorre todas as páginas.
  */
 class ReportService(private val api: ReportApiService) {
-    /** Todos os laudos publicados que o cliente pode ver. */
-    suspend fun getReports(): List<Report> = collectPages(PAGE_SIZE) { page ->
+    /** Os laudos publicados que o cliente pode ver, página a página. */
+    fun reports(): PagedList<Report> = PagedList(PAGE_SIZE) { page ->
         val response = api.getReports(page, PAGE_SIZE)
         val reports = successBody(response) ?: throw IllegalStateException("Empty reports response")
-        PageResult(reports, totalCount(response))
-    }.withId()
+        PageResult(reports.withId(), totalCount(response))
+    }
 
     /** Conclusão da análise de um orçamento, ou `null` quando ainda não há laudo publicado (204). */
     suspend fun getQuoteReports(quoteId: String): QuoteReports? {
@@ -68,7 +68,7 @@ class ReportService(private val api: ReportApiService) {
     private fun List<Report>.withId() = filter { !it.id.isNullOrBlank() }
 
     private companion object {
-        /** Maior página aceita pela API (PageRequest.MaxPageSize). */
-        const val PAGE_SIZE = 200
+        /** Na fonte AutoLAB cada laudo da página custa uma consulta; páginas grandes estouram o tempo de leitura. */
+        const val PAGE_SIZE = 20
     }
 }

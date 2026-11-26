@@ -1,16 +1,17 @@
 package br.ufpr.lab_mobile
 
+import android.app.Activity
 import android.content.Intent
 import android.os.SystemClock
 import android.view.Gravity
 import android.view.KeyEvent
 import android.view.MotionEvent
 import android.view.View
-import android.view.ViewGroup
 import android.widget.EditText
 import android.widget.Spinner
 import android.widget.TextView
 import androidx.drawerlayout.widget.DrawerLayout
+import androidx.recyclerview.widget.RecyclerView
 import androidx.test.core.app.ActivityScenario
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
@@ -21,6 +22,8 @@ import br.ufpr.lab_mobile.controller.EquipmentActivity
 import br.ufpr.lab_mobile.controller.QuotesActivity
 import br.ufpr.lab_mobile.controller.ResultsActivity
 import br.ufpr.lab_mobile.service.RetrofitProvider
+import java.io.IOException
+import java.util.concurrent.ConcurrentLinkedQueue
 import okhttp3.Interceptor
 import okhttp3.OkHttpClient
 import okhttp3.Protocol
@@ -41,14 +44,28 @@ class SidebarResultsTest {
     private var oldRetrofit: Any? = null
     private var oldBaseUrl: Any? = null
     private var scenario: ActivityScenario<*>? = null
+    /** Total de laudos numerados servidos em páginas; `null` responde os laudos fixos. */
+    @Volatile private var numberedTotal: Int? = null
+    /** Página de laudos em que a API passa a falhar. */
+    @Volatile private var failingPage: Int? = null
+    private val reportPages = ConcurrentLinkedQueue<String>()
 
     @Before
     fun installOfflineQuotesResponse() {
         oldRetrofit = retrofitField.get(null)
         oldBaseUrl = baseUrlField.get(null)
         val client = OkHttpClient.Builder().addInterceptor(TestSession.interceptor(context)).addInterceptor(Interceptor { chain ->
+            val total = numberedTotal.takeIf { chain.request().url.encodedPath == "/api/reports" }
+            if (total != null) {
+                val page = chain.request().url.queryParameter("page")!!
+                reportPages.add(page)
+                if (page.toInt() == failingPage) throw IOException("Offline test")
+            }
+            val body = if (total == null) ReportFixtures.body(chain.request())
+                else numberedPage(chain.request(), total) { """{"id":"r-$it","identification":"LACTEC-$it"}""" }
             Response.Builder().request(chain.request()).protocol(Protocol.HTTP_1_1).code(200)
-                .message("Instrumented response").body(ReportFixtures.body(chain.request()).toResponseBody()).build()
+                .message("Instrumented response").apply { total?.let { header("X-Total-Count", "$it") } }
+                .body(body.toResponseBody()).build()
         }).build()
         retrofitField.set(null, RetrofitProvider.retrofit(context.getString(R.string.api_base_url)).newBuilder().client(client).build())
     }
@@ -64,10 +81,14 @@ class SidebarResultsTest {
     @Test
     fun resultsShowPublishedReportsFromApiSearchAndQuotesTab() {
         launchResults()
-        await("both reports loaded from the API") { checkActive { it.findViewById<ViewGroup>(R.id.reportsList).childCount == 2 } }
+        await("both reports loaded from the API") { checkActive { reportCount(it) == 2 } }
+        onActive {
+            assertEquals(context.getString(R.string.portal_greeting, "Test Client"), it.findViewById<TextView>(R.id.quotes_greeting).text.toString())
+            results(it).scrollToPosition(2)
+        }
+        await("both report cards on screen") { checkActive { reportCard(it, 0) != null && reportCard(it, 1) != null } }
         onActive { activity ->
-            val rows = activity.findViewById<ViewGroup>(R.id.reportsList)
-            val first = rows.getChildAt(0)
+            val first = reportCard(activity, 0)!!
             assertEquals("LACTEC-00307/2026", first.findViewById<TextView>(R.id.reportIdentification).text.toString())
             assertEquals("Solicitação: 00307/2026", first.findViewById<TextView>(R.id.requestNumber).text.toString())
             assertEquals("Amostra: Areia", first.findViewById<TextView>(R.id.sample).text.toString())
@@ -75,24 +96,58 @@ class SidebarResultsTest {
             assertEquals("Situação: Publicado", first.findViewById<TextView>(R.id.situation).text.toString())
             assertEquals("Publicação: 07/03/2026", first.findViewById<TextView>(R.id.publishedOn).text.toString())
             assertTrue(first.findViewById<View>(R.id.downloadReport).isEnabled)
-            val second = rows.getChildAt(1)
+            val second = reportCard(activity, 1)!!
             assertEquals("LACTEC-00308/2026", second.findViewById<TextView>(R.id.reportIdentification).text.toString())
             assertEquals("Publicação: 08/03/2026", second.findViewById<TextView>(R.id.publishedOn).text.toString())
-
+            results(activity).scrollToPosition(0)
+        }
+        await("search on screen") { checkActive { it.findViewById<View>(R.id.search) != null } }
+        onActive { activity ->
             activity.findViewById<EditText>(R.id.search).setText("00308")
-            assertEquals(1, rows.childCount)
+            assertEquals(1, reportCount(activity))
             activity.findViewById<EditText>(R.id.search).setText("inexistente")
-            assertEquals(0, rows.childCount)
+            assertEquals(0, reportCount(activity))
             assertEquals(View.VISIBLE, activity.findViewById<View>(R.id.resultsState).visibility)
             assertEquals(context.getString(R.string.reports_no_matches), activity.findViewById<TextView>(R.id.resultsState).text.toString())
 
             activity.findViewById<com.google.android.material.tabs.TabLayout>(R.id.resultsTabs).getTabAt(1)!!.select()
             assertEquals("", activity.findViewById<EditText>(R.id.search).text.toString())
-            assertEquals(View.GONE, rows.visibility)
+            assertEquals(0, reportCount(activity))
         }
         await("quotes tab shows its empty state") {
             checkActive { it.findViewById<TextView>(R.id.resultsState).text == context.getString(R.string.reported_quotes_empty) }
         }
+    }
+
+    @Test
+    fun reportsArriveInPagesAndAFailedPageCanBeResumed() {
+        numberedTotal = 45
+        failingPage = 2
+        launchResults()
+        // Cabeçalho + 20 laudos + rodapé com a falha.
+        await("first page kept after the second failed") { checkActive { results(it).adapter!!.itemCount == 22 } }
+        onActive {
+            assertEquals(View.GONE, it.findViewById<View>(R.id.resultsState).visibility)
+            assertEquals(View.GONE, it.findViewById<View>(R.id.loading).visibility)
+            results(it).scrollToPosition(21)
+        }
+        await("footer reports the failure and offers retry") { checkActive {
+            it.findViewById<TextView>(R.id.moreMessage)?.text == context.getString(R.string.list_partial_error, 20, 45) &&
+                it.findViewById<View>(R.id.moreRetry)?.visibility == View.VISIBLE
+        } }
+        failingPage = null
+        onActive { it.findViewById<View>(R.id.moreRetry).performClick() }
+        await("every report loaded and the footer gone") { checkActive { results(it).adapter!!.itemCount == 46 } }
+        onActive { results(it).scrollToPosition(0) }
+        await("tabs on screen") { checkActive { it.findViewById<View>(R.id.resultsTabs) != null } }
+        onActive {
+            val tabs = it.findViewById<com.google.android.material.tabs.TabLayout>(R.id.resultsTabs)
+            tabs.getTabAt(1)!!.select()
+            assertEquals("the quotes tab shows no report", 1, results(it).adapter!!.itemCount)
+            tabs.getTabAt(0)!!.select()
+            assertEquals("the reports come back without another request", 45, reportCount(it))
+        }
+        assertEquals(listOf("1", "2", "2", "3"), reportPages.toList())
     }
 
     @Test
@@ -205,6 +260,14 @@ class SidebarResultsTest {
         launchResults(token = null)
         await("missing session redirects to login") { activeActivity() is LoginActivity }
     }
+
+    private fun results(activity: Activity) = activity.findViewById<RecyclerView>(R.id.resultsScroll)
+
+    /** Laudos na lista, sem o cabeçalho; só vale com a lista completa, sem rodapé. */
+    private fun reportCount(activity: Activity) = results(activity).adapter!!.itemCount - 1
+
+    private fun reportCard(activity: Activity, index: Int): View? =
+        results(activity).findViewHolderForAdapterPosition(index + 1)?.itemView
 
     private fun launchResults(token: String? = "test-session") {
         val intent = Intent(context, ResultsActivity::class.java)

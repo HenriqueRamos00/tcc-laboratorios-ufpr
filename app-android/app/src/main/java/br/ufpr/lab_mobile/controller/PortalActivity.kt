@@ -21,6 +21,8 @@ abstract class PortalActivity : AppCompatActivity() {
     protected val sessions get() = portalApplication.sessions
     protected var hasSession = false
         private set
+    /** Onde a tela cumprimenta o cliente; as que o mostram dentro de uma lista informam a view. */
+    protected open val greeting: TextView? get() = findViewById(R.id.quotes_greeting)
     private var redirecting = false
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -33,7 +35,7 @@ abstract class PortalActivity : AppCompatActivity() {
                 launch {
                     sessions.session.collect { session ->
                         if (session?.id != initial.id) returnToLogin()
-                        else findViewById<TextView>(R.id.quotes_greeting)?.text = getString(R.string.portal_greeting, session.user.name)
+                        else greeting?.text = getString(R.string.portal_greeting, session.user.name)
                     }
                 }
                 launch {

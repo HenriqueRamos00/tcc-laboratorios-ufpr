@@ -233,6 +233,8 @@
     <string name="quote_status_not_found">Não encontramos um orçamento com esse identificador.</string>
     <string name="quote_status_loading_error">Não foi possível carregar o status. Verifique sua conexão e tente novamente.</string>
     <string name="quote_status_retry">Tentar novamente</string>
+    <string name="list_loading_more">Carregando mais… %1$d de %2$d</string>
+    <string name="list_partial_error">Só parte da lista foi carregada: %1$d de %2$d. Tente novamente para continuar.</string>
     <string name="quote_status_close">Fechar</string>
     <string name="quote_status_code">Proposta: %1$s</string>
     <string name="quote_status_code_missing">Código da proposta indisponível</string>
