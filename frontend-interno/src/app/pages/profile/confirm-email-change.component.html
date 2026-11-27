@@ -1,0 +1,34 @@
+<main class="email-confirmation-page">
+  <section class="email-confirmation-card" aria-labelledby="confirmation-title">
+    <app-logo variant="dark" [size]="24" [iconSize]="40" />
+
+    @if (state() === 'ready' || state() === 'submitting') {
+      <mat-icon class="email-confirmation-icon" aria-hidden="true">mark_email_read</mat-icon>
+      <h1 id="confirmation-title">Confirmar alteração de e-mail</h1>
+      <p>Confirme esta etapa da solicitação. A alteração só será concluída depois que os dois endereços forem confirmados.</p>
+      <button mat-flat-button type="button" [disabled]="state() === 'submitting'" (click)="confirm()">
+        {{ state() === 'submitting' ? 'Confirmando...' : 'Confirmar alteração' }}
+      </button>
+    } @else if (state() === 'awaiting') {
+      <mat-icon class="email-confirmation-icon" aria-hidden="true">schedule</mat-icon>
+      <h1 id="confirmation-title">Falta outra confirmação</h1>
+      <p>Esta etapa foi confirmada. A alteração será concluída quando o outro endereço também for confirmado.</p>
+      <a mat-stroked-button routerLink="/login">Ir para o login</a>
+    } @else if (state() === 'completed') {
+      <mat-icon class="email-confirmation-icon email-confirmation-icon--success" aria-hidden="true">check_circle</mat-icon>
+      <h1 id="confirmation-title">E-mail alterado</h1>
+      <p>Entre novamente com o novo endereço de e-mail.</p>
+      <a mat-flat-button routerLink="/login">Ir para o login</a>
+    } @else if (state() === 'error') {
+      <mat-icon class="email-confirmation-icon email-confirmation-icon--error" aria-hidden="true">error_outline</mat-icon>
+      <h1 id="confirmation-title">Não foi possível confirmar</h1>
+      <p role="alert">{{ errorMessage() }}</p>
+      <a mat-stroked-button routerLink="/login">Ir para o login</a>
+    } @else {
+      <mat-icon class="email-confirmation-icon email-confirmation-icon--error" aria-hidden="true">link_off</mat-icon>
+      <h1 id="confirmation-title">Link indisponível</h1>
+      <p>O link de confirmação não foi informado. Abra o link recebido no e-mail.</p>
+      <a mat-stroked-button routerLink="/login">Ir para o login</a>
+    }
+  </section>
+</main>

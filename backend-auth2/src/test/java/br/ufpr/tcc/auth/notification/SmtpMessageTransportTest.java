@@ -56,6 +56,8 @@ class SmtpMessageTransportTest {
     private static final String RECIPIENT = "pessoa@lactec.exemplo";
     private static final String CONFIRMATION_LINK = "https://portal.exemplo/confirmar?t={token}";
     private static final String RECOVERY_LINK = "https://portal.exemplo/nova-senha?t={token}";
+    private static final String EMAIL_CHANGE_LINK =
+            "https://portal.exemplo/cliente/perfil/confirmar-email?token={token}";
 
     /**
      * O adaptador apontado para uma porta, com as mesmas propriedades de sessao que o
@@ -78,7 +80,7 @@ class SmtpMessageTransportTest {
         properties.put("mail.smtp.starttls.required", "true");
         mailSender.setJavaMailProperties(properties);
         return new SmtpMessageTransport(mailSender, "nao-responda@lactec.exemplo",
-                CONFIRMATION_LINK, RECOVERY_LINK);
+                CONFIRMATION_LINK, RECOVERY_LINK, EMAIL_CHANGE_LINK);
     }
 
     private static OutboundMessage confirmation() {
@@ -245,7 +247,8 @@ class SmtpMessageTransportTest {
             properties.put("mail.smtp.timeout", "2000");
             mailSender.setJavaMailProperties(properties);
             SmtpMessageTransport transport = new SmtpMessageTransport(mailSender,
-                    "nao-responda@lactec.exemplo", CONFIRMATION_LINK, RECOVERY_LINK);
+                    "nao-responda@lactec.exemplo", CONFIRMATION_LINK, RECOVERY_LINK,
+                    EMAIL_CHANGE_LINK);
 
             transport.send(confirmation());
             conversation.join(5000);
@@ -304,13 +307,23 @@ class SmtpMessageTransportTest {
 
         assertThatThrownBy(() -> new SmtpMessageTransport(mailSender,
                 "nao-responda@lactec.exemplo", "https://portal.exemplo/confirmar",
-                RECOVERY_LINK))
+                RECOVERY_LINK, EMAIL_CHANGE_LINK))
                 .isInstanceOf(IllegalStateException.class)
                 .hasMessageContaining("confirmation-link");
         assertThatThrownBy(() -> new SmtpMessageTransport(mailSender,
                 "nao-responda@lactec.exemplo", CONFIRMATION_LINK,
-                "https://portal.exemplo/nova-senha"))
+                "https://portal.exemplo/nova-senha", EMAIL_CHANGE_LINK))
                 .isInstanceOf(IllegalStateException.class)
                 .hasMessageContaining("recovery-link");
+    }
+
+    @Test
+    @DisplayName("link de troca de e-mail inválido desabilita somente essa ação")
+    void emailChangeLinkWithoutPlaceholderDoesNotEnableThatAction() {
+        SmtpMessageTransport transport = new SmtpMessageTransport(new JavaMailSenderImpl(),
+                "nao-responda@lactec.exemplo", CONFIRMATION_LINK, RECOVERY_LINK,
+                "https://portal.exemplo/cliente/perfil/confirmar-email");
+
+        assertThat(transport.isEmailChangeAvailable()).isFalse();
     }
 }

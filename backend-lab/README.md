@@ -202,6 +202,16 @@ A idade considera apenas documentos aguardando validação, desde a preparação
 
 As respostas de lista e detalhe preservam o status comercial (`PendingAcceptance`, `InProgress`, `Finished`, `Refused` ou `Cancelled`) e retornam `stage` como texto não nulo, no vocabulário já reconhecido pelo Portal do Cliente. As etapas e aliases são definidos por `EtapaAcompanhamentoOrcamento`; a escrita rejeita etapas vazias ou desconhecidas. Sem ensaios, mantém-se a etapa persistida válida, mesmo que o status comercial mude. Recusa e cancelamento comerciais prevalecem com `Fechado recusado Lactec` e `Cancelado`. Com ensaios, o acompanhamento usa o menor avanço dos ativos; cancelados são desconsiderados quando há ativos, e todos cancelados apresentam `Cancelado`. O cadastro já inicia o acompanhamento em `Em execução`, mantendo o status interno `incomplete`; editar um ensaio não reinicia sua etapa. O cálculo não aceita comercialmente a proposta nem modifica o orçamento durante consultas. `Finalizado` não significa relatório publicado; execuções publicadas precisam de referência de laudo e data persistidas. A disponibilização dos laudos e as ações de transição HU26 permanecem próprias. A listagem consulta os estados necessários dos ensaios em lote, sem carregar medições ou PDFs. A leitura do documento não grava o PDF gerado nem altera o orçamento.
 
+### Perfil e segurança da conta
+
+O Portal Interno usa `GET` e `PATCH /api/auth/internal/profile` para consultar e editar o próprio perfil. Administradores e técnicos alteram o nome; unidade e especialidade do técnico são apenas leitura. O Portal do Cliente continua passando pela API C# e, no modo Backend Lab, o adapter usa as rotas `/api/client/profile` do Spring. O cliente pode alterar nome, telefone e cargo. As empresas vinculadas são apenas leitura.
+
+Senha e e-mail têm fluxos separados. A troca de senha exige a senha atual e invalida as sessões existentes. A troca de e-mail exige a senha atual e a confirmação de ambos os endereços. Cada link vale por uma hora e só pode ser usado uma vez. O usuário pode cancelar a solicitação pendente. O Spring guarda apenas os hashes dos tokens e limita novas solicitações. No modo de desenvolvimento, a função de troca de e-mail aparece somente quando o SMTP e o link de confirmação do portal estão configurados.
+
+No perfil, a nova senha exige pelo menos 12 caracteres, com maiúscula, minúscula e número. As duas trocas compartilham o limite de cinco erros de senha atual por conta em uma janela de 15 minutos. Durante o bloqueio, a API responde 429 com o tempo restante em `Retry-After`.
+
+Para habilitar o envio no Compose, configure `SPRING_MAIL_HOST`, `SPRING_MAIL_PORT`, `SPRING_MAIL_USERNAME`, `SPRING_MAIL_PASSWORD`, `SPRING_MAIL_SENDER`, `SPRING_MAIL_AUTH`, `SPRING_MAIL_STARTTLS_ENABLE` e `SPRING_MAIL_STARTTLS_REQUIRED`. Configure também `INTERNAL_PORTAL_EMAIL_CHANGE_LINK` e `CLIENT_PORTAL_EMAIL_CHANGE_LINK`, com `{token}` no endereço. Sem SMTP, o Backend Lab inicia normalmente e mantém disponíveis as demais funções de perfil. O banco local usa `JPA_DDL_AUTO=update`, que atualiza o schema de desenvolvimento ao iniciar.
+
 ## Execução local
 
 Inicie um PostgreSQL local com um banco chamado `backend_lab` e configure as variáveis de conexão. Em seguida, execute:
@@ -225,9 +235,12 @@ As principais variáveis da aplicação são:
 
 As configurações de JWT pertencem ao Spring e são fornecidas pelo `.env` da raiz
 no Compose integrado ou pelas variáveis de ambiente na execução isolada. Os tokens
-contêm identidade, perfil, emissão e expiração. A API
+contêm identidade, perfil, emissão, expiração e a versão atual das credenciais. A alteração
+de senha pelo usuário ou pela administração incrementa essa versão e invalida imediatamente
+todas as sessões já emitidas. Com `JPA_DDL_AUTO=update`, o Hibernate atualiza o schema ao
+iniciar a aplicação. Tokens anteriores sem a versão continuam válidos enquanto ela estiver em zero; a próxima alteração de senha ou e-mail os invalida. A API
 confere a assinatura HS256, a expiração, a data de emissão e o identificador
-imutável, e consulta a situação e o perfil atuais do usuário no banco. As rotas
+imutável, a versão das credenciais e consulta a situação e o perfil atuais do usuário no banco. As rotas
 separam o acesso de clientes e usuários internos pelo perfil. Alterar o segredo
 exige novo login.
 

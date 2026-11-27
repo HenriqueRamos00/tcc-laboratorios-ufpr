@@ -25,6 +25,8 @@ import java.util.List;
 @Component
 public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
+    private static final String BEARER_PREFIX = "Bearer ";
+
     private final JwtService jwtService;
     private final UsuarioRepository usuarioRepository;
 
@@ -39,8 +41,12 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
             throws ServletException, IOException {
         String authorization = request.getHeader(HttpHeaders.AUTHORIZATION);
 
-        if (authorization != null && authorization.startsWith("Bearer ")) {
-            String token = authorization.substring(7);
+        if (authorization != null && authorization.regionMatches(true, 0, BEARER_PREFIX, 0, BEARER_PREFIX.length())) {
+            String token = authorization.substring(BEARER_PREFIX.length());
+            if (token.isBlank()) {
+                filterChain.doFilter(request, response);
+                return;
+            }
             try {
                 boolean clientRoute =
                         request.getRequestURI()
@@ -50,7 +56,12 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                 Object userIdClaim = claims.get("userId");
                 String subject = claims.getSubject();
                 String roleClaim = claims.get("role", String.class);
-                Number credentialVersionClaim = claims.get("credentialVersion", Number.class);
+                Object credentialVersionClaim = claims.get("credentialVersion");
+                long credentialVersion = credentialVersionClaim == null
+                        ? 0
+                        : credentialVersionClaim instanceof Number version
+                                ? version.longValue()
+                                : -1;
                 var issuedAt = claims.getIssuedAt();
 
                 boolean hasSubject = subject != null && !subject.isBlank();
@@ -72,11 +83,9 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                             usuarioRepository
                                     .findById(userIdNumber.longValue())
                                     .filter(Usuario::isAtivo)
-                                    .filter(conta -> credentialVersionClaim == null
-                                            ? conta.getSenhaVersaoAtual() == 0L
-                                            : conta.getSenhaVersaoAtual() == credentialVersionClaim.longValue())
                                     .orElse(null);
                     if (usuario != null
+                            && usuario.getCredentialVersion() == credentialVersion
                             && (clientRoute
                                     ? usuario.getPerfil().name().equals("CLIENTE")
                                     : !usuario.getPerfil().name().equals("CLIENTE"))) {

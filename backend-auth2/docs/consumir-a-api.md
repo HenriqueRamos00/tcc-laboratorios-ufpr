@@ -40,12 +40,13 @@ Resposta **200**:
   "serviceCode": "portal-web",
   "authorizations": {
     "companyCnpjs": ["12345678000199"]
-  }
+  },
+  "credentialVersion": 0
 }
 ```
 
-Quatro coisas sobre esse corpo:
-
+- **`credentialVersion` identifica a credencial validada no login.** O C# grava essa versão
+  no JWT. O endpoint `session-state` informa a versão vigente ao validar sessões.
 - **Os CNPJs ficam em `authorizations.companyCnpjs`.** Este envelope segue o contrato
   consumido pela API C# do Portal do Cliente. A lista pode estar vazia quando a conta
   nao representa nenhuma empresa.
@@ -232,6 +233,28 @@ Dois pontos que mudaram e que a sua tela precisa refletir:
   o e-mail mais antigo da caixa e recebe 400 sem entender.
 
 A mensagem sai para o endereco **cadastrado**, nao para a grafia que voce enviou no pedido.
+
+## Perfil, senha e alteracao de e-mail
+
+O adapter da API C# usa a credencial da aplicacao para acessar o perfil do cliente autenticado. O identificador da conta vem da sessao validada no servidor e nao deve ser aceito do navegador.
+
+O perfil deixa alterar somente o nome. Empresas, papel, estado da conta e e-mail sao apenas leitura. A troca de senha exige a senha atual e a politica de senha deste servico. Depois da troca, as sessoes anteriores deixam de valer.
+
+Na troca pelo perfil, a nova senha exige pelo menos 12 caracteres, com maiúscula, minúscula e número. As trocas de senha e e-mail compartilham o limite de cinco erros de senha atual por conta em uma janela de 15 minutos. Durante o bloqueio, a API responde 429 com o tempo restante em `Retry-After`.
+
+Para trocar o e-mail, a pessoa informa a senha atual e o novo endereco. O servico envia um link para o endereco atual e outro para o novo. Os dois precisam ser confirmados em ate uma hora. Cada link pode ser usado uma vez. Enquanto a troca estiver pendente, a pessoa pode cancela-la. Uma troca de senha tambem invalida essa solicitacao. Sem SMTP e `AUTH_EMAIL_CHANGE_LINK` configurados, a acao nao fica disponivel.
+
+As rotas de autoatendimento exigem o token de aplicacao:
+
+| Verbo | Rota | O que faz |
+| --- | --- | --- |
+| GET, PATCH | `/api/self-service/accounts/{accountId}/profile` | consulta ou altera o nome |
+| POST | `/api/self-service/accounts/{accountId}/password` | altera a senha com a senha atual |
+| POST, DELETE | `/api/self-service/accounts/{accountId}/email-change` | solicita ou cancela a troca de e-mail |
+| POST | `/api/self-service/email-change/confirm` | confirma um dos enderecos |
+| GET | `/api/self-service/accounts/{accountId}/session-state` | informa o estado atual da sessao ao adapter |
+
+O adapter C# nao repassa o identificador da conta recebido do cliente. Ele usa a identidade autenticada e a fonte de dados configurada para montar essas chamadas.
 
 ## Cadastro de administrador, que a sua aplicacao nao alcanca
 

@@ -5,6 +5,7 @@ import java.sql.DriverManager;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
+import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
 import org.junit.jupiter.api.Tag;
@@ -48,7 +49,8 @@ public abstract class OracleIntegrationTestBase {
     static final OracleContainer ORACLE =
             new OracleContainer(DockerImageName.parse("gvenzl/oracle-free:slim-faststart"))
                     .withUsername(APPLICATION_USERNAME)
-                    .withPassword(CONTAINER_PASSWORD);
+                    .withPassword(CONTAINER_PASSWORD)
+                    .withStartupTimeout(Duration.ofMinutes(5));
 
     static {
         ORACLE.start();

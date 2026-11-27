@@ -22,6 +22,7 @@ export class DialogShellComponent {
 
   readonly title = input<string>();
   readonly subtitle = input<string>();
+  readonly closeRequest = input<(() => void) | null>(null);
 
   /** No mobile o fechar vive na navigation bar do topo, não dentro do modal. */
   readonly isHandset = toSignal(
@@ -30,6 +31,11 @@ export class DialogShellComponent {
   );
 
   close(): void {
+    const request = this.closeRequest();
+    if (request) {
+      request();
+      return;
+    }
     this.dialogRef?.close();
   }
 }

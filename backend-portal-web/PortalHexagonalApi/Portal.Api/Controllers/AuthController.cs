@@ -14,8 +14,8 @@ namespace Portal.Api.Controllers;
 [ApiController]
 [Route("auth")]
 public sealed class AuthController(
-    ILoginUseCase loginUseCase, IClientPasswordRecovery passwordRecovery,
-    PortalOptions source, ILogger<AuthController> logger) : ControllerBase
+    ILoginUseCase loginUseCase, IClientPasswordRecovery passwordRecovery, PortalOptions source, ILogger<AuthController> logger,
+    IClientProfileOperations profiles, IClientSessionStateVerifier? sessionVerifier = null) : ControllerBase
 {
     [HttpPost("login")]
     [AllowAnonymous]
@@ -152,19 +152,37 @@ public sealed class AuthController(
     [ProducesResponseType<LoginResponse>(StatusCodes.Status200OK)]
     [ProducesResponseType<ProblemDetails>(StatusCodes.Status401Unauthorized)]
     [ProducesResponseType<ProblemDetails>(StatusCodes.Status501NotImplemented)]
-    public async Task<IActionResult> Refresh()
+    public async Task<IActionResult> Refresh(CancellationToken cancellationToken)
     {
         PortalJwtService? jwt = HttpContext.RequestServices.GetService<PortalJwtService>();
         IOptions<BackendAuthOptions>? backend = HttpContext.RequestServices.GetService<IOptions<BackendAuthOptions>>();
 
-        if (source.DataSource != PortalOptions.LactecSource || jwt is null || backend is null)
+        if (source.DataSource != PortalOptions.LactecSource || jwt is null || backend is null
+            || sessionVerifier is null)
             return this.AsProblem(501, "session-renewal-not-available", "Renovação de sessão indisponível.",
                 "Esta operação está disponível no modo lactec.");
 
         bool presented = AuthenticationHeaderValue.TryParse(Request.Headers.Authorization.ToString(), out var header)
             && string.Equals(header.Scheme, "Bearer", StringComparison.OrdinalIgnoreCase)
             && !string.IsNullOrWhiteSpace(header.Parameter);
-        ClientSession? renewed = presented ? await jwt.RenewAsync(header!.Parameter!, backend.Value.ServiceCode) : null;
+        ClientSession? renewed;
+        try
+        {
+            renewed = presented
+                ? await jwt.RenewAsync(header!.Parameter!, backend.Value.ServiceCode,
+                    sessionVerifier, profiles, cancellationToken)
+                : null;
+        }
+        catch (AuthenticationSourceUnavailableException failure)
+        {
+            logger.LogWarning(failure, "A fonte não respondeu ao renovar a sessão.");
+            return this.AsProblem(502, "profile-source-unavailable", "Renovação indisponível.",
+                "Não foi possível validar a sessão agora. Tente novamente.");
+        }
+        catch (ProfileOperationException failure) when (failure.StatusCode == StatusCodes.Status401Unauthorized)
+        {
+            renewed = null;
+        }
 
         if (renewed is null)
         {
@@ -181,12 +199,30 @@ public sealed class AuthController(
     [ProducesResponseType<ClientUserResponse>(StatusCodes.Status200OK)]
     [ProducesResponseType<ProblemDetails>(StatusCodes.Status401Unauthorized)]
     [ProducesResponseType<ProblemDetails>(StatusCodes.Status501NotImplemented)]
-    public IActionResult Me()
+    public async Task<IActionResult> Me(CancellationToken cancellationToken)
     {
         if (source.DataSource != PortalOptions.LactecSource)
             return this.AsProblem(501, "current-user-not-available", "Consulta de sessão indisponível.",
                 "Esta operação está disponível no modo lactec.");
-        return Ok(ClientUserResponse.From(PortalJwtService.ReadUser(User)));
+
+        ClientUser user = PortalJwtService.ReadUser(User);
+        try
+        {
+            ClientProfile profile = await profiles.GetAsync(user.Id, cancellationToken);
+            return Ok(ClientUserResponse.From(user with { Name = profile.Name, Email = profile.Email }));
+        }
+        catch (ProfileOperationException failure) when (failure.StatusCode == StatusCodes.Status401Unauthorized)
+        {
+            Response.Headers.WWWAuthenticate = "Bearer";
+            return this.AsProblem(401, "session-expired", "Sessão expirada.",
+                "Entre novamente para continuar.");
+        }
+        catch (AuthenticationSourceUnavailableException failure)
+        {
+            logger.LogWarning(failure, "A fonte não respondeu ao consultar a sessão atual.");
+            return this.AsProblem(502, "profile-source-unavailable", "Consulta de sessão indisponível.",
+                "Não foi possível consultar a conta agora. Tente novamente.");
+        }
     }
 
 }

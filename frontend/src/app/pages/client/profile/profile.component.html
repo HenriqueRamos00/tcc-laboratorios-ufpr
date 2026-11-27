@@ -1,0 +1,217 @@
+<app-page-header
+  title="Meu perfil"
+  subtitle="Confira seus dados e gerencie o acesso à sua conta."
+  [breadcrumbs]="[
+    { label: 'Orçamentos', route: '/cliente/quotes' },
+    { label: 'Meu perfil' },
+  ]"
+/>
+
+@if (successMessage()) {
+  <p class="profile-feedback profile-feedback--success" role="status">
+    <mat-icon aria-hidden="true">check_circle</mat-icon>
+    <span>{{ successMessage() }}</span>
+  </p>
+}
+
+@if (errorMessage()) {
+  <p class="profile-feedback profile-feedback--error" role="alert">
+    <mat-icon aria-hidden="true">error_outline</mat-icon>
+    <span>{{ errorMessage() }}</span>
+  </p>
+}
+
+@if (loadState() === 'loading') {
+  <div class="profile-loading" role="status" aria-label="Carregando perfil">
+    <mat-icon class="animate-spin" aria-hidden="true">progress_activity</mat-icon>
+    <span>Carregando seus dados...</span>
+  </div>
+} @else if (loadState() === 'error') {
+  <section class="profile-error-card" aria-labelledby="profile-load-error">
+    <mat-icon aria-hidden="true">cloud_off</mat-icon>
+    <div>
+      <h2 id="profile-load-error">Não foi possível carregar seu perfil</h2>
+      <p>{{ errorMessage() }}</p>
+      <button mat-stroked-button type="button" (click)="loadProfile()">Tentar novamente</button>
+    </div>
+  </section>
+} @else {
+  @if (profile(); as data) {
+  <div class="profile-grid">
+    <section class="profile-card" aria-labelledby="personal-data-title">
+      <header class="profile-card__header">
+        <div class="profile-card__title">
+          <mat-icon aria-hidden="true">person_outline</mat-icon>
+          <h2 id="personal-data-title">Dados pessoais</h2>
+        </div>
+        @if (data.editableFields.length > 0) {
+          <button mat-stroked-button type="button" (click)="editPersonalData()">
+            <mat-icon aria-hidden="true">edit</mat-icon>
+            Editar dados pessoais
+          </button>
+        }
+      </header>
+
+      <div class="profile-identity">
+        <span class="profile-avatar" aria-hidden="true">{{ initials() }}</span>
+        <div class="min-w-0">
+          <p class="profile-identity__caption">Nome cadastrado na conta</p>
+          <p class="profile-identity__name">{{ data.name }}</p>
+        </div>
+      </div>
+
+      <dl class="profile-facts profile-facts--personal">
+        <div class="profile-fact">
+          <dt>E-mail de acesso</dt>
+          <dd>{{ data.email }}</dd>
+        </div>
+        @if (data.phone !== undefined) {
+          <div class="profile-fact">
+            <dt>Telefone</dt>
+            <dd>
+              @if (canApplyBrazilianPhoneMask(data.phone)) {
+                {{ data.phone | mask: masks.phone }}
+              } @else {
+                {{ data.phone }}
+              }
+            </dd>
+          </div>
+        }
+        @if (data.position !== undefined) {
+          <div class="profile-fact">
+            <dt>Cargo</dt>
+            <dd>{{ data.position }}</dd>
+          </div>
+        }
+      </dl>
+
+      @if (data.pendingEmailChange; as pending) {
+        <section class="profile-pending" aria-labelledby="pending-email-title">
+          <div class="profile-pending__heading">
+            <mat-icon aria-hidden="true">schedule</mat-icon>
+            <h3 id="pending-email-title">Alteração de e-mail pendente</h3>
+          </div>
+          @if (pending.currentEmailConfirmed) {
+            <p>Falta confirmar o novo e-mail.</p>
+          } @else if (pending.newEmailConfirmed) {
+            <p>Falta confirmar o e-mail atual.</p>
+          } @else {
+            <p>Enviamos um link para cada endereço. Confirme os dois para concluir a troca.</p>
+          }
+          <ul class="profile-confirmations" aria-label="Status da confirmação">
+            <li [class.profile-confirmations__done]="pending.currentEmailConfirmed">
+              <mat-icon aria-hidden="true">{{ pending.currentEmailConfirmed ? 'check_circle' : 'schedule' }}</mat-icon>
+              <span><strong>E-mail atual</strong> · {{ data.email }}</span>
+              <span class="profile-confirmations__status">{{ pending.currentEmailConfirmed ? 'Confirmado' : 'A confirmar' }}</span>
+            </li>
+            <li [class.profile-confirmations__done]="pending.newEmailConfirmed">
+              <mat-icon aria-hidden="true">{{ pending.newEmailConfirmed ? 'check_circle' : 'schedule' }}</mat-icon>
+              <span><strong>Novo e-mail</strong> · {{ pending.newEmail }}</span>
+              <span class="profile-confirmations__status">{{ pending.newEmailConfirmed ? 'Confirmado' : 'A confirmar' }}</span>
+            </li>
+          </ul>
+          <p>Continue usando o e-mail atual para entrar até concluir a troca.</p>
+          <p class="profile-pending__expiry">{{ expiryLabel() }}</p>
+          <button
+            mat-button
+            type="button"
+            [disabled]="pendingAction() === 'cancel-email'"
+            (click)="cancelEmailChange()"
+          >
+            {{ pendingAction() === 'cancel-email' ? 'Cancelando...' : 'Cancelar solicitação' }}
+          </button>
+        </section>
+      }
+    </section>
+
+    <section class="profile-card" aria-labelledby="security-title">
+      <header class="profile-card__header">
+        <div class="profile-card__title">
+          <mat-icon aria-hidden="true">lock_outline</mat-icon>
+          <h2 id="security-title">Acesso e segurança</h2>
+        </div>
+      </header>
+
+      <dl class="profile-facts">
+        <div class="profile-fact">
+          <dt>Perfil de acesso</dt>
+          <dd><span class="profile-role">{{ displayRole() }}</span></dd>
+        </div>
+        @if (data.active !== undefined) {
+          <div class="profile-fact">
+            <dt>Situação da conta</dt>
+            <dd>
+              <span class="profile-status" [class.profile-status--inactive]="!data.active">
+                {{ data.active ? 'Ativa' : 'Inativa' }}
+              </span>
+            </dd>
+          </div>
+        }
+      </dl>
+      <p class="profile-hint">As permissões de acesso são gerenciadas pela administração.</p>
+
+      @if (canDo('change-email')) {
+        <div class="profile-security-action">
+          <mat-icon aria-hidden="true">alternate_email</mat-icon>
+          <div>
+            <h3>E-mail de acesso</h3>
+            <p>Usado para entrar e recuperar sua senha.</p>
+            @if (data.pendingEmailChange) {
+              <span class="profile-hint">Conclua ou cancele a solicitação pendente para pedir outra alteração.</span>
+            } @else {
+              <button mat-button type="button" (click)="changeEmail()">Alterar e-mail</button>
+            }
+          </div>
+        </div>
+      }
+
+      @if (canDo('change-password')) {
+        <div class="profile-security-action">
+          <mat-icon aria-hidden="true">password</mat-icon>
+          <div>
+            <h3>Senha</h3>
+            <p>Informe sua senha atual para escolher outra.</p>
+            <button mat-button type="button" (click)="changePassword()">Alterar senha</button>
+          </div>
+        </div>
+      }
+    </section>
+
+    @if (data.companies.length > 0 || data.role.toUpperCase() === 'CLIENTE' || data.role.toUpperCase() === 'CLIENT') {
+      <section class="profile-card profile-card--companies" aria-labelledby="companies-title">
+        <header class="profile-card__header">
+          <div>
+            <div class="profile-card__title">
+              <mat-icon aria-hidden="true">business</mat-icon>
+              <h2 id="companies-title">Empresas vinculadas</h2>
+            </div>
+            <p class="profile-card__subtitle">Empresas às quais sua conta tem acesso.</p>
+          </div>
+        </header>
+        @if (data.companies.length === 0) {
+          <p class="profile-empty">Nenhuma empresa vinculada à sua conta.</p>
+        } @else {
+          <ul class="profile-companies">
+            @for (company of data.companies; track company.id ?? company.cnpj ?? company.name) {
+              <li>
+                <mat-icon aria-hidden="true">business</mat-icon>
+                <div class="min-w-0">
+                  @if (company.name) {
+                    <p class="profile-company-name">{{ company.name }}</p>
+                  }
+                  @if (company.cnpj) {
+                    <p class="profile-company-id">CNPJ: {{ company.cnpj }}</p>
+                  }
+                  @if (!company.name && !company.cnpj && company.id) {
+                    <code class="profile-company-id">{{ company.id }}</code>
+                  }
+                </div>
+              </li>
+            }
+          </ul>
+        }
+      </section>
+    }
+  </div>
+  }
+}

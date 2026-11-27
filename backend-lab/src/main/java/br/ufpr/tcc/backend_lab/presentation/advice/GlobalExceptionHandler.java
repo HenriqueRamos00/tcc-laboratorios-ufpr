@@ -9,11 +9,23 @@ import br.ufpr.tcc.backend_lab.domain.exception.DocumentoOrcamentoMuitoGrandeExc
 import br.ufpr.tcc.backend_lab.domain.exception.EmailJaCadastradoException;
 import br.ufpr.tcc.backend_lab.domain.exception.RegraNegocioException;
 import br.ufpr.tcc.backend_lab.domain.exception.RegraNegocioException.Motivo;
+import br.ufpr.tcc.backend_lab.domain.exception.PerfilInvalidoException;
+import br.ufpr.tcc.backend_lab.domain.exception.SenhaAtualIncorretaException;
+import br.ufpr.tcc.backend_lab.domain.exception.SenhaNovaInvalidaException;
+import br.ufpr.tcc.backend_lab.domain.exception.AlteracaoEmailIndisponivelException;
+import br.ufpr.tcc.backend_lab.domain.exception.ConflitoAlteracaoEmailException;
+import br.ufpr.tcc.backend_lab.domain.exception.EmailJaUtilizadoException;
+import br.ufpr.tcc.backend_lab.domain.exception.FalhaEnvioEmailException;
+import br.ufpr.tcc.backend_lab.domain.exception.LimiteAlteracaoEmailException;
+import br.ufpr.tcc.backend_lab.domain.exception.LimiteSenhaAtualException;
+import br.ufpr.tcc.backend_lab.domain.exception.TokenAlteracaoEmailInvalidoException;
 import br.ufpr.tcc.backend_lab.domain.exception.EquipamentoNaoEncontradoException;
 import br.ufpr.tcc.backend_lab.domain.exception.TecnicoNaoEncontradoException;
 import br.ufpr.tcc.backend_lab.infrastructure.persistence.ViolacaoUnicidade;
 import jakarta.persistence.OptimisticLockException;
+import jakarta.servlet.http.HttpServletRequest;
 
+import java.time.Duration;
 import java.util.stream.Collectors;
 
 import org.springframework.dao.DataIntegrityViolationException;
@@ -71,6 +83,87 @@ public class GlobalExceptionHandler {
     public ResponseEntity<ApiErrorResponse> handleRegraNegocio(RegraNegocioException exception) {
         return ResponseEntity.status(statusFor(exception.getMotivo()))
                 .body(new ApiErrorResponse(exception.getMessage()));
+    }
+
+    @ExceptionHandler(PerfilInvalidoException.class)
+    public ResponseEntity<ApiErrorResponse> handlePerfilInvalido(
+            PerfilInvalidoException exception, HttpServletRequest request) {
+        return ResponseEntity.badRequest()
+                .cacheControl(cacheControlForProfile(request))
+                .body(new ApiErrorResponse(exception.getMessage(), "invalid-profile"));
+    }
+
+    @ExceptionHandler(SenhaAtualIncorretaException.class)
+    public ResponseEntity<ApiErrorResponse> handleSenhaAtualIncorreta(
+            SenhaAtualIncorretaException exception, HttpServletRequest request) {
+        return ResponseEntity.badRequest()
+                .cacheControl(cacheControlForProfile(request))
+                .body(new ApiErrorResponse(exception.getMessage(), "current-password-incorrect"));
+    }
+
+    @ExceptionHandler(SenhaNovaInvalidaException.class)
+    public ResponseEntity<ApiErrorResponse> handleSenhaNovaInvalida(
+            SenhaNovaInvalidaException exception, HttpServletRequest request) {
+        return ResponseEntity.badRequest().cacheControl(cacheControlForProfile(request))
+                .body(new ApiErrorResponse(exception.getMessage(), "invalid-password"));
+    }
+
+    @ExceptionHandler(AlteracaoEmailIndisponivelException.class)
+    public ResponseEntity<ApiErrorResponse> handleAlteracaoEmailIndisponivel(
+            AlteracaoEmailIndisponivelException exception, HttpServletRequest request) {
+        return ResponseEntity.status(HttpStatus.NOT_IMPLEMENTED)
+                .cacheControl(cacheControlForProfile(request))
+                .body(new ApiErrorResponse(exception.getMessage(), "action-not-available"));
+    }
+
+    @ExceptionHandler(FalhaEnvioEmailException.class)
+    public ResponseEntity<ApiErrorResponse> handleFalhaEnvioEmail(
+            FalhaEnvioEmailException exception, HttpServletRequest request) {
+        return ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE)
+                .cacheControl(cacheControlForProfile(request))
+                .body(new ApiErrorResponse(exception.getMessage(), "email-delivery-unavailable"));
+    }
+
+    @ExceptionHandler(TokenAlteracaoEmailInvalidoException.class)
+    public ResponseEntity<ApiErrorResponse> handleTokenAlteracaoEmailInvalido(
+            TokenAlteracaoEmailInvalidoException exception, HttpServletRequest request) {
+        return ResponseEntity.badRequest().cacheControl(cacheControlForProfile(request))
+                .body(new ApiErrorResponse(exception.getMessage(), "invalid-email-change-token"));
+    }
+
+    @ExceptionHandler(ConflitoAlteracaoEmailException.class)
+    public ResponseEntity<ApiErrorResponse> handleConflitoAlteracaoEmail(
+            ConflitoAlteracaoEmailException exception, HttpServletRequest request) {
+        return ResponseEntity.status(HttpStatus.CONFLICT).cacheControl(cacheControlForProfile(request))
+                .body(new ApiErrorResponse(exception.getMessage(), "email-change-conflict"));
+    }
+
+    @ExceptionHandler(EmailJaUtilizadoException.class)
+    public ResponseEntity<ApiErrorResponse> handleEmailJaUtilizado(
+            EmailJaUtilizadoException exception, HttpServletRequest request) {
+        return ResponseEntity.status(HttpStatus.CONFLICT).cacheControl(cacheControlForProfile(request))
+                .body(new ApiErrorResponse(exception.getMessage(), "email-already-in-use"));
+    }
+
+    @ExceptionHandler(LimiteAlteracaoEmailException.class)
+    public ResponseEntity<ApiErrorResponse> handleLimiteAlteracaoEmail(
+            LimiteAlteracaoEmailException exception, HttpServletRequest request) {
+        return limitePerfil(exception.getTempoRestante(), exception.getMessage(), request);
+    }
+
+    @ExceptionHandler(LimiteSenhaAtualException.class)
+    public ResponseEntity<ApiErrorResponse> handleLimiteSenhaAtual(
+            LimiteSenhaAtualException exception, HttpServletRequest request) {
+        return limitePerfil(exception.getTempoRestante(), exception.getMessage(), request);
+    }
+
+    private ResponseEntity<ApiErrorResponse> limitePerfil(
+            Duration tempoRestante, String mensagem, HttpServletRequest request) {
+        long segundos = Math.max(1, (long) Math.ceil(tempoRestante.toMillis() / 1000.0));
+        return ResponseEntity.status(HttpStatus.TOO_MANY_REQUESTS)
+                .header("Retry-After", Long.toString(segundos))
+                .cacheControl(cacheControlForProfile(request))
+                .body(new ApiErrorResponse(mensagem, "rate-limit-exceeded"));
     }
 
     @ExceptionHandler(DocumentoOrcamentoMuitoGrandeException.class)
@@ -150,12 +243,22 @@ public class GlobalExceptionHandler {
 
     @ExceptionHandler(MethodArgumentNotValidException.class)
     public ResponseEntity<ApiErrorResponse> handleValidation(
-            MethodArgumentNotValidException exception) {
+            MethodArgumentNotValidException exception, HttpServletRequest request) {
         String message =
                 exception.getBindingResult().getFieldErrors().stream()
                         .map(error -> error.getDefaultMessage())
                         .collect(Collectors.joining(", "));
-        return ResponseEntity.badRequest().body(new ApiErrorResponse(message));
+        String uri = request.getRequestURI();
+        String code = uri.endsWith("/password") ? "invalid-password"
+                : uri.contains("/profile") ? "invalid-profile" : null;
+        return ResponseEntity.badRequest().cacheControl(cacheControlForProfile(request))
+                .body(new ApiErrorResponse(message, code));
+    }
+
+    private org.springframework.http.CacheControl cacheControlForProfile(HttpServletRequest request) {
+        return request.getRequestURI().contains("/profile")
+                ? org.springframework.http.CacheControl.noStore()
+                : org.springframework.http.CacheControl.empty();
     }
 
     @ExceptionHandler({

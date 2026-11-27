@@ -48,7 +48,7 @@ public class JwtService {
                 .subject(usuario.getEmail())
                 .claim("userId", usuario.getId())
                 .claim("role", usuario.getPerfil().name())
-                .claim("credentialVersion", usuario.getSenhaVersaoAtual())
+                .claim("credentialVersion", usuario.getCredentialVersion())
                 .issuedAt(Date.from(issuedAt))
                 .expiration(Date.from(expiresAt))
                 .signWith(signingKey, Jwts.SIG.HS256)

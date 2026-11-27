@@ -7,7 +7,8 @@ public record ClientSession(string AccessToken, string TokenType, long ExpiresIn
 
 public record ClientUser(
     string Id, string Name, string Email, string Role, IReadOnlyList<ClientCompany>? Companies,
-    string? ServiceCode = null, ClientAuthorizations? Authorizations = null);
+    string? ServiceCode = null, ClientAuthorizations? Authorizations = null,
+    long? CredentialVersion = null);
 
 public record ClientCompany(string Id, string Name);
 

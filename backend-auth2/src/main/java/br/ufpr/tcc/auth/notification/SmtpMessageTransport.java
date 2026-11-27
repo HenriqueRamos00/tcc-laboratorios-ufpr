@@ -7,7 +7,7 @@ import java.net.ConnectException;
 import java.net.SocketTimeoutException;
 import java.util.Locale;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
+import org.springframework.context.annotation.Conditional;
 import org.springframework.mail.MailAuthenticationException;
 import org.springframework.mail.MailException;
 import org.springframework.mail.SimpleMailMessage;
@@ -33,7 +33,7 @@ import org.springframework.stereotype.Component;
  * classificado e o nome da classe original, e nada mais.
  */
 @Component
-@ConditionalOnProperty(prefix = "spring.mail", name = "host")
+@Conditional(MailHostConfiguredCondition.class)
 class SmtpMessageTransport implements MessageTransport {
 
     private static final String TOKEN_PLACEHOLDER = "{token}";
@@ -46,14 +46,22 @@ class SmtpMessageTransport implements MessageTransport {
 
     private final String recoveryLink;
 
+    private final String emailChangeLink;
+
     SmtpMessageTransport(JavaMailSender mailSender,
             @Value("${auth.notification.sender}") String sender,
             @Value("${auth.notification.confirmation-link}") String confirmationLink,
-            @Value("${auth.notification.recovery-link}") String recoveryLink) {
+            @Value("${auth.notification.recovery-link}") String recoveryLink,
+            @Value("${auth.notification.email-change-link:}") String emailChangeLink) {
         this.mailSender = mailSender;
         this.sender = sender;
         this.confirmationLink = requirePlaceholder(confirmationLink, "confirmation-link");
         this.recoveryLink = requirePlaceholder(recoveryLink, "recovery-link");
+        // Instalações anteriores à troca de e-mail continuam enviando confirmação e
+        // recuperação. Sem a nova URL não há ação de troca disponível e nenhum link
+        // incorreto é enviado.
+        this.emailChangeLink = emailChangeLink != null && emailChangeLink.contains(TOKEN_PLACEHOLDER)
+                ? emailChangeLink : "";
     }
 
     private static String requirePlaceholder(String template, String propertyName) {
@@ -127,6 +135,7 @@ class SmtpMessageTransport implements MessageTransport {
         return switch (purpose) {
             case EMAIL_CONFIRMATION -> "Confirme seu endereco de e-mail";
             case PASSWORD_RECOVERY -> "Recuperacao de senha";
+            case EMAIL_CHANGE_CURRENT, EMAIL_CHANGE_NEW -> "Confirmacao de alteracao de e-mail";
         };
     }
 
@@ -158,6 +167,25 @@ class SmtpMessageTransport implements MessageTransport {
                     Se nao foi voce quem pediu, ignore esta mensagem: a senha atual
                     continua valendo.
                     """.formatted(link);
+            case EMAIL_CHANGE_CURRENT -> """
+                    Foi solicitada a alteracao do e-mail da sua conta. Confirme que voce
+                    reconhece a solicitacao pelo endereco atual usando o link abaixo.
+                    Ele vale uma vez e por tempo limitado.
+
+                    %s
+
+                    Se nao foi voce quem pediu, ignore esta mensagem: o e-mail cadastrado
+                    continua valendo.
+                    """.formatted(link);
+            case EMAIL_CHANGE_NEW -> """
+                    Foi solicitada a alteracao do e-mail da sua conta para este endereco.
+                    Confirme o novo endereco pelo link abaixo. Ele vale uma vez e por tempo
+                    limitado.
+
+                    %s
+
+                    Se nao foi voce quem pediu, ignore esta mensagem.
+                    """.formatted(link);
         };
     }
 
@@ -165,6 +193,16 @@ class SmtpMessageTransport implements MessageTransport {
         return switch (purpose) {
             case EMAIL_CONFIRMATION -> confirmationLink;
             case PASSWORD_RECOVERY -> recoveryLink;
+            case EMAIL_CHANGE_CURRENT, EMAIL_CHANGE_NEW -> {
+                if (emailChangeLink.isBlank()) {
+                    throw new IllegalStateException("A troca de e-mail exige auth.notification.email-change-link");
+                }
+                yield emailChangeLink;
+            }
         };
+    }
+
+    boolean isEmailChangeAvailable() {
+        return !emailChangeLink.isBlank();
     }
 }

@@ -221,6 +221,7 @@ public sealed class QuoteStageContractTests
         name = "Cliente",
         email = "client@example.test",
         role = "CLIENTE",
+        credentialVersion = 0,
         serviceCode = "portal-web",
         authorizations = new { companyCnpjs = new[] { cnpj } }
     });

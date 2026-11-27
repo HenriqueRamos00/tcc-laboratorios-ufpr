@@ -160,6 +160,23 @@ class TecnicoControllerTests {
 				.andExpect(status().isUnauthorized());
 	}
 
+	@Test
+	void mantemTokenLegadoAteQueAsCredenciaisSejamAlteradas() throws Exception {
+		Usuario admin = usuarioRepository.saveAndFlush(usuario(PerfilUsuario.ADMIN, "admin@example.test", true));
+		String token = tokenPara(admin)
+				.signWith(Keys.hmacShaKeyFor(jwtSecret.getBytes(StandardCharsets.UTF_8)), Jwts.SIG.HS256)
+				.compact();
+
+		mockMvc.perform(get("/api/technicians").header("Authorization", bearer(token)))
+				.andExpect(status().isOk());
+
+		admin.invalidateCredentials();
+		usuarioRepository.saveAndFlush(admin);
+
+		mockMvc.perform(get("/api/technicians").header("Authorization", bearer(token)))
+				.andExpect(status().isUnauthorized());
+	}
+
 	private JwtBuilder tokenPara(Usuario usuario) {
 		Instant agora = Instant.now();
 		return Jwts.builder()

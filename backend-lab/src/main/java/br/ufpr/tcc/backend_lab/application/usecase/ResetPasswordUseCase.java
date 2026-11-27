@@ -19,6 +19,7 @@ public class ResetPasswordUseCase {
     private final PasswordEncoder passwordEncoder;
     private final SenhaValidator senhaValidator;
     private final PasswordRecoveryPasswordPolicy recoveryPasswordPolicy;
+    private final EmailChangeService emailChangeService;
 
     @Transactional
     public boolean execute(String presentedToken, String password) {
@@ -38,7 +39,8 @@ public class ResetPasswordUseCase {
         token.consumeAt(now);
         tokens.consumePendingForUser(user.getId(), now);
         user.setSenhaHash(passwordEncoder.encode(password));
-        user.setSenhaVersao(user.getSenhaVersaoAtual() + 1);
+        user.invalidateCredentials();
+        emailChangeService.invalidar(user.getId());
         return true;
     }
 }

@@ -200,6 +200,35 @@ export const routes: Routes = [
   },
 
   {
+    path: 'perfil',
+    loadComponent: () =>
+      import('@/app/layouts/shell/shell.component').then(
+        (module) => module.ShellComponent,
+      ),
+    canActivate: [authGuard],
+    children: [
+      {
+        path: '',
+        pathMatch: 'full',
+        loadComponent: () =>
+          import('@/app/pages/profile/profile.component').then(
+            (module) => module.ProfileComponent,
+          ),
+        title: 'Meu perfil - Portal Interno Lactec',
+      },
+    ],
+  },
+
+  {
+    path: 'confirmar-alteracao-email',
+    loadComponent: () =>
+      import('@/app/pages/profile/confirm-email-change.component').then(
+        (module) => module.ConfirmEmailChangeComponent,
+      ),
+    title: 'Confirmar alteração de e-mail - Portal Interno Lactec',
+  },
+
+  {
     path: '404',
     loadComponent: () =>
       import('@/app/pages/errors/not-found/not-found.component').then(

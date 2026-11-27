@@ -5,5 +5,5 @@ package br.ufpr.tcc.auth.account;
  * empresa. O diretorio agrupa as linhas. Publico para instanciacao pela consulta JPA.
  */
 public record StoredCredentialRow(long id, String name, String email, String passwordHash,
-        boolean emailConfirmed, boolean active, String cnpj) {
+        boolean emailConfirmed, boolean active, long credentialVersion, String cnpj) {
 }

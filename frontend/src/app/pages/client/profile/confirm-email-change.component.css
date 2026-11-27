@@ -1,0 +1,53 @@
+.email-confirmation-page {
+  display: grid;
+  min-height: 100dvh;
+  place-items: center;
+  background: var(--color-lactec-surface);
+  padding: 1.5rem;
+}
+
+.email-confirmation-card {
+  display: flex;
+  width: min(100%, 34rem);
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 1rem;
+  border: 1px solid var(--color-lactec-line);
+  border-radius: 2rem;
+  background: var(--color-lactec-paper);
+  padding: clamp(1.5rem, 5vw, 2.5rem);
+}
+
+.email-confirmation-card h1,
+.email-confirmation-card p {
+  margin: 0;
+}
+
+.email-confirmation-card h1 {
+  color: var(--color-lactec-ink);
+  font-family: var(--font-display);
+  font-size: 1.5rem;
+  font-weight: 600;
+}
+
+.email-confirmation-card p {
+  color: var(--color-lactec-muted);
+  font-size: 0.875rem;
+  line-height: 1.55;
+}
+
+.email-confirmation-icon {
+  width: 2rem;
+  height: 2rem;
+  margin-top: 1rem;
+  color: var(--color-lactec-primary);
+  font-size: 2rem;
+}
+
+.email-confirmation-icon--success {
+  color: var(--color-lactec-success-ink);
+}
+
+.email-confirmation-icon--error {
+  color: var(--color-lactec-danger-ink);
+}

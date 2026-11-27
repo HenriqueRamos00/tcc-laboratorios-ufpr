@@ -46,6 +46,8 @@ services:
       AUTH_SEED_TECHNICIAN_NAME: ${AUTH_SEED_TECHNICIAN_NAME:-}
       AUTH_SEED_TECHNICIAN_EMAIL: ${AUTH_SEED_TECHNICIAN_EMAIL:-}
       AUTH_SEED_TECHNICIAN_PASSWORD: ${AUTH_SEED_TECHNICIAN_PASSWORD:-}
+      INTERNAL_PORTAL_EMAIL_CHANGE_LINK: ${INTERNAL_PORTAL_EMAIL_CHANGE_LINK:-http://localhost:4201/confirmar-alteracao-email?token={token}}
+      CLIENT_PORTAL_EMAIL_CHANGE_LINK: ${CLIENT_PORTAL_EMAIL_CHANGE_LINK:-http://localhost:4200/confirmar-alteracao-email?token={token}}
     ports:
       - "${APP_BIND_ADDRESS:-127.0.0.1}:${APP_PORT:-8080}:8080"
     depends_on:

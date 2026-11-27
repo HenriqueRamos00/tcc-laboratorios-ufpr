@@ -22,15 +22,18 @@ import org.springframework.transaction.annotation.Transactional;
 public class UpdateTecnicoUseCase {
 	private final UsuarioRepository usuarioRepository;
 	private final PasswordEncoder passwordEncoder;
+	private final EmailChangeService emailChangeService;
 
 	@Transactional
 	public TecnicoResponse execute(Long id, UpdateTecnicoRequest request) {
-		Usuario tecnico = usuarioRepository.findById(id)
+		Usuario tecnico = usuarioRepository.findByIdForUpdate(id)
 				.filter(usuario -> usuario.getPerfil() == PerfilUsuario.TECNICO)
 				.orElseThrow(() -> new TecnicoNaoEncontradoException(id));
 
 		String email = request.email().trim().toLowerCase(Locale.ROOT);
-		if (!tecnico.getEmail().equalsIgnoreCase(email) && usuarioRepository.existsByEmailIgnoreCase(email)) {
+		boolean emailAlterado = !tecnico.getEmail().equalsIgnoreCase(email);
+		boolean senhaAlterada = request.password() != null && !request.password().isBlank();
+		if (emailAlterado && usuarioRepository.existsByEmailIgnoreCase(email)) {
 			throw new EmailJaCadastradoException();
 		}
 
@@ -39,9 +42,12 @@ public class UpdateTecnicoUseCase {
 		tecnico.setUnidade(request.unit().trim());
 		tecnico.setEspecialidade(request.specialty().trim());
 		tecnico.setAtivo(request.status().toAtivo());
-		if (request.password() != null && !request.password().isBlank()) {
+		if (senhaAlterada) {
 			tecnico.setSenhaHash(passwordEncoder.encode(request.password()));
-			tecnico.setSenhaVersao(tecnico.getSenhaVersaoAtual() + 1);
+		}
+		if (emailAlterado || senhaAlterada) {
+			tecnico.invalidateCredentials();
+			emailChangeService.invalidar(tecnico.getId());
 		}
 		try {
 			return TecnicoResponse.fromEntity(usuarioRepository.saveAndFlush(tecnico));

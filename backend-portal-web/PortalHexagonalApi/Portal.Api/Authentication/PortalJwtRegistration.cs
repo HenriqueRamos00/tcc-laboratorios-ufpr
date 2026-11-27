@@ -9,6 +9,9 @@ namespace Portal.Api.Authentication;
 
 public static class PortalJwtRegistration
 {
+    private const string SessionExpiredItem = "Portal.SessionExpired";
+    private const string SessionSourceUnavailableItem = "Portal.SessionSourceUnavailable";
+
     public static IServiceCollection AddPortalJwt(this IServiceCollection services, IConfiguration configuration)
     {
         services.AddOptions<PortalJwtOptions>()
@@ -33,17 +36,46 @@ public static class PortalJwtRegistration
                 bearer.TokenValidationParameters = PortalJwtService.ValidationParameters(jwtOptions.Value);
                 bearer.Events = new JwtBearerEvents
                 {
-                    OnTokenValidated = context =>
+                    OnTokenValidated = async context =>
                     {
                         if (!PortalJwtService.HasPortalIdentity(context.Principal!, backendOptions.Value.ServiceCode))
+                        {
                             context.Fail("Identidade do portal inválida.");
-                        return Task.CompletedTask;
+                            return;
+                        }
+
+                        ClientUser user = PortalJwtService.ReadUser(context.Principal!);
+                        try
+                        {
+                            IClientSessionStateVerifier verifier = context.HttpContext.RequestServices
+                                .GetRequiredService<IClientSessionStateVerifier>();
+                            bool current = await verifier.IsCurrentAsync(user.Id,
+                                user.CredentialVersion!.Value, context.HttpContext.RequestAborted);
+                            if (!current)
+                            {
+                                context.HttpContext.Items[SessionExpiredItem] = true;
+                                context.Fail("Sessão revogada ou desativada.");
+                            }
+                        }
+                        catch (AuthenticationSourceUnavailableException)
+                        {
+                            context.HttpContext.Items[SessionSourceUnavailableItem] = true;
+                            context.Fail("Fonte de autenticação indisponível.");
+                        }
                     },
                     OnChallenge = async context =>
                     {
                         context.HandleResponse();
                         context.Response.Headers.WWWAuthenticate = "Bearer";
-                        await WriteProblem(context.HttpContext, 401, "invalid-portal-token", "Sessão ausente ou expirada.");
+                        if (context.HttpContext.Items.ContainsKey(SessionSourceUnavailableItem))
+                            await WriteProblem(context.HttpContext, 502, "profile-source-unavailable",
+                                "Não foi possível validar a sessão agora.");
+                        else if (context.HttpContext.Items.ContainsKey(SessionExpiredItem))
+                            await WriteProblem(context.HttpContext, 401, "session-expired",
+                                "Sessão expirada. Entre novamente para continuar.");
+                        else
+                            await WriteProblem(context.HttpContext, 401, "invalid-portal-token",
+                                "Sessão ausente ou expirada.");
                     },
                     OnForbidden = context => WriteProblem(context.HttpContext, 403, "forbidden", "Sem permissão para esta operação.")
                 };

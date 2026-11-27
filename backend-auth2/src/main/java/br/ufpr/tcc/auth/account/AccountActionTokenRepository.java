@@ -36,9 +36,12 @@ interface AccountActionTokenRepository extends JpaRepository<AccountActionToken,
     @Query("""
             update AccountActionToken confirmation
                set confirmation.usedAt = offset datetime
-             where confirmation.tokenDigest = :digest and confirmation.usedAt is null
+             where confirmation.tokenDigest = :digest
+               and confirmation.purpose = :purpose
+               and confirmation.usedAt is null
             """)
-    int consumeByDigest(@Param("digest") byte[] digest);
+    int consumeByDigest(@Param("digest") byte[] digest,
+            @Param("purpose") OutboundMessage.Purpose purpose);
 
     /** Invalida pendentes apenas da finalidade informada, preservando os demais fluxos. */
     @Modifying

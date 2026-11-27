@@ -94,7 +94,7 @@ class AuthenticateClient {
             ClientCredentialDirectory.StoredClientCredentialView stored) {
         return new ClientIdentity(Long.toString(stored.id()), stored.name(), stored.email(),
                 ClientIdentity.CLIENT_ROLE, caller.applicationCode(),
-                new ClientIdentity.Authorizations(stored.companyCnpjs()));
+                new ClientIdentity.Authorizations(stored.companyCnpjs()), stored.credentialVersion());
     }
 
     /**

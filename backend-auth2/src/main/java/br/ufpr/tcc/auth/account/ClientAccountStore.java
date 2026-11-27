@@ -25,6 +25,10 @@ class ClientAccountStore {
     private final ClientAccountRepository accounts;
     private final AccountActionTokenRepository tokens;
     private final ClientAccountCompanyRepository companyLinks;
+    private final ClientEmailChangeRepository emailChanges;
+
+    record EmailChangeTokenOwner(long accountId, OutboundMessage.Purpose purpose) {
+    }
 
     /** A situacao da aplicacao em que a conta vai nascer: vazio quando ela nao existe. */
     Optional<Boolean> applicationSituation(long applicationId) {
@@ -34,6 +38,58 @@ class ClientAccountStore {
     boolean emailAlreadyUsedIn(long applicationId, String email) {
         return accounts.countWithinApplicationByEmail(applicationId,
                 withoutSurroundingSpace(email)) > 0L;
+    }
+
+    boolean emailUsedByAnotherIn(long applicationId, String email, long accountId) {
+        return accounts.countOtherAccountsWithinApplicationByEmail(applicationId, email,
+                accountId) > 0L;
+    }
+
+    ClientEmailChange emailChange(long accountId, long applicationId) {
+        return emailChanges.findById(accountId)
+                .filter(change -> change.applicationId() == applicationId)
+                .orElseGet(() -> ClientEmailChange.open(accountId, applicationId,
+                        OffsetDateTime.now()));
+    }
+
+    Optional<ClientEmailChange> pendingEmailChange(long accountId, long applicationId) {
+        return emailChanges.findById(accountId)
+                .filter(change -> change.applicationId() == applicationId && change.pending());
+    }
+
+    Optional<EmailChangeTokenOwner> findEmailChangeTokenOwner(long applicationId,
+            ConfirmationToken token) {
+        byte[] digest = token.digest().asBytes();
+        return tokens.findLiveAccountFor(applicationId, digest,
+                        OutboundMessage.Purpose.EMAIL_CHANGE_CURRENT)
+                .map(id -> new EmailChangeTokenOwner(id,
+                        OutboundMessage.Purpose.EMAIL_CHANGE_CURRENT))
+                .or(() -> tokens.findLiveAccountFor(applicationId, digest,
+                        OutboundMessage.Purpose.EMAIL_CHANGE_NEW)
+                        .map(id -> new EmailChangeTokenOwner(id,
+                                OutboundMessage.Purpose.EMAIL_CHANGE_NEW)));
+    }
+
+    boolean consumeEmailChangeToken(ConfirmationToken token,
+            OutboundMessage.Purpose purpose) {
+        return tokens.consumeByDigest(token.digest().asBytes(), purpose) == 1;
+    }
+
+    void issueEmailChangeToken(long accountId, ConfirmationToken token,
+            OutboundMessage.Purpose purpose, Duration lifetime) {
+        issueToken(accountId, token, purpose, lifetime);
+    }
+
+    void saveAccount(ClientAccount account) {
+        accounts.saveAndFlush(account);
+    }
+
+    void saveEmailChange(ClientEmailChange change) {
+        emailChanges.saveAndFlush(change);
+    }
+
+    void clearEmailChange(long accountId) {
+        emailChanges.findById(accountId).ifPresent(ClientEmailChange::clearPending);
     }
 
     /**
@@ -60,7 +116,7 @@ class ClientAccountStore {
         return tokens
                 .findLiveAccountFor(applicationId, token.digest().asBytes(), purpose)
                 .filter(accountId -> tokens
-                        .consumeByDigest(token.digest().asBytes()) == 1);
+                        .consumeByDigest(token.digest().asBytes(), purpose) == 1);
     }
 
     /** Conta e endereco cadastrado que recebera a mensagem de recuperacao. */
@@ -81,6 +137,11 @@ class ClientAccountStore {
         tokens.invalidatePendingOf(accountId, purpose);
     }
 
+    void invalidatePendingEmailChangeTokens(long accountId) {
+        tokens.invalidatePendingOf(accountId, OutboundMessage.Purpose.EMAIL_CHANGE_CURRENT);
+        tokens.invalidatePendingOf(accountId, OutboundMessage.Purpose.EMAIL_CHANGE_NEW);
+    }
+
     void confirmEmail(long accountId) {
         accounts.findById(accountId).ifPresent(ClientAccount::confirmEmail);
     }
@@ -89,6 +150,11 @@ class ClientAccountStore {
     record AccountView(String id, String name, String email, String role, boolean active,
             String serviceId, boolean emailConfirmed, List<String> companyIds,
             List<String> companyCnpjs) {
+    }
+
+    record SelfServiceAccount(long id, long applicationId, String name, String email,
+            String passwordHash, boolean active, boolean emailConfirmed, long credentialVersion,
+            List<String> companyIds, List<String> companyCnpjs) {
     }
 
     /** As empresas que uma conta representa, como as rotas de leitura as devolvem. */
@@ -106,6 +172,24 @@ class ClientAccountStore {
 
     CompanyLinks companiesOf(long accountId) {
         return CompanyLinks.of(companyLinks.findOfAccount(accountId));
+    }
+
+    Optional<SelfServiceAccount> selfServiceAccount(long applicationId, long accountId,
+            boolean lockForUpdate) {
+        Optional<ClientAccount> found = lockForUpdate
+                ? accounts.findByIdAndApplicationIdForUpdate(accountId, applicationId)
+                : accounts.findByIdAndApplicationId(accountId, applicationId);
+        return found.map(account -> {
+            CompanyLinks links = companiesOf(account.id());
+            return new SelfServiceAccount(account.id(), account.applicationId(), account.name(),
+                    account.email(), account.passwordHash(), account.active(),
+                    account.emailConfirmed(), account.credentialVersion(), links.companyIds(),
+                    links.companyCnpjs());
+        });
+    }
+
+    Optional<ClientAccount> lockedAccount(long applicationId, long accountId) {
+        return accounts.findByIdAndApplicationIdForUpdate(accountId, applicationId);
     }
 
     private static AccountView toView(ClientAccount account, List<CompanyLinkRow> links) {
@@ -166,10 +250,12 @@ class ClientAccountStore {
     void delete(Optional<Long> applicationScope, long accountId) {
         applicationScope.ifPresentOrElse(
                 applicationId -> {
+                    emailChanges.deleteById(accountId);
                     tokens.deleteWithinApplication(accountId, applicationId);
                     accounts.deleteWithinApplication(accountId, applicationId);
                 },
                 () -> {
+                    emailChanges.deleteById(accountId);
                     tokens.deleteAcrossApplications(accountId);
                     accounts.deleteAcrossApplications(accountId);
                 });

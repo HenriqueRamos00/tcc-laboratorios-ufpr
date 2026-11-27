@@ -6,6 +6,9 @@ export function isPortalProtectedRequest(url: string): boolean {
     const api = new URL(API_URL, browserOrigin);
     const target = new URL(url, browserOrigin);
     const prefix = api.pathname.replace(/\/$/, '');
+    const publicEmailConfirmation = `${prefix}/api/profile/email-change/confirm`;
+    if (target.origin === api.origin && target.pathname === publicEmailConfirmation) return false;
+
     return target.origin === api.origin && (
       target.pathname === `${prefix}/auth/me` || target.pathname === `${prefix}/api` ||
       target.pathname.startsWith(`${prefix}/api/`)

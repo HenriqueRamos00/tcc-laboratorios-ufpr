@@ -7,6 +7,7 @@ using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.AspNetCore.TestHost;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Options;
 using Microsoft.IdentityModel.Tokens;
 using Portal.Adapters.BackendAuth;
@@ -21,7 +22,7 @@ namespace Portal.Tests.Authentication;
 public sealed class LactecPortalContractTests
 {
     private const string Identity = """
-        {"id":"42","name":"Marina Costa","email":"marina@empresa.com","role":"CLIENTE",
+        {"id":"42","name":"Marina Costa","email":"marina@empresa.com","role":"CLIENTE","credentialVersion":0,
         "serviceCode":"portal-web","authorizations":{"companyCnpjs":["04252011000110","12ABC34501DE35"]}}
         """;
 
@@ -96,6 +97,23 @@ public sealed class LactecPortalContractTests
         Assert.Equal(0, backend.Count);
     }
 
+    [Fact]
+    public async Task LoginAssinaJwtComAVersaoRecebidaDoAuth()
+    {
+        string body = Identity.Replace("\"credentialVersion\":0", "\"credentialVersion\":3");
+        using var backend = new AuthHandler(HttpStatusCode.OK, body);
+        using var portal = new AuthPortal(backend);
+        using HttpClient client = portal.CreateClient();
+
+        using var login = await Login(client);
+
+        Assert.Equal(HttpStatusCode.OK, login.StatusCode);
+        string token = (string)(await Body(login))["Token"]!;
+        JwtSecurityToken jwt = new JwtSecurityTokenHandler().ReadJwtToken(token);
+        Assert.Equal("3", jwt.Claims.Single(claim => claim.Type == "credentialVersion").Value);
+        Assert.Equal(1, backend.Count);
+    }
+
     [Theory]
     [InlineData("expired")]
     [InlineData("future")]
@@ -109,6 +127,7 @@ public sealed class LactecPortalContractTests
     [InlineData("nome")]
     [InlineData("email")]
     [InlineData("jti")]
+    [InlineData("invalidCredentialVersion")]
     [InlineData("malformed")]
     [InlineData("service-token")]
     public async Task JwtInvalidoNaoAbreSessao(string defect)
@@ -137,6 +156,20 @@ public sealed class LactecPortalContractTests
         client.DefaultRequestHeaders.Authorization = new("Bearer", SignedToken("roles"));
         using var response = await client.GetAsync("/api/quotes");
         Assert.Equal(HttpStatusCode.Forbidden, response.StatusCode);
+        Assert.Equal(0, backend.Count);
+    }
+
+    [Fact]
+    public async Task JwtAntigoSemVersaoContinuaValidoEnquantoOrigemMantemVersaoZero()
+    {
+        using var backend = new AuthHandler(HttpStatusCode.OK, Identity);
+        using var portal = new AuthPortal(backend);
+        using HttpClient client = portal.CreateClient();
+        client.DefaultRequestHeaders.Authorization = new("Bearer", SignedToken("legacy"));
+
+        using var response = await client.GetAsync("/auth/me");
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
         Assert.Equal(0, backend.Count);
     }
 
@@ -172,6 +205,8 @@ public sealed class LactecPortalContractTests
     [InlineData("other-role")]
     [InlineData("no-authorizations")]
     [InlineData("invalid-company")]
+    [InlineData("missing-version")]
+    [InlineData("negative-version")]
     public async Task IdentidadeIncompletaOuDeOutroServicoNaoEmiteToken(string defect)
     {
         string body = defect switch
@@ -180,6 +215,8 @@ public sealed class LactecPortalContractTests
             "other-role" => Identity.Replace("CLIENTE", "ADMIN"),
             "no-authorizations" => Identity.Replace("authorizations", "ignored"),
             "invalid-company" => Identity.Replace("04252011000110", "invalid"),
+            "missing-version" => Identity.Replace("\"credentialVersion\":0,", ""),
+            "negative-version" => Identity.Replace("\"credentialVersion\":0", "\"credentialVersion\":-1"),
             _ => defect
         };
         using var backend = new AuthHandler(HttpStatusCode.OK, body);
@@ -367,7 +404,8 @@ public sealed class LactecPortalContractTests
         {
             ["sub"] = "42", ["nome"] = "Marina Costa", ["email"] = "marina@empresa.com",
             ["roles"] = "CLIENTE", ["jti"] = Guid.NewGuid().ToString(), ["authSource"] = "lactec",
-            ["serviceCode"] = serviceCode, ["companyCnpjs"] = new[] { "04252011000110" }
+            ["serviceCode"] = serviceCode, ["companyCnpjs"] = new[] { "04252011000110" },
+            ["credentialVersion"] = 0
         };
         if (sessionStart is not null)
             claims[PortalSessionClaim] = new DateTimeOffset(sessionStart.Value).ToUnixTimeSeconds();
@@ -395,6 +433,8 @@ public sealed class LactecPortalContractTests
             ["roles"] = "CLIENTE", ["jti"] = Guid.NewGuid().ToString(), ["authSource"] = "lactec",
             ["serviceCode"] = "portal-web", ["companyCnpjs"] = Array.Empty<string>()
         };
+        if (defect != "legacy")
+            claims["credentialVersion"] = defect == "invalidCredentialVersion" ? "invalid" : 0;
         if (claims.ContainsKey(defect)) claims[defect] = defect is "roles" ? "ADMIN" : "";
         DateTime now = DateTime.UtcNow;
         JwtSecurityTokenHandler handler = new();
@@ -444,8 +484,17 @@ internal sealed class AuthPortal(HttpMessageHandler handler, string? overrideKey
         builder.UseSetting("Salesforce:ClientId", "client-id-test");
         builder.UseSetting("Salesforce:ClientSecret", "client-secret-test");
         if (overrideKey is not null) builder.UseSetting(overrideKey, overrideValue);
-        builder.ConfigureTestServices(services => services
-            .AddHttpClient<IClientAuthenticator, BackendAuthAdapter>().ConfigurePrimaryHttpMessageHandler(() => handler));
+        builder.ConfigureTestServices(services =>
+        {
+            services.RemoveAll<IClientSessionStateVerifier>();
+            services.AddSingleton<IClientSessionStateVerifier, CurrentSessionVerifier>();
+            services.RemoveAll<IClientProfileOperations>();
+            services.AddSingleton<IClientProfileOperations, AuthTestProfileOperations>();
+            services.RemoveAll<IClientAuthenticator>();
+            services.AddHttpClient<IClientAuthenticator, BackendAuthAdapter>()
+                .ConfigureHttpClient(client => client.BaseAddress = new Uri("https://backend-auth.test/"))
+                .ConfigurePrimaryHttpMessageHandler(() => handler);
+        });
     }
 }
 
@@ -460,10 +509,14 @@ internal sealed class AuthHandler(HttpStatusCode status, string body, bool chall
 
     protected override async Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
     {
+        string path = request.RequestUri?.AbsolutePath ?? string.Empty;
         Count++;
-        Authorization = request.Headers.Authorization?.Parameter;
-        Path = request.RequestUri?.AbsolutePath;
-        RequestBody = await request.Content!.ReadAsStringAsync(cancellationToken);
+        if (path == "/api/auth/login")
+        {
+            Authorization = request.Headers.Authorization?.Parameter;
+            Path = path;
+            RequestBody = request.Content is null ? null : await request.Content.ReadAsStringAsync(cancellationToken);
+        }
         if (Failure is not null) throw Failure;
         var response = new HttpResponseMessage(status)
         { Content = new StringContent(body, System.Text.Encoding.UTF8, "application/json") };
@@ -471,4 +524,35 @@ internal sealed class AuthHandler(HttpStatusCode status, string body, bool chall
         if (retryAfter is not null) response.Headers.TryAddWithoutValidation("Retry-After", retryAfter);
         return response;
     }
+}
+
+internal sealed class CurrentSessionVerifier : IClientSessionStateVerifier
+{
+    public Task<bool> IsCurrentAsync(string accountId, long credentialVersion,
+        CancellationToken cancellationToken = default) => Task.FromResult(credentialVersion == 0);
+}
+
+internal sealed class AuthTestProfileOperations : IClientProfileOperations
+{
+    public Task<ClientProfile> GetAsync(string accountId, CancellationToken cancellationToken = default) =>
+        Task.FromResult(new ClientProfile("Marina Costa", "marina@empresa.com", "CLIENTE",
+            [], [], [], PasswordPolicy: new ClientPasswordPolicy(8, 72, null, true, true, true, true)));
+
+    public Task<ClientProfile> UpdateAsync(string accountId, ClientProfileUpdate update,
+        CancellationToken cancellationToken = default) => Task.FromResult(new ClientProfile(update.Name,
+            "marina@empresa.com", "CLIENTE", [], [], []));
+
+    public Task ChangePasswordAsync(string accountId, string currentPassword, string newPassword,
+        CancellationToken cancellationToken = default) => Task.CompletedTask;
+
+    public Task<ClientPendingEmailChange> RequestEmailChangeAsync(string accountId, string newEmail,
+        string currentPassword, CancellationToken cancellationToken = default) =>
+        Task.FromResult(new ClientPendingEmailChange(newEmail, DateTimeOffset.UtcNow.AddHours(1), false, false));
+
+    public Task CancelEmailChangeAsync(string accountId, CancellationToken cancellationToken = default) =>
+        Task.CompletedTask;
+
+    public Task<EmailChangeConfirmation> ConfirmEmailChangeAsync(string token,
+        CancellationToken cancellationToken = default) =>
+        Task.FromResult(new EmailChangeConfirmation("awaiting-other-confirmation"));
 }

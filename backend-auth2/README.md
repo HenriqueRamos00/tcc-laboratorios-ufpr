@@ -280,6 +280,20 @@ ativo, e por isso desativar ou excluir o ultimo ativo responde 409. A rota de in
 nao socorre nesse caso: ela conta linha na tabela, e a linha desativada continua contando.
 Trocar a senha de um administrador encerra as sessoes abertas dele no mesmo instante.
 
+## Autoatendimento de clientes
+
+A API C# integra o autoatendimento usando a credencial de aplicação e o identificador da conta obtido da sessão autenticada. A conta precisa pertencer à aplicação. O cliente não recebe nem escolhe esse identificador nas chamadas do navegador.
+
+O perfil expõe somente o nome como editável neste serviço. E-mail, empresas, papel, situação e confirmação são apresentados para consulta. A senha exige a senha atual e segue a política do serviço. A alteração incrementa a versão das credenciais e encerra as sessões existentes. JWTs emitidos antes desse controle, sem a versão, são tratados como versão zero e continuam válidos até uma alteração de credenciais.
+
+A alteração de e-mail exige a senha atual e dois links, um enviado ao endereço cadastrado e outro ao novo endereço. Ambos devem ser confirmados em até uma hora. Solicitações pendentes podem ser canceladas, uma senha alterada invalida a solicitação, e novas tentativas são limitadas. O token é de uso único. Sem SMTP ou `AUTH_EMAIL_CHANGE_LINK` válido, a API não anuncia essa ação e não aceita pedidos de alteração.
+
+No Compose da raiz, o SMTP do Auth2 é opcional. Configure `AUTH_MAIL_HOST`, usuário, senha, remetente e os links de confirmação e recuperação no `.env`. Configure também `AUTH_EMAIL_CHANGE_LINK` para habilitar a troca de e-mail. Sem host, o serviço inicia sem transporte de e-mail.
+
+As rotas usadas pelo adapter C# são `GET` e `PATCH /api/self-service/accounts/{accountId}/profile`, `POST /api/self-service/accounts/{accountId}/password`, `POST` e `DELETE /api/self-service/accounts/{accountId}/email-change`, `POST /api/self-service/email-change/confirm` e `GET /api/self-service/accounts/{accountId}/session-state`. Todas exigem a credencial de aplicação. As respostas de perfil e de sessão não são armazenáveis em cache.
+
+O C# expõe ao Portal do Cliente `GET` e `PATCH /api/profile`, `POST /api/profile/password`, `POST` e `DELETE /api/profile/email-change` e `POST /api/profile/email-change/confirm`. A confirmação do link é uma ação explícita da tela; abrir a URL não altera a conta.
+
 ## Envio de e-mail
 
 Preencha `AUTH_MAIL_HOST`, `AUTH_MAIL_PORT`, `AUTH_MAIL_USERNAME`, `AUTH_MAIL_PASSWORD`
@@ -327,5 +341,6 @@ o token em memoria so se justifica onde nao existe envio de verdade.
 
 O cadastro traduz apenas `UK_CLIENT_ACCOUNT_EMAIL` em e-mail repetido. A recuperacao ignora
 apenas o conflito concorrente `UX_ACCOUNT_CONFIRMATION_PENDING`; outras falhas sao propagadas.
-Redefinir senha invalida somente tokens de recuperacao, mantendo a confirmacao de e-mail.
+Redefinir senha invalida tokens de recuperacao e de alteracao de e-mail pendentes, mantendo
+a confirmacao inicial do endereco.
 Os nomes das tabelas e restricoes permanecem nas migracoes `src/main/resources/db/migration`.

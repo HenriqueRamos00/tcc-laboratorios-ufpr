@@ -8,5 +8,7 @@ package br.ufpr.tcc.auth.notification;
  */
 public record OutboundMessage(String recipient, Purpose purpose, String token) {
 
-    public enum Purpose { EMAIL_CONFIRMATION, PASSWORD_RECOVERY }
+    public enum Purpose {
+        EMAIL_CONFIRMATION, PASSWORD_RECOVERY, EMAIL_CHANGE_CURRENT, EMAIL_CHANGE_NEW
+    }
 }

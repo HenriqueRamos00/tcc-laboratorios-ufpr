@@ -126,6 +126,7 @@
         <button
           type="button"
           [attr.data-tour]="tourTarget.profile"
+          (click)="openProfile(); handset && drawer.close()"
           [disabled]="tourActive()"
           [matTooltip]="isCollapsed ? 'Perfil' : ''"
           matTooltipPosition="right"

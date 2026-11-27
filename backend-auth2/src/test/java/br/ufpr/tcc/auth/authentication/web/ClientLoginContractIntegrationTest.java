@@ -64,9 +64,9 @@ class ClientLoginContractIntegrationTest extends OracleIntegrationTestBase {
                 .with("digest", token.digest().asBytes()).with("now", OffsetDateTime.now()).run();
         String email = "pessoa" + NEXT_ID.incrementAndGet() + "@exemplo.com";
         database.statement("INSERT INTO CLIENT_ACCOUNT (ID, APPLICATION_ID, NAME, EMAIL, EMAIL_NORMALIZED,"
-                        + " PASSWORD_HASH, EMAIL_CONFIRMED, ACTIVE, CREATED_AT, UPDATED_AT)"
+                        + " PASSWORD_HASH, EMAIL_CONFIRMED, ACTIVE, CREATED_AT, UPDATED_AT, CREDENTIAL_VERSION)"
                         + " VALUES (:id, :applicationId, 'Pessoa de Teste', :email, :email, :hash,"
-                        + " :confirmed, :active, :now, :now)")
+                        + " :confirmed, :active, :now, :now, 3)")
                 .with("id", NEXT_ID.incrementAndGet()).with("applicationId", applicationId)
                 .with("email", email).with("hash", passwordEncoder.encode(GOOD_PASSWORD))
                 .with("confirmed", confirmed ? 1 : 0).with("active", active ? 1 : 0)
@@ -111,6 +111,7 @@ class ClientLoginContractIntegrationTest extends OracleIntegrationTestBase {
                 .doesNotContain("passwordHash").doesNotContain("Senha123");
         assertThat(body).matches(".*\"id\":\"[0-9]+\".*");
         jsonPath("$.authorizations.companyCnpjs").isArray().match(result);
+        jsonPath("$.credentialVersion").value(3).match(result);
         jsonPath("$.companyCnpjs").doesNotExist().match(result);
     }
 

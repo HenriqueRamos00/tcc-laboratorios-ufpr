@@ -7,6 +7,7 @@ import jakarta.persistence.Entity;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
 import jakarta.persistence.UniqueConstraint;
+import java.time.Duration;
 import java.time.OffsetDateTime;
 import lombok.AccessLevel;
 import lombok.Getter;
@@ -26,6 +27,8 @@ import org.hibernate.type.NumericBooleanConverter;
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 @Accessors(fluent = true)
 class ClientAccount {
+    private static final int MAX_CURRENT_PASSWORD_FAILURES = 5;
+    private static final Duration CURRENT_PASSWORD_WINDOW = Duration.ofMinutes(15);
 
     @Id
     @Tsid
@@ -50,6 +53,16 @@ class ClientAccount {
     @Column(name = "PASSWORD_HASH", length = 255)
     @Getter(AccessLevel.PACKAGE)
     private String passwordHash;
+
+    @Column(name = "CREDENTIAL_VERSION", nullable = false)
+    @Getter(AccessLevel.PACKAGE)
+    private long credentialVersion;
+
+    @Column(name = "CURRENT_PASSWORD_FAILURES", nullable = false)
+    private int currentPasswordFailures;
+
+    @Column(name = "CURRENT_PASSWORD_LIMIT_UNTIL")
+    private OffsetDateTime currentPasswordLimitUntil;
 
     /** O esquema armazena estas flags como NUMBER(1); o conversor faz a ponte com boolean. */
     @Column(name = "EMAIL_CONFIRMED")
@@ -81,6 +94,7 @@ class ClientAccount {
         account.email = email;
         account.emailNormalized = email;
         account.passwordHash = passwordHash;
+        account.credentialVersion = 0;
         account.emailConfirmed = false;
         account.active = true;
         account.createdAt = now;
@@ -98,6 +112,38 @@ class ClientAccount {
 
     void changePasswordHash(String passwordHash) {
         this.passwordHash = passwordHash;
+        this.credentialVersion++;
+        this.updatedAt = OffsetDateTime.now();
+    }
+
+    Duration currentPasswordWait(OffsetDateTime now) {
+        return currentPasswordFailures >= MAX_CURRENT_PASSWORD_FAILURES
+                && currentPasswordLimitUntil != null && currentPasswordLimitUntil.isAfter(now)
+                ? Duration.between(now, currentPasswordLimitUntil) : Duration.ZERO;
+    }
+
+    void recordCurrentPasswordFailure(OffsetDateTime now) {
+        if (currentPasswordLimitUntil == null || !currentPasswordLimitUntil.isAfter(now)) {
+            currentPasswordLimitUntil = now.plus(CURRENT_PASSWORD_WINDOW);
+            currentPasswordFailures = 0;
+        }
+        currentPasswordFailures++;
+    }
+
+    void clearCurrentPasswordFailures() {
+        currentPasswordFailures = 0;
+        currentPasswordLimitUntil = null;
+    }
+
+    void changeName(String name) {
+        this.name = name;
+        this.updatedAt = OffsetDateTime.now();
+    }
+
+    void changeEmail(String email) {
+        this.email = email;
+        this.emailNormalized = email;
+        this.credentialVersion++;
         this.updatedAt = OffsetDateTime.now();
     }
 

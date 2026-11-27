@@ -312,7 +312,8 @@ public sealed class ClientDecisionContractTests
     {
         HttpClient client = portal.CreateClient();
         using var response = await client.PostAsJsonAsync("/auth/login", new { email = "marina@empresa.com", password = "senha" });
-        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        Assert.True(response.StatusCode == HttpStatusCode.OK,
+            await response.Content.ReadAsStringAsync());
         JsonObject body = (await response.Content.ReadFromJsonAsync<JsonObject>())!;
         client.DefaultRequestHeaders.Authorization = new("Bearer", (string)body["Token"]!);
         return client;
@@ -354,7 +355,7 @@ public sealed class ClientDecisionContractTests
 
     private static string Identity() => JsonSerializer.Serialize(new
     {
-        id = "42", name = "Marina Costa", email = "marina@empresa.com", role = "CLIENTE",
+        id = "42", name = "Marina Costa", email = "marina@empresa.com", role = "CLIENTE", credentialVersion = 0,
         serviceCode = "portal-web", authorizations = new { companyCnpjs = new[] { FakeSalesforceQuoteRepository.EnergyCnpj } }
     });
 }

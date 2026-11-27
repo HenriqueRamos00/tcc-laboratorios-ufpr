@@ -41,6 +41,12 @@ public class SecurityConfig {
                                                 "/api/auth/password/reset")
                                         .permitAll()
                                         .requestMatchers(
+                                                "/api/auth/internal/profile/email-change/confirm",
+                                                "/api/client/profile/email-change/confirm")
+                                        .permitAll()
+                                        .requestMatchers("/api/auth/internal/profile/**")
+                                        .hasAnyRole("ADMIN", "TECNICO")
+                                        .requestMatchers(
                                                 "/api/technicians",
                                                 "/api/technicians/**",
                                                 "/api/companies",

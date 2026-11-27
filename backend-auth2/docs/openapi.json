@@ -1373,8 +1373,16 @@
                     },
                     "authorizations": {
                         "$ref": "#/components/schemas/Authorizations"
+                    },
+                    "credentialVersion": {
+                        "type": "integer",
+                        "format": "int64",
+                        "minimum": 0
                     }
-                }
+                },
+                "required": [
+                    "credentialVersion"
+                ]
             },
             "ConfirmationRequest": {
                 "type": "object",

@@ -29,6 +29,7 @@ let proximoId = 0;
           class="campo"
           [class.uppercase]="caixaAlta()"
           [attr.inputmode]="inputmode()"
+          [attr.autocomplete]="autocomplete()"
           [attr.aria-invalid]="invalido() ? 'true' : null"
           [attr.aria-describedby]="invalido() ? idDoErro : null"
         />
@@ -39,6 +40,7 @@ let proximoId = 0;
           class="campo"
           [class.uppercase]="caixaAlta()"
           [attr.inputmode]="inputmode()"
+          [attr.autocomplete]="autocomplete()"
           [attr.maxlength]="maxlength()"
           [attr.aria-invalid]="invalido() ? 'true' : null"
           [attr.aria-describedby]="invalido() ? idDoErro : null"
@@ -100,9 +102,11 @@ export class TextFieldComponent {
   readonly label = input.required<string>();
   readonly tipo = input<'text' | 'tel' | 'email' | 'date'>('text');
   readonly inputmode = input<string>();
+  readonly autocomplete = input<string>();
   readonly maxlength = input<number>();
   readonly caixaAlta = input(false);
   readonly mascara = input<string>();
+  readonly mensagemErro = input<string>();
 
   protected readonly emCaixaAlta = (valor: string | number | null | undefined) =>
     String(valor ?? '').toUpperCase();
@@ -125,6 +129,7 @@ export class TextFieldComponent {
 
   protected readonly mensagem = computed(() => {
     this.eventos();
+    if (this.mensagemErro()) return this.mensagemErro()!;
     const controle = this.controle();
     if (controle.hasError('email')) return 'Informe um e-mail válido';
     if (controle.hasError('repetido')) return 'Este e-mail já foi informado em outro campo';

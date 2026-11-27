@@ -1,0 +1,58 @@
+<form class="flex h-full min-h-0 flex-col" [formGroup]="form" (ngSubmit)="save()" novalidate>
+  <app-dialog-shell
+    title="Editar dados pessoais"
+    subtitle="Atualize os dados usados para identificar você no portal."
+    [closeRequest]="requestClose"
+  >
+    @if (serverError()) {
+      <p class="profile-dialog-error" role="alert">{{ serverError() }}</p>
+    }
+
+    <div class="profile-dialog-fields">
+      <app-text-field
+        label="Nome"
+        autocomplete="name"
+        [controle]="form.controls.name"
+        [mensagemErro]="nameError()"
+      />
+      @if (hasPhone) {
+        <app-text-field
+          label="Telefone"
+          tipo="tel"
+          inputmode="tel"
+          autocomplete="tel"
+          [maxlength]="30"
+          [controle]="form.controls.phone"
+          [mensagemErro]="phoneError()"
+        />
+      }
+      @if (hasPosition) {
+        <app-text-field
+          label="Cargo"
+          autocomplete="organization-title"
+          [maxlength]="120"
+          [controle]="form.controls.position"
+          [mensagemErro]="positionError()"
+        />
+      }
+
+      @if (discardConfirmation()) {
+        <section class="profile-discard-warning" aria-labelledby="discard-profile-changes-title" role="alert">
+          <h3 id="discard-profile-changes-title">Alterações não salvas</h3>
+          <p>Você tem alterações não salvas. Deseja descartá-las?</p>
+          <div>
+            <button mat-stroked-button type="button" (click)="continueEditing()">Continuar editando</button>
+            <button mat-button type="button" (click)="discardChanges()">Descartar alterações</button>
+          </div>
+        </section>
+      }
+    </div>
+
+    <div dialog-footer class="flex w-full flex-wrap justify-end gap-3">
+      <button mat-stroked-button type="button" [disabled]="saving()" (click)="close()">Cancelar</button>
+      <button mat-flat-button type="submit" [disabled]="saving() || !hasChanges()">
+        {{ saving() ? 'Salvando...' : 'Salvar alterações' }}
+      </button>
+    </div>
+  </app-dialog-shell>
+</form>

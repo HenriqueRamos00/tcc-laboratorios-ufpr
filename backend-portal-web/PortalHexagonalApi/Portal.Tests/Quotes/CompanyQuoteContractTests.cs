@@ -162,7 +162,7 @@ public sealed class CompanyQuoteContractTests
         foreach (string cnpj in new[] { "76436849000174", "04252011000110" })
         {
             ClientSession session = issuer.Issue(new ClientUser("client-" + cnpj, "Cliente", "client@example.test", "CLIENTE", null,
-                "portal-web", new ClientAuthorizations([cnpj])));
+                "portal-web", new ClientAuthorizations([cnpj]), 0));
             client.DefaultRequestHeaders.Authorization = new("Bearer", session.AccessToken);
             using var response = await client.GetAsync("/api/quotes");
             Assert.Equal(HttpStatusCode.OK, response.StatusCode);
@@ -295,7 +295,7 @@ public sealed class CompanyQuoteContractTests
 
     private static string Identity(string[] cnpjs) => JsonSerializer.Serialize(new
     {
-        id = "42", name = "Cliente", email = "client@example.test", role = "CLIENTE", serviceCode = "portal-web",
+        id = "42", name = "Cliente", email = "client@example.test", role = "CLIENTE", credentialVersion = 0, serviceCode = "portal-web",
         authorizations = new { companyCnpjs = cnpjs }
     });
 

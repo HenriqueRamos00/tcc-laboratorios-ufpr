@@ -40,7 +40,8 @@ import tools.jackson.databind.json.JsonMapper;
         "spring.mail.port=1",
         "auth.notification.sender=nao-responda@lactec.exemplo",
         "auth.notification.confirmation-link=https://portal.exemplo/confirmar?token={token}",
-        "auth.notification.recovery-link=https://portal.exemplo/nova-senha?token={token}"
+        "auth.notification.recovery-link=https://portal.exemplo/nova-senha?token={token}",
+        "auth.notification.email-change-link=https://portal.exemplo/confirmar-alteracao-email?token={token}"
 })
 class MailDeliveryFailureIntegrationTest extends OracleIntegrationTestBase {
 
