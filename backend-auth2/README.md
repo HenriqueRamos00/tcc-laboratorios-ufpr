@@ -341,14 +341,26 @@ Cada operacao exposta numa rota e um caso de uso proprio em `usecase/`, com um m
 | `ConfirmEmailUseCase` | `POST /api/auth/confirmations` | aplicacao |
 | `RequestPasswordRecoveryUseCase` | `POST /api/auth/recoveries` | aplicacao |
 | `ResetPasswordUseCase` | `POST /api/auth/password-resets` | aplicacao |
+| `GetSelfServiceProfileUseCase` | `GET /api/self-service/accounts/{id}/profile` | aplicacao |
+| `UpdateSelfServiceProfileUseCase` | `PATCH /api/self-service/accounts/{id}/profile` | aplicacao |
+| `ChangePasswordUseCase` | `POST /api/self-service/accounts/{id}/password` | aplicacao |
+| `RequestEmailChangeUseCase` | `POST /api/self-service/accounts/{id}/email-change` | aplicacao |
+| `CancelEmailChangeUseCase` | `DELETE /api/self-service/accounts/{id}/email-change` | aplicacao |
+| `ConfirmEmailChangeUseCase` | `POST /api/self-service/email-change/confirm` | aplicacao |
+| `GetSessionStateUseCase` | `GET /api/self-service/accounts/{id}/session-state` | aplicacao |
 
-- `web/ClientAccountController` (`/api/users`) e `web/AccountTokenController` (links por
-  e-mail): validacao de entrada e traducao de cada desfecho em resposta HTTP.
-- `ClientAccountService` e `web/ClientSelfServiceController`: autoatendimento em
-  `/api/self-service/**` (perfil, troca de senha, troca de e-mail e estado da sessao).
-- `usecase/AccountSummary`: a conta como as rotas de `/api/users` a devolvem.
+- `web/ClientAccountController` (`/api/users`), `web/AccountTokenController` (links por
+  e-mail) e `web/ClientSelfServiceController` (`/api/self-service/**`): validacao de entrada
+  e traducao de cada desfecho em resposta HTTP.
+- `usecase/AccountSummary`, `usecase/SelfServiceProfile` e `usecase/PendingEmailChange`: o
+  que as rotas devolvem sobre a conta.
+- `usecase/CurrentPasswordVerification`: senha atual exigida pela troca de senha e pela de
+  e-mail, com o limite de cinco erros em quinze minutos compartilhado entre as duas.
+- `usecase/SelfServiceProfiles`: monta o perfil, oferecendo a troca de e-mail somente
+  quando existe envio de e-mail.
 - `ClientAccountStore`: leitura e gravacao de contas, vinculos e tokens pelos repositorios.
-- `ClientAccount`: estado inicial da conta e mudancas de senha e confirmacao.
+- `ClientAccount`: estado inicial da conta e mudancas de senha, e-mail e confirmacao.
+- `ClientEmailChange`: troca de e-mail pendente e janela de pedidos da conta.
 - `AccountActionToken` e seu repositorio: finalidade, validade e consumo unico dos tokens.
 - `AccountConstraintViolation`: identifica a restricao violada pelo nome informado pelo Hibernate.
 - `ClientAccountDirectory`: fornece as credenciais ao modulo `authentication`, que decide o login.

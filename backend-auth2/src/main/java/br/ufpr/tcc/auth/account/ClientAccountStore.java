@@ -27,7 +27,7 @@ public class ClientAccountStore {
     private final ClientAccountCompanyRepository companyLinks;
     private final ClientEmailChangeRepository emailChanges;
 
-    record EmailChangeTokenOwner(long accountId, OutboundMessage.Purpose purpose) {
+    public record EmailChangeTokenOwner(long accountId, OutboundMessage.Purpose purpose) {
     }
 
     /** A situacao da aplicacao em que a conta vai nascer: vazio quando ela nao existe. */
@@ -40,24 +40,24 @@ public class ClientAccountStore {
                 withoutSurroundingSpace(email)) > 0L;
     }
 
-    boolean emailUsedByAnotherIn(long applicationId, String email, long accountId) {
+    public boolean emailUsedByAnotherIn(long applicationId, String email, long accountId) {
         return accounts.countOtherAccountsWithinApplicationByEmail(applicationId, email,
                 accountId) > 0L;
     }
 
-    ClientEmailChange emailChange(long accountId, long applicationId) {
+    public ClientEmailChange emailChange(long accountId, long applicationId) {
         return emailChanges.findById(accountId)
                 .filter(change -> change.applicationId() == applicationId)
                 .orElseGet(() -> ClientEmailChange.open(accountId, applicationId,
                         OffsetDateTime.now()));
     }
 
-    Optional<ClientEmailChange> pendingEmailChange(long accountId, long applicationId) {
+    public Optional<ClientEmailChange> pendingEmailChange(long accountId, long applicationId) {
         return emailChanges.findById(accountId)
                 .filter(change -> change.applicationId() == applicationId && change.pending());
     }
 
-    Optional<EmailChangeTokenOwner> findEmailChangeTokenOwner(long applicationId,
+    public Optional<EmailChangeTokenOwner> findEmailChangeTokenOwner(long applicationId,
             ConfirmationToken token) {
         byte[] digest = token.digest().asBytes();
         return tokens.findLiveAccountFor(applicationId, digest,
@@ -70,26 +70,32 @@ public class ClientAccountStore {
                                 OutboundMessage.Purpose.EMAIL_CHANGE_NEW)));
     }
 
-    boolean consumeEmailChangeToken(ConfirmationToken token,
+    public boolean consumeEmailChangeToken(ConfirmationToken token,
             OutboundMessage.Purpose purpose) {
         return tokens.consumeByDigest(token.digest().asBytes(), purpose) == 1;
     }
 
-    void issueEmailChangeToken(long accountId, ConfirmationToken token,
+    public void issueEmailChangeToken(long accountId, ConfirmationToken token,
             OutboundMessage.Purpose purpose, Duration lifetime) {
         issueToken(accountId, token, purpose, lifetime);
     }
 
-    void saveAccount(ClientAccount account) {
+    public void saveAccount(ClientAccount account) {
         accounts.saveAndFlush(account);
     }
 
-    void saveEmailChange(ClientEmailChange change) {
+    public void saveEmailChange(ClientEmailChange change) {
         emailChanges.saveAndFlush(change);
     }
 
     public void clearEmailChange(long accountId) {
         emailChanges.findById(accountId).ifPresent(ClientEmailChange::clearPending);
+    }
+
+    /** Desfaz a troca de e-mail pendente: os links dela deixam de valer e o pedido e limpo. */
+    public void discardPendingEmailChange(long accountId) {
+        invalidatePendingEmailChangeTokens(accountId);
+        clearEmailChange(accountId);
     }
 
     /**
@@ -153,7 +159,7 @@ public class ClientAccountStore {
             List<String> companyCnpjs) {
     }
 
-    record SelfServiceAccount(long id, long applicationId, String name, String email,
+    public record SelfServiceAccount(long id, long applicationId, String name, String email,
             String passwordHash, boolean active, boolean emailConfirmed, long credentialVersion,
             List<String> companyIds, List<String> companyCnpjs) {
     }
@@ -175,7 +181,7 @@ public class ClientAccountStore {
         return CompanyLinks.of(companyLinks.findOfAccount(accountId));
     }
 
-    Optional<SelfServiceAccount> selfServiceAccount(long applicationId, long accountId,
+    public Optional<SelfServiceAccount> selfServiceAccount(long applicationId, long accountId,
             boolean lockForUpdate) {
         Optional<ClientAccount> found = lockForUpdate
                 ? accounts.findByIdAndApplicationIdForUpdate(accountId, applicationId)
@@ -189,7 +195,7 @@ public class ClientAccountStore {
         });
     }
 
-    Optional<ClientAccount> lockedAccount(long applicationId, long accountId) {
+    public Optional<ClientAccount> lockedAccount(long applicationId, long accountId) {
         return accounts.findByIdAndApplicationIdForUpdate(accountId, applicationId);
     }
 
@@ -267,7 +273,7 @@ public class ClientAccountStore {
      * Remove espacos das pontas com trim; LOWER e calculado apenas no banco. Senhas nao passam por
      * esta normalizacao.
      */
-    static String withoutSurroundingSpace(String email) {
+    public static String withoutSurroundingSpace(String email) {
         return email == null ? "" : email.trim();
     }
 }

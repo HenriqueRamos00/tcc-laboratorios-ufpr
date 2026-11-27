@@ -39,8 +39,7 @@ public class ResetPasswordUseCase {
                     store.updatePasswordHash(accountId, passwordEncoder.encode(newPassword));
                     store.invalidatePendingTokens(accountId,
                             OutboundMessage.Purpose.PASSWORD_RECOVERY);
-                    store.invalidatePendingEmailChangeTokens(accountId);
-                    store.clearEmailChange(accountId);
+                    store.discardPendingEmailChange(accountId);
                     auditTrail.clientCredentialChanged("password_reset",
                             Long.toString(accountId));
                     return true;

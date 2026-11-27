@@ -2,6 +2,7 @@ package br.ufpr.tcc.auth.shared.database;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import br.ufpr.tcc.auth.account.usecase.ConfirmEmailChangeUseCase;
 import br.ufpr.tcc.auth.account.usecase.RegisterClientAccountUseCase;
 import br.ufpr.tcc.auth.account.usecase.RequestPasswordRecoveryUseCase;
 import br.ufpr.tcc.auth.account.usecase.UpdateClientAccountUseCase;
@@ -86,6 +87,8 @@ class TransactionBoundaryGuardTest {
                 UpdateClientAccountUseCase.class.getMethod("execute", java.util.Optional.class,
                         String.class, String.class, boolean.class, List.class),
                 RequestPasswordRecoveryUseCase.class.getMethod("execute",
+                        br.ufpr.tcc.auth.shared.security.ApplicationCaller.class, String.class),
+                ConfirmEmailChangeUseCase.class.getMethod("execute",
                         br.ufpr.tcc.auth.shared.security.ApplicationCaller.class, String.class),
                 AdministratorLifecycle.class.getMethod("register", String.class, String.class,
                         String.class),

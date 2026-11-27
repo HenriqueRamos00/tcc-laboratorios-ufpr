@@ -26,7 +26,7 @@ import org.hibernate.type.NumericBooleanConverter;
                 columnNames = {"APPLICATION_ID", "EMAIL_NORMALIZED"}))
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 @Accessors(fluent = true)
-class ClientAccount {
+public class ClientAccount {
     private static final int MAX_CURRENT_PASSWORD_FAILURES = 5;
     private static final Duration CURRENT_PASSWORD_WINDOW = Duration.ofMinutes(15);
 
@@ -43,7 +43,7 @@ class ClientAccount {
     private String name;
 
     @Column(name = "EMAIL", length = 254)
-    @Getter(AccessLevel.PACKAGE)
+    @Getter
     private String email;
 
     @Column(name = "EMAIL_NORMALIZED", length = 254)
@@ -51,11 +51,11 @@ class ClientAccount {
     private String emailNormalized;
 
     @Column(name = "PASSWORD_HASH", length = 255)
-    @Getter(AccessLevel.PACKAGE)
+    @Getter
     private String passwordHash;
 
     @Column(name = "CREDENTIAL_VERSION", nullable = false)
-    @Getter(AccessLevel.PACKAGE)
+    @Getter
     private long credentialVersion;
 
     @Column(name = "CURRENT_PASSWORD_FAILURES", nullable = false)
@@ -67,12 +67,12 @@ class ClientAccount {
     /** O esquema armazena estas flags como NUMBER(1); o conversor faz a ponte com boolean. */
     @Column(name = "EMAIL_CONFIRMED")
     @Convert(converter = NumericBooleanConverter.class)
-    @Getter(AccessLevel.PACKAGE)
+    @Getter
     private boolean emailConfirmed;
 
     @Column(name = "ACTIVE")
     @Convert(converter = NumericBooleanConverter.class)
-    @Getter(AccessLevel.PACKAGE)
+    @Getter
     private boolean active;
 
     @Column(name = "CREATED_AT")
@@ -85,7 +85,7 @@ class ClientAccount {
      * Cria conta ativa com e-mail ainda nao confirmado. O ID fica nulo para o Hibernate gera-lo no
      * INSERT.
      */
-    static ClientAccount openFor(long applicationId, String name, String email,
+    public static ClientAccount openFor(long applicationId, String name, String email,
             String passwordHash) {
         ClientAccount account = new ClientAccount();
         OffsetDateTime now = OffsetDateTime.now();
@@ -102,7 +102,7 @@ class ClientAccount {
         return account;
     }
 
-    long id() {
+    public long id() {
         return id;
     }
 
@@ -110,19 +110,19 @@ class ClientAccount {
         return applicationId;
     }
 
-    void changePasswordHash(String passwordHash) {
+    public void changePasswordHash(String passwordHash) {
         this.passwordHash = passwordHash;
         this.credentialVersion++;
         this.updatedAt = OffsetDateTime.now();
     }
 
-    Duration currentPasswordWait(OffsetDateTime now) {
+    public Duration currentPasswordWait(OffsetDateTime now) {
         return currentPasswordFailures >= MAX_CURRENT_PASSWORD_FAILURES
                 && currentPasswordLimitUntil != null && currentPasswordLimitUntil.isAfter(now)
                 ? Duration.between(now, currentPasswordLimitUntil) : Duration.ZERO;
     }
 
-    void recordCurrentPasswordFailure(OffsetDateTime now) {
+    public void recordCurrentPasswordFailure(OffsetDateTime now) {
         if (currentPasswordLimitUntil == null || !currentPasswordLimitUntil.isAfter(now)) {
             currentPasswordLimitUntil = now.plus(CURRENT_PASSWORD_WINDOW);
             currentPasswordFailures = 0;
@@ -130,24 +130,24 @@ class ClientAccount {
         currentPasswordFailures++;
     }
 
-    void clearCurrentPasswordFailures() {
+    public void clearCurrentPasswordFailures() {
         currentPasswordFailures = 0;
         currentPasswordLimitUntil = null;
     }
 
-    void changeName(String name) {
+    public void changeName(String name) {
         this.name = name;
         this.updatedAt = OffsetDateTime.now();
     }
 
-    void changeEmail(String email) {
+    public void changeEmail(String email) {
         this.email = email;
         this.emailNormalized = email;
         this.credentialVersion++;
         this.updatedAt = OffsetDateTime.now();
     }
 
-    void confirmEmail() {
+    public void confirmEmail() {
         this.emailConfirmed = true;
         this.updatedAt = OffsetDateTime.now();
     }
