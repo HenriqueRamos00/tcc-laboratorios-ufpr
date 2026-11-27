@@ -241,7 +241,8 @@ public sealed class LabResultsConsultationTests
         return new LabResultsConsultation(
             labTests,
             registry ?? new InMemoryEquipmentNameplateRepository(),
-            new NullReportIssueRepository());
+            new NullReportIssueRepository(),
+            Portal.Tests.ReportProjection.TestProjection.Of(new NullReportIssueRepository()));
     }
 
     private static HealthIndicatorsQuery Query(string equipmentKey, string? selected = null)
@@ -300,6 +301,16 @@ public sealed class LabResultsConsultationTests
         {
             return await _loaded.GetAnalysisByProtocolAsync(scope, protocoloLactec, cancellationToken)
                 ?? await _apart.GetAnalysisByProtocolAsync(scope, protocoloLactec, cancellationToken);
+        }
+
+        public async Task<IReadOnlyList<ProtocolReport>> GetReportsOfProtocolsAsync(
+            CompanyScope scope,
+            IReadOnlyCollection<string> protocols,
+            CancellationToken cancellationToken)
+        {
+            return [
+                .. await _loaded.GetReportsOfProtocolsAsync(scope, protocols, cancellationToken),
+                .. await _apart.GetReportsOfProtocolsAsync(scope, protocols, cancellationToken)];
         }
     }
 }

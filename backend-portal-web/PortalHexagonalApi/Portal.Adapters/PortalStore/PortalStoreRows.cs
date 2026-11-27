@@ -60,3 +60,65 @@ public sealed class RejectionRow
     public Guid DecisionId { get; set; }
     public string Justification { get; set; } = string.Empty;
 }
+
+public sealed class ReportReadingRow
+{
+    public Guid SignedFileId { get; set; }
+    public Guid ReportId { get; set; }
+    public string Identification { get; set; } = string.Empty;
+    public string Cnpj { get; set; } = string.Empty;
+    public string? EquipmentKey { get; set; }
+    public DateTime? IssueDate { get; set; }
+    public string Outcome { get; set; } = string.Empty;
+    public int ExtractorVersion { get; set; }
+    public DateTime ReadAt { get; set; }
+    public int Attempts { get; set; }
+    public List<ReportSectionResultRow> Sections { get; set; } = [];
+}
+
+public sealed class ReportSectionResultRow
+{
+    public const string Chromatography = "cromatografia";
+    public const string PhysicalChemical = "fisico-quimica";
+
+    public Guid SignedFileId { get; set; }
+    public string Section { get; set; } = string.Empty;
+    public string? ResultLabel { get; set; }
+    public string? Conformity { get; set; }
+    public string? ResultColor { get; set; }
+    public string? Title { get; set; }
+    public string Paragraphs { get; set; } = "[]";
+}
+
+public sealed class EquipmentStatusRow
+{
+    public string Cnpj { get; set; } = string.Empty;
+    public string EquipmentKey { get; set; } = string.Empty;
+    public string? SerialNumber { get; set; }
+    public string DisplayLabel { get; set; } = string.Empty;
+    public string? Tag { get; set; }
+    public string? EquipmentType { get; set; }
+    public bool NameplateKnown { get; set; }
+    public string Company { get; set; } = string.Empty;
+    public string Identification { get; set; } = string.Empty;
+    public int ReportCount { get; set; }
+    public DateTime MostRecentReportDate { get; set; }
+    public DateTime? LastReportDate { get; set; }
+    public string? ChromatographyConformity { get; set; }
+    public string? ChromatographyLabel { get; set; }
+    public string? PhysicalChemicalConformity { get; set; }
+    public string? PhysicalChemicalLabel { get; set; }
+    public bool HasChromatography { get; set; }
+    public bool HasPhysicalChemical { get; set; }
+    public string OverallStatus { get; set; } = string.Empty;
+    public DateTime UpdatedAt { get; set; }
+}
+
+public sealed class LoadScopeRow
+{
+    public string Cnpj { get; set; } = string.Empty;
+    public bool Active { get; set; }
+    public DateTime? ProcessedUntilIssueDate { get; set; }
+    public Guid? ProcessedUntilReportId { get; set; }
+    public DateTime? LastRunAt { get; set; }
+}

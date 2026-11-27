@@ -240,6 +240,7 @@ public sealed partial class ClientLabResultsConsultation(
                 analysis.ReportCode,
                 TimeZoneInfo.ConvertTime(analysis.PublishedAt, PortalTimeZone).DateTime,
                 null,
+                null,
                 analysis.TechnicalClassification,
                 ParagraphsOf(analysis.Conclusion))
         ];

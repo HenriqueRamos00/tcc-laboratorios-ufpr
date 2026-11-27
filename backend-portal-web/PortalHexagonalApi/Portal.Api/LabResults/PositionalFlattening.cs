@@ -1,4 +1,5 @@
 using Portal.Application.LabResults;
+using Portal.Application.ReportDocuments;
 using Portal.Domain.LabResults;
 
 namespace Portal.Api.LabResults;
@@ -15,9 +16,6 @@ namespace Portal.Api.LabResults;
 public static class PositionalFlattening
 {
     private const string NotDetectedText = "ND";
-    private const string NormalResultLabel = "NORMAL";
-    private const string NormalConformity = "normal";
-    private const string NonConformingConformity = "nao-conforme";
 
     public static HealthIndicatorsResponse Flatten(
         SampleHealthIndicators indicators,
@@ -79,7 +77,7 @@ public static class PositionalFlattening
 
         return new PhysicalChemicalBlockResponse
         {
-            Conformity = ConformityOf(indicators.PhysicalChemicalResult),
+            Conformity = ConformityText.Of(indicators.PhysicalChemicalConformity),
             Verdict = indicators.PhysicalChemicalResult,
             NominalVoltage = string.IsNullOrWhiteSpace(indicators.NominalVoltage) ? null : indicators.NominalVoltage,
             Columns = BuildColumns(series),
@@ -115,7 +113,7 @@ public static class PositionalFlattening
 
         return new DissolvedGasBlockResponse
         {
-            Conformity = ConformityOf(indicators.GasResult),
+            Conformity = ConformityText.Of(indicators.GasConformity),
             Verdict = indicators.GasResult,
             AnalysisDates = [.. series.Readings.Select(DateOf)],
             Analyses = BuildReadings(series),
@@ -137,18 +135,10 @@ public static class PositionalFlattening
             Identification = conclusion.Identification,
             Date = WireDate.From(conclusion.Date),
             ResultLabel = conclusion.ResultLabel,
+            Conformity = ConformityText.Of(conclusion.Conformity),
             Title = conclusion.Title,
             Paragraphs = conclusion.Paragraphs
         })];
-    }
-
-    private static string? ConformityOf(string? resultLabel)
-    {
-        if (string.IsNullOrWhiteSpace(resultLabel)) return null;
-
-        return string.Equals(resultLabel.Trim(), NormalResultLabel, StringComparison.OrdinalIgnoreCase)
-            ? NormalConformity
-            : NonConformingConformity;
     }
 
     /// <summary>

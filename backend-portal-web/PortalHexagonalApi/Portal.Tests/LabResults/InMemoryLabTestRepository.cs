@@ -36,6 +36,10 @@ public sealed class InMemoryLabTestRepository : ILabTestRepository
 
     public List<EquipmentSearch?> SearchesAsked { get; } = [];
 
+    public List<ProtocolReport> OtherReports { get; } = [];
+
+    public List<string[]> ProtocolsAskedForReports { get; } = [];
+
     public Task<Page<SampleAnalysis>> GetAnalysesAsync(
         CompanyScope scope,
         EquipmentSearch? search,
@@ -88,6 +92,23 @@ public sealed class InMemoryLabTestRepository : ILabTestRepository
                 analysis.ProtocoloLactec, protocoloLactec, StringComparison.Ordinal));
 
         return Task.FromResult(found);
+    }
+
+    public Task<IReadOnlyList<ProtocolReport>> GetReportsOfProtocolsAsync(
+        CompanyScope scope,
+        IReadOnlyCollection<string> protocols,
+        CancellationToken cancellationToken)
+    {
+        ProtocolsAskedForReports.Add([.. protocols]);
+
+        List<ProtocolReport> ofTheAnalyses = [.. In(scope)
+            .Where(analysis => analysis.ProtocoloLactec is string protocol && protocols.Contains(protocol))
+            .Select(analysis => new ProtocolReport(
+                analysis.ProtocoloLactec!, analysis.Identification, analysis.IssueDate))];
+
+        return Task.FromResult<IReadOnlyList<ProtocolReport>>(
+            [.. ofTheAnalyses, .. OtherReports.Where(report =>
+                ofTheAnalyses.Any(known => known.ProtocoloLactec == report.ProtocoloLactec))]);
     }
 
     private static bool Holds(string? text, EquipmentSearch search)

@@ -31,7 +31,7 @@ public sealed class EquipmentContractTests : IClassFixture<RunningPortal>
         Assert.All(list, equipment => Assert.Equal(
             ["company", "equipmentTag", "id", "identification", "location",
              "mostRecentReportDate", "nameplateKnown", "reportCount", "serialNumber",
-             "tag", "type"],
+             "status", "tag", "type"],
             equipment!.AsObject().Select(pair => pair.Key).Order()));
     }
 

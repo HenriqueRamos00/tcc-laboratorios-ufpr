@@ -1,3 +1,4 @@
+using Portal.Application.ReportDocuments;
 using Portal.Domain.LabResults;
 
 namespace Portal.Application.LabResults;
@@ -28,5 +29,9 @@ public sealed record SampleHealthIndicators(
 
     public string? PhysicalChemicalResult { get; init; }
 
+    public Conformity? PhysicalChemicalConformity { get; init; }
+
     public string? GasResult { get; init; }
+
+    public Conformity? GasConformity { get; init; }
 }

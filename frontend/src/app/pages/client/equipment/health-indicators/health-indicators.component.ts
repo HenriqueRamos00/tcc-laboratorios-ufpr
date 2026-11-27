@@ -17,8 +17,8 @@ import { ActivatedRoute, Router } from '@angular/router';
 import { DataPipe } from '@shared/pipes/data.pipe';
 import { handFileToTheBrowser } from '@shared/file-download';
 import { NumeroPipe } from '@shared/pipes/numero.pipe';
-import { ClassificationBadgeComponent } from '@shared/components/classification-badge/classification-badge.component';
 import { ConformityGaugeComponent } from '@shared/components/conformity-gauge/conformity-gauge.component';
+import { StatusPillComponent } from '@shared/components/status-pill/status-pill.component';
 import { EmptyStateComponent } from '@shared/components/empty-state/empty-state.component';
 import { LoadingRegionComponent } from '@shared/components/skeleton/loading-region.component';
 import {
@@ -36,6 +36,7 @@ import {
 } from '@shared/components/data-unavailable/data-unavailable.component';
 
 import {
+  CLASSIFICATION_LABEL,
   type GasRatioReading,
   type DissolvedGas,
   type HealthIndicators,
@@ -152,7 +153,7 @@ const numeroPipe = new NumeroPipe();
     PageHeaderComponent,
     EmptyStateComponent,
     ConformityGaugeComponent,
-    ClassificationBadgeComponent,
+    StatusPillComponent,
     LineChartComponent,
     ConformityBannerComponent,
     DataUnavailableComponent,
@@ -177,6 +178,7 @@ export class HealthIndicatorsComponent {
   private readonly equipments = inject(EquipmentsService);
   private readonly destroyRef = inject(DestroyRef);
 
+  protected readonly classificationLabel = CLASSIFICATION_LABEL;
   protected readonly archiveDownloading = signal(false);
   protected readonly archiveMessage = signal<ArchiveMessage | null>(null);
 

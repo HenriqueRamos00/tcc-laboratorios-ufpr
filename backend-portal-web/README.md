@@ -64,6 +64,12 @@ GET http://localhost:5125/api/quotes/{id}/document
 GET http://localhost:5125/api/quotes/{id}/reports
 GET http://localhost:5125/api/lab-results
 GET http://localhost:5125/api/lab-results/{id}
+GET http://localhost:5125/api/equipments?page=1&pageSize=50&status=nao-conforme
+GET http://localhost:5125/api/equipments/{id}/status
+POST http://localhost:5125/api/equipments/{id}/status/refresh
+POST http://localhost:5125/api/equipments/status/refresh
+POST http://localhost:5125/api/equipments/status/sync
+GET http://localhost:5125/api/events
 POST http://localhost:5125/auth/login
 GET http://localhost:5125/auth/me
 ```
@@ -457,20 +463,42 @@ identificador desconhecido ou registro de outra empresa respondem 404.
 `physicalChemical.nominalVoltage` informa a tensão nominal do equipamento, ou `null`.
 `physicalChemical.reports` e `dissolvedGases.reports` listam os laudos do equipamento que
 têm aquela seção, do mais recente para o mais antigo, como
-`{ identification, date, resultLabel, title, paragraphs }`. No modo Auth o texto vem do PDF
-assinado de cada laudo (os 24 mais recentes, lidos em sequência e guardados em memória por
-arquivo): `resultLabel` é a célula RESULTADO da tabela (`NORMAL`, `Descarga elétrica`...),
-`title` e `paragraphs` são o bloco `LAUDO DA ANÁLISE CROMATOGRÁFICA` ou
-`LAUDO DAS ANÁLISES FÍSICO-QUÍMICAS`, e `date` é a data de emissão. PDF ausente ou ilegível
-deixa o laudo na lista com `resultLabel`/`title` `null` e `paragraphs` vazio. No modo
-Backend Lab a lista tem um laudo só (o da análise selecionada, ou o mais recente da
+`{ identification, date, resultLabel, conformity, title, paragraphs }`. No modo Auth o texto
+vem do PDF assinado de cada laudo: `resultLabel` é a célula RESULTADO da tabela (`NORMAL`,
+`Descarga elétrica`...), `title` e `paragraphs` são o bloco `LAUDO DA ANÁLISE CROMATOGRÁFICA`
+ou `LAUDO DAS ANÁLISES FÍSICO-QUÍMICAS`, e `date` é a data de emissão. PDF ausente ou
+ilegível deixa o laudo na lista com `resultLabel`/`title` `null` e `paragraphs` vazio. No
+modo Backend Lab a lista tem um laudo só (o da análise selecionada, ou o mais recente da
 seção), sem rótulo.
 
-`conformity` de cada bloco vem do rótulo do laudo selecionado na rota, ou do mais recente
-da seção: `NORMAL` (sem diferenciar maiúsculas) vira `normal`, outro rótulo vira
-`nao-conforme`, e sem rótulo é `null`. `verdict` repete o rótulo. A seção que a análise
-selecionada não tem também usa o laudo mais recente dela, em vez de ficar sem conformidade.
-Classificação, método e limite podem vir `null`/`-`.
+A tela lê da projeção local dos laudos (veja "Situação dos equipamentos e carga dos
+laudos"). Laudo que ainda não está na projeção é lido do AutoLAB na hora, como antes (os
+24 mais recentes, em sequência), e gravado na projeção junto com a situação do equipamento:
+a segunda visita não lê PDF nenhum. Sem banco do portal, a leitura continua toda na hora.
+
+Um protocolo pode ter **mais de um laudo** (por exemplo, um de gases e físico-química e
+outro só de PCB). A tela pede ao AutoLAB todos os laudos dos protocolos das análises
+mostradas (uma consulta agrupada a `vwDadosEnsaios`, sem as medições) e lê todos eles. Em
+cada lista entram os laudos do protocolo que **têm aquela seção**; o laudo sem as tabelas
+de RESULTADO não aparece como laudo da seção. Só quando nenhum laudo do protocolo tem a
+seção lida (sem PDF, ilegível) o laudo da análise fica na lista, sem rótulo. A análise
+selecionada na rota escolhe, em cada bloco, o laudo mais recente do protocolo dela que tem
+a seção.
+
+O laudo de cada análise (`identification` nas listagens e no histórico) é o de **emissão
+mais recente entre os laudos do protocolo que têm item medido reconhecido**; empate de data
+sai pela ordem ordinal da identificação. A ordem em que o banco devolve as linhas não
+decide nada.
+
+`conformity` vem da **cor de preenchimento da célula RESULTADO** do PDF, e não mais do
+texto do rótulo: verde é `normal`, amarelo é `alerta`, vermelho é `nao-conforme`. Cor que
+não é nenhuma das três (branco, cinza, outra matiz, célula sem preenchimento) guarda o
+rótulo e deixa `conformity` `null`. A cor é lida do retângulo preenchido mais justo que
+contém o rótulo; a matiz decide (vermelho abaixo de 15° ou a partir de 345°, amarelo de 30°
+a 70°, verde de 75° a 165°) e cor com saturação abaixo de 10% não é classificação.
+`conformity` de cada bloco é a do laudo selecionado na rota, ou a do mais recente da seção,
+e `verdict` repete o rótulo dele. A seção que a análise selecionada não tem também usa o
+laudo mais recente dela. Classificação, método e limite dos ensaios podem vir `null`/`-`.
 
 `oilType` informa o óleo isolante do equipamento como `{ kind, reported }`, onde `reported`
 é o texto do cadastro e `kind` é `mineral`, `natural-ester`, `silicone`, `unrecognized`
@@ -483,6 +511,148 @@ limite curado do projeto; os demais vêm com `limit` nulo e `limitAbsence` dizen
 `oil-type-without-criterion` para éster natural e silicone, que o projeto não tem critério
 para avaliar, `oil-type-unrecognized` para o tipo informado e não reconhecido, e
 `oil-type-not-informed` para o cadastro sem tipo.
+
+### Situação dos equipamentos e carga dos laudos
+
+Ler o PDF de cada laudo na hora não serve para a listagem: um cliente grande tem centenas
+de equipamentos. A situação vem de uma **projeção local**, no banco do portal, alimentada
+por uma carga diária e por um disparo manual por equipamento. Só existe com
+`PortalStore__Source=sql-server`, `ReportDocuments__Source=sql-server` e
+`LabResults__Source=sql-server` no modo `lactec`.
+
+**Tabelas** (esquema `portal`, migração `ProjecaoDosLaudos`):
+
+- `ReportReadings`: o controle de leitura, uma linha por **PDF assinado lido**. A chave é o
+  id do arquivo assinado no AutoLAB (`SignedFileId`). Guarda id e identificação do
+  relatório, CNPJ, chave do equipamento (a série, ou o protocolo quando a série vem em
+  branco), data de emissão, resultado da leitura (`extraido`, `sem-secoes` ou `ilegivel`),
+  versão do extrator, data da leitura e tentativas. **"Já li" é a linha existir**, inclusive
+  quando nenhuma seção foi achada (`sem-secoes`: laudo de PCB e de outros ensaios sem
+  tabela de RESULTADO), e esse laudo não é lido de novo. `ilegivel` é tentado de novo em dias diferentes, até 3
+  tentativas, e depois para. Linha gravada por uma versão anterior do extrator é lida de novo.
+- `ReportSectionResults`: filha, uma linha por seção achada (`cromatografia` ou
+  `fisico-quimica`), com rótulo, conformidade, cor lida (`#RRGGBB`), título e parágrafos
+  (JSON).
+- `EquipmentStatuses`: uma linha por equipamento e CNPJ, com série, TAG, tipo, laudo mais
+  recente, data do último laudo assinado lido que tem seção, conformidade e rótulo de cada
+  seção no laudo mais recente que tem a seção, e a situação geral, que é a pior das duas
+  (`nao-conforme` > `alerta` > `normal`). Entram **todos os laudos de todos os protocolos**
+  do equipamento, e não um laudo por protocolo. **Laudo `sem-secoes` não decide a
+  situação**: `sem-laudo` é o equipamento sem laudo assinado lido ou só com laudos sem
+  seção, e `sem-classificacao` fica para o que tem seção lida mas nenhuma cor reconhecida.
+  Índice por `(Cnpj, OverallStatus, LastReportDate)`.
+- `LoadScopes`: o escopo da carga, uma linha por CNPJ, com `Active`, até onde a carga já
+  processou (`ProcessedUntilIssueDate` e `ProcessedUntilReportId`) e `LastRunAt`.
+
+**Rodada diária.** Um `BackgroundService` roda às 06:00 de Brasília (`ReportLoad__DailyAt`,
+`ReportLoad__TimeZone`), e também na subida quando algum CNPJ ativo nunca rodou ou quando a
+API subiu depois do horário sem rodada no dia. Rodada que termina com problema é tentada de
+novo uma vez no mesmo dia, às 15:00 (`ReportLoad__RetryAt`); horário igual ou anterior ao da
+rodada diária desliga a nova tentativa. Para cada CNPJ ativo ela lista os
+equipamentos e os laudos de cada um (uma linha por laudo de cada protocolo de
+`vwDadosEnsaios`, sem as medições), pede ao
+AutoLAB os relatórios com PDF assinado emitidos a partir de `ProcessedUntilIssueDate` menos
+**1 dia de folga**, em lotes com `TOP` (`ReportLoad__BatchSize`, 100) ordenados por emissão
+e id, lê **um PDF por vez** com pausa entre eles (`ReportLoad__PauseBetweenPdfsMilliseconds`,
+250) e grava a situação de cada equipamento. Relatório emitido mais de um dia antes da
+marca não é revisitado. Cada rodada lê no máximo `ReportLoad__MaxPdfsPerRun` (2000) PDFs: a
+primeira carga de um CNPJ se espalha por várias rodadas e retoma de onde parou, e enquanto
+ela não termina só entram na projeção os equipamentos que já têm laudo lido. PDF que não
+abre vira `ilegivel` e a rodada segue; depois de
+`ReportLoad__MaxConsecutiveSourceFailures` (3) falhas seguidas do AutoLAB ao entregar
+arquivo, a rodada deixa aquele CNPJ para o dia seguinte. `ReportLoad__Enabled=false`
+desliga só o horário; o disparo manual continua.
+
+**Uma rodada por vez.** A vaga (`SemaphoreSlim(1,1)`) e a lista de interessados vivem na
+memória do processo, e valem para **uma instância só** da API. Quem pede durante uma rodada
+não abre outra: entra na lista de interessados, uma entrada por pessoa (`sub` do JWT), e é
+avisado no fim. O pedido de equipamento que chega durante a rodada é atendido por ela
+mesma, entre um lote e outro, e o pedido de CNPJ inteiro é atendido no fim dela. Pedido
+igual a um que está na fila ou sendo atendido não entra de novo.
+
+**Disparo manual.** `POST /api/equipments/{id}/status/refresh` lê os laudos assinados
+daquele equipamento (os 24 de emissão mais recente que ainda não estão na projeção,
+contando todos os laudos de cada protocolo, que vêm de uma consulta agrupada a
+`vwDadosEnsaios` restrita aos protocolos autorizados do equipamento) e grava a
+situação, dentro do escopo de CNPJ do JWT: equipamento de outra empresa responde o mesmo
+404 de equipamento inexistente. Responde
+`{ alreadyRunning, success, reportsRead, reportsUnreadable, status }`; com
+`alreadyRunning`, `status` vem `null` e o fim chega pelo aviso. Sem a projeção neste
+ambiente responde 404 com o código `equipment-status-unavailable`.
+`GET /api/equipments/{id}/status` devolve a situação, ou 204 quando o equipamento ainda não
+está na projeção.
+
+**Lote da página exibida.** `POST /api/equipments/status/refresh`, com
+`{ "ids": ["...", "..."] }` (os identificadores opacos da listagem), pede a situação dos
+equipamentos que a tela está mostrando e ainda não estão na projeção. O escopo é o do JWT:
+cada chave só é procurada nos CNPJs da sessão, e chave de outra empresa não acha análise
+nenhuma e não grava nada. Aceita de 1 a `ReportLoad__MaxEquipmentPerBatch` (100)
+identificadores; fora disso responde 400 com o código `too-many-equipment`, e identificador
+ilegível responde 400 com `invalid-identifier`. A API tira do lote o que já tem situação,
+põe o resto na fila da vaga e responde **202** com `{ accepted, alreadyRunning }`
+(`accepted` é quantas chaves ficaram para ler; `0` quer dizer que não haverá aviso). Um
+`BackgroundService` (`ReportRefreshBackgroundService`) acorda com a fila e atende os
+pedidos pela **mesma vaga** da rodada diária: um equipamento por vez, um PDF por vez, com a
+mesma pausa. Se uma rodada já estava em andamento, ela mesma atende. No fim, quem pediu
+recebe `carga.concluida`. Cada pedido confere de novo, na hora de atender, se o
+equipamento já ganhou situação, então o mesmo lote pedido duas vezes não consulta o
+AutoLAB duas vezes.
+
+**Demais equipamentos do cliente.** `POST /api/equipments/status/sync`, sem corpo, pede a
+carga dos CNPJs do JWT, até `ReportLoad__MaxCompaniesPerRefresh` (20) por pedido, e responde
+**202** com `{ accepted, alreadyRunning }` (`accepted` é quantos CNPJs entraram). A carga é
+a mesma da rodada diária, CNPJ por CNPJ, na mesma vaga e em segundo plano: lista os
+equipamentos, lê os PDFs assinados que ainda não foram lidos e grava a situação. Vale para
+CNPJ que não está ativo em `LoadScopes` (sem linha, a marca de progresso não é gravada e
+quem evita reler é o controle de leitura) e usa a marca do CNPJ ativo. Cada rodada de
+pedidos lê no máximo `ReportLoad__MaxPdfsPerRefresh` (500) PDFs; o que faltar entra no
+próximo pedido, e enquanto a carga do CNPJ não termina só ganham situação os equipamentos
+com laudo lido. Com rodada em andamento, quem pede vira interessado e o CNPJ é atendido
+no fim dela, sem abrir outra. Os dois endpoints respondem 404
+`equipment-status-unavailable` sem a projeção.
+
+**Avisos em tempo real.** `GET /api/events` é um fluxo `text/event-stream`
+(`TypedResults.ServerSentEvents`), autenticado pelo mesmo `Authorization: Bearer`. O evento
+`carga.concluida`, com `{ status, at, reportsRead }` (`status` é `success` ou `failure`), vai
+só para quem pediu a atualização. O fluxo manda um evento `ping` a cada 20 s, fecha em 30
+minutos, aceita até 5 conexões por pessoa (a sexta responde 429) e reenvia o que a conexão
+perdeu quando ela volta com `Last-Event-ID`, ou manda `recarregar` quando o histórico não
+alcança (`RealTime__*`).
+
+**Listagem.** `GET /api/equipments` devolve `status` em cada linha
+(`{ overall, chromatography, physicalChemical, lastReportDate, updatedAt }`), ou `null`
+quando o equipamento ainda não está na projeção. Com `?status=` (`nao-conforme`, `alerta`,
+`normal`, `sem-laudo` ou `sem-classificacao`) a página e o filtro saem de **uma consulta
+local à projeção**, sem tocar o AutoLAB, e a busca vale sobre série, TAG e identificação.
+Esse filtro só enxerga equipamento que já está na projeção. Valor fora da lista responde 400.
+
+**Ativar um CNPJ.** A carga só percorre os CNPJs com `Active = 1` em `portal.LoadScopes`, e
+a tabela nasce vazia. Para ativar, no banco do portal (CNPJ sem máscara):
+
+```sql
+INSERT INTO portal.LoadScopes (Cnpj, Active) VALUES ('00000000000000', 1);
+```
+
+A próxima rodada (ou a subida da API) faz a carga histórica só desse CNPJ; os demais seguem
+incrementais. `UPDATE portal.LoadScopes SET Active = 0 WHERE Cnpj = '...'` tira o CNPJ da
+carga sem apagar o que já foi lido. Para refazer a carga de um CNPJ do zero, zere
+`ProcessedUntilIssueDate`, `ProcessedUntilReportId` e `LastRunAt` dele; os PDFs já lidos não
+são lidos de novo.
+
+Para saber quais CNPJs têm laudo assinado e podem ser ativados depois, esta consulta de
+leitura roda no AutoLAB, fora da API:
+
+```sql
+SELECT REPLACE(REPLACE(REPLACE(c.cli_cadastronacional_a, '.', ''), '/', ''), '-', '') AS Cnpj,
+       COUNT(*) AS LaudosAssinados,
+       MAX(r.DataEmissao) AS UltimaEmissao
+FROM dbo.RelatorioEmissao r
+JOIN dbo.SolicitacaoServico s ON s.Oid = r.Solicitacao AND s.GCRecord IS NULL
+JOIN dbo.Cliente c ON c.Oid = s.Cliente AND c.GCRecord IS NULL
+WHERE r.GCRecord IS NULL AND r.PdfAssinado IS NOT NULL
+GROUP BY REPLACE(REPLACE(REPLACE(c.cli_cadastronacional_a, '.', ''), '/', ''), '-', '')
+ORDER BY LaudosAssinados DESC;
+```
 
 ### Escopo de visibilidade
 
@@ -525,9 +695,12 @@ fica no banco próprio `portal`, num SQL Server em contêiner:
   envio da NFS-e, um por linha: termo, posição e endereço, com índice único por termo e
   endereço), `portal.PurchaseOrders` (PDF, nome, tamanho e SHA-256) e `portal.Rejections`
   (justificativa).
-- **Migração única:** enquanto o banco não guarda dado a preservar, mudança de esquema
-  regenera a `CriarBancoDoPortal` em vez de empilhar outra. Um banco criado pela versão
-  anterior precisa ser recriado (apague o volume `portal-sqlserver-data`).
+- **Migrações:** `CriarBancoDoPortal` cria as tabelas das decisões e `ProjecaoDosLaudos`
+  empilha as quatro tabelas da projeção dos laudos (veja "Situação dos equipamentos e carga
+  dos laudos"), sem tocar nas anteriores: um banco que já guarda decisões é atualizado na
+  subida, sem recriar o volume. O EF Core recusa `Migrate` quando o modelo tem mudança sem
+  migração, então toda mudança de esquema daqui em diante vem com a migração gerada pelo
+  `dotnet ef`.
 - **Rotas** (só no modo `lactec`, com o cliente logado):
   `POST /api/quotes/{id}/acceptance` (JSON do termo), `POST /api/quotes/{id}/purchase-order`
   (multipart, campo `file`, PDF de até 10 MB), `POST /api/quotes/{id}/sample-shipment` e
@@ -546,6 +719,13 @@ fica no banco próprio `portal`, num SQL Server em contêiner:
 - **Em produção:** use um login próprio do banco `portal`, em vez de `sa`.
 
 ## Limitações conhecidas e trabalho futuro
+
+- **A carga dos laudos vale para uma instância da API.** A vaga única e a lista de
+  interessados ficam na memória do processo, como o canal de avisos. Com mais de uma
+  instância, cada uma teria a sua vaga; o caminho é um bloqueio no banco do portal
+  (`sp_getapplock` com dono `Session` e `@LockTimeout = 0`) e um canal compartilhado.
+- **Equipamento testado por dois CNPJs do mesmo cliente** tem uma linha de situação por
+  CNPJ, e aparece duas vezes no filtro por situação.
 
 - **Aceite e recusa de proposta não voltam ao Salesforce.** A integração com o Salesforce é
   somente leitura. Aceite, recusa, ordem de compra e confirmação de envio de amostra ficam

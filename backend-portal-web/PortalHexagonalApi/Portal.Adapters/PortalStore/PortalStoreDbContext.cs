@@ -8,12 +8,23 @@ public sealed class PortalStoreDbContext : DbContext
 {
     public const string Schema = "portal";
 
+    public const int IdentificationLength = 100;
+    public const int EquipmentKeyLength = 250;
+    public const int LabelLength = 300;
+    public const int ShortCodeLength = 20;
+
     public PortalStoreDbContext(DbContextOptions<PortalStoreDbContext> options)
         : base(options)
     {
     }
 
     public DbSet<ClientDecisionRow> ClientDecisions => Set<ClientDecisionRow>();
+
+    public DbSet<ReportReadingRow> ReportReadings => Set<ReportReadingRow>();
+
+    public DbSet<EquipmentStatusRow> EquipmentStatuses => Set<EquipmentStatusRow>();
+
+    public DbSet<LoadScopeRow> LoadScopes => Set<LoadScopeRow>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -86,6 +97,61 @@ public sealed class PortalStoreDbContext : DbContext
             rejection.ToTable("Rejections");
             rejection.HasKey(row => row.DecisionId);
             rejection.Property(row => row.Justification).HasMaxLength(FieldLimits.Justification).IsRequired();
+        });
+
+        modelBuilder.Entity<ReportReadingRow>(reading =>
+        {
+            reading.ToTable("ReportReadings");
+            reading.HasKey(row => row.SignedFileId);
+            reading.Property(row => row.SignedFileId).ValueGeneratedNever();
+            reading.Property(row => row.Identification).HasMaxLength(IdentificationLength).IsRequired();
+            reading.Property(row => row.Cnpj).HasMaxLength(FieldLimits.Cnpj).IsFixedLength().IsUnicode(false).IsRequired();
+            reading.Property(row => row.EquipmentKey).HasMaxLength(EquipmentKeyLength);
+            reading.Property(row => row.Outcome).HasMaxLength(ShortCodeLength).IsUnicode(false).IsRequired();
+            reading.HasIndex(row => new { row.Cnpj, row.Identification });
+            reading.HasIndex(row => new { row.Cnpj, row.Outcome });
+
+            reading.HasMany(row => row.Sections).WithOne()
+                .HasForeignKey(row => row.SignedFileId).OnDelete(DeleteBehavior.Cascade);
+        });
+
+        modelBuilder.Entity<ReportSectionResultRow>(section =>
+        {
+            section.ToTable("ReportSectionResults");
+            section.HasKey(row => new { row.SignedFileId, row.Section });
+            section.Property(row => row.Section).HasMaxLength(ShortCodeLength).IsUnicode(false).IsRequired();
+            section.Property(row => row.ResultLabel).HasMaxLength(LabelLength);
+            section.Property(row => row.Conformity).HasMaxLength(ShortCodeLength).IsUnicode(false);
+            section.Property(row => row.ResultColor).HasMaxLength(7).IsFixedLength().IsUnicode(false);
+            section.Property(row => row.Title).HasMaxLength(LabelLength);
+            section.Property(row => row.Paragraphs).IsRequired();
+        });
+
+        modelBuilder.Entity<EquipmentStatusRow>(status =>
+        {
+            status.ToTable("EquipmentStatuses");
+            status.HasKey(row => new { row.Cnpj, row.EquipmentKey });
+            status.Property(row => row.Cnpj).HasMaxLength(FieldLimits.Cnpj).IsFixedLength().IsUnicode(false).IsRequired();
+            status.Property(row => row.EquipmentKey).HasMaxLength(EquipmentKeyLength).IsRequired();
+            status.Property(row => row.SerialNumber).HasMaxLength(EquipmentKeyLength);
+            status.Property(row => row.DisplayLabel).HasMaxLength(EquipmentKeyLength).IsRequired();
+            status.Property(row => row.Tag).HasMaxLength(IdentificationLength);
+            status.Property(row => row.EquipmentType).HasMaxLength(IdentificationLength);
+            status.Property(row => row.Company).HasMaxLength(EquipmentKeyLength).IsRequired();
+            status.Property(row => row.Identification).HasMaxLength(IdentificationLength).IsRequired();
+            status.Property(row => row.ChromatographyConformity).HasMaxLength(ShortCodeLength).IsUnicode(false);
+            status.Property(row => row.ChromatographyLabel).HasMaxLength(LabelLength);
+            status.Property(row => row.PhysicalChemicalConformity).HasMaxLength(ShortCodeLength).IsUnicode(false);
+            status.Property(row => row.PhysicalChemicalLabel).HasMaxLength(LabelLength);
+            status.Property(row => row.OverallStatus).HasMaxLength(ShortCodeLength).IsUnicode(false).IsRequired();
+            status.HasIndex(row => new { row.Cnpj, row.OverallStatus, row.LastReportDate });
+        });
+
+        modelBuilder.Entity<LoadScopeRow>(scope =>
+        {
+            scope.ToTable("LoadScopes");
+            scope.HasKey(row => row.Cnpj);
+            scope.Property(row => row.Cnpj).HasMaxLength(FieldLimits.Cnpj).IsFixedLength().IsUnicode(false).IsRequired();
         });
     }
 }

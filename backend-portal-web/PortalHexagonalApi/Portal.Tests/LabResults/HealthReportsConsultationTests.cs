@@ -6,6 +6,7 @@ using Portal.Application.Visibility;
 using Portal.Domain.LabResults;
 using Portal.Tests.AutoLab;
 using Portal.Tests.Nameplate;
+using Portal.Tests.ReportProjection;
 
 using Xunit;
 
@@ -47,8 +48,12 @@ public sealed class HealthReportsConsultationTests
     {
         SampleHealthIndicators indicators = await IndicatorsAsync(
             new ReadingsByIdentification(
-                Reading(Older, new DateTime(2026, 3, 1), gas: Section("NORMAL"), physicalChemical: Section("Normal")),
-                Reading(Latest, new DateTime(2026, 7, 1), gas: Section("Descarga elétrica"))),
+                Reading(
+                    Older,
+                    new DateTime(2026, 3, 1),
+                    gas: Section("NORMAL", Conformity.Normal),
+                    physicalChemical: Section("Normal", Conformity.Normal)),
+                Reading(Latest, new DateTime(2026, 7, 1), gas: Section("Descarga elétrica", Conformity.NonConforming))),
             null,
             Both("01/2026-001", Older, new DateTime(2026, 2, 20)),
             Gas("03/2026-001", Latest, new DateTime(2026, 6, 20)));
@@ -62,12 +67,34 @@ public sealed class HealthReportsConsultationTests
     }
 
     [Fact]
+    public async Task TheLabelAloneNoLongerDecidesTheConformity()
+    {
+        SampleHealthIndicators indicators = await IndicatorsAsync(
+            new ReadingsByIdentification(
+                Reading(
+                    Latest,
+                    new DateTime(2026, 7, 1),
+                    gas: Section("NORMAL", Conformity.Warning),
+                    physicalChemical: Section("NORMAL"))),
+            null,
+            Both("03/2026-001", Latest, new DateTime(2026, 6, 20)));
+
+        HealthIndicatorsResponse response = PositionalFlattening.Flatten(indicators, "equipamento");
+
+        Assert.Equal("alerta", response.DissolvedGases.Conformity);
+        Assert.Equal("alerta", response.DissolvedGases.Reports[0].Conformity);
+        Assert.Equal("NORMAL", response.DissolvedGases.Verdict);
+        Assert.Null(response.PhysicalChemical.Conformity);
+        Assert.Equal("NORMAL", response.PhysicalChemical.Verdict);
+    }
+
+    [Fact]
     public async Task TheSectionTheSelectedAnalysisDoesNotHaveKeepsItsMostRecentReport()
     {
         SampleHealthIndicators indicators = await IndicatorsAsync(
             new ReadingsByIdentification(
-                Reading(Older, new DateTime(2026, 3, 1), gas: Section("Descarga elétrica")),
-                Reading(Latest, new DateTime(2026, 7, 1), physicalChemical: Section("Normal"))),
+                Reading(Older, new DateTime(2026, 3, 1), gas: Section("Descarga elétrica", Conformity.NonConforming)),
+                Reading(Latest, new DateTime(2026, 7, 1), physicalChemical: Section("Normal", Conformity.Normal))),
             "03/2026-001",
             Gas("01/2026-001", Older, new DateTime(2026, 2, 20)),
             PhysicalChemical("03/2026-001", Latest, new DateTime(2026, 6, 20)));
@@ -84,8 +111,8 @@ public sealed class HealthReportsConsultationTests
     {
         SampleHealthIndicators indicators = await IndicatorsAsync(
             new ReadingsByIdentification(
-                Reading(Older, new DateTime(2026, 3, 1), gas: Section("NORMAL")),
-                Reading(Latest, new DateTime(2026, 7, 1), gas: Section("Descarga elétrica"))),
+                Reading(Older, new DateTime(2026, 3, 1), gas: Section("NORMAL", Conformity.Normal)),
+                Reading(Latest, new DateTime(2026, 7, 1), gas: Section("Descarga elétrica", Conformity.NonConforming))),
             "01/2026-001",
             Gas("01/2026-001", Older, new DateTime(2026, 2, 20)),
             Gas("03/2026-001", Latest, new DateTime(2026, 6, 20)));
@@ -101,7 +128,7 @@ public sealed class HealthReportsConsultationTests
     {
         SampleHealthIndicators indicators = await IndicatorsAsync(
             new ReadingsByIdentification(
-                Reading(Latest, new DateTime(2026, 7, 1), gas: new ReportSection(null, "LAUDO", []))),
+                Reading(Latest, new DateTime(2026, 7, 1), gas: new ReportSection(null, null, "LAUDO", []))),
             null,
             Gas("01/2026-001", Older, new DateTime(2026, 2, 20)),
             Gas("03/2026-001", Latest, new DateTime(2026, 6, 20)),
@@ -137,15 +164,53 @@ public sealed class HealthReportsConsultationTests
         Assert.Equal(LabResultsConsultation.MaxReportsRead, indicators.GasReports.Count);
     }
 
-    private static async Task<SampleHealthIndicators> IndicatorsAsync(
+    [Fact]
+    public async Task EveryReportOfTheProtocolIsReadAndTheOneWithTheSectionIsTheOneShown()
+    {
+        const string pcb = "LACTEC-00007/2026";
+        const string revised = "LACTEC-00008/2026";
+
+        ReadingsByIdentification readings = new(
+            Reading(Older, new DateTime(2026, 3, 1), gas: Section("NORMAL", Conformity.Normal)),
+            Reading(pcb, new DateTime(2026, 7, 5)),
+            Reading(revised, new DateTime(2026, 7, 10), gas: Section("Descarga elétrica", Conformity.NonConforming)),
+            Reading(Latest, new DateTime(2026, 7, 1), physicalChemical: Section("Normal", Conformity.Normal)));
+
+        InMemoryLabTestRepository labTests = new(
+            Gas("01/2026-001", Older, new DateTime(2026, 2, 20)),
+            Both("03/2026-001", Latest, new DateTime(2026, 6, 20)));
+        labTests.OtherReports.Add(new ProtocolReport("03/2026-001", pcb, new DateTime(2026, 7, 5)));
+        labTests.OtherReports.Add(new ProtocolReport("03/2026-001", revised, new DateTime(2026, 7, 10)));
+
+        SampleHealthIndicators indicators = await IndicatorsAsync(readings, "03/2026-001", labTests);
+
+        Assert.Equal([["03/2026-001", "01/2026-001"]], labTests.ProtocolsAskedForReports);
+        Assert.Equal([[Latest, revised, pcb, Older]], readings.Asked);
+        Assert.Equal([revised, Older], indicators.GasReports.Select(report => report.Identification));
+        Assert.Equal([Latest], indicators.PhysicalChemicalReports.Select(report => report.Identification));
+        Assert.Equal(Conformity.NonConforming, indicators.GasConformity);
+        Assert.Equal("Descarga elétrica", indicators.GasResult);
+        Assert.Equal(Conformity.Normal, indicators.PhysicalChemicalConformity);
+    }
+
+    private static Task<SampleHealthIndicators> IndicatorsAsync(
         ReadingsByIdentification readings,
         string? selectedProtocol,
         params SampleAnalysis[] analyses)
     {
+        return IndicatorsAsync(readings, selectedProtocol, new InMemoryLabTestRepository(analyses));
+    }
+
+    private static async Task<SampleHealthIndicators> IndicatorsAsync(
+        ReadingsByIdentification readings,
+        string? selectedProtocol,
+        InMemoryLabTestRepository labTests)
+    {
         LabResultsConsultation consultation = new(
-            new InMemoryLabTestRepository(analyses),
+            labTests,
             new InMemoryEquipmentNameplateRepository(),
-            readings);
+            readings,
+            TestProjection.Of(readings));
 
         SampleHealthIndicators? indicators = await consultation.GetHealthIndicatorsAsync(
             new HealthIndicatorsQuery(TestCompanies.ScopeOf(AnalysisBuilder.SampleCompany), Serial, selectedProtocol),
@@ -154,9 +219,9 @@ public sealed class HealthReportsConsultationTests
         return Assert.IsType<SampleHealthIndicators>(indicators);
     }
 
-    private static ReportSection Section(string label)
+    private static ReportSection Section(string label, Conformity? conformity = null)
     {
-        return new ReportSection(label, "LAUDO", ["Parágrafo."]);
+        return new ReportSection(label, conformity, "LAUDO", ["Parágrafo."]);
     }
 
     private static ReportReading Reading(

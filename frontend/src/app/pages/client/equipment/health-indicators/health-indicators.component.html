@@ -224,7 +224,11 @@
                   </td>
                 }
                 <td class="px-4 py-3">
-                  <app-classification-badge [classification]="row.classification" />
+                  @if (row.classification; as classification) {
+                    <app-status-pill [tone]="classification" [label]="classificationLabel[classification]" />
+                  } @else {
+                    <app-data-unavailable subject="Classificação" />
+                  }
                 </td>
               </tr>
             }

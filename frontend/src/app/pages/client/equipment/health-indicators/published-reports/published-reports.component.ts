@@ -2,16 +2,19 @@ import { ChangeDetectionStrategy, Component, computed, input } from '@angular/co
 
 import { DataPipe } from '@shared/pipes/data.pipe';
 
-import { type PublishedReport, resultLabelConformity } from '@/app/model/health';
+import type { Classification, PublishedReport } from '@/app/model/health';
 
-const RESULT_COLOR_PAIR = {
+const RESULT_COLOR_PAIR: Record<Classification, string> = {
   normal: 'bg-lactec-tarja-normal text-lactec-on-tarja-normal',
+  alerta: 'bg-lactec-tarja-alerta text-lactec-on-tarja-alerta',
   'nao-conforme': 'bg-lactec-tarja-nao-conforme text-lactec-on-tarja-nao-conforme',
-} as const;
+};
+
+const RESULT_WITHOUT_COLOR = 'border border-lactec-line text-lactec-ink';
 
 interface ReportEntry extends PublishedReport {
   readonly readableDate: string;
-  readonly resultColorPair: string | null;
+  readonly resultColorPair: string;
 }
 
 const dataPipe = new DataPipe();
@@ -65,13 +68,10 @@ export class PublishedReportsComponent {
   readonly headingId = input.required<string>();
 
   protected readonly entries = computed<readonly ReportEntry[]>(() =>
-    this.reports().map((report) => {
-      const conformity = resultLabelConformity(report.resultLabel);
-      return {
-        ...report,
-        readableDate: dataPipe.transform(report.date),
-        resultColorPair: conformity ? RESULT_COLOR_PAIR[conformity] : null,
-      };
-    }),
+    this.reports().map((report) => ({
+      ...report,
+      readableDate: dataPipe.transform(report.date),
+      resultColorPair: report.conformity ? RESULT_COLOR_PAIR[report.conformity] : RESULT_WITHOUT_COLOR,
+    })),
   );
 }

@@ -295,7 +295,8 @@ internal sealed class AutoLabTestDatabase : IDisposable
         DateTime analysisEnd,
         string identification = "LACTEC-00001/2026",
         string name = "Hidrogênio",
-        string? result = "60")
+        string? result = "60",
+        DateTime? issued = null)
     {
         Insert(
             "dbo.vwDadosEnsaios",
@@ -305,7 +306,7 @@ internal sealed class AutoLabTestDatabase : IDisposable
             ("Name", name),
             ("Resultado", result),
             ("EmpresaTrafo", company),
-            ("DataEmissao", analysisEnd.AddDays(1)),
+            ("DataEmissao", issued ?? analysisEnd.AddDays(1)),
             ("DataFinalAnalise", analysisEnd));
     }
 
@@ -316,9 +317,10 @@ internal sealed class AutoLabTestDatabase : IDisposable
         DateTime analysisEnd,
         string identification = "LACTEC-00001/2026",
         string name = "Hidrogênio",
-        string? result = "60")
+        string? result = "60",
+        DateTime? issued = null)
     {
-        AddUnlinkedTestRow(protocol, serialNumber, company, analysisEnd, identification, name, result);
+        AddUnlinkedTestRow(protocol, serialNumber, company, analysisEnd, identification, name, result, issued);
 
         if (_linkedProtocols.Add((protocol, company))) AddSample(RequestOf(company), protocol);
     }

@@ -327,6 +327,105 @@ public sealed class AutoLabLabTestRepositoryTests : IDisposable
         Assert.NotNull(await Repository().GetAnalysisByProtocolAsync(TestCompanies.ScopeOf(OtherTenant), "P-9", CancellationToken.None));
     }
 
+    [Theory]
+    [InlineData(0, 1, 2, 3)]
+    [InlineData(3, 2, 1, 0)]
+    [InlineData(2, 0, 3, 1)]
+    [InlineData(1, 3, 0, 2)]
+    public void TheReportOfTheAnalysisIsTheLatestIssuedWithMeasurementsWhateverTheRowOrder(
+        int first, int second, int third, int fourth)
+    {
+        VwDadosEnsaiosRecord[] rows =
+        [
+            Row("LACTEC-00002/2026", "Hidrogênio", "60", issued: new DateTime(2026, 11, 20), analysisEnd: new DateTime(2026, 11, 9)),
+            Row("LACTEC-00002/2026", "Rigidez Dielétrica - Calota (kV)", "48", issued: new DateTime(2026, 11, 20), analysisEnd: new DateTime(2026, 11, 9)),
+            Row("LACTEC-00003/2026", "Determinação de PCB", "2", issued: new DateTime(2026, 11, 25), analysisEnd: new DateTime(2026, 11, 12)),
+            Row("LACTEC-00001/2026", "Metano", "3", issued: new DateTime(2026, 11, 10), analysisEnd: new DateTime(2026, 11, 8))
+        ];
+
+        SampleAnalysis analysis = Assert.Single(AutoLabLabTestRepository.BuildAnalyses(
+            [rows[first], rows[second], rows[third], rows[fourth]]));
+
+        Assert.Equal("LACTEC-00002/2026", analysis.Identification);
+        Assert.Equal(new DateTime(2026, 11, 20), analysis.IssueDate);
+        Assert.Equal(new DateTime(2026, 11, 9), analysis.AnalysisEndDate);
+        Assert.Equal("571289", analysis.SerialNumber);
+        Assert.Equal(3, analysis.Measurements.Count);
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void TwoReportsIssuedOnTheSameDayAreToldApartByTheOrdinalOrderOfTheIdentification(bool reversed)
+    {
+        VwDadosEnsaiosRecord[] rows =
+        [
+            Row("LACTEC-00007/2026", "Hidrogênio", "60", issued: new DateTime(2026, 11, 20), analysisEnd: new DateTime(2026, 11, 9)),
+            Row("LACTEC-00005/2026", "Metano", "3", issued: new DateTime(2026, 11, 20), analysisEnd: new DateTime(2026, 11, 10))
+        ];
+
+        SampleAnalysis analysis = Assert.Single(AutoLabLabTestRepository.BuildAnalyses(
+            reversed ? rows.Reverse() : rows));
+
+        Assert.Equal("LACTEC-00005/2026", analysis.Identification);
+        Assert.Equal(new DateTime(2026, 11, 10), analysis.AnalysisEndDate);
+    }
+
+    [Fact]
+    public async Task EveryReportOfTheProtocolsComesOnceWithItsIssueDateAndOnlyInsideTheTenant()
+    {
+        _database.AddTestRow("P-1", "571289", Tenant, new DateTime(2026, 11, 9), "LACTEC-00002/2026", issued: new DateTime(2026, 11, 20));
+        _database.AddTestRow("P-1", "571289", Tenant, new DateTime(2026, 11, 9), "LACTEC-00002/2026", name: "Metano", result: "3", issued: new DateTime(2026, 11, 20));
+        _database.AddTestRow("P-1", "571289", Tenant, new DateTime(2026, 11, 12), "LACTEC-00003/2026", name: "Determinação de PCB", result: "2", issued: new DateTime(2026, 11, 12));
+        _database.AddTestRow("P-2", "571289", Tenant, new DateTime(2026, 5, 1), "LACTEC-00001/2026", issued: new DateTime(2026, 5, 2));
+        _database.AddTestRow("P-3", "571289", Tenant, new DateTime(2026, 4, 1), "LACTEC-00009/2026");
+        _database.AddTestRow("P-9", "5233", OtherTenant, new DateTime(2026, 7, 1), "LACTEC-00008/2026");
+        _database.Commands.Clear();
+
+        IReadOnlyList<ProtocolReport> reports = await Repository().GetReportsOfProtocolsAsync(
+            TestCompanies.ScopeOf(Tenant), ["P-1", " P-2 ", "P-9", "P-0"], CancellationToken.None);
+
+        Assert.Equal(
+            [
+                new ProtocolReport("P-1", "LACTEC-00002/2026", new DateTime(2026, 11, 20)),
+                new ProtocolReport("P-1", "LACTEC-00003/2026", new DateTime(2026, 11, 12)),
+                new ProtocolReport("P-2", "LACTEC-00001/2026", new DateTime(2026, 5, 2))
+            ],
+            reports);
+
+        string query = Assert.Single(_database.Commands, command =>
+            command.Contains("vwDadosEnsaios", StringComparison.Ordinal));
+        Assert.Contains("GROUP BY", query, StringComparison.Ordinal);
+        Assert.DoesNotContain("\"Resultado\"", query, StringComparison.Ordinal);
+        Assert.DoesNotContain("\"Name\"", query, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task TheReportsOfProtocolsOutsideTheTenantNeverReachTheTestView()
+    {
+        _database.AddTestRow("P-9", "5233", OtherTenant, new DateTime(2026, 7, 1), "LACTEC-00008/2026");
+        _database.Commands.Clear();
+
+        IReadOnlyList<ProtocolReport> reports = await Repository().GetReportsOfProtocolsAsync(
+            TestCompanies.ScopeOf(Tenant), ["P-9"], CancellationToken.None);
+
+        Assert.Empty(reports);
+        Assert.DoesNotContain(_database.Commands, command =>
+            command.Contains("vwDadosEnsaios", StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public async Task TheReportsOfTheProtocolsRespectTheRowLimit()
+    {
+        for (int index = 0; index < 4; index++)
+            _database.AddTestRow("P-1", "571289", Tenant, new DateTime(2026, 1, 1), $"LACTEC-0000{index}/2026");
+
+        AutoLabLabTestRepository repository = _database.LabTests(limits: new AutoLabQueryLimits(maxRowsPerQuery: 3));
+
+        await Assert.ThrowsAsync<LabTestSourceUnavailableException>(() => repository
+            .GetReportsOfProtocolsAsync(TestCompanies.ScopeOf(Tenant), ["P-1"], CancellationToken.None));
+    }
+
     [Fact]
     public async Task AQueryBeyondTheRowLimitFailsLoudlyInsteadOfTruncating()
     {
@@ -350,6 +449,26 @@ public sealed class AutoLabLabTestRepositoryTests : IDisposable
 
         await Assert.ThrowsAsync<LabTestSourceUnavailableException>(() => repository
             .GetAnalysesAsync(TestCompanies.ScopeOf(Tenant), null, PageRequest.First, CancellationToken.None));
+    }
+
+    private static VwDadosEnsaiosRecord Row(
+        string identification,
+        string name,
+        string result,
+        DateTime issued,
+        DateTime analysisEnd)
+    {
+        return new VwDadosEnsaiosRecord
+        {
+            Identificacao = identification,
+            ProtocoloLactec = "P-1",
+            NumSerie = "571289",
+            Name = name,
+            Resultado = result,
+            EmpresaTrafo = Tenant,
+            DataEmissao = issued,
+            DataFinalAnalise = analysisEnd
+        };
     }
 
     private AutoLabLabTestRepository Repository()

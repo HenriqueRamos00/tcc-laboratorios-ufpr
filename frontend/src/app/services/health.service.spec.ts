@@ -30,6 +30,8 @@ describe('HealthService', () => {
 
     expect(received?.dissolvedGases.reports.map((report) => report.resultLabel))
       .toEqual(['NORMAL', 'Descarga elétrica']);
+    expect(received?.dissolvedGases.reports.map((report) => report.conformity))
+      .toEqual(['normal', 'nao-conforme']);
     expect(received?.dissolvedGases.conformity).toBe('normal');
     expect(received?.physicalChemical.reports[0].identification).toBe('LACTEC-04809/2025');
   });

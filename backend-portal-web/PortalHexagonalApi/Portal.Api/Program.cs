@@ -10,6 +10,7 @@ using Portal.Api.Nameplate;
 using Portal.Api.Pipeline;
 using Portal.Api.PortalStore;
 using Portal.Api.ReportDocuments;
+using Portal.Api.ReportProjection;
 using Portal.Api.Reports;
 using SpringReports = Portal.Application.Reports;
 using Portal.Application.Authentication;
@@ -69,6 +70,7 @@ builder.Services.AddEquipmentRegistrySource(builder.Configuration);
 builder.Services.AddLaboratoryProgressSource(builder.Configuration);
 builder.Services.AddReportDocumentSource(builder.Configuration);
 builder.Services.AddPortalStore(builder.Configuration);
+builder.Services.AddReportProjection(builder.Configuration);
 
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddOpenApi(options => options.AddDocumentTransformer<PortalBearerDocumentTransformer>());

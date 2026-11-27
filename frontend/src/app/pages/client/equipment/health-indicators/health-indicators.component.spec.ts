@@ -250,15 +250,17 @@ describe('HealthIndicatorsComponent, tabela físico-química', () => {
       .toEqual([...reports[0].paragraphs]);
   });
 
-  it('pinta o rótulo NORMAL de verde e qualquer outro de não conforme', () => {
+  it('pinta o rótulo pela cor que o laudo trouxe, e nunca pelo texto do rótulo', () => {
     const raiz = raizDe({
       ...HEALTH_INDICATORS,
       physicalChemical: {
         ...HEALTH_INDICATORS.physicalChemical,
         reports: [
-          semTexto('LACTEC-2', '2026-09-24', 'Descarga elétrica'),
-          semTexto('LACTEC-1', '2026-07-28', 'normal'),
-          semTexto('LACTEC-0', '2026-05-02', null),
+          semTexto('LACTEC-4', '2026-11-02', 'NORMAL', 'alerta'),
+          semTexto('LACTEC-3', '2026-10-10', 'Rótulo de cor desconhecida', null),
+          semTexto('LACTEC-2', '2026-09-24', 'Descarga elétrica', 'nao-conforme'),
+          semTexto('LACTEC-1', '2026-07-28', 'normal', 'normal'),
+          semTexto('LACTEC-0', '2026-05-02', null, null),
         ],
       },
     });
@@ -268,9 +270,12 @@ describe('HealthIndicatorsComponent, tabela físico-química', () => {
         ?.querySelectorAll('[data-result-label]') ?? []),
     ];
 
-    expect(rotulos.map((rotulo) => rotulo.textContent?.trim())).toEqual(['Descarga elétrica', 'normal']);
-    expect(rotulos[0].classList).toContain('bg-lactec-tarja-nao-conforme');
-    expect(rotulos[1].classList).toContain('bg-lactec-tarja-normal');
+    expect(rotulos.map((rotulo) => rotulo.textContent?.trim()))
+      .toEqual(['NORMAL', 'Rótulo de cor desconhecida', 'Descarga elétrica', 'normal']);
+    expect(rotulos[0].classList).toContain('bg-lactec-tarja-alerta');
+    expect(rotulos[1].className).not.toContain('bg-lactec-tarja');
+    expect(rotulos[2].classList).toContain('bg-lactec-tarja-nao-conforme');
+    expect(rotulos[3].classList).toContain('bg-lactec-tarja-normal');
   });
 
   it('escreve o laudo como texto, sem interpretar marcação que venha no parágrafo', () => {
@@ -283,6 +288,7 @@ describe('HealthIndicatorsComponent, tabela físico-química', () => {
             identification: 'LACTEC-1',
             date: '2026-07-28',
             resultLabel: null,
+            conformity: null,
             title: 'Laudo',
             paragraphs: ['Óleo <b>fora</b> do limite'],
           },
@@ -605,6 +611,11 @@ describe('HealthIndicatorsComponent, ZIP de laudos', () => {
   });
 });
 
-function semTexto(identification: string, date: string, resultLabel: string | null): PublishedReport {
-  return { identification, date, resultLabel, title: null, paragraphs: [] };
+function semTexto(
+  identification: string,
+  date: string,
+  resultLabel: string | null,
+  conformity: PublishedReport['conformity'],
+): PublishedReport {
+  return { identification, date, resultLabel, conformity, title: null, paragraphs: [] };
 }

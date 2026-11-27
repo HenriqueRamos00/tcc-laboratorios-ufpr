@@ -68,18 +68,11 @@ export type MeasuredValue = number | string | null;
  */
 export const NOT_DETECTED_TEXT = 'ND';
 
-export function resultLabelConformity(
-  label: string | null,
-): Extract<Classification, 'normal' | 'nao-conforme'> | null {
-  const text = label?.trim();
-  if (!text) return null;
-  return text.toUpperCase() === 'NORMAL' ? 'normal' : 'nao-conforme';
-}
-
 export interface PublishedReport {
   readonly identification: string;
   readonly date: string;
   readonly resultLabel: string | null;
+  readonly conformity: Classification | null;
   readonly title: string | null;
   readonly paragraphs: readonly string[];
 }

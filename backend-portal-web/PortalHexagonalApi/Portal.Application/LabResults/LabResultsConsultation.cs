@@ -1,6 +1,7 @@
 using Portal.Application.Nameplate;
 using Portal.Application.Paging;
 using Portal.Application.ReportDocuments;
+using Portal.Application.ReportProjection;
 using Portal.Application.Visibility;
 using Portal.Domain.LabResults;
 using Portal.Domain.Nameplate;
@@ -25,15 +26,18 @@ public sealed class LabResultsConsultation : IForConsultingLabResults
     private readonly ILabTestRepository _labTestRepository;
     private readonly IEquipmentNameplateRepository _equipmentNameplateRepository;
     private readonly IReportIssueRepository _reportIssues;
+    private readonly EquipmentProjection _projection;
 
     public LabResultsConsultation(
         ILabTestRepository labTestRepository,
         IEquipmentNameplateRepository equipmentNameplateRepository,
-        IReportIssueRepository reportIssues)
+        IReportIssueRepository reportIssues,
+        EquipmentProjection projection)
     {
         _labTestRepository = labTestRepository;
         _equipmentNameplateRepository = equipmentNameplateRepository;
         _reportIssues = reportIssues;
+        _projection = projection;
     }
 
     /// <summary>
@@ -152,13 +156,32 @@ public sealed class LabResultsConsultation : IForConsultingLabResults
             : await _equipmentNameplateRepository.GetNameplateOfAsync(
                 analyses[0].SerialNumber!, cancellationToken);
 
-        IReadOnlyList<ReportOfAnalyses> reports = await ReportsOfAsync(
-            query.Scope, analyses, selected, cancellationToken);
+        IReadOnlyList<SampleAnalysis> shown = selected is null || analyses.Contains(selected)
+            ? analyses
+            : [.. analyses, selected];
 
-        IReadOnlyList<ReportConclusion> physicalChemicalReports = ConclusionsOf(
-            reports.Where(report => report.HasPhysicalChemical), report => report.Reading?.PhysicalChemical);
-        IReadOnlyList<ReportConclusion> gasReports = ConclusionsOf(
-            reports.Where(report => report.HasDissolvedGas), report => report.Reading?.Chromatography);
+        IReadOnlyList<ProtocolReport> issued = await _labTestRepository.GetReportsOfProtocolsAsync(
+            query.Scope,
+            [.. shown.Select(analysis => analysis.ProtocoloLactec).OfType<string>()],
+            cancellationToken);
+
+        IReadOnlyList<ReportsOfAnalysis> reports = await ReportsOfAsync(
+            query.Scope,
+            ProjectedEquipment.From(
+                TestedEquipment.Gather(analyses)[0], nameplate, recentAnalyses.TotalCount, issued),
+            shown,
+            selected,
+            issued,
+            cancellationToken);
+
+        IReadOnlyList<ListedConclusion> physicalChemicalReports = ConclusionsOf(
+            reports.Where(report => report.Analysis.HasPhysicalChemicalProperty),
+            reading => reading.PhysicalChemical,
+            selected);
+        IReadOnlyList<ListedConclusion> gasReports = ConclusionsOf(
+            reports.Where(report => report.Analysis.HasDissolvedGas),
+            reading => reading.Chromatography,
+            selected);
 
         return new SampleHealthIndicators(
             analyses[0].SerialNumber,
@@ -175,76 +198,120 @@ public sealed class LabResultsConsultation : IForConsultingLabResults
         {
             NominalVoltage = nameplate?.Voltage,
             Oil = InsulatingOil.Recognize(nameplate?.OilType),
-            PhysicalChemicalReports = physicalChemicalReports,
-            GasReports = gasReports,
-            PhysicalChemicalResult = ResultOf(physicalChemicalReports, selected),
-            GasResult = ResultOf(gasReports, selected)
+            PhysicalChemicalReports = [.. physicalChemicalReports.Select(listed => listed.Conclusion)],
+            GasReports = [.. gasReports.Select(listed => listed.Conclusion)],
+            PhysicalChemicalResult = CurrentOf(physicalChemicalReports)?.ResultLabel,
+            PhysicalChemicalConformity = CurrentOf(physicalChemicalReports)?.Conformity,
+            GasResult = CurrentOf(gasReports)?.ResultLabel,
+            GasConformity = CurrentOf(gasReports)?.Conformity
         };
     }
 
-    private async Task<IReadOnlyList<ReportOfAnalyses>> ReportsOfAsync(
+    private async Task<IReadOnlyList<ReportsOfAnalysis>> ReportsOfAsync(
         CompanyScope scope,
+        ProjectedEquipment equipment,
         IReadOnlyList<SampleAnalysis> analyses,
         SampleAnalysis? selected,
+        IReadOnlyList<ProtocolReport> issued,
         CancellationToken cancellationToken)
     {
-        List<(string Identification, List<SampleAnalysis> Analyses)> byReport = [.. analyses
-            .GroupBy(analysis => analysis.Identification, StringComparer.OrdinalIgnoreCase)
-            .Take(MaxReportsRead)
-            .Select(report => (report.Key, report.ToList()))];
+        ILookup<string, ProtocolReport> issuedOfProtocol = issued
+            .ToLookup(report => report.ProtocoloLactec, StringComparer.Ordinal);
 
-        if (selected is not null && !byReport.Any(report => string.Equals(
-                report.Identification, selected.Identification, StringComparison.OrdinalIgnoreCase)))
-            byReport.Add((selected.Identification, [selected]));
+        List<(SampleAnalysis Analysis, List<ProtocolReport> Reports)> byAnalysis = [.. analyses
+            .Select(analysis => (analysis, ReportsOf(analysis, issuedOfProtocol)))];
 
-        IReadOnlyList<ReportReading> readings = await _reportIssues.ReadReportsAsync(
-            scope, [.. byReport.Select(report => report.Identification)], cancellationToken);
+        List<string> asked = [.. byAnalysis
+            .SelectMany(ofAnalysis => ofAnalysis.Reports)
+            .Select(report => report.Identification)
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .Take(MaxReportsRead)];
 
-        return [.. byReport.Select(report => new ReportOfAnalyses(
-            report.Identification,
-            report.Analyses[0].IssueDate,
-            report.Analyses.Any(analysis => analysis.HasPhysicalChemicalProperty),
-            report.Analyses.Any(analysis => analysis.HasDissolvedGas),
-            readings.FirstOrDefault(reading => string.Equals(
-                reading.Identification, report.Identification, StringComparison.OrdinalIgnoreCase))))];
+        if (selected is not null)
+            asked = [.. asked
+                .Concat(byAnalysis
+                    .Where(ofAnalysis => ReferenceEquals(ofAnalysis.Analysis, selected))
+                    .SelectMany(ofAnalysis => ofAnalysis.Reports)
+                    .Select(report => report.Identification))
+                .Distinct(StringComparer.OrdinalIgnoreCase)];
+
+        IReadOnlyList<ReportReading> readings = (await _projection.ReadAsync(
+            scope,
+            equipment,
+            asked,
+            TimeSpan.Zero,
+            cancellationToken)).Readings;
+
+        return [.. byAnalysis
+            .Select(ofAnalysis => new ReportsOfAnalysis(
+                ofAnalysis.Analysis,
+                [.. ofAnalysis.Reports
+                    .Where(report => asked.Contains(report.Identification, StringComparer.OrdinalIgnoreCase))
+                    .Select(report => new ReadReport(
+                        report.Identification,
+                        report.IssueDate,
+                        readings.FirstOrDefault(reading => string.Equals(
+                            reading.Identification, report.Identification, StringComparison.OrdinalIgnoreCase))))]))
+            .Where(ofAnalysis => ofAnalysis.Reports.Count > 0)];
     }
 
-    private static IReadOnlyList<ReportConclusion> ConclusionsOf(
-        IEnumerable<ReportOfAnalyses> reports,
-        Func<ReportOfAnalyses, ReportSection?> sectionOf)
+    private static List<ProtocolReport> ReportsOf(
+        SampleAnalysis analysis,
+        ILookup<string, ProtocolReport> issuedOfProtocol)
+    {
+        ProtocolReport ofTheAnalysis = new(
+            analysis.ProtocoloLactec ?? string.Empty, analysis.Identification, analysis.IssueDate);
+
+        return [ofTheAnalysis, .. ProtocolReport
+            .FromMostRecent(issuedOfProtocol[ofTheAnalysis.ProtocoloLactec])
+            .Where(report => !string.Equals(
+                report.Identification, analysis.Identification, StringComparison.OrdinalIgnoreCase))
+            .DistinctBy(report => report.Identification, StringComparer.OrdinalIgnoreCase)];
+    }
+
+    private static IReadOnlyList<ListedConclusion> ConclusionsOf(
+        IEnumerable<ReportsOfAnalysis> reports,
+        Func<ReportReading, ReportSection?> sectionOf,
+        SampleAnalysis? selected)
     {
         return [.. reports
-            .Select(report =>
+            .SelectMany(ofAnalysis =>
             {
-                ReportSection? section = sectionOf(report);
+                List<ReadReport> withTheSection = [.. ofAnalysis.Reports
+                    .Where(report => report.Reading is not null && sectionOf(report.Reading) is not null)];
 
-                return new ReportConclusion(
-                    report.Identification,
-                    report.Reading?.IssueDate ?? report.AnalysisIssueDate,
-                    section?.ResultLabel,
-                    section?.Title,
-                    section?.Paragraphs ?? []);
+                return (withTheSection.Count == 0 ? ofAnalysis.Reports.Take(1) : withTheSection)
+                    .Select(report => (Report: report, OfSelected: ReferenceEquals(ofAnalysis.Analysis, selected)));
             })
-            .OrderByDescending(conclusion => conclusion.Date)];
+            .GroupBy(listed => listed.Report.Identification, StringComparer.OrdinalIgnoreCase)
+            .Select(ofReport =>
+            {
+                ReadReport report = ofReport.First().Report;
+                ReportSection? section = report.Reading is null ? null : sectionOf(report.Reading);
+
+                return new ListedConclusion(
+                    new ReportConclusion(
+                        report.Identification,
+                        report.Reading?.IssueDate ?? report.IssueDate,
+                        section?.ResultLabel,
+                        section?.Conformity,
+                        section?.Title,
+                        section?.Paragraphs ?? []),
+                    ofReport.Any(listed => listed.OfSelected));
+            })
+            .OrderByDescending(listed => listed.Conclusion.Date)];
     }
 
-    private static string? ResultOf(IReadOnlyList<ReportConclusion> conclusions, SampleAnalysis? selected)
+    private static ReportConclusion? CurrentOf(IReadOnlyList<ListedConclusion> conclusions)
     {
-        ReportConclusion? current = selected is null
-            ? conclusions.FirstOrDefault()
-            : conclusions.FirstOrDefault(conclusion => string.Equals(
-                conclusion.Identification, selected.Identification, StringComparison.OrdinalIgnoreCase))
-                ?? conclusions.FirstOrDefault();
-
-        return current?.ResultLabel;
+        return (conclusions.FirstOrDefault(listed => listed.OfSelected) ?? conclusions.FirstOrDefault())?.Conclusion;
     }
 
-    private sealed record ReportOfAnalyses(
-        string Identification,
-        DateTime AnalysisIssueDate,
-        bool HasPhysicalChemical,
-        bool HasDissolvedGas,
-        ReportReading? Reading);
+    private sealed record ReadReport(string Identification, DateTime IssueDate, ReportReading? Reading);
+
+    private sealed record ReportsOfAnalysis(SampleAnalysis Analysis, IReadOnlyList<ReadReport> Reports);
+
+    private sealed record ListedConclusion(ReportConclusion Conclusion, bool OfSelected);
 
     /// <summary>
     /// A analise escolhida na URL e aceita somente quando pertence ao mesmo equipamento

@@ -80,6 +80,51 @@ internal static class ProblemResponses
             $"O parametro search aceita no maximo {EquipmentSearch.MaxLength} caracteres.");
     }
 
+    public static IActionResult InvalidEquipmentStatus(this ControllerBase controller)
+    {
+        return controller.AsProblem(
+            StatusCodes.Status400BadRequest,
+            "invalid-equipment-status",
+            "Situacao invalida.",
+            "O filtro de situacao aceita nao-conforme, alerta, normal, sem-classificacao ou sem-laudo.");
+    }
+
+    public static IActionResult TooManyEquipment(this ControllerBase controller, int limit)
+    {
+        return controller.AsProblem(
+            StatusCodes.Status400BadRequest,
+            "too-many-equipment",
+            "Equipamentos demais no pedido.",
+            $"O pedido de atualizacao aceita de 1 a {limit} equipamentos por vez.");
+    }
+
+    public static IActionResult EquipmentStatusUnavailable(this ControllerBase controller)
+    {
+        return controller.AsProblem(
+            StatusCodes.Status404NotFound,
+            "equipment-status-unavailable",
+            "Situacao dos equipamentos indisponivel.",
+            "A situacao dos equipamentos pelos laudos assinados nao esta disponivel neste ambiente.");
+    }
+
+    public static IActionResult EquipmentStatusStoreUnavailable(this ControllerBase controller)
+    {
+        return controller.AsProblem(
+            StatusCodes.Status502BadGateway,
+            "equipment-status-store-unavailable",
+            "Situacao dos equipamentos fora do ar.",
+            "O banco do portal nao respondeu a consulta da situacao dos equipamentos.");
+    }
+
+    public static IActionResult TooManyRealTimeConnections(this ControllerBase controller)
+    {
+        return controller.AsProblem(
+            StatusCodes.Status429TooManyRequests,
+            "too-many-real-time-connections",
+            "Conexoes demais.",
+            "O limite de conexoes simultaneas de avisos foi atingido. Feche as abas abertas e tente de novo.");
+    }
+
     public static IActionResult ReportDocumentSourceUnavailable(this ControllerBase controller)
     {
         return controller.AsProblem(

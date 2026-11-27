@@ -27,6 +27,10 @@ public sealed class NotConnectedLabTestRepository : ILabTestRepository
         CompanyScope scope, string protocoloLactec, CancellationToken cancellationToken) =>
         throw Pending();
 
+    public Task<IReadOnlyList<ProtocolReport>> GetReportsOfProtocolsAsync(
+        CompanyScope scope, IReadOnlyCollection<string> protocols, CancellationToken cancellationToken) =>
+        throw Pending();
+
     private static LabTestSourceUnavailableException Pending() =>
         new("A integração de equipamentos e análises do cliente com o Spring ainda não está disponível.");
 }

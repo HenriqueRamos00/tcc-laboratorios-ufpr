@@ -219,6 +219,7 @@ export const HEALTH_INDICATORS: HealthIndicators = {
         identification: 'LACTEC-04809/2025',
         date: '2025-10-30',
         resultLabel: 'NORMAL',
+        conformity: 'normal',
         title: 'LAUDO DAS ANÁLISES FÍSICO-QUÍMICAS',
         paragraphs: [
           'De acordo com a norma ABNT NBR 10576/17, os resultados obtidos nesta análise indicam que ' +
@@ -230,6 +231,7 @@ export const HEALTH_INDICATORS: HealthIndicators = {
         identification: 'LACTEC-03120/2024',
         date: '2024-05-02',
         resultLabel: 'NORMAL',
+        conformity: 'normal',
         title: 'LAUDO DAS ANÁLISES FÍSICO-QUÍMICAS',
         paragraphs: ['Sugere-se nova análise no prazo de 1 (um) ano.'],
       },
@@ -259,6 +261,7 @@ export const HEALTH_INDICATORS: HealthIndicators = {
         identification: 'LACTEC-05230/2025',
         date: '2025-12-01',
         resultLabel: 'NORMAL',
+        conformity: 'normal',
         title: 'LAUDO DA ANÁLISE CROMATOGRÁFICA',
         paragraphs: [
           'Baseado nos critérios adotados pelos Institutos Lactec, os resultados obtidos na análise ' +
@@ -270,6 +273,7 @@ export const HEALTH_INDICATORS: HealthIndicators = {
         identification: 'LACTEC-04410/2025',
         date: '2025-09-19',
         resultLabel: 'Descarga elétrica',
+        conformity: 'nao-conforme',
         title: 'LAUDO DA ANÁLISE CROMATOGRÁFICA',
         paragraphs: ['Recomenda-se nova análise no prazo de 3 (três) meses.'],
       },

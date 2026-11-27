@@ -31,4 +31,9 @@ public interface ILabTestRepository
         CompanyScope scope,
         string protocoloLactec,
         CancellationToken cancellationToken);
+
+    Task<IReadOnlyList<ProtocolReport>> GetReportsOfProtocolsAsync(
+        CompanyScope scope,
+        IReadOnlyCollection<string> protocols,
+        CancellationToken cancellationToken);
 }

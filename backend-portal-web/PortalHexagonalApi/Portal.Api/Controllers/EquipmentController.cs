@@ -11,6 +11,8 @@ using Portal.Application.LabResults;
 using Portal.Application.Paging;
 using Portal.Application.ReportDocuments;
 using Portal.Application.ReportDocuments.Exceptions;
+using Portal.Application.ReportProjection;
+using Portal.Application.ReportProjection.Exceptions;
 using Portal.Application.Reports.Exceptions;
 using Portal.Application.Visibility;
 using Portal.Domain.LabResults;
@@ -32,6 +34,7 @@ public sealed class EquipmentController : ControllerBase
     private readonly IForConsultingClientLabResults _clientResults;
     private readonly IForDownloadingSignedReports _signedReports;
     private readonly IForArchivingEquipmentReports _archives;
+    private readonly IForConsultingEquipmentStatus _statuses;
     private readonly LabResultsOptions _labResultsOptions;
     private readonly PortalOptions _portalOptions;
 
@@ -40,6 +43,7 @@ public sealed class EquipmentController : ControllerBase
         IForConsultingClientLabResults clientResults,
         IForDownloadingSignedReports signedReports,
         IForArchivingEquipmentReports archives,
+        IForConsultingEquipmentStatus statuses,
         LabResultsOptions labResultsOptions,
         PortalOptions portalOptions)
     {
@@ -47,6 +51,7 @@ public sealed class EquipmentController : ControllerBase
         _clientResults = clientResults;
         _signedReports = signedReports;
         _archives = archives;
+        _statuses = statuses;
         _labResultsOptions = labResultsOptions;
         _portalOptions = portalOptions;
     }
@@ -58,6 +63,7 @@ public sealed class EquipmentController : ControllerBase
     public Task<IActionResult> List(
         [FromQuery] PageQuery paging,
         [FromQuery(Name = "search")] string? searchText,
+        [FromQuery(Name = "status")] string? statusText,
         CancellationToken cancellationToken)
     {
         if (!paging.TryToRequest(out PageRequest request))
@@ -65,6 +71,31 @@ public sealed class EquipmentController : ControllerBase
 
         if (!EquipmentSearch.TryCreate(searchText, out EquipmentSearch? search))
             return Task.FromResult(this.InvalidEquipmentSearch());
+
+        if (statusText is not null)
+        {
+            if (!OverallStatusText.TryParse(statusText, out OverallStatus status))
+                return Task.FromResult(this.InvalidEquipmentStatus());
+
+            if (UsesClientBackend) return Task.FromResult(this.EquipmentStatusUnavailable());
+
+            return AnswerAsync(async scope =>
+            {
+                try
+                {
+                    Page<EquipmentStatus> statusPage = await _statuses
+                        .ListAsync(scope, status, search, request, cancellationToken);
+
+                    PageQuery.WriteHeaders(Response, statusPage);
+
+                    return Ok(statusPage.Items.Select(BuildStatusRow));
+                }
+                catch (ReportProjectionUnavailableException)
+                {
+                    return this.EquipmentStatusStoreUnavailable();
+                }
+            });
+        }
 
         if (UsesClientBackend)
             return AnswerClientAsync(async () =>
@@ -82,7 +113,17 @@ public sealed class EquipmentController : ControllerBase
 
             PageQuery.WriteHeaders(Response, equipmentPage);
 
-            return Ok(equipmentPage.Items.Select(BuildListingRow));
+            IReadOnlyDictionary<string, EquipmentStatus> statuses = await _statuses.OfEquipmentAsync(
+                scope,
+                [.. equipmentPage.Items.Select(found => found.Equipment.EquipmentKey)],
+                cancellationToken);
+
+            return Ok(equipmentPage.Items.Select(found => BuildListingRow(found) with
+            {
+                Status = statuses.TryGetValue(found.Equipment.EquipmentKey, out EquipmentStatus? status)
+                    ? EquipmentStatusResponse.From(status)
+                    : null
+            }));
         });
     }
 
@@ -406,6 +447,26 @@ public sealed class EquipmentController : ControllerBase
 
             return found is null ? this.EquipmentWithoutAnalysis() : describe(found);
         });
+    }
+
+    private static EquipmentResponse BuildStatusRow(EquipmentStatus status)
+    {
+        ProjectedEquipment equipment = status.Equipment;
+
+        return new EquipmentResponse
+        {
+            Id = OpaqueIdentifier.Encode(equipment.EquipmentKey),
+            SerialNumber = equipment.SerialNumber,
+            Tag = equipment.DisplayLabel,
+            EquipmentTag = equipment.EquipmentTag,
+            Type = equipment.EquipmentType,
+            Company = equipment.Company,
+            Identification = equipment.Identification,
+            ReportCount = equipment.ReportCount,
+            MostRecentReportDate = WireDate.From(equipment.MostRecentReportDate),
+            NameplateKnown = equipment.NameplateKnown,
+            Status = EquipmentStatusResponse.From(status)
+        };
     }
 
     private static EquipmentResponse BuildListingRow(EquipmentWithNameplate found)

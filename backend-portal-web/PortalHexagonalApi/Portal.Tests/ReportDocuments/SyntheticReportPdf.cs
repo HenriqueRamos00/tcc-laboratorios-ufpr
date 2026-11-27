@@ -4,6 +4,16 @@ using QuestPDF.Infrastructure;
 
 namespace Portal.Tests.ReportDocuments;
 
+public enum CellFill
+{
+    Red,
+    Yellow,
+    Green,
+    Gray,
+    Blue,
+    None
+}
+
 public static class SyntheticReportPdf
 {
     public const string GasConclusionTitle = "LAUDO DA ANÁLISE CROMATOGRÁFICA";
@@ -27,7 +37,9 @@ public static class SyntheticReportPdf
         string? gasLabel,
         string? physicalChemicalLabel,
         bool withConclusions = true,
-        IReadOnlyList<string>? gasParagraphs = null)
+        IReadOnlyList<string>? gasParagraphs = null,
+        CellFill gasFill = CellFill.Red,
+        CellFill physicalChemicalFill = CellFill.Green)
     {
         return Document.Create(document => document.Page(page =>
         {
@@ -43,8 +55,8 @@ public static class SyntheticReportPdf
             {
                 column.Spacing(12);
 
-                if (gasLabel is not null) GasTable(column, gasLabel);
-                if (physicalChemicalLabel is not null) PhysicalChemicalTable(column, physicalChemicalLabel);
+                if (gasLabel is not null) GasTable(column, gasLabel, gasFill);
+                if (physicalChemicalLabel is not null) PhysicalChemicalTable(column, physicalChemicalLabel, physicalChemicalFill);
 
                 if (withConclusions)
                 {
@@ -61,7 +73,7 @@ public static class SyntheticReportPdf
         })).GeneratePdf();
     }
 
-    private static void GasTable(ColumnDescriptor column, string label)
+    private static void GasTable(ColumnDescriptor column, string label, CellFill fill)
     {
         column.Item().Table(table =>
         {
@@ -81,7 +93,7 @@ public static class SyntheticReportPdf
 
             table.Cell();
             table.Cell().ColumnSpan(2).AlignCenter().Text("Data Coleta:").Bold();
-            table.Cell().Background(Colors.Red.Lighten2).AlignCenter().Text(label);
+            Filled(table.Cell(), fill).AlignCenter().Text(label);
             table.Cell();
 
             table.Cell();
@@ -96,7 +108,7 @@ public static class SyntheticReportPdf
         });
     }
 
-    private static void PhysicalChemicalTable(ColumnDescriptor column, string label)
+    private static void PhysicalChemicalTable(ColumnDescriptor column, string label, CellFill fill)
     {
         column.Item().Table(table =>
         {
@@ -118,7 +130,7 @@ public static class SyntheticReportPdf
 
             table.Cell().ColumnSpan(3);
             table.Cell().ColumnSpan(2).AlignCenter().Text("Data Coleta:").Bold();
-            table.Cell().Background(Colors.Green.Lighten2).AlignCenter().Text(label);
+            Filled(table.Cell(), fill).AlignCenter().Text(label);
 
             table.Cell().ColumnSpan(3);
             table.Cell().AlignCenter().Text("28/07/2026");
@@ -132,6 +144,19 @@ public static class SyntheticReportPdf
             table.Cell().AlignCenter().Text("0,01");
             table.Cell().AlignCenter().Text("0,01");
         });
+    }
+
+    private static IContainer Filled(IContainer cell, CellFill fill)
+    {
+        return fill switch
+        {
+            CellFill.Red => cell.Background(Colors.Red.Lighten2),
+            CellFill.Yellow => cell.Background(Colors.Yellow.Lighten2),
+            CellFill.Green => cell.Background(Colors.Green.Lighten2),
+            CellFill.Gray => cell.Background(Colors.Grey.Lighten2),
+            CellFill.Blue => cell.Background(Colors.Blue.Lighten2),
+            _ => cell
+        };
     }
 
     private static void Row(TableDescriptor table, string name, params string[] values)

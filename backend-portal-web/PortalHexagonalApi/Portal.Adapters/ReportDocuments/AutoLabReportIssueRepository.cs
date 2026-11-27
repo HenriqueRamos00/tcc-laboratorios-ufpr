@@ -151,7 +151,16 @@ public sealed class AutoLabReportIssueRepository : IReportIssueRepository
                 shown.Identification!.Trim(),
                 shown.IssueDate,
                 findings.Chromatography,
-                findings.PhysicalChemical));
+                findings.PhysicalChemical)
+            {
+                Origin = servable is null
+                    ? null
+                    : new SignedReportOrigin(
+                        servable.Cnpj,
+                        servable.Id,
+                        servable.SignedFileId!.Value,
+                        findings.Outcome)
+            });
         }
 
         return readings;
@@ -313,11 +322,11 @@ public sealed class AutoLabReportIssueRepository : IReportIssueRepository
         }
         catch (ReportDocumentSourceUnavailableException)
         {
-            return SignedReportFindings.None;
+            return SignedReportFindings.Unreadable;
         }
 
         SignedReportFindings findings = document is null
-            ? SignedReportFindings.None
+            ? SignedReportFindings.Unreadable
             : SignedReportText.Read(document.Content);
 
         _findings.Set(key, findings, FindingsLifetime);

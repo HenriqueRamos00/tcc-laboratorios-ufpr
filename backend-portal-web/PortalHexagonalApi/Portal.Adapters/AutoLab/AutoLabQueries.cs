@@ -51,7 +51,7 @@ public static class AutoLabQueries
             .Take(rowLimit);
     }
 
-    public static IQueryable<CompanyReportRow> ReportsOfClients(
+    public static IQueryable<ReportOfClientRow> ReportsOfClients(
         AutoLabDbContext database,
         List<Guid?> clientIds,
         int rowLimit)
@@ -66,16 +66,106 @@ public static class AutoLabQueries
                 (report, request) => new { Report = report, Request = request })
             .OrderBy(found => found.Report.Oid)
             .Take(rowLimit)
-            .Select(found => new CompanyReportRow(
-                found.Report.Oid,
-                found.Report.Identificacao,
-                found.Request.NumeroSolicitacao,
-                found.Request.OrcamentoCRM,
-                found.Report.DataEmissao,
-                found.Report.DataPublicacao,
-                found.Report.Revisao,
-                found.Report.RelatorioEnsaioSubstituto != null,
-                found.Report.PdfAssinado));
+            .Select(found => new ReportOfClientRow(
+                found.Request.Cliente,
+                new CompanyReportRow(
+                    found.Report.Oid,
+                    found.Report.Identificacao,
+                    found.Request.NumeroSolicitacao,
+                    found.Request.OrcamentoCRM,
+                    found.Report.DataEmissao,
+                    found.Report.DataPublicacao,
+                    found.Report.Revisao,
+                    found.Report.RelatorioEnsaioSubstituto != null,
+                    found.Report.PdfAssinado,
+                    null)));
+    }
+
+    public static IQueryable<SignedReportRow> SignedReportsOfClients(
+        AutoLabDbContext database,
+        List<Guid?> clientIds,
+        DateTime? fromIssueDate,
+        DateTime? afterIssueDate,
+        Guid? afterReportId,
+        int rowLimit)
+    {
+        IQueryable<RelatorioEmissaoRecord> signed = database.RelatorioEmissao
+            .Where(report => report.GCRecord == null
+                && report.PdfAssinado != null
+                && report.DataEmissao != null)
+            .Join(
+                database.SolicitacoesServico.Where(request => request.GCRecord == null
+                    && clientIds.Contains(request.Cliente)),
+                report => report.Solicitacao,
+                request => (Guid?)request.Oid,
+                (report, request) => report);
+
+        if (fromIssueDate is DateTime from)
+            signed = signed.Where(report => report.DataEmissao >= from);
+
+        if (afterIssueDate is DateTime issued && afterReportId is Guid reportId)
+            signed = signed.Where(report => report.DataEmissao > issued
+                || (report.DataEmissao == issued && report.Oid.CompareTo(reportId) > 0));
+
+        return signed
+            .OrderBy(report => report.DataEmissao)
+            .ThenBy(report => report.Oid)
+            .Take(rowLimit)
+            .Select(report => new SignedReportRow(
+                report.Oid,
+                report.Identificacao,
+                report.DataEmissao!.Value,
+                report.PdfAssinado!.Value));
+    }
+
+    public static IQueryable<ProtocolSummaryRow> ProtocolSummaries(
+        AutoLabDbContext database,
+        List<string> authorizedProtocols,
+        int rowLimit)
+    {
+        return TestRowsOf(database, authorizedProtocols)
+            .Select(row => new
+            {
+                row.ProtocoloLactec,
+                row.Identificacao,
+                row.NumSerie,
+                row.EmpresaTrafo,
+                row.DataEmissao,
+                row.DataFinalAnalise
+            })
+            .Distinct()
+            .OrderBy(row => row.ProtocoloLactec)
+            .Take(rowLimit)
+            .Select(row => new ProtocolSummaryRow(
+                row.ProtocoloLactec,
+                row.Identificacao,
+                row.NumSerie,
+                row.EmpresaTrafo,
+                row.DataEmissao,
+                row.DataFinalAnalise));
+    }
+
+    public static IQueryable<ProtocolReportRow> ReportsOfProtocols(
+        AutoLabDbContext database,
+        List<string> authorizedProtocols,
+        int rowLimit)
+    {
+        return TestRowsOf(database, authorizedProtocols)
+            .Where(row => row.Identificacao != null)
+            .GroupBy(row => new { row.ProtocoloLactec, row.Identificacao })
+            .Select(report => new
+            {
+                report.Key.ProtocoloLactec,
+                report.Key.Identificacao,
+                DataEmissao = report.Max(row => row.DataEmissao)
+            })
+            .OrderBy(report => report.ProtocoloLactec)
+            .ThenBy(report => report.Identificacao)
+            .Take(rowLimit)
+            .Select(report => new ProtocolReportRow(
+                report.ProtocoloLactec,
+                report.Identificacao,
+                report.DataEmissao));
     }
 
     public static IQueryable<string> QuoteCodesOfClients(

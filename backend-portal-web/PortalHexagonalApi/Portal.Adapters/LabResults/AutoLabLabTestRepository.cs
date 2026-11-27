@@ -136,6 +136,46 @@ public sealed class AutoLabLabTestRepository : ILabTestRepository
                 analysis.ProtocoloLactec, wantedProtocol, StringComparison.Ordinal));
     }
 
+    public async Task<IReadOnlyList<ProtocolReport>> GetReportsOfProtocolsAsync(
+        CompanyScope scope,
+        IReadOnlyCollection<string> protocols,
+        CancellationToken cancellationToken)
+    {
+        ArgumentNullException.ThrowIfNull(scope);
+        ArgumentNullException.ThrowIfNull(protocols);
+
+        HashSet<string> wanted = new(
+            protocols
+                .Where(protocol => !string.IsNullOrWhiteSpace(protocol))
+                .Select(protocol => protocol.Trim()),
+            StringComparer.Ordinal);
+
+        if (wanted.Count == 0) return [];
+
+        List<string> authorized = [.. (await AuthorizedProtocolsAsync(scope, cancellationToken))
+            .Where(protocol => wanted.Contains(protocol.Trim()))];
+
+        if (authorized.Count == 0) return [];
+
+        List<ProtocolReportRow> rows = await AutoLabFetch.BoundedListInChunksAsync(
+            authorized,
+            _limits,
+            (chunk, rowLimit) => AutoLabQueries.ReportsOfProtocols(_database, chunk, rowLimit),
+            Unavailable,
+            cancellationToken);
+
+        return [.. rows
+            .Where(row => row.ProtocoloLactec is string protocol && wanted.Contains(protocol.Trim()))
+            .GroupBy(row => row.ProtocoloLactec!.Trim(), StringComparer.Ordinal)
+            .OrderBy(rowsOfProtocol => rowsOfProtocol.Key, StringComparer.Ordinal)
+            .SelectMany(rowsOfProtocol => ProtocolHeader
+                .Of(
+                    rowsOfProtocol.Key,
+                    rowsOfProtocol.Select(row => new ReportRow(
+                        row.Identificacao, null, null, row.DataEmissao, null, HasMeasurements: true)))
+                .Reports)];
+    }
+
     public static IReadOnlyList<SampleAnalysis> BuildAnalyses(IEnumerable<VwDadosEnsaiosRecord> rows)
     {
         ArgumentNullException.ThrowIfNull(rows);
@@ -147,21 +187,41 @@ public sealed class AutoLabLabTestRepository : ILabTestRepository
 
     private static SampleAnalysis BuildOneAnalysis(IGrouping<string, VwDadosEnsaiosRecord> rowsOfProtocol)
     {
-        VwDadosEnsaiosRecord first = rowsOfProtocol.First();
+        IReadOnlyList<Measurement> measurements = MeasurementsOf(rowsOfProtocol);
 
-        IReadOnlyList<Measurement> measurements = MeasuredItemRecognition.Identify(
-            rowsOfProtocol.Select(row => new ResultBeforeRecognition(
-                row.Name ?? string.Empty,
-                MeasuredValue.InterpretResult(row.Resultado))));
+        ProtocolHeader header = ProtocolHeader.Of(
+            rowsOfProtocol.Key,
+            rowsOfProtocol
+                .GroupBy(row => row.Identificacao?.Trim() ?? string.Empty, StringComparer.OrdinalIgnoreCase)
+                .SelectMany(rowsOfReport =>
+                {
+                    bool hasMeasurements = MeasurementsOf(rowsOfReport).Count > 0;
+
+                    return rowsOfReport.Select(row => new ReportRow(
+                        row.Identificacao,
+                        row.NumSerie,
+                        row.EmpresaTrafo,
+                        row.DataEmissao,
+                        row.DataFinalAnalise,
+                        hasMeasurements));
+                }));
 
         return new SampleAnalysis(
             rowsOfProtocol.Key,
-            first.Identificacao ?? string.Empty,
-            first.NumSerie,
-            first.EmpresaTrafo ?? string.Empty,
-            first.DataEmissao ?? default,
-            first.DataFinalAnalise ?? default,
+            header.Identification,
+            header.SerialNumber,
+            header.Company,
+            header.IssueDate,
+            header.AnalysisEndDate,
             measurements);
+    }
+
+    private static IReadOnlyList<Measurement> MeasurementsOf(IEnumerable<VwDadosEnsaiosRecord> rows)
+    {
+        return MeasuredItemRecognition.Identify(
+            rows.Select(row => new ResultBeforeRecognition(
+                row.Name ?? string.Empty,
+                MeasuredValue.InterpretResult(row.Resultado))));
     }
 
     /// <summary>

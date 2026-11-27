@@ -4,6 +4,7 @@ using Microsoft.Extensions.Options;
 using Portal.Adapters.PortalStore;
 using Portal.Api.Configuration;
 using Portal.Application.Quotes;
+using Portal.Application.ReportProjection;
 
 namespace Portal.Api.PortalStore;
 
@@ -14,6 +15,7 @@ public static class PortalStoreRegistration
         if (configuration[$"{PortalOptions.SectionName}:DataSource"] == PortalOptions.BackendLabSource)
         {
             services.AddScoped<IClientDecisionRepository, NotConnectedClientDecisionRepository>();
+            services.AddScoped<IReportProjectionStore, NotConnectedReportProjectionStore>();
             return services;
         }
 
@@ -25,6 +27,7 @@ public static class PortalStoreRegistration
         {
             case PortalStoreOptions.NotConnectedSource:
                 services.AddScoped<IClientDecisionRepository, NotConnectedClientDecisionRepository>();
+                services.AddScoped<IReportProjectionStore, NotConnectedReportProjectionStore>();
                 return services;
 
             case PortalStoreOptions.SqlServerSource:
@@ -45,6 +48,7 @@ public static class PortalStoreRegistration
                         sqlServer => sqlServer.CommandTimeout(options.CommandTimeoutSeconds));
                 });
                 services.AddScoped<IClientDecisionRepository, SqlServerClientDecisionRepository>();
+                services.AddScoped<IReportProjectionStore, SqlServerReportProjectionStore>();
                 services.AddHostedService<PortalStoreMigration>();
                 return services;
 

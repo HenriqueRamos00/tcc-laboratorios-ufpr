@@ -13,4 +13,5 @@ public sealed record CompanyReportRow(
     DateTime? PublicationDate,
     int? Revision,
     bool IsReplaced,
-    Guid? SignedFileId);
+    Guid? SignedFileId,
+    string? Cnpj = null);

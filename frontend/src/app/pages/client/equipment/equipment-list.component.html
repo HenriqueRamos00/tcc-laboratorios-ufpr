@@ -1,4 +1,34 @@
-<app-page-header title="Listagem de Equipamentos" />
+<app-page-header title="Listagem de Equipamentos">
+  <div acoes class="flex flex-col items-end gap-1">
+    @if (!refreshUnavailable()) {
+      <button
+        type="button"
+        data-tour="equipamentos-atualizar"
+        class="inline-flex items-center gap-2 rounded-lg bg-lactec-primary px-4 py-2
+               text-sm font-semibold text-lactec-on-primary hover:bg-lactec-primary-strong
+               focus-visible:outline-2 focus-visible:outline-offset-2
+               focus-visible:outline-lactec-primary disabled:cursor-progress
+               disabled:hover:bg-lactec-primary"
+        title="Atualizar a situação dos demais equipamentos da empresa"
+        [disabled]="syncingAll()"
+        [attr.aria-busy]="syncingAll()"
+        (click)="syncAll()"
+      >
+        {{ syncingAll() ? 'Atualizando…' : 'Atualizar' }}
+        <mat-icon
+          class="icone-16 motion-reduce:animate-none"
+          [class.animate-spin]="syncingAll()"
+          aria-hidden="true"
+        >sync</mat-icon>
+      </button>
+      @if (syncAllFailed()) {
+        <p role="alert" class="m-0 text-sm text-lactec-danger-ink">
+          Não foi possível atualizar. Tente novamente em instantes.
+        </p>
+      }
+    }
+  </div>
+</app-page-header>
 
 <app-search-field
   data-tour="equipamentos-busca"
@@ -8,6 +38,26 @@
   [maxLength]="searchMaxLength"
   [(termo)]="searchTerm"
 />
+
+<label
+  data-tour="equipamentos-situacao"
+  class="mt-4 flex w-fit items-center gap-2 text-sm text-lactec-muted"
+>
+  Situação
+  <select
+    class="h-10 rounded-lg border border-lactec-line-control bg-lactec-paper px-3
+           text-sm text-lactec-ink hover:border-lactec-muted focus:border-lactec-primary
+           focus:outline-none focus:ring-1 focus:ring-lactec-primary"
+    (change)="chooseStatus($event)"
+  >
+    <option value="" [selected]="statusFilter() === null">Todas</option>
+    @for (option of statusOptions; track option.value) {
+      <option [value]="option.value" [selected]="option.value === statusFilter()">
+        {{ option.label }}
+      </option>
+    }
+  </select>
+</label>
 
 @if (unavailable()) {
   <app-empty-state
@@ -28,7 +78,7 @@
   <app-data-table
     data-tour="equipamentos-tabela"
     class="mt-6"
-    caption="Equipamentos da sua empresa, com número de série, TAG, tipo, número de laudos e acesso aos detalhes de cada um."
+    caption="Equipamentos da sua empresa, com número de série, TAG, tipo, número de laudos, situação pelos laudos assinados e acesso aos detalhes de cada um."
     paginationLabel="Paginação da listagem de equipamentos"
     actionsHeader="Ação"
     loadingMessage="Carregando equipamentos…"
@@ -42,6 +92,17 @@
     [loading]="loading()"
     [(query)]="query"
   >
+    <ng-template appDataTableCell="status" [appDataTableCellOf]="equipmentList()" let-equipment>
+      <app-equipment-status
+        [status]="equipment.status ?? null"
+        [subject]="equipment.equipmentTag ?? equipment.tag"
+        [refreshing]="refreshing().has(equipment.id) || syncing().has(equipment.id)"
+        [failed]="refreshFailed().has(equipment.id)"
+        [refreshable]="!refreshUnavailable()"
+        (refresh)="refresh(equipment)"
+      />
+    </ng-template>
+
     <ng-template
       appDataTableActions
       [appDataTableActionsOf]="equipmentList()"

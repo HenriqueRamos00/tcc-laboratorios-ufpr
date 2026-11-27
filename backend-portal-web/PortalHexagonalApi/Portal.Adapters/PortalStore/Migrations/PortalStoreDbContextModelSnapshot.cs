@@ -181,6 +181,97 @@ namespace Portal.Adapters.PortalStore.Migrations
                     b.ToTable("ClientDecisions", "portal");
                 });
 
+            modelBuilder.Entity("Portal.Adapters.PortalStore.EquipmentStatusRow", b =>
+                {
+                    b.Property<string>("Cnpj")
+                        .HasMaxLength(14)
+                        .IsUnicode(false)
+                        .HasColumnType("char(14)")
+                        .IsFixedLength();
+
+                    b.Property<string>("EquipmentKey")
+                        .HasMaxLength(250)
+                        .HasColumnType("nvarchar(250)");
+
+                    b.Property<string>("ChromatographyConformity")
+                        .HasMaxLength(20)
+                        .IsUnicode(false)
+                        .HasColumnType("varchar(20)");
+
+                    b.Property<string>("ChromatographyLabel")
+                        .HasMaxLength(300)
+                        .HasColumnType("nvarchar(300)");
+
+                    b.Property<string>("Company")
+                        .IsRequired()
+                        .HasMaxLength(250)
+                        .HasColumnType("nvarchar(250)");
+
+                    b.Property<string>("DisplayLabel")
+                        .IsRequired()
+                        .HasMaxLength(250)
+                        .HasColumnType("nvarchar(250)");
+
+                    b.Property<string>("EquipmentType")
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.Property<bool>("HasChromatography")
+                        .HasColumnType("bit");
+
+                    b.Property<bool>("HasPhysicalChemical")
+                        .HasColumnType("bit");
+
+                    b.Property<string>("Identification")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.Property<DateTime?>("LastReportDate")
+                        .HasColumnType("datetime2");
+
+                    b.Property<DateTime>("MostRecentReportDate")
+                        .HasColumnType("datetime2");
+
+                    b.Property<bool>("NameplateKnown")
+                        .HasColumnType("bit");
+
+                    b.Property<string>("OverallStatus")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .IsUnicode(false)
+                        .HasColumnType("varchar(20)");
+
+                    b.Property<string>("PhysicalChemicalConformity")
+                        .HasMaxLength(20)
+                        .IsUnicode(false)
+                        .HasColumnType("varchar(20)");
+
+                    b.Property<string>("PhysicalChemicalLabel")
+                        .HasMaxLength(300)
+                        .HasColumnType("nvarchar(300)");
+
+                    b.Property<int>("ReportCount")
+                        .HasColumnType("int");
+
+                    b.Property<string>("SerialNumber")
+                        .HasMaxLength(250)
+                        .HasColumnType("nvarchar(250)");
+
+                    b.Property<string>("Tag")
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.HasKey("Cnpj", "EquipmentKey");
+
+                    b.HasIndex("Cnpj", "OverallStatus", "LastReportDate");
+
+                    b.ToTable("EquipmentStatuses", "portal");
+                });
+
             modelBuilder.Entity("Portal.Adapters.PortalStore.InvoiceEmailRow", b =>
                 {
                     b.Property<Guid>("DecisionId")
@@ -201,6 +292,31 @@ namespace Portal.Adapters.PortalStore.Migrations
                         .IsUnique();
 
                     b.ToTable("AcceptanceInvoiceEmails", "portal");
+                });
+
+            modelBuilder.Entity("Portal.Adapters.PortalStore.LoadScopeRow", b =>
+                {
+                    b.Property<string>("Cnpj")
+                        .HasMaxLength(14)
+                        .IsUnicode(false)
+                        .HasColumnType("char(14)")
+                        .IsFixedLength();
+
+                    b.Property<bool>("Active")
+                        .HasColumnType("bit");
+
+                    b.Property<DateTime?>("LastRunAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<DateTime?>("ProcessedUntilIssueDate")
+                        .HasColumnType("datetime2");
+
+                    b.Property<Guid?>("ProcessedUntilReportId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.HasKey("Cnpj");
+
+                    b.ToTable("LoadScopes", "portal");
                 });
 
             modelBuilder.Entity("Portal.Adapters.PortalStore.PurchaseOrderRow", b =>
@@ -247,6 +363,95 @@ namespace Portal.Adapters.PortalStore.Migrations
                     b.ToTable("Rejections", "portal");
                 });
 
+            modelBuilder.Entity("Portal.Adapters.PortalStore.ReportReadingRow", b =>
+                {
+                    b.Property<Guid>("SignedFileId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<int>("Attempts")
+                        .HasColumnType("int");
+
+                    b.Property<string>("Cnpj")
+                        .IsRequired()
+                        .HasMaxLength(14)
+                        .IsUnicode(false)
+                        .HasColumnType("char(14)")
+                        .IsFixedLength();
+
+                    b.Property<string>("EquipmentKey")
+                        .HasMaxLength(250)
+                        .HasColumnType("nvarchar(250)");
+
+                    b.Property<int>("ExtractorVersion")
+                        .HasColumnType("int");
+
+                    b.Property<string>("Identification")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.Property<DateTime?>("IssueDate")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("Outcome")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .IsUnicode(false)
+                        .HasColumnType("varchar(20)");
+
+                    b.Property<DateTime>("ReadAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<Guid>("ReportId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.HasKey("SignedFileId");
+
+                    b.HasIndex("Cnpj", "Identification");
+
+                    b.HasIndex("Cnpj", "Outcome");
+
+                    b.ToTable("ReportReadings", "portal");
+                });
+
+            modelBuilder.Entity("Portal.Adapters.PortalStore.ReportSectionResultRow", b =>
+                {
+                    b.Property<Guid>("SignedFileId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("Section")
+                        .HasMaxLength(20)
+                        .IsUnicode(false)
+                        .HasColumnType("varchar(20)");
+
+                    b.Property<string>("Conformity")
+                        .HasMaxLength(20)
+                        .IsUnicode(false)
+                        .HasColumnType("varchar(20)");
+
+                    b.Property<string>("Paragraphs")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("ResultColor")
+                        .HasMaxLength(7)
+                        .IsUnicode(false)
+                        .HasColumnType("char(7)")
+                        .IsFixedLength();
+
+                    b.Property<string>("ResultLabel")
+                        .HasMaxLength(300)
+                        .HasColumnType("nvarchar(300)");
+
+                    b.Property<string>("Title")
+                        .HasMaxLength(300)
+                        .HasColumnType("nvarchar(300)");
+
+                    b.HasKey("SignedFileId", "Section");
+
+                    b.ToTable("ReportSectionResults", "portal");
+                });
+
             modelBuilder.Entity("Portal.Adapters.PortalStore.AcceptanceTermsRow", b =>
                 {
                     b.HasOne("Portal.Adapters.PortalStore.ClientDecisionRow", null)
@@ -283,6 +488,15 @@ namespace Portal.Adapters.PortalStore.Migrations
                         .IsRequired();
                 });
 
+            modelBuilder.Entity("Portal.Adapters.PortalStore.ReportSectionResultRow", b =>
+                {
+                    b.HasOne("Portal.Adapters.PortalStore.ReportReadingRow", null)
+                        .WithMany("Sections")
+                        .HasForeignKey("SignedFileId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
             modelBuilder.Entity("Portal.Adapters.PortalStore.AcceptanceTermsRow", b =>
                 {
                     b.Navigation("InvoiceEmails");
@@ -295,6 +509,11 @@ namespace Portal.Adapters.PortalStore.Migrations
                     b.Navigation("Rejection");
 
                     b.Navigation("Terms");
+                });
+
+            modelBuilder.Entity("Portal.Adapters.PortalStore.ReportReadingRow", b =>
+                {
+                    b.Navigation("Sections");
                 });
 #pragma warning restore 612, 618
         }

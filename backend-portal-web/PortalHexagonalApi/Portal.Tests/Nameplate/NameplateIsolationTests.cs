@@ -43,7 +43,7 @@ public sealed class NameplateIsolationTests
             NameplateBuilder.Valid(serialNumber: "571289"));
 
         IReadOnlyList<EquipmentWithNameplate> found = await new LabResultsConsultation(
-            labTests, registry, new NullReportIssueRepository()).FirstPageOfEquipmentAsync(Tenant);
+            labTests, registry, new NullReportIssueRepository(), Portal.Tests.ReportProjection.TestProjection.Of(new NullReportIssueRepository())).FirstPageOfEquipmentAsync(Tenant);
 
         Assert.Equal(1, registry.TimesTheListWasAsked);
         Assert.Equal(0, registry.TimesOneSerialNumberWasAsked);
@@ -69,7 +69,7 @@ public sealed class NameplateIsolationTests
             NameplateBuilder.Valid(serialNumber: "5233", tag: "TR-00004"));
 
         IReadOnlyList<EquipmentWithNameplate> found = await new LabResultsConsultation(
-            labTests, registry, new NullReportIssueRepository()).FirstPageOfEquipmentAsync(Tenant);
+            labTests, registry, new NullReportIssueRepository(), Portal.Tests.ReportProjection.TestProjection.Of(new NullReportIssueRepository())).FirstPageOfEquipmentAsync(Tenant);
 
         Assert.Equal(["571289"], registry.SerialNumbersAsked);
         Assert.DoesNotContain("5233", registry.SerialNumbersAsked);
@@ -91,7 +91,7 @@ public sealed class NameplateIsolationTests
         InMemoryEquipmentNameplateRepository registry = new(
             NameplateBuilder.Valid(serialNumber: "5233", tag: "TR-00004"));
 
-        EquipmentWithNameplate? found = await new LabResultsConsultation(labTests, registry, new NullReportIssueRepository())
+        EquipmentWithNameplate? found = await new LabResultsConsultation(labTests, registry, new NullReportIssueRepository(), Portal.Tests.ReportProjection.TestProjection.Of(new NullReportIssueRepository()))
             .GetEquipmentAsync(TestCompanies.ScopeOf(Tenant), "5233", CancellationToken.None);
 
         Assert.Null(found);
@@ -111,7 +111,7 @@ public sealed class NameplateIsolationTests
         InMemoryEquipmentNameplateRepository registry = new(
             NameplateBuilder.Valid(serialNumber: "571289"));
 
-        EquipmentWithNameplate? found = await new LabResultsConsultation(labTests, registry, new NullReportIssueRepository())
+        EquipmentWithNameplate? found = await new LabResultsConsultation(labTests, registry, new NullReportIssueRepository(), Portal.Tests.ReportProjection.TestProjection.Of(new NullReportIssueRepository()))
             .GetEquipmentAsync(TestCompanies.ScopeOf(Tenant), "571289", CancellationToken.None);
 
         Assert.NotNull(found);
@@ -140,7 +140,7 @@ public sealed class NameplateIsolationTests
             NameplateBuilder.Valid(serialNumber: "01439/2026-004"));
 
         EquipmentWithNameplate listed = Assert.Single(
-            await new LabResultsConsultation(labTests, registry, new NullReportIssueRepository())
+            await new LabResultsConsultation(labTests, registry, new NullReportIssueRepository(), Portal.Tests.ReportProjection.TestProjection.Of(new NullReportIssueRepository()))
                 .FirstPageOfEquipmentAsync(Tenant));
 
         Assert.Equal("01439/2026-004", listed.Equipment.EquipmentKey);
@@ -170,7 +170,7 @@ public sealed class NameplateIsolationTests
         InMemoryEquipmentNameplateRepository registry = new(
             NameplateBuilder.Valid(serialNumber: "01439/2026-004"));
 
-        EquipmentWithNameplate? detail = await new LabResultsConsultation(labTests, registry, new NullReportIssueRepository())
+        EquipmentWithNameplate? detail = await new LabResultsConsultation(labTests, registry, new NullReportIssueRepository(), Portal.Tests.ReportProjection.TestProjection.Of(new NullReportIssueRepository()))
             .GetEquipmentAsync(TestCompanies.ScopeOf(Tenant), "01439/2026-004", CancellationToken.None);
 
         Assert.NotNull(detail);
@@ -196,7 +196,7 @@ public sealed class NameplateIsolationTests
             NameplateBuilder.Valid(serialNumber: "571289"));
 
         IReadOnlyList<EquipmentWithNameplate> found = await new LabResultsConsultation(
-            labTests, registry, new NullReportIssueRepository()).FirstPageOfEquipmentAsync(Tenant);
+            labTests, registry, new NullReportIssueRepository(), Portal.Tests.ReportProjection.TestProjection.Of(new NullReportIssueRepository())).FirstPageOfEquipmentAsync(Tenant);
 
         Assert.Equal(2, found.Count);
         Assert.NotNull(found.Single(item => item.Equipment.EquipmentKey == "571289").Nameplate);
@@ -221,7 +221,7 @@ public sealed class NameplateIsolationTests
             NameplateBuilder.Valid(serialNumber: "571289", tag: "TR-00001"));
 
         IReadOnlyList<EquipmentWithNameplate> found = await new LabResultsConsultation(
-            labTests, registry, new NullReportIssueRepository()).FirstPageOfEquipmentAsync(Tenant);
+            labTests, registry, new NullReportIssueRepository(), Portal.Tests.ReportProjection.TestProjection.Of(new NullReportIssueRepository())).FirstPageOfEquipmentAsync(Tenant);
 
         Assert.Equal(
             "TR-00001",
@@ -245,7 +245,7 @@ public sealed class NameplateIsolationTests
         InMemoryEquipmentNameplateRepository registry = new(
             NameplateBuilder.Valid(serialNumber: "5233"));
 
-        Assert.Empty(await new LabResultsConsultation(labTests, registry, new NullReportIssueRepository())
+        Assert.Empty(await new LabResultsConsultation(labTests, registry, new NullReportIssueRepository(), Portal.Tests.ReportProjection.TestProjection.Of(new NullReportIssueRepository()))
             .FirstPageOfEquipmentAsync(Tenant));
 
         Assert.Equal(0, registry.TimesTheListWasAsked);

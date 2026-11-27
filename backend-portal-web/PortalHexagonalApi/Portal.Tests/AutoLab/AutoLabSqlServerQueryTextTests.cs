@@ -26,6 +26,9 @@ public sealed class AutoLabSqlServerQueryTextTests
         "ClientsOfCnpjs",
         "ProtocolsOfClients",
         "ReportsOfClients",
+        "SignedReportsOfClients",
+        "ProtocolSummaries",
+        "ReportsOfProtocols",
         "QuoteCodesOfClients",
         "EquipmentKeys",
         "EquipmentKeysOfSearch",
@@ -216,6 +219,7 @@ public sealed class AutoLabSqlServerQueryTextTests
     [InlineData("ClientsOfCnpjs")]
     [InlineData("ProtocolsOfClients")]
     [InlineData("ReportsOfClients")]
+    [InlineData("SignedReportsOfClients")]
     [InlineData("QuoteCodesOfClients")]
     public void TheCompanyRecordsAreResolvedOnTablesOnlyAndIgnoreDeletedRows(string name)
     {
@@ -251,6 +255,48 @@ public sealed class AutoLabSqlServerQueryTextTests
 
         Assert.Matches(new Regex(@"\[\w+\]\.\[Solicitacao\] = \[\w+\]\.\[Oid\]"), sql);
         Assert.DoesNotMatch(new Regex(@"ON [^\n]*NumeroSolicitacao"), sql);
+    }
+
+    [Fact]
+    public void TheSignedReportsOfTheLoadComeInIssueOrderFromACursorAndNeverBringTheFile()
+    {
+        string sql = SqlOf("SignedReportsOfClients");
+
+        _output.WriteLine(sql);
+
+        Assert.Contains("[PdfAssinado] IS NOT NULL", sql, StringComparison.Ordinal);
+        Assert.Contains("[DataEmissao] >=", sql, StringComparison.Ordinal);
+        Assert.Matches(new Regex(@"ORDER BY \[\w+\]\.\[DataEmissao\], \[\w+\]\.\[Oid\]"), sql);
+        Assert.Matches(new Regex(@"\[\w+\]\.\[Oid\] > "), sql);
+        Assert.DoesNotContain("FileData", sql, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void TheProtocolSummariesBringOneRowPerProtocolAndNeverTheMeasurements()
+    {
+        string sql = SqlOf("ProtocolSummaries");
+
+        _output.WriteLine(sql);
+
+        Assert.Contains("DISTINCT", sql, StringComparison.Ordinal);
+        Assert.DoesNotContain("[Resultado]", sql, StringComparison.Ordinal);
+        Assert.DoesNotContain("[Name]", sql, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void TheReportsOfTheProtocolsComeGroupedInTheDatabaseAndNeverBringTheMeasurements()
+    {
+        string sql = SqlOf("ReportsOfProtocols");
+
+        _output.WriteLine(sql);
+
+        Assert.Matches(new Regex(@"WHERE \[\w+\]\.\[ProtocoloLactec\] IN \("), sql);
+        Assert.Matches(new Regex(@"GROUP BY \[\w+\]\.\[ProtocoloLactec\], \[\w+\]\.\[Identificacao\]"), sql);
+        Assert.Matches(new Regex(@"MAX\(\[\w+\]\.\[DataEmissao\]\)"), sql);
+        Assert.Contains("TOP(", sql, StringComparison.Ordinal);
+        Assert.DoesNotContain("[Resultado]", sql, StringComparison.Ordinal);
+        Assert.DoesNotContain("[Name]", sql, StringComparison.Ordinal);
+        Assert.DoesNotContain("JOIN", sql, StringComparison.Ordinal);
     }
 
     [Fact]
@@ -336,6 +382,10 @@ public sealed class AutoLabSqlServerQueryTextTests
             "ClientsOfCnpjs" => AutoLabQueries.ClientsOfCnpjs(database, ["30960572000183"], 5001).ToQueryString(),
             "ProtocolsOfClients" => AutoLabQueries.ProtocolsOfClients(database, clients, 5001).ToQueryString(),
             "ReportsOfClients" => AutoLabQueries.ReportsOfClients(database, clients, 5001).ToQueryString(),
+            "SignedReportsOfClients" => AutoLabQueries.SignedReportsOfClients(
+                database, clients, new DateTime(2026, 7, 1), new DateTime(2026, 7, 2), Guid.Empty, 100).ToQueryString(),
+            "ProtocolSummaries" => AutoLabQueries.ProtocolSummaries(database, authorized, 5001).ToQueryString(),
+            "ReportsOfProtocols" => AutoLabQueries.ReportsOfProtocols(database, authorized, 5001).ToQueryString(),
             "QuoteCodesOfClients" => AutoLabQueries.QuoteCodesOfClients(database, clients, 5001).ToQueryString(),
             "EquipmentKeys" => AutoLabQueries.EquipmentKeys(database, authorized, null).OnlyThePage(page).ToQueryString(),
             "EquipmentKeysOfLongestSearch" => AutoLabQueries.EquipmentKeys(database, authorized, SearchFor(new string('_', EquipmentSearch.MaxLength))).OnlyThePage(page).ToQueryString(),

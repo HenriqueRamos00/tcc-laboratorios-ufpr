@@ -6,13 +6,11 @@ using Portal.Application.ReportDocuments;
 
 using UglyToad.PdfPig;
 using UglyToad.PdfPig.Content;
+using UglyToad.PdfPig.Core;
+using UglyToad.PdfPig.Graphics;
+using UglyToad.PdfPig.Graphics.Colors;
 
 namespace Portal.Adapters.ReportDocuments;
-
-public sealed record SignedReportFindings(ReportSection? Chromatography, ReportSection? PhysicalChemical)
-{
-    public static readonly SignedReportFindings None = new(null, null);
-}
 
 public static partial class SignedReportText
 {
@@ -39,23 +37,25 @@ public static partial class SignedReportText
         {
             using PdfDocument document = PdfDocument.Open(pdf);
 
-            return Read(document.GetPages().Select(LinesOf).ToList());
+            return Read(document.GetPages().Select(page => new PageContent(LinesOf(page), FillsOf(page))).ToList());
         }
         catch (Exception exception) when (exception is not OutOfMemoryException)
         {
-            return SignedReportFindings.None;
+            return SignedReportFindings.Unreadable;
         }
     }
 
-    private static SignedReportFindings Read(IReadOnlyList<IReadOnlyList<Line>> pages)
+    private static SignedReportFindings Read(IReadOnlyList<PageContent> pages)
     {
-        string? chromatographyLabel = null;
-        string? physicalChemicalLabel = null;
+        ResultCell? chromatographyLabel = null;
+        ResultCell? physicalChemicalLabel = null;
         Conclusion? chromatography = null;
         Conclusion? physicalChemical = null;
 
-        foreach (IReadOnlyList<Line> lines in pages)
+        foreach (PageContent page in pages)
         {
+            IReadOnlyList<Line> lines = page.Lines;
+
             for (int index = 0; index < lines.Count; index++)
             {
                 Line line = lines[index];
@@ -67,9 +67,9 @@ public static partial class SignedReportText
                 else if (line.Key.StartsWith(ConclusionPrefix, StringComparison.Ordinal))
                     continue;
                 else if (line.Key.Contains(ChromatographyTable, StringComparison.Ordinal))
-                    chromatographyLabel ??= ResultLabelOf(lines, line);
+                    chromatographyLabel ??= ResultCellOf(page, line);
                 else if (line.Key.Contains(PhysicalChemicalTable, StringComparison.Ordinal))
-                    physicalChemicalLabel ??= ResultLabelOf(lines, line);
+                    physicalChemicalLabel ??= ResultCellOf(page, line);
             }
         }
 
@@ -78,15 +78,24 @@ public static partial class SignedReportText
             SectionOf(physicalChemicalLabel, physicalChemical));
     }
 
-    private static ReportSection? SectionOf(string? label, Conclusion? conclusion)
+    private static ReportSection? SectionOf(ResultCell? cell, Conclusion? conclusion)
     {
-        return label is null && conclusion is null
+        return cell is null && conclusion is null
             ? null
-            : new ReportSection(label, conclusion?.Title, conclusion?.Paragraphs ?? []);
+            : new ReportSection(
+                cell?.Label,
+                cell?.Color is null ? null : ResultColor.ConformityOf(cell.Color.Value),
+                conclusion?.Title,
+                conclusion?.Paragraphs ?? [])
+            {
+                ResultColor = cell?.Color is null ? null : ResultColor.HexOf(cell.Color.Value)
+            };
     }
 
-    private static string? ResultLabelOf(IReadOnlyList<Line> lines, Line tableHeader)
+    private static ResultCell? ResultCellOf(PageContent page, Line tableHeader)
     {
+        IReadOnlyList<Line> lines = page.Lines;
+
         (Line header, Word result)? found = lines
             .Where(line => line.Baseline >= tableHeader.Baseline - SameLineTolerance
                 && line.Baseline <= tableHeader.Baseline + ResultHeaderReach)
@@ -104,21 +113,72 @@ public static partial class SignedReportText
         double left = before?.BoundingBox.Right ?? result.BoundingBox.Left - ResultColumnFallbackMargin;
         double right = after?.BoundingBox.Left ?? double.MaxValue;
 
-        List<string> label = [];
+        List<Word> label = [];
 
         foreach (Line line in lines.Where(line => line.Baseline < header.Baseline - SameLineTolerance
             && line.Baseline >= header.Baseline - ResultLabelReach))
         {
             if (line.Words.Any(word => DateToken().IsMatch(word.Text))) break;
 
-            label.AddRange(line.Words
-                .Where(word => CenterOf(word) >= left && CenterOf(word) < right)
-                .Select(word => word.Text.Normalize(NormalizationForm.FormC)));
+            label.AddRange(line.Words.Where(word => CenterOf(word) >= left && CenterOf(word) < right));
         }
 
-        string text = string.Join(' ', label).Trim();
+        string text = string.Join(' ', label.Select(word => word.Text.Normalize(NormalizationForm.FormC))).Trim();
 
-        return text.Length == 0 ? null : text;
+        return text.Length == 0 ? null : new ResultCell(text, FillBehind(page.Fills, label));
+    }
+
+    private static (double Red, double Green, double Blue)? FillBehind(IReadOnlyList<Fill> fills, List<Word> label)
+    {
+        double left = label.Min(word => word.BoundingBox.Left);
+        double right = label.Max(word => word.BoundingBox.Right);
+        double bottom = label.Min(word => word.BoundingBox.Bottom);
+        double top = label.Max(word => word.BoundingBox.Top);
+        double centerX = (left + right) / 2;
+        double centerY = (bottom + top) / 2;
+        double smallestSide = (top - bottom) / 2;
+
+        return fills
+            .Where(fill => fill.Left <= centerX && fill.Right >= centerX
+                && fill.Bottom <= centerY && fill.Top >= centerY
+                && fill.Right - fill.Left >= smallestSide
+                && fill.Top - fill.Bottom >= smallestSide)
+            .OrderBy(fill => (fill.Right - fill.Left) * (fill.Top - fill.Bottom))
+            .Select(fill => ((double, double, double)?)fill.Color)
+            .FirstOrDefault();
+    }
+
+    private static IReadOnlyList<Fill> FillsOf(Page page)
+    {
+        List<Fill> fills = [];
+
+        foreach (PdfPath path in page.Paths)
+        {
+            if (!path.IsFilled || path.FillColor is not IColor color) continue;
+            if (path.GetBoundingRectangle() is not PdfRectangle bounds) continue;
+
+            (double Red, double Green, double Blue)? rgb = RgbOf(color);
+
+            if (rgb is null) continue;
+
+            fills.Add(new Fill(bounds.Left, bounds.Bottom, bounds.Right, bounds.Top, rgb.Value));
+        }
+
+        return fills;
+    }
+
+    private static (double Red, double Green, double Blue)? RgbOf(IColor color)
+    {
+        try
+        {
+            (double red, double green, double blue) = color.ToRGBValues();
+
+            return (red, green, blue);
+        }
+        catch (Exception exception) when (exception is InvalidOperationException or NotSupportedException)
+        {
+            return null;
+        }
     }
 
     private static Conclusion ConclusionAt(IReadOnlyList<Line> lines, int titleIndex)
@@ -213,6 +273,17 @@ public static partial class SignedReportText
     private static partial Regex DateToken();
 
     private sealed record Conclusion(string Title, IReadOnlyList<string> Paragraphs);
+
+    private sealed record ResultCell(string Label, (double Red, double Green, double Blue)? Color);
+
+    private sealed record Fill(
+        double Left,
+        double Bottom,
+        double Right,
+        double Top,
+        (double Red, double Green, double Blue) Color);
+
+    private sealed record PageContent(IReadOnlyList<Line> Lines, IReadOnlyList<Fill> Fills);
 
     private sealed record Line(double Baseline, IReadOnlyList<Word> Words, string Text, string Key)
     {

@@ -40,6 +40,9 @@ public sealed class AutoLabReportReadingTests : IDisposable
         Assert.Equal("Descarga elétrica", readings[0].Chromatography?.ResultLabel);
         Assert.Null(readings[0].PhysicalChemical);
         Assert.Equal("NORMAL", readings[1].PhysicalChemical?.ResultLabel);
+        Assert.Equal(Conformity.NonConforming, readings[0].Chromatography?.Conformity);
+        Assert.Equal(Conformity.Normal, readings[1].PhysicalChemical?.Conformity);
+        Assert.Equal(ReportReadOutcome.Extracted, readings[0].Origin?.Outcome);
         Assert.Equal(SyntheticReportPdf.PhysicalChemicalConclusionTitle, readings[1].PhysicalChemical?.Title);
     }
 
@@ -68,12 +71,12 @@ public sealed class AutoLabReportReadingTests : IDisposable
         IReadOnlyList<ReportReading> readings = await _database.ReportIssues()
             .ReadReportsAsync(TestCompanies.ScopeOf(Tenant), [Gas, PhysicalChemical], CancellationToken.None);
 
-        Assert.Equal(
-            [
-                new ReportReading(Gas, new DateTime(2026, 9, 24), null, null),
-                new ReportReading(PhysicalChemical, new DateTime(2026, 7, 28), null, null)
-            ],
-            readings);
+        Assert.Equal([Gas, PhysicalChemical], readings.Select(reading => reading.Identification));
+        Assert.All(readings, reading => Assert.Null(reading.Chromatography));
+        Assert.All(readings, reading => Assert.Null(reading.PhysicalChemical));
+        Assert.Equal(ReportReadOutcome.Unreadable, readings[0].Origin?.Outcome);
+        Assert.Equal(TestCompanies.EnergyCnpj, readings[0].Origin?.Cnpj);
+        Assert.Null(readings[1].Origin);
     }
 
     [Fact]

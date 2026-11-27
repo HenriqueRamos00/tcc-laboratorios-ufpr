@@ -28,7 +28,7 @@ public sealed class AutoLabCompanyRecordsSource : ICompanyRecordsSource
 {
     private readonly AutoLabDbContext _database;
     private readonly AutoLabQueryLimits _limits;
-    private readonly Dictionary<CompanyScope, List<Guid?>> _clients = [];
+    private readonly Dictionary<CompanyScope, Dictionary<Guid, string>> _clients = [];
     private readonly Dictionary<CompanyScope, IReadOnlyCollection<string>> _protocols = [];
     private readonly Dictionary<CompanyScope, IReadOnlyList<CompanyReportRow>> _reports = [];
     private readonly Dictionary<CompanyScope, IReadOnlyCollection<string>> _quoteCodes = [];
@@ -72,17 +72,21 @@ public sealed class AutoLabCompanyRecordsSource : ICompanyRecordsSource
 
         if (_reports.TryGetValue(scope, out IReadOnlyList<CompanyReportRow>? known)) return known;
 
-        List<Guid?> clients = await ClientsOfAsync(scope, cancellationToken);
+        Dictionary<Guid, string> cnpjOfClient = await CnpjOfClientsAsync(scope, cancellationToken);
 
-        IReadOnlyList<CompanyReportRow> reports = clients.Count == 0
+        IReadOnlyList<CompanyReportRow> reports = cnpjOfClient.Count == 0
             ? []
             : [.. (await AutoLabFetch.BoundedListInChunksAsync(
-                    clients,
+                    [.. cnpjOfClient.Keys.Select(client => (Guid?)client)],
                     _limits,
                     (chunk, rowLimit) => AutoLabQueries.ReportsOfClients(_database, chunk, rowLimit),
                     Unavailable,
                     cancellationToken))
-                .DistinctBy(report => report.Id)];
+                .DistinctBy(found => found.Report.Id)
+                .Select(found => found.Report with
+                {
+                    Cnpj = found.ClientId is Guid client ? cnpjOfClient.GetValueOrDefault(client) : null
+                })];
 
         _reports[scope] = reports;
 
@@ -118,9 +122,16 @@ public sealed class AutoLabCompanyRecordsSource : ICompanyRecordsSource
 
     private async Task<List<Guid?>> ClientsOfAsync(CompanyScope scope, CancellationToken cancellationToken)
     {
-        if (_clients.TryGetValue(scope, out List<Guid?>? known)) return known;
+        return [.. (await CnpjOfClientsAsync(scope, cancellationToken)).Keys.Select(client => (Guid?)client)];
+    }
 
-        List<Guid?> clients = [];
+    private async Task<Dictionary<Guid, string>> CnpjOfClientsAsync(
+        CompanyScope scope,
+        CancellationToken cancellationToken)
+    {
+        if (_clients.TryGetValue(scope, out Dictionary<Guid, string>? known)) return known;
+
+        Dictionary<Guid, string> clients = [];
 
         if (!scope.IsEmpty)
         {
@@ -131,10 +142,8 @@ public sealed class AutoLabCompanyRecordsSource : ICompanyRecordsSource
                 Unavailable,
                 cancellationToken);
 
-            clients = [.. candidates
-                .Where(candidate => scope.Includes(candidate.CadastroNacional))
-                .Select(candidate => (Guid?)candidate.Oid)
-                .Distinct()];
+            foreach (ClienteRow candidate in candidates.Where(candidate => scope.Includes(candidate.CadastroNacional)))
+                clients.TryAdd(candidate.Oid, CompanyScope.Normalize(candidate.CadastroNacional)!);
         }
 
         _clients[scope] = clients;

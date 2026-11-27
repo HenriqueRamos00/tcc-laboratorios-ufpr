@@ -1,3 +1,5 @@
+using Portal.Application.ReportDocuments;
+using Portal.Application.ReportProjection;
 using Portal.Domain.LabResults;
 
 namespace Portal.Api.LabResults;
@@ -57,6 +59,78 @@ public sealed record EquipmentResponse
     /// repetir "Nao informado" em sete cartoes sem explicar por que.
     /// </summary>
     public required bool NameplateKnown { get; init; }
+
+    public EquipmentStatusResponse? Status { get; init; }
+}
+
+public sealed record EquipmentStatusResponse
+{
+    public required string Overall { get; init; }
+
+    public SectionStatusResponse? Chromatography { get; init; }
+
+    public SectionStatusResponse? PhysicalChemical { get; init; }
+
+    public string? LastReportDate { get; init; }
+
+    public required DateTime UpdatedAt { get; init; }
+
+    public static EquipmentStatusResponse From(EquipmentStatus status)
+    {
+        ArgumentNullException.ThrowIfNull(status);
+
+        return new EquipmentStatusResponse
+        {
+            Overall = OverallStatusText.Of(status.Overall),
+            Chromatography = SectionStatusResponse.From(status.Chromatography),
+            PhysicalChemical = SectionStatusResponse.From(status.PhysicalChemical),
+            LastReportDate = status.LastReportDate is DateTime last ? WireDate.From(last) : null,
+            UpdatedAt = DateTime.SpecifyKind(status.UpdatedAt, DateTimeKind.Utc)
+        };
+    }
+}
+
+public sealed record SectionStatusResponse
+{
+    public string? Conformity { get; init; }
+
+    public string? ResultLabel { get; init; }
+
+    public static SectionStatusResponse? From(SectionStatus? section)
+    {
+        return section is null
+            ? null
+            : new SectionStatusResponse
+            {
+                Conformity = ConformityText.Of(section.Conformity),
+                ResultLabel = section.ResultLabel
+            };
+    }
+}
+
+public sealed record EquipmentStatusRefreshResponse
+{
+    public required bool AlreadyRunning { get; init; }
+
+    public required bool Success { get; init; }
+
+    public required int ReportsRead { get; init; }
+
+    public required int ReportsUnreadable { get; init; }
+
+    public EquipmentStatusResponse? Status { get; init; }
+}
+
+public sealed record EquipmentStatusBatchRequest
+{
+    public IReadOnlyList<string>? Ids { get; init; }
+}
+
+public sealed record EquipmentStatusAcceptedResponse
+{
+    public required int Accepted { get; init; }
+
+    public required bool AlreadyRunning { get; init; }
 }
 
 /// <summary>

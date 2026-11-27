@@ -1,6 +1,58 @@
 // Equipamento do cliente (HU-05 e HU-06). Origem: AutoLAB, pela API do portal.
 // Espelha o corpo de GET /api/equipments e GET /api/equipments/{id}.
 
+import type { Classification } from './health';
+
+export type EquipmentOverallStatus = Classification | 'sem-classificacao' | 'sem-laudo';
+
+export const EQUIPMENT_STATUS_LABEL: Record<EquipmentOverallStatus, string> = {
+  'nao-conforme': 'Não conforme',
+  alerta: 'Alerta',
+  normal: 'Normal',
+  'sem-classificacao': 'Sem classificação',
+  'sem-laudo': 'Sem laudo',
+};
+
+export const EQUIPMENT_STATUS_ORDER: readonly EquipmentOverallStatus[] = [
+  'nao-conforme',
+  'alerta',
+  'normal',
+  'sem-laudo',
+  'sem-classificacao',
+];
+
+export interface EquipmentSectionStatus {
+  readonly conformity: Classification | null;
+  readonly resultLabel: string | null;
+}
+
+export interface EquipmentStatus {
+  readonly overall: EquipmentOverallStatus;
+  readonly chromatography: EquipmentSectionStatus | null;
+  readonly physicalChemical: EquipmentSectionStatus | null;
+  readonly lastReportDate: string | null;
+  readonly updatedAt: string;
+}
+
+export interface EquipmentStatusRefresh {
+  readonly alreadyRunning: boolean;
+  readonly success: boolean;
+  readonly reportsRead: number;
+  readonly reportsUnreadable: number;
+  readonly status: EquipmentStatus | null;
+}
+
+export interface EquipmentStatusAccepted {
+  readonly accepted: number;
+  readonly alreadyRunning: boolean;
+}
+
+export interface LoadFinishedNotice {
+  readonly status: 'success' | 'failure';
+  readonly at: string;
+  readonly reportsRead: number;
+}
+
 export interface Equipment {
   readonly id: string;
   /**
@@ -39,6 +91,7 @@ export interface Equipment {
    * "Não informado" sete vezes sem explicar por quê.
    */
   readonly nameplateKnown: boolean;
+  readonly status?: EquipmentStatus | null;
 }
 
 export interface EquipmentDetail extends Equipment {

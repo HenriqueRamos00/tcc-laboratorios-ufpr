@@ -67,6 +67,8 @@ public sealed record PublishedReportResponse
 
     public string? ResultLabel { get; init; }
 
+    public string? Conformity { get; init; }
+
     public string? Title { get; init; }
 
     public required IReadOnlyList<string> Paragraphs { get; init; }

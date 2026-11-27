@@ -81,9 +81,61 @@ public sealed class SignedReportTextTests
     }
 
     [Fact]
-    public void AnUnreadableFileYieldsNothing()
+    public void AnUnreadableFileIsToldApartFromAFileWithoutSections()
     {
-        Assert.Equal(SignedReportFindings.None, SignedReportText.Read([.. "isto não é um PDF"u8]));
-        Assert.Equal(SignedReportFindings.None, SignedReportText.Read([]));
+        Assert.Equal(ReportReadOutcome.Unreadable, SignedReportText.Read([.. "isto não é um PDF"u8]).Outcome);
+        Assert.Equal(ReportReadOutcome.Unreadable, SignedReportText.Read([]).Outcome);
+        Assert.Equal(ReportReadOutcome.NoSections, SignedReportText.Read(SyntheticReportPdf.Of(null, null)).Outcome);
+        Assert.Equal(ReportReadOutcome.Extracted, SignedReportText.Read(SyntheticReportPdf.Of("NORMAL", null)).Outcome);
+    }
+
+    [Theory]
+    [InlineData(CellFill.Green, Conformity.Normal)]
+    [InlineData(CellFill.Yellow, Conformity.Warning)]
+    [InlineData(CellFill.Red, Conformity.NonConforming)]
+    public void TheFillOfTheResultCellDecidesTheConformityOfEachSection(CellFill fill, Conformity conformity)
+    {
+        SignedReportFindings findings = SignedReportText.Read(SyntheticReportPdf.Of(
+            "Rótulo qualquer", "Outro rótulo", gasFill: fill, physicalChemicalFill: fill));
+
+        Assert.Equal(conformity, findings.Chromatography?.Conformity);
+        Assert.Equal(conformity, findings.PhysicalChemical?.Conformity);
+        Assert.Equal("Rótulo qualquer", findings.Chromatography?.ResultLabel);
+        Assert.Equal("Outro rótulo", findings.PhysicalChemical?.ResultLabel);
+    }
+
+    [Fact]
+    public void EachSectionIsClassifiedByItsOwnCell()
+    {
+        SignedReportFindings findings = SignedReportText.Read(SyntheticReportPdf.Of(
+            "NORMAL", "NORMAL", gasFill: CellFill.Yellow, physicalChemicalFill: CellFill.Red));
+
+        Assert.Equal(Conformity.Warning, findings.Chromatography?.Conformity);
+        Assert.Equal(Conformity.NonConforming, findings.PhysicalChemical?.Conformity);
+        Assert.Equal("#FFF176", findings.Chromatography?.ResultColor);
+        Assert.Equal("#E57373", findings.PhysicalChemical?.ResultColor);
+    }
+
+    [Theory]
+    [InlineData(CellFill.Gray)]
+    [InlineData(CellFill.Blue)]
+    [InlineData(CellFill.None)]
+    public void AnUnrecognizedFillKeepsTheLabelAndLeavesTheSectionUnclassified(CellFill fill)
+    {
+        SignedReportFindings findings = SignedReportText.Read(SyntheticReportPdf.Of(
+            "NORMAL", null, gasFill: fill));
+
+        Assert.Equal("NORMAL", findings.Chromatography?.ResultLabel);
+        Assert.Null(findings.Chromatography?.Conformity);
+    }
+
+    [Fact]
+    public void ALabelThatWrapsIsStillClassifiedByTheCellBehindIt()
+    {
+        SignedReportFindings findings = SignedReportText.Read(SyntheticReportPdf.Of(
+            "Superaquecimento de alta temperatura", null, gasFill: CellFill.Yellow));
+
+        Assert.Equal("Superaquecimento de alta temperatura", findings.Chromatography?.ResultLabel);
+        Assert.Equal(Conformity.Warning, findings.Chromatography?.Conformity);
     }
 }

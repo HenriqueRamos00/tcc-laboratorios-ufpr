@@ -304,7 +304,7 @@ public sealed class HealthIndicatorsContractTests : IClassFixture<RunningPortal>
             JsonArray reports = body[block]!["reports"]!.AsArray();
 
             Assert.All(reports, report => Assert.Equal(
-                ["date", "identification", "paragraphs", "resultLabel", "title"],
+                ["conformity", "date", "identification", "paragraphs", "resultLabel", "title"],
                 report!.AsObject().Select(pair => pair.Key).Order()));
             Assert.All(reports, report => Assert.Matches(@"^\d{4}-\d{2}-\d{2}$", (string?)report!["date"]));
 
