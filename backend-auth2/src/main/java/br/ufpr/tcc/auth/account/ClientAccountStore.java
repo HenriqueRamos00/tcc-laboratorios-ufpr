@@ -17,7 +17,7 @@ import org.springframework.stereotype.Component;
 /** Leitura e gravacao de conta de cliente e das credenciais de uso unico dela. */
 @Component
 @RequiredArgsConstructor(access = AccessLevel.PACKAGE)
-class ClientAccountStore {
+public class ClientAccountStore {
 
     /** Todas as contas deste servico usam o perfil CLIENTE. */
     private static final String ONLY_ROLE = "CLIENTE";
@@ -31,11 +31,11 @@ class ClientAccountStore {
     }
 
     /** A situacao da aplicacao em que a conta vai nascer: vazio quando ela nao existe. */
-    Optional<Boolean> applicationSituation(long applicationId) {
+    public Optional<Boolean> applicationSituation(long applicationId) {
         return accounts.findApplicationSituation(applicationId);
     }
 
-    boolean emailAlreadyUsedIn(long applicationId, String email) {
+    public boolean emailAlreadyUsedIn(long applicationId, String email) {
         return accounts.countWithinApplicationByEmail(applicationId,
                 withoutSurroundingSpace(email)) > 0L;
     }
@@ -88,7 +88,7 @@ class ClientAccountStore {
         emailChanges.saveAndFlush(change);
     }
 
-    void clearEmailChange(long accountId) {
+    public void clearEmailChange(long accountId) {
         emailChanges.findById(accountId).ifPresent(ClientEmailChange::clearPending);
     }
 
@@ -96,12 +96,12 @@ class ClientAccountStore {
      * Insere e descarrega a gravacao para detectar a violacao de unicidade antes de emitir o
      * token.
      */
-    long insert(long applicationId, String name, String email, String passwordHash) {
+    public long insert(long applicationId, String name, String email, String passwordHash) {
         return accounts.saveAndFlush(ClientAccount.openFor(applicationId, name,
                 withoutSurroundingSpace(email), passwordHash)).id();
     }
 
-    void issueToken(long accountId, ConfirmationToken token,
+    public void issueToken(long accountId, ConfirmationToken token,
             OutboundMessage.Purpose purpose, Duration lifetime) {
         tokens.saveAndFlush(
                 AccountActionToken.issuedFor(accountId, token, purpose, lifetime));
@@ -111,7 +111,7 @@ class ClientAccountStore {
      * Valida o token e marca seu uso por UPDATE condicional. Somente uma chamada concorrente pode
      * consumir o mesmo token.
      */
-    Optional<Long> consumeToken(long applicationId, ConfirmationToken token,
+    public Optional<Long> consumeToken(long applicationId, ConfirmationToken token,
             OutboundMessage.Purpose purpose) {
         return tokens
                 .findLiveAccountFor(applicationId, token.digest().asBytes(), purpose)
@@ -120,34 +120,35 @@ class ClientAccountStore {
     }
 
     /** Conta e endereco cadastrado que recebera a mensagem de recuperacao. */
-    record AccountToNotify(long id, String registeredEmail) {
+    public record AccountToNotify(long id, String registeredEmail) {
     }
 
-    Optional<AccountToNotify> findToNotifyByApplicationAndEmail(long applicationId, String email) {
+    public Optional<AccountToNotify> findToNotifyByApplicationAndEmail(long applicationId,
+            String email) {
         return accounts
                 .findWithinApplicationByEmail(applicationId, withoutSurroundingSpace(email))
                 .map(account -> new AccountToNotify(account.id(), account.email()));
     }
 
-    void updatePasswordHash(long accountId, String passwordHash) {
+    public void updatePasswordHash(long accountId, String passwordHash) {
         accounts.findById(accountId).ifPresent(account -> account.changePasswordHash(passwordHash));
     }
 
-    void invalidatePendingTokens(long accountId, OutboundMessage.Purpose purpose) {
+    public void invalidatePendingTokens(long accountId, OutboundMessage.Purpose purpose) {
         tokens.invalidatePendingOf(accountId, purpose);
     }
 
-    void invalidatePendingEmailChangeTokens(long accountId) {
+    public void invalidatePendingEmailChangeTokens(long accountId) {
         tokens.invalidatePendingOf(accountId, OutboundMessage.Purpose.EMAIL_CHANGE_CURRENT);
         tokens.invalidatePendingOf(accountId, OutboundMessage.Purpose.EMAIL_CHANGE_NEW);
     }
 
-    void confirmEmail(long accountId) {
+    public void confirmEmail(long accountId) {
         accounts.findById(accountId).ifPresent(ClientAccount::confirmEmail);
     }
 
     /** Projecao de leitura de uma conta. O hash da senha nao aparece aqui. */
-    record AccountView(String id, String name, String email, String role, boolean active,
+    public record AccountView(String id, String name, String email, String role, boolean active,
             String serviceId, boolean emailConfirmed, List<String> companyIds,
             List<String> companyCnpjs) {
     }
@@ -158,7 +159,7 @@ class ClientAccountStore {
     }
 
     /** As empresas que uma conta representa, como as rotas de leitura as devolvem. */
-    record CompanyLinks(List<String> companyIds, List<String> companyCnpjs) {
+    public record CompanyLinks(List<String> companyIds, List<String> companyCnpjs) {
 
         /** Ordena ambas as listas por ID da empresa, mantendo a correspondencia entre ID e CNPJ. */
         static CompanyLinks of(List<CompanyLinkRow> links) {
@@ -170,7 +171,7 @@ class ClientAccountStore {
         }
     }
 
-    CompanyLinks companiesOf(long accountId) {
+    public CompanyLinks companiesOf(long accountId) {
         return CompanyLinks.of(companyLinks.findOfAccount(accountId));
     }
 
@@ -203,7 +204,7 @@ class ClientAccountStore {
      * Lista contas no escopo: vazio representa administrador; preenchido filtra pela aplicacao no
      * banco. Busca os vinculos em lote para evitar uma consulta por conta.
      */
-    List<AccountView> list(Optional<Long> applicationScope) {
+    public List<AccountView> list(Optional<Long> applicationScope) {
         List<ClientAccount> found = applicationScope
                 .map(accounts::findByApplicationIdOrderByCreatedAtDesc)
                 .orElseGet(accounts::findByOrderByCreatedAtDesc);
@@ -217,7 +218,7 @@ class ClientAccountStore {
                 .toList();
     }
 
-    Optional<AccountView> findWithinScope(Optional<Long> applicationScope, long accountId) {
+    public Optional<AccountView> findWithinScope(Optional<Long> applicationScope, long accountId) {
         return applicationScope
                 .map(applicationId -> accounts.findByIdAndApplicationId(accountId, applicationId))
                 .orElseGet(() -> accounts.findById(accountId))
@@ -228,7 +229,7 @@ class ClientAccountStore {
      * Substitui todos os vinculos. Lista vazia remove todos. Se faltar alguma empresa, o chamador
      * deve desfazer a transacao.
      */
-    boolean replaceCompanies(long accountId, Collection<Long> companyIds) {
+    public boolean replaceCompanies(long accountId, Collection<Long> companyIds) {
         companyLinks.unlinkAllOf(accountId);
         return companyIds.isEmpty()
                 || companyLinks.link(accountId, companyIds) == companyIds.size();
@@ -238,7 +239,8 @@ class ClientAccountStore {
      * Aplica o escopo tambem no UPDATE para manter o isolamento entre aplicacoes. Escopo vazio
      * permite a operacao administrativa.
      */
-    void update(Optional<Long> applicationScope, long accountId, String name, boolean active) {
+    public void update(Optional<Long> applicationScope, long accountId, String name,
+            boolean active) {
         OffsetDateTime now = OffsetDateTime.now();
         applicationScope.ifPresentOrElse(
                 applicationId -> accounts.updateWithinApplication(accountId, applicationId, name,
@@ -247,7 +249,7 @@ class ClientAccountStore {
     }
 
     /** Exclui tokens e conta dentro do escopo autorizado. */
-    void delete(Optional<Long> applicationScope, long accountId) {
+    public void delete(Optional<Long> applicationScope, long accountId) {
         applicationScope.ifPresentOrElse(
                 applicationId -> {
                     emailChanges.deleteById(accountId);

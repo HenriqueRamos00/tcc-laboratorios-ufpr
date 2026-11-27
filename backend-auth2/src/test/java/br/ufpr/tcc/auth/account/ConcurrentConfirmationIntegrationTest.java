@@ -1,9 +1,11 @@
 package br.ufpr.tcc.auth.account;
 
-import br.ufpr.tcc.auth.shared.database.DatabaseProbe;
 import static org.assertj.core.api.Assertions.assertThat;
 
+import br.ufpr.tcc.auth.account.usecase.ConfirmEmailUseCase;
+import br.ufpr.tcc.auth.account.usecase.RegisterClientAccountUseCase;
 import br.ufpr.tcc.auth.notification.RecordedMessages;
+import br.ufpr.tcc.auth.shared.database.DatabaseProbe;
 import br.ufpr.tcc.auth.shared.database.OracleIntegrationTestBase;
 import br.ufpr.tcc.auth.shared.security.ApplicationCaller;
 import java.time.OffsetDateTime;
@@ -34,7 +36,10 @@ class ConcurrentConfirmationIntegrationTest extends OracleIntegrationTestBase {
     private static final AtomicLong NEXT_ID = new AtomicLong(500_000L);
 
     @Autowired
-    private ClientAccountService service;
+    private RegisterClientAccountUseCase registerClientAccount;
+
+    @Autowired
+    private ConfirmEmailUseCase confirmEmail;
 
     @Autowired
     private RecordedMessages recordedMessages;
@@ -53,7 +58,7 @@ class ConcurrentConfirmationIntegrationTest extends OracleIntegrationTestBase {
         String email = "pessoa" + NEXT_ID.incrementAndGet() + "@exemplo.com";
         ApplicationCaller caller = new ApplicationCaller(applicationId,
                 "corrida-" + applicationId);
-        service.register(applicationId, "Pessoa", email, "SenhaForte123", List.of());
+        registerClientAccount.execute(applicationId, "Pessoa", email, "SenhaForte123", List.of());
         String link = recordedMessages.lastTokenFor(email);
 
         int threads = 4;
@@ -63,7 +68,7 @@ class ConcurrentConfirmationIntegrationTest extends OracleIntegrationTestBase {
             for (int worker = 0; worker < threads; worker++) {
                 results.add(pool.submit(() -> {
                     allAtOnce.await();
-                    return service.confirmEmail(caller, link);
+                    return confirmEmail.execute(caller, link);
                 }));
             }
         }

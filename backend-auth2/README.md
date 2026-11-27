@@ -329,10 +329,24 @@ o token em memoria so se justifica onde nao existe envio de verdade.
 
 ## Localizar regras de contas (`account`)
 
-- `web/ClientAccountController`: rotas, validacao de entrada e respostas HTTP.
-- `ClientAccountService`: cadastro (`register`/`registerInTransaction`), alteracao (`update`),
-  exclusao (`delete`), confirmacao (`confirmEmail`) e recuperacao de senha
-  (`requestPasswordRecovery`/`resetPassword`).
+Cada operacao exposta numa rota e um caso de uso proprio em `usecase/`, com um metodo `execute`:
+
+| Caso de uso | Rota | Credencial |
+| --- | --- | --- |
+| `RegisterClientAccountUseCase` | `POST /api/users` | administrativa |
+| `ListClientAccountsUseCase` | `GET /api/users` | administrativa ou aplicacao |
+| `GetClientAccountUseCase` | `GET /api/users/{id}` | administrativa ou aplicacao |
+| `UpdateClientAccountUseCase` | `PUT /api/users/{id}` | administrativa |
+| `DeleteClientAccountUseCase` | `DELETE /api/users/{id}` | administrativa |
+| `ConfirmEmailUseCase` | `POST /api/auth/confirmations` | aplicacao |
+| `RequestPasswordRecoveryUseCase` | `POST /api/auth/recoveries` | aplicacao |
+| `ResetPasswordUseCase` | `POST /api/auth/password-resets` | aplicacao |
+
+- `web/ClientAccountController` (`/api/users`) e `web/AccountTokenController` (links por
+  e-mail): validacao de entrada e traducao de cada desfecho em resposta HTTP.
+- `ClientAccountService` e `web/ClientSelfServiceController`: autoatendimento em
+  `/api/self-service/**` (perfil, troca de senha, troca de e-mail e estado da sessao).
+- `usecase/AccountSummary`: a conta como as rotas de `/api/users` a devolvem.
 - `ClientAccountStore`: leitura e gravacao de contas, vinculos e tokens pelos repositorios.
 - `ClientAccount`: estado inicial da conta e mudancas de senha e confirmacao.
 - `AccountActionToken` e seu repositorio: finalidade, validade e consumo unico dos tokens.

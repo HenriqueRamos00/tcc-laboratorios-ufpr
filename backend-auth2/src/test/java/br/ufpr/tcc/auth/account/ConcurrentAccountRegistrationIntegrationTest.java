@@ -1,8 +1,10 @@
 package br.ufpr.tcc.auth.account;
 
-import br.ufpr.tcc.auth.shared.database.DatabaseProbe;
 import static org.assertj.core.api.Assertions.assertThat;
 
+import br.ufpr.tcc.auth.account.usecase.RegisterClientAccountUseCase;
+import br.ufpr.tcc.auth.shared.database.DatabaseProbe;
+import br.ufpr.tcc.auth.shared.database.OracleIntegrationTestBase;
 import java.time.OffsetDateTime;
 import java.util.ArrayList;
 import java.util.List;
@@ -11,7 +13,6 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 import java.util.concurrent.atomic.AtomicLong;
-import br.ufpr.tcc.auth.shared.database.OracleIntegrationTestBase;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -32,7 +33,7 @@ class ConcurrentAccountRegistrationIntegrationTest extends OracleIntegrationTest
     private static final AtomicLong NEXT = new AtomicLong(996_000L);
 
     @Autowired
-    private ClientAccountService service;
+    private RegisterClientAccountUseCase registerClientAccount;
 
     @Autowired
     private DatabaseProbe database;
@@ -50,25 +51,25 @@ class ConcurrentAccountRegistrationIntegrationTest extends OracleIntegrationTest
 
         int threads = 2;
         CyclicBarrier allAtOnce = new CyclicBarrier(threads);
-        List<Future<ClientAccountService.Registration.Outcome>> results = new ArrayList<>();
+        List<Future<RegisterClientAccountUseCase.Result.Outcome>> results = new ArrayList<>();
         try (ExecutorService pool = Executors.newFixedThreadPool(threads)) {
             for (int worker = 0; worker < threads; worker++) {
                 results.add(pool.submit(() -> {
                     allAtOnce.await();
-                    return service.register(applicationId, "Pessoa", email,
+                    return registerClientAccount.execute(applicationId, "Pessoa", email,
                             "SenhaForte123", List.of()).outcome();
                 }));
             }
         }
 
-        List<ClientAccountService.Registration.Outcome> outcomes = new ArrayList<>();
-        for (Future<ClientAccountService.Registration.Outcome> result : results) {
+        List<RegisterClientAccountUseCase.Result.Outcome> outcomes = new ArrayList<>();
+        for (Future<RegisterClientAccountUseCase.Result.Outcome> result : results) {
             outcomes.add(result.get());
         }
 
         assertThat(outcomes).as("nenhuma das duas pode estourar, e as duas nao podem criar")
-                .containsExactlyInAnyOrder(ClientAccountService.Registration.Outcome.CREATED,
-                        ClientAccountService.Registration.Outcome.EMAIL_TAKEN);
+                .containsExactlyInAnyOrder(RegisterClientAccountUseCase.Result.Outcome.CREATED,
+                        RegisterClientAccountUseCase.Result.Outcome.EMAIL_TAKEN);
         assertThat(accountsWith(applicationId, email)).isEqualTo(1L);
     }
 
