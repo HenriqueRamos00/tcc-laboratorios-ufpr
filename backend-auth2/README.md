@@ -329,12 +329,38 @@ o token em memoria so se justifica onde nao existe envio de verdade.
 
 ## Localizar regras de contas (`account`)
 
-- `web/ClientAccountController`: rotas, validacao de entrada e respostas HTTP.
-- `ClientAccountService`: cadastro (`register`/`registerInTransaction`), alteracao (`update`),
-  exclusao (`delete`), confirmacao (`confirmEmail`) e recuperacao de senha
-  (`requestPasswordRecovery`/`resetPassword`).
+Cada operacao exposta numa rota e um caso de uso proprio em `usecase/`, com um metodo `execute`:
+
+| Caso de uso | Rota | Credencial |
+| --- | --- | --- |
+| `RegisterClientAccountUseCase` | `POST /api/users` | administrativa |
+| `ListClientAccountsUseCase` | `GET /api/users` | administrativa ou aplicacao |
+| `GetClientAccountUseCase` | `GET /api/users/{id}` | administrativa ou aplicacao |
+| `UpdateClientAccountUseCase` | `PUT /api/users/{id}` | administrativa |
+| `DeleteClientAccountUseCase` | `DELETE /api/users/{id}` | administrativa |
+| `ConfirmEmailUseCase` | `POST /api/auth/confirmations` | aplicacao |
+| `RequestPasswordRecoveryUseCase` | `POST /api/auth/recoveries` | aplicacao |
+| `ResetPasswordUseCase` | `POST /api/auth/password-resets` | aplicacao |
+| `GetSelfServiceProfileUseCase` | `GET /api/self-service/accounts/{id}/profile` | aplicacao |
+| `UpdateSelfServiceProfileUseCase` | `PATCH /api/self-service/accounts/{id}/profile` | aplicacao |
+| `ChangePasswordUseCase` | `POST /api/self-service/accounts/{id}/password` | aplicacao |
+| `RequestEmailChangeUseCase` | `POST /api/self-service/accounts/{id}/email-change` | aplicacao |
+| `CancelEmailChangeUseCase` | `DELETE /api/self-service/accounts/{id}/email-change` | aplicacao |
+| `ConfirmEmailChangeUseCase` | `POST /api/self-service/email-change/confirm` | aplicacao |
+| `GetSessionStateUseCase` | `GET /api/self-service/accounts/{id}/session-state` | aplicacao |
+
+- `web/ClientAccountController` (`/api/users`), `web/AccountTokenController` (links por
+  e-mail) e `web/ClientSelfServiceController` (`/api/self-service/**`): validacao de entrada
+  e traducao de cada desfecho em resposta HTTP.
+- `usecase/AccountSummary`, `usecase/SelfServiceProfile` e `usecase/PendingEmailChange`: o
+  que as rotas devolvem sobre a conta.
+- `usecase/CurrentPasswordVerification`: senha atual exigida pela troca de senha e pela de
+  e-mail, com o limite de cinco erros em quinze minutos compartilhado entre as duas.
+- `usecase/SelfServiceProfiles`: monta o perfil, oferecendo a troca de e-mail somente
+  quando existe envio de e-mail.
 - `ClientAccountStore`: leitura e gravacao de contas, vinculos e tokens pelos repositorios.
-- `ClientAccount`: estado inicial da conta e mudancas de senha e confirmacao.
+- `ClientAccount`: estado inicial da conta e mudancas de senha, e-mail e confirmacao.
+- `ClientEmailChange`: troca de e-mail pendente e janela de pedidos da conta.
 - `AccountActionToken` e seu repositorio: finalidade, validade e consumo unico dos tokens.
 - `AccountConstraintViolation`: identifica a restricao violada pelo nome informado pelo Hibernate.
 - `ClientAccountDirectory`: fornece as credenciais ao modulo `authentication`, que decide o login.

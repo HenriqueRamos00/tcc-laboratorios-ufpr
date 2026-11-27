@@ -1,7 +1,12 @@
 package br.ufpr.tcc.auth.account.web;
 
-import br.ufpr.tcc.auth.account.ClientAccountService;
-import br.ufpr.tcc.auth.shared.security.ApplicationCaller;
+import br.ufpr.tcc.auth.account.usecase.AccountSummary;
+import br.ufpr.tcc.auth.account.usecase.DeleteClientAccountUseCase;
+import br.ufpr.tcc.auth.account.usecase.GetClientAccountUseCase;
+import br.ufpr.tcc.auth.account.usecase.ListClientAccountsUseCase;
+import br.ufpr.tcc.auth.account.usecase.RegisterClientAccountUseCase;
+import br.ufpr.tcc.auth.account.usecase.UpdateClientAccountUseCase;
+import br.ufpr.tcc.auth.shared.identifier.Identifiers;
 import br.ufpr.tcc.auth.shared.security.CallerScope;
 import br.ufpr.tcc.auth.shared.web.ProblemDetailWriter;
 import io.swagger.v3.oas.annotations.media.Schema;
@@ -29,9 +34,9 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RestController;
 
 /**
- * Rotas de contas, confirmacao e recuperacao. A SecurityConfiguration autoriza escrita
- * administrativa, leitura por ambos os tipos de credencial e operacoes de token pela
- * aplicacao.
+ * Rotas de conta de cliente em /api/users. A SecurityConfiguration autoriza a escrita somente
+ * para o administrador e a leitura para os dois tipos de credencial; o escopo da leitura sai de
+ * quem chamou.
  */
 @RestController
 @RequiredArgsConstructor(access = AccessLevel.PACKAGE)
@@ -43,7 +48,11 @@ class ClientAccountController {
     /** Identificador como texto de digitos, que e como o servico os publica. */
     private static final String IDENTIFIER = "[0-9]{1,19}";
 
-    private final ClientAccountService service;
+    private final RegisterClientAccountUseCase registerClientAccountUseCase;
+    private final ListClientAccountsUseCase listClientAccountsUseCase;
+    private final GetClientAccountUseCase getClientAccountUseCase;
+    private final UpdateClientAccountUseCase updateClientAccountUseCase;
+    private final DeleteClientAccountUseCase deleteClientAccountUseCase;
     private final ProblemDetailWriter problemDetailWriter;
 
     /**
@@ -85,8 +94,8 @@ class ClientAccountController {
      */
     @SecurityRequirement(name = ADMINISTRATIVE)
     @PostMapping("/api/users")
-    ResponseEntity<ClientAccountService.AccountSummary> create(@Valid @RequestBody CreateClientRequest request) {
-        Optional<Long> applicationId = identifierOf(request.serviceId());
+    ResponseEntity<AccountSummary> create(@Valid @RequestBody CreateClientRequest request) {
+        Optional<Long> applicationId = Identifiers.parse(request.serviceId());
         if (applicationId.isEmpty()) {
             return refusal(HttpStatus.NOT_FOUND, "Servico nao encontrado");
         }
@@ -94,10 +103,11 @@ class ClientAccountController {
         if (companyIds.isEmpty()) {
             return refusal(HttpStatus.NOT_FOUND, "Empresa nao encontrada");
         }
-        ClientAccountService.Registration registration = service.register(applicationId.get(),
-                request.name(), request.email(), request.password(), companyIds.get());
-        return switch (registration.outcome()) {
-            case CREATED -> ResponseEntity.status(HttpStatus.CREATED).body(registration.account());
+        RegisterClientAccountUseCase.Result result = registerClientAccountUseCase.execute(
+                applicationId.get(), request.name(), request.email(), request.password(),
+                companyIds.get());
+        return switch (result.outcome()) {
+            case CREATED -> ResponseEntity.status(HttpStatus.CREATED).body(result.account());
             case EMAIL_TAKEN -> ResponseEntity.status(HttpStatus.CONFLICT).build();
             case PASSWORD_REJECTED -> ResponseEntity.badRequest().build();
             case SERVICE_NOT_FOUND -> refusal(HttpStatus.NOT_FOUND, "Servico nao encontrado");
@@ -106,29 +116,21 @@ class ClientAccountController {
         };
     }
 
-    record ConfirmationRequest(@NotBlank String token) {
-
-        @Override
-        public String toString() {
-            return "ConfirmationRequest[token=[OMITIDO]]";
-        }
-    }
-
     /** Lista contas no escopo do chamador: aplicacao ve apenas suas contas; administrador ve todas. */
     @SecurityRequirement(name = ADMINISTRATIVE)
     @SecurityRequirement(name = APPLICATION)
     @GetMapping("/api/users")
-    ResponseEntity<List<ClientAccountService.AccountSummary>> list(
-            @AuthenticationPrincipal Object caller) {
-        return ResponseEntity.ok(service.list(CallerScope.applicationScopeOf(caller)));
+    ResponseEntity<List<AccountSummary>> list(@AuthenticationPrincipal Object caller) {
+        return ResponseEntity.ok(
+                listClientAccountsUseCase.execute(CallerScope.applicationScopeOf(caller)));
     }
 
     @SecurityRequirement(name = ADMINISTRATIVE)
     @SecurityRequirement(name = APPLICATION)
     @GetMapping("/api/users/{id}")
-    ResponseEntity<ClientAccountService.AccountSummary> read(@AuthenticationPrincipal Object caller,
+    ResponseEntity<AccountSummary> read(@AuthenticationPrincipal Object caller,
             @PathVariable String id) {
-        return service.find(CallerScope.applicationScopeOf(caller), id)
+        return getClientAccountUseCase.execute(CallerScope.applicationScopeOf(caller), id)
                 .map(ResponseEntity::ok)
                 .orElseGet(() -> ResponseEntity.notFound().build());
     }
@@ -150,16 +152,17 @@ class ClientAccountController {
 
     @SecurityRequirement(name = ADMINISTRATIVE)
     @PutMapping("/api/users/{id}")
-    ResponseEntity<ClientAccountService.AccountSummary> update(@AuthenticationPrincipal Object caller,
+    ResponseEntity<AccountSummary> update(@AuthenticationPrincipal Object caller,
             @PathVariable String id, @Valid @RequestBody UpdateClientRequest request) {
         Optional<List<Long>> companyIds = identifiersOf(request.companyIds());
         if (companyIds.isEmpty()) {
             return refusal(HttpStatus.NOT_FOUND, "Empresa nao encontrada");
         }
-        ClientAccountService.Change change = service.update(CallerScope.applicationScopeOf(caller),
-                id, request.name(), request.active(), companyIds.get());
-        return switch (change.outcome()) {
-            case CHANGED -> ResponseEntity.ok(change.account());
+        UpdateClientAccountUseCase.Result result = updateClientAccountUseCase.execute(
+                CallerScope.applicationScopeOf(caller), id, request.name(), request.active(),
+                companyIds.get());
+        return switch (result.outcome()) {
+            case CHANGED -> ResponseEntity.ok(result.account());
             case NOT_FOUND -> ResponseEntity.notFound().build();
             case COMPANY_NOT_FOUND -> refusal(HttpStatus.NOT_FOUND, "Empresa nao encontrada");
         };
@@ -168,7 +171,7 @@ class ClientAccountController {
     @SecurityRequirement(name = ADMINISTRATIVE)
     @DeleteMapping("/api/users/{id}")
     ResponseEntity<Void> delete(@AuthenticationPrincipal Object caller, @PathVariable String id) {
-        return service.delete(CallerScope.applicationScopeOf(caller), id)
+        return deleteClientAccountUseCase.execute(CallerScope.applicationScopeOf(caller), id)
                 ? ResponseEntity.noContent().build()
                 : ResponseEntity.notFound().build();
     }
@@ -178,15 +181,6 @@ class ClientAccountController {
         return ResponseEntity.of(problemDetailWriter.bodyOf(status, detail)).build();
     }
 
-    /** Identificador fora do intervalo de long e tratado como referencia inexistente. */
-    private static Optional<Long> identifierOf(String value) {
-        try {
-            return Optional.of(Long.parseLong(value));
-        } catch (NumberFormatException notAnIdentifier) {
-            return Optional.empty();
-        }
-    }
-
     /** Lista ausente vale lista vazia; vazio no retorno e algum identificador que estourou. */
     private static Optional<List<Long>> identifiersOf(List<String> values) {
         if (values == null) {
@@ -194,57 +188,12 @@ class ClientAccountController {
         }
         List<Long> identifiers = new ArrayList<>();
         for (String value : values) {
-            Optional<Long> identifier = identifierOf(value);
+            Optional<Long> identifier = Identifiers.parse(value);
             if (identifier.isEmpty()) {
                 return Optional.empty();
             }
             identifiers.add(identifier.get());
         }
         return Optional.of(identifiers);
-    }
-
-    record RecoveryRequest(@NotBlank @Email @Size(max = 254) String email) {
-    }
-
-    /** Responde sempre 202, exista ou nao o endereco. */
-    @SecurityRequirement(name = APPLICATION)
-    @PostMapping("/api/auth/recoveries")
-    ResponseEntity<Void> requestRecovery(@AuthenticationPrincipal ApplicationCaller caller,
-            @Valid @RequestBody RecoveryRequest request) {
-        service.requestPasswordRecovery(caller, request.email());
-        return ResponseEntity.accepted().build();
-    }
-
-    record PasswordResetRequest(@NotBlank String token, @NotBlank @Size(max = 72)
-            @Schema(format = "password", accessMode = Schema.AccessMode.WRITE_ONLY,
-                    minLength = 8,
-                    description = "Senha, preservando espacos: o servidor nao corta espaco nas pontas,\n"
-                            + " nao muda a caixa e nao remove acentuacao, porque cada uma dessas trocas\n"
-                            + " mudaria a credencial em silencio. O minimo de oito, mais maiuscula,\n"
-                            + " minuscula e digito, e cobrado pelo caso de uso e nao por anotacao.")
-            String password) {
-
-        @Override
-        public String toString() {
-            return "PasswordResetRequest[token=[OMITIDO], password=[OMITIDA]]";
-        }
-    }
-
-    @SecurityRequirement(name = APPLICATION)
-    @PostMapping("/api/auth/password-resets")
-    ResponseEntity<Void> resetPassword(@AuthenticationPrincipal ApplicationCaller caller,
-            @Valid @RequestBody PasswordResetRequest request) {
-        return service.resetPassword(caller, request.token(), request.password())
-                ? ResponseEntity.noContent().build()
-                : ResponseEntity.badRequest().build();
-    }
-
-    @SecurityRequirement(name = APPLICATION)
-    @PostMapping("/api/auth/confirmations")
-    ResponseEntity<Void> confirm(@AuthenticationPrincipal ApplicationCaller caller,
-            @Valid @RequestBody ConfirmationRequest request) {
-        return service.confirmEmail(caller, request.token())
-                ? ResponseEntity.noContent().build()
-                : ResponseEntity.badRequest().build();
     }
 }

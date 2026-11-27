@@ -1,8 +1,10 @@
 package br.ufpr.tcc.auth.account;
 
-import br.ufpr.tcc.auth.shared.database.DatabaseProbe;
 import static org.assertj.core.api.Assertions.assertThat;
 
+import br.ufpr.tcc.auth.account.usecase.RegisterClientAccountUseCase;
+import br.ufpr.tcc.auth.account.usecase.RequestPasswordRecoveryUseCase;
+import br.ufpr.tcc.auth.shared.database.DatabaseProbe;
 import br.ufpr.tcc.auth.shared.database.OracleIntegrationTestBase;
 import br.ufpr.tcc.auth.shared.security.ApplicationCaller;
 import java.time.OffsetDateTime;
@@ -39,7 +41,10 @@ class ConcurrentRecoveryRequestIntegrationTest extends OracleIntegrationTestBase
     private static final AtomicLong NEXT = new AtomicLong(993_000L);
 
     @Autowired
-    private ClientAccountService service;
+    private RegisterClientAccountUseCase registerClientAccount;
+
+    @Autowired
+    private RequestPasswordRecoveryUseCase requestPasswordRecovery;
 
     @Autowired
     private DatabaseProbe database;
@@ -55,7 +60,7 @@ class ConcurrentRecoveryRequestIntegrationTest extends OracleIntegrationTestBase
                 .with("now", OffsetDateTime.now()).run();
         ApplicationCaller caller = new ApplicationCaller(applicationId, code);
         String email = "corrida" + NEXT.incrementAndGet() + "@exemplo.com";
-        service.register(applicationId, "Pessoa", email, "SenhaForte123", List.of());
+        registerClientAccount.execute(applicationId, "Pessoa", email, "SenhaForte123", List.of());
 
         int threads = 4;
         CyclicBarrier allAtOnce = new CyclicBarrier(threads);
@@ -64,7 +69,7 @@ class ConcurrentRecoveryRequestIntegrationTest extends OracleIntegrationTestBase
             for (int worker = 0; worker < threads; worker++) {
                 results.add(pool.submit(() -> {
                     allAtOnce.await();
-                    service.requestPasswordRecovery(caller, email);
+                    requestPasswordRecovery.execute(caller, email);
                     return true;
                 }));
             }

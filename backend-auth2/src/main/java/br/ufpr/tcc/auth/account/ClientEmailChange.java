@@ -15,7 +15,7 @@ import org.hibernate.type.NumericBooleanConverter;
 @Entity
 @Table(name = "CLIENT_EMAIL_CHANGE")
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
-class ClientEmailChange {
+public class ClientEmailChange {
 
     @Id
     @Column(name = "CLIENT_ACCOUNT_ID")
@@ -53,7 +53,7 @@ class ClientEmailChange {
     @Column(name = "REQUEST_COUNT", nullable = false)
     private int requestCount;
 
-    static ClientEmailChange open(long accountId, long applicationId, OffsetDateTime now) {
+    public static ClientEmailChange open(long accountId, long applicationId, OffsetDateTime now) {
         ClientEmailChange change = new ClientEmailChange();
         change.accountId = accountId;
         change.applicationId = applicationId;
@@ -62,7 +62,7 @@ class ClientEmailChange {
         return change;
     }
 
-    void recordRequest(OffsetDateTime now) {
+    public void recordRequest(OffsetDateTime now) {
         if (!windowStartedAt.plusMinutes(15).isAfter(now)) {
             windowStartedAt = now;
             requestCount = 0;
@@ -70,7 +70,7 @@ class ClientEmailChange {
         requestCount++;
     }
 
-    boolean requestLimitReached(OffsetDateTime now) {
+    public boolean requestLimitReached(OffsetDateTime now) {
         if (!windowStartedAt.plusMinutes(15).isAfter(now)) {
             windowStartedAt = now;
             requestCount = 0;
@@ -82,7 +82,7 @@ class ClientEmailChange {
         return requestCount;
     }
 
-    OffsetDateTime windowExpiresAt() {
+    public OffsetDateTime windowExpiresAt() {
         return windowStartedAt.plusMinutes(15);
     }
 
@@ -94,27 +94,27 @@ class ClientEmailChange {
         return applicationId;
     }
 
-    String newEmail() {
+    public String newEmail() {
         return newEmail;
     }
 
-    OffsetDateTime expiresAt() {
+    public OffsetDateTime expiresAt() {
         return expiresAt;
     }
 
-    boolean currentEmailConfirmed() {
+    public boolean currentEmailConfirmed() {
         return currentEmailConfirmed;
     }
 
-    boolean newEmailConfirmed() {
+    public boolean newEmailConfirmed() {
         return newEmailConfirmed;
     }
 
-    long credentialVersion() {
+    public long credentialVersion() {
         return credentialVersion;
     }
 
-    void start(String newEmail, long credentialVersion, OffsetDateTime now) {
+    public void start(String newEmail, long credentialVersion, OffsetDateTime now) {
         this.newEmail = newEmail;
         this.createdAt = now;
         this.expiresAt = now.plusHours(1);
@@ -123,15 +123,15 @@ class ClientEmailChange {
         this.credentialVersion = credentialVersion;
     }
 
-    void confirmCurrentEmail() {
+    public void confirmCurrentEmail() {
         currentEmailConfirmed = true;
     }
 
-    void confirmNewEmail() {
+    public void confirmNewEmail() {
         newEmailConfirmed = true;
     }
 
-    void clearPending() {
+    public void clearPending() {
         newEmail = null;
         createdAt = null;
         expiresAt = null;

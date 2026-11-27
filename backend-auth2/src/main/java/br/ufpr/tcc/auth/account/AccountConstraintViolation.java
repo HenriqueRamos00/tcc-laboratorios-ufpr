@@ -4,12 +4,12 @@ import org.hibernate.exception.ConstraintViolationException;
 import org.springframework.dao.DataIntegrityViolationException;
 
 /** Identifica a restricao informada pelo Hibernate sem interpretar mensagens do driver. */
-final class AccountConstraintViolation {
+public final class AccountConstraintViolation {
 
     private AccountConstraintViolation() {
     }
 
-    static boolean matches(DataIntegrityViolationException failure, String expectedName) {
+    public static boolean matches(DataIntegrityViolationException failure, String expectedName) {
         for (Throwable cause = failure; cause != null; cause = cause.getCause()) {
             if (cause instanceof ConstraintViolationException violation) {
                 String name = violation.getConstraintName();
